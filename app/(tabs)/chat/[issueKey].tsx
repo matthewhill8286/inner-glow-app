@@ -10,6 +10,7 @@ import {
   Platform,
   StyleSheet,
   ActivityIndicator,
+  Keyboard,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
@@ -163,7 +164,17 @@ export default function Chat() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isAiTyping, setIsAiTyping] = useState(false);
   const [inputText, setInputText] = useState('');
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
   const flatListRef = useRef<FlatList>(null);
+
+  /* ── Track keyboard visibility ── */
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvent, () => setKeyboardVisible(true));
+    const hideSub = Keyboard.addListener(hideEvent, () => setKeyboardVisible(false));
+    return () => { showSub.remove(); hideSub.remove(); };
+  }, []);
 
   /* Track which key we've loaded to handle screen reuse correctly */
   const lastLoadedKey = useRef<string | null>(null);
@@ -387,7 +398,7 @@ export default function Chat() {
         )}
 
         {/* ── Input Bar ── */}
-        <View style={[s.inputBar, { borderTopColor: colors.border, paddingBottom: insets.bottom + 76 }]}>
+        <View style={[s.inputBar, { borderTopColor: colors.border, paddingBottom: keyboardVisible ? 8 : insets.bottom + 76 }]}>
           <TextInput
             value={inputText}
             onChangeText={setInputText}

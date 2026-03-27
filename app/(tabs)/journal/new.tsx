@@ -18,12 +18,18 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
 /* ── Emotions grid ── */
 const EMOTIONS: { label: string; emoji: string; color: string }[] = [
-  { label: 'Angry', emoji: '\uD83D\uDE21', color: '#C45B5B' },
-  { label: 'Sad', emoji: '\uD83D\uDE22', color: '#5A8FB5' },
-  { label: 'Anxious', emoji: '\uD83D\uDE1F', color: '#7B6DC9' },
-  { label: 'Okay', emoji: '\uD83D\uDE42', color: '#E8985A' },
-  { label: 'Calm', emoji: '\uD83D\uDE0C', color: '#5B8A5A' },
-  { label: 'Happy', emoji: '\uD83D\uDE04', color: '#8B6B47' },
+  { label: 'Angry', emoji: '😡', color: '#C45B5B' },
+  { label: 'Sad', emoji: '😢', color: '#5A8FB5' },
+  { label: 'Anxious', emoji: '😟', color: '#7B6DC9' },
+  { label: 'Okay', emoji: '🙂', color: '#E8985A' },
+  { label: 'Calm', emoji: '😌', color: '#5B8A5A' },
+  { label: 'Happy', emoji: '😄', color: '#8B6B47' },
+  { label: 'Grateful', emoji: '🥰', color: '#D4A76A' },
+  { label: 'Excited', emoji: '🤩', color: '#E07A5F' },
+  { label: 'Proud', emoji: '💪', color: '#6B8E6B' },
+  { label: 'Loved', emoji: '💕', color: '#C77B8B' },
+  { label: 'Hopeful', emoji: '🌟', color: '#D4A843' },
+  { label: 'Peaceful', emoji: '🧘', color: '#7BA7A7' },
 ];
 
 /* ── Disease / tag chips ── */
@@ -38,6 +44,14 @@ const TAGS = [
   'Grief',
   'Burnout',
   'Sleep',
+  'Gratitude',
+  'Achievement',
+  'Friendship',
+  'Adventure',
+  'Personal Growth',
+  'Creativity',
+  'Good Day',
+  'Milestone',
 ];
 
 export default function NewJournalEntry() {

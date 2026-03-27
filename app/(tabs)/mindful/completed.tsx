@@ -45,7 +45,7 @@ export default function ExerciseCompleted() {
           alignItems: 'center',
           paddingHorizontal: UI.spacing.xl,
           paddingTop: insets.top + 54,
-          paddingBottom: 40,
+          paddingBottom: insets.bottom + 100,
         }}
         showsVerticalScrollIndicator={false}
       >
