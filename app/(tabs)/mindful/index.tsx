@@ -72,6 +72,7 @@ export default function MindfulHoursMain() {
       <ScreenHeader
         title="Mindful Hours"
         showBack
+        onBack={() => router.replace('/(tabs)/home')}
         rightElement={
           <Pressable
             onPress={() => router.push('/(tabs)/mindful/stats')}

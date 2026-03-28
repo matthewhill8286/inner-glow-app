@@ -116,78 +116,92 @@ export default function JournalHome() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScrollView
-        ref={scrollRef}
-        contentContainerStyle={{ paddingBottom: 100 }}
-        showsVerticalScrollIndicator={false}
+      {/* ── Standard Header ── */}
+      <View
+        style={{
+          paddingHorizontal: UI.spacing.xl,
+          paddingTop: insets.top + 6,
+          paddingBottom: 8,
+          backgroundColor: colors.background,
+        }}
       >
-        {/* ═══ Hero Card ═══ */}
         <View
           style={{
-            backgroundColor: '#8B6B47',
-            paddingTop: insets.top + 6,
-            paddingHorizontal: UI.spacing.xl,
-            paddingBottom: 28,
-            borderBottomLeftRadius: UI.radius.xxl,
-            borderBottomRightRadius: UI.radius.xxl,
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
           }}
         >
-          {/* Header */}
-          <View
-            style={{
-              flexDirection: 'row',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: 20,
-            }}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <Pressable
-                onPress={() => router.back()}
-                style={({ pressed }) => ({
-                  width: 36,
-                  height: 36,
-                  borderRadius: 18,
-                  backgroundColor: 'rgba(255,255,255,0.15)',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  opacity: pressed ? 0.7 : 1,
-                })}
-              >
-                <MaterialIcons
-                  name="arrow-back-ios"
-                  size={16}
-                  color="#fff"
-                  style={{ marginLeft: 4 }}
-                />
-              </Pressable>
-              <Text style={{ fontSize: 18, fontWeight: '700', color: '#fff' }}>
-                {t('journalHome.title')}
-              </Text>
-            </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
             <Pressable
-              onPress={() => router.push('/(tabs)/journal/new')}
+              onPress={() => router.back()}
               style={({ pressed }) => ({
-                width: 36,
-                height: 36,
-                borderRadius: 18,
-                backgroundColor: 'rgba(255,255,255,0.15)',
+                width: 40,
+                height: 40,
+                borderRadius: 12,
+                backgroundColor: colors.card,
+                borderWidth: 1,
+                borderColor: colors.border,
                 alignItems: 'center',
                 justifyContent: 'center',
                 opacity: pressed ? 0.7 : 1,
               })}
             >
-              <MaterialIcons name="add" size={22} color="#fff" />
+              <MaterialIcons name="arrow-back-ios-new" size={16} color={colors.text} />
             </Pressable>
+            <Text
+              style={{
+                fontSize: 26,
+                fontWeight: '900',
+                color: colors.text,
+                flexShrink: 1,
+              }}
+              numberOfLines={1}
+            >
+              {t('journalHome.title')}
+            </Text>
           </View>
+          <Pressable
+            onPress={() => router.push('/(tabs)/journal/new')}
+            style={({ pressed }) => ({
+              width: 40,
+              height: 40,
+              borderRadius: 12,
+              backgroundColor: colors.card,
+              borderWidth: 1,
+              borderColor: colors.border,
+              alignItems: 'center',
+              justifyContent: 'center',
+              opacity: pressed ? 0.7 : 1,
+            })}
+          >
+            <MaterialIcons name="add" size={22} color={colors.text} />
+          </Pressable>
+        </View>
+      </View>
 
+      <ScrollView
+        ref={scrollRef}
+        contentContainerStyle={{ paddingBottom: 100 }}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* ═══ Stats Card ═══ */}
+        <View
+          style={{
+            backgroundColor: '#8B6B47',
+            marginHorizontal: UI.spacing.xl,
+            marginTop: 12,
+            padding: 20,
+            borderRadius: UI.radius.xxl,
+          }}
+        >
           {/* Big number */}
           <Text
             style={{
-              fontSize: 72,
+              fontSize: 64,
               fontWeight: '900',
               color: '#fff',
-              lineHeight: 80,
+              lineHeight: 72,
               marginBottom: 4,
             }}
           >

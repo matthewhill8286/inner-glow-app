@@ -11,11 +11,13 @@ export default function ScreenHeader({
   subtitle,
   rightElement,
   showBack,
+  onBack,
 }: Readonly<{
   title: string;
   subtitle?: string;
   rightElement?: React.ReactNode;
   showBack?: boolean;
+  onBack?: () => void;
 }>) {
   const theme = useColorScheme() ?? 'light';
   const colors = Colors[theme];
@@ -29,7 +31,7 @@ export default function ScreenHeader({
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
           {shouldShowBack && (
             <Pressable
-              onPress={() => router.back()}
+              onPress={() => (onBack ? onBack() : router.back())}
               style={({ pressed }) => ({
                 padding: 4,
                 opacity: pressed ? 0.7 : 1,
