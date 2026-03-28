@@ -287,15 +287,15 @@ export default function AISuggestionCategoryScreen() {
     if (!pendingSuggestion) return;
     setShowMoodCheckIn(false);
     try {
-      await completeSuggestion({
+      const result = await completeSuggestion({
         suggestionId: pendingSuggestion.id,
         moodBefore: moods.moodBefore,
         moodAfter: moods.moodAfter,
       });
       setCompletedSuggestion(pendingSuggestion);
       setShowCompletion(true);
-    } catch {
-      // silent
+    } catch (e) {
+      console.warn('[AISuggestionCategory] Failed to complete:', e);
     }
     setPendingSuggestion(null);
   };
@@ -304,11 +304,11 @@ export default function AISuggestionCategoryScreen() {
     if (!pendingSuggestion) return;
     setShowMoodCheckIn(false);
     try {
-      await completeSuggestion({ suggestionId: pendingSuggestion.id });
+      const result = await completeSuggestion({ suggestionId: pendingSuggestion.id });
       setCompletedSuggestion(pendingSuggestion);
       setShowCompletion(true);
-    } catch {
-      // silent
+    } catch (e) {
+      console.warn('[AISuggestionCategory] Failed to complete:', e);
     }
     setPendingSuggestion(null);
   };

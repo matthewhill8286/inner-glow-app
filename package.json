@@ -12,6 +12,7 @@
     "build:production": "eas build --profile production",
     "submit:ios": "eas submit -p ios",
     "submit:android": "eas submit -p android",
+    "testflight": "npx testflight",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo run:android",
     "ios": "expo run:ios",

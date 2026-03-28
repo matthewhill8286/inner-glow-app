@@ -1,8 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, Pressable, ScrollView, Platform, StyleSheet } from 'react-native';
+import { View, Text, Pressable, ScrollView, Platform, StyleSheet, Animated, PanResponder } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
+import { useQueryClient } from '@tanstack/react-query';
+import { queryKeys } from '@/lib/queryKeys';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -74,10 +76,17 @@ export default function Home() {
   const { profile } = useProfile({ lazy: true });
   const router = useRouter();
   const scrollRef = useRef<ScrollView>(null);
+  const queryClient = useQueryClient();
 
   useFocusEffect(useCallback(() => {
     scrollRef.current?.scrollTo({ y: 0, animated: false });
-  }, []));
+    // Refresh all tracking data so Freud Score and stats are up to date
+    queryClient.invalidateQueries({ queryKey: queryKeys.mood.all });
+    queryClient.invalidateQueries({ queryKey: queryKeys.sleep.all });
+    queryClient.invalidateQueries({ queryKey: queryKeys.journal.all });
+    queryClient.invalidateQueries({ queryKey: queryKeys.mindfulness.all });
+    queryClient.invalidateQueries({ queryKey: queryKeys.stress.allHistory });
+  }, [queryClient]));
 
   const { moodCheckIns, isLoading: moodLoading } = useMood();
   const { journalEntries, isLoading: journalLoading } = useJournal();
@@ -671,6 +680,57 @@ function MetricsCard({
   const latestMood = moodCheckIns?.[0];
   const latestMoodMeta = latestMood ? MOOD_META[latestMood.mood] : null;
 
+  /* ── Swipe-left gesture to navigate to AI suggestions ── */
+  const swipeX = useRef(new Animated.Value(0)).current;
+  const swipedRef = useRef(false);
+
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_evt, gs) =>
+          activeTab === 'freud' && Math.abs(gs.dx) > Math.abs(gs.dy) && Math.abs(gs.dx) > 10,
+        onPanResponderMove: (_evt, gs) => {
+          // Only allow dragging left (negative dx)
+          if (gs.dx < 0) {
+            swipeX.setValue(gs.dx);
+          }
+        },
+        onPanResponderRelease: (_evt, gs) => {
+          if (gs.dx < -80 && !swipedRef.current) {
+            // Swipe threshold met — animate out then navigate
+            swipedRef.current = true;
+            Animated.timing(swipeX, {
+              toValue: -400,
+              duration: 200,
+              useNativeDriver: true,
+            }).start(() => {
+              router.push('/(tabs)/freud-score/ai-suggestions' as any);
+              // Reset after navigation
+              setTimeout(() => {
+                swipeX.setValue(0);
+                swipedRef.current = false;
+              }, 500);
+            });
+          } else {
+            // Snap back
+            Animated.spring(swipeX, {
+              toValue: 0,
+              useNativeDriver: true,
+              tension: 100,
+              friction: 10,
+            }).start();
+          }
+        },
+        onPanResponderTerminate: () => {
+          Animated.spring(swipeX, {
+            toValue: 0,
+            useNativeDriver: true,
+          }).start();
+        },
+      }),
+    [activeTab, router, swipeX],
+  );
+
   return (
     <View style={[s.metricsCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
       {/* Tabs */}
@@ -712,7 +772,10 @@ function MetricsCard({
       </View>
 
       {activeTab === 'freud' ? (
-        <>
+        <Animated.View
+          {...panResponder.panHandlers}
+          style={{ transform: [{ translateX: swipeX }] }}
+        >
           {/* Big score ring with tick marks */}
           <Pressable onPress={() => router.push('/(tabs)/freud-score')}>
             <HomeScoreRing
@@ -750,7 +813,7 @@ function MetricsCard({
             </Text>
             <MaterialIcons name="chevron-right" size={18} color={SAGE} />
           </Pressable>
-        </>
+        </Animated.View>
       ) : (
         <>
           {/* Mood display row */}

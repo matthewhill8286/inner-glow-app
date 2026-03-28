@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,9 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { router } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
+import { useQueryClient } from '@tanstack/react-query';
+import { queryKeys } from '@/lib/queryKeys';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, UI } from '@/constants/theme';
 import { useFreudScore } from '@/hooks/useFreudScore';
@@ -479,8 +482,32 @@ export default function FreudScoreScreen() {
   const theme = useColorScheme() ?? 'light';
   const colors = Colors[theme];
   const insets = useSafeAreaInsets();
-  const { currentScore, scoreHistory, isLoadingHistory, isDataLoading } = useFreudScore();
+  const queryClient = useQueryClient();
+  const { currentScore, scoreHistory, isLoadingHistory, isDataLoading, saveScore } = useFreudScore();
+  const hasSavedRef = useRef(false);
   const [showFilter, setShowFilter] = useState(false);
+
+  /* ── Invalidate all source data on screen focus so score recalculates ── */
+  useFocusEffect(
+    useCallback(() => {
+      hasSavedRef.current = false;
+      queryClient.invalidateQueries({ queryKey: queryKeys.mood.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.sleep.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.journal.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.mindfulness.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.stress.allHistory });
+      queryClient.invalidateQueries({ queryKey: queryKeys.freudScore.all });
+    }, [queryClient]),
+  );
+
+  /* ── Auto-save today's score snapshot once data is loaded ── */
+  useEffect(() => {
+    if (!isDataLoading && !isLoadingHistory && currentScore.score > 0 && !hasSavedRef.current) {
+      hasSavedRef.current = true;
+      // Save the current display score (which is the higher of live vs DB)
+      saveScore({ result: currentScore, generateSuggestions: false }).catch(() => {});
+    }
+  }, [isDataLoading, isLoadingHistory, currentScore, saveScore]);
   const [filters, setFilters] = useState<FilterState>({
     scoreMin: 0,
     scoreMax: 100,

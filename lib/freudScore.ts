@@ -163,32 +163,49 @@ export function calculateFreudScore(data: {
   }
 
   // --- 5. Consistency sub-score (0-100) — how regularly user engages ---
+  // Use a 14-day window and count ALL activity types (mood, journal, sleep, mindfulness, stress)
+  const last14 = new Date(Date.now() - 14 * 86400000).toISOString();
   const last7 = new Date(Date.now() - 7 * 86400000).toISOString();
-  const recentMoods = moods.filter((m) => m.createdAt >= last7).length;
-  const recentJournals = journals.filter((j) => j.createdAt >= last7).length;
-  const recentSleeps = sleeps.filter((s) => s.createdAtISO >= last7).length;
+  const recentMoods = moods.filter((m) => m.createdAt >= last14).length;
+  const recentJournals = journals.filter((j) => j.createdAt >= last14).length;
+  const recentSleeps = sleeps.filter((s) => s.createdAtISO >= last14).length;
+  const recentMindful = mindful.filter((m) => m.dateISO >= last14).length;
+  const recentStress = stress.filter((s) => s.date >= last14).length;
   const uniqueActiveDays = new Set([
-    ...moods.filter((m) => m.createdAt >= last7).map((m) => m.createdAt.slice(0, 10)),
-    ...journals.filter((j) => j.createdAt >= last7).map((j) => j.createdAt.slice(0, 10)),
-    ...sleeps.filter((s) => s.createdAtISO >= last7).map((s) => s.createdAtISO.slice(0, 10)),
+    ...moods.filter((m) => m.createdAt >= last14).map((m) => m.createdAt.slice(0, 10)),
+    ...journals.filter((j) => j.createdAt >= last14).map((j) => j.createdAt.slice(0, 10)),
+    ...sleeps.filter((s) => s.createdAtISO >= last14).map((s) => s.createdAtISO.slice(0, 10)),
+    ...mindful.filter((m) => m.dateISO >= last14).map((m) => m.dateISO.slice(0, 10)),
+    ...stress.filter((s) => s.date >= last14).map((s) => s.date.slice(0, 10)),
   ]).size;
+  const totalRecentActivities = recentMoods + recentJournals + recentSleeps + recentMindful + recentStress;
   const consistencyScore = clamp(
     Math.round(
-      (uniqueActiveDays / 7) * 70 + Math.min((recentMoods + recentJournals + recentSleeps) * 3, 30),
+      (uniqueActiveDays / 14) * 60 + // active days out of 14
+      Math.min(totalRecentActivities * 3, 30) + // bonus for total activity count
+      (moods.length > 0 ? 5 : 0) + // baseline bonus for having any mood data
+      (sleeps.length > 0 ? 5 : 0), // baseline bonus for having any sleep data
     ),
   );
 
-  // --- 6. Journal sub-score (0-100) — entries per week & depth ---
+  // --- 6. Journal sub-score (0-100) — entries & depth (14-day window) ---
   let journalScore = 0;
   if (journals.length > 0) {
+    const recentEntries = journals.filter((j) => j.createdAt >= last14);
     const thisWeek = journals.filter((j) => j.createdAt >= last7);
-    const countScore = Math.min(thisWeek.length, 5) * 14; // 5 entries = 70 pts
+    // Use whichever window has more entries for a fairer score
+    const entries = recentEntries.length > thisWeek.length ? recentEntries : thisWeek;
+    const countScore = Math.min(entries.length, 7) * 10; // 7 entries = 70 pts
     const avgLength =
-      thisWeek.length > 0
-        ? thisWeek.reduce((sum, j) => sum + (j.content?.length ?? 0), 0) / thisWeek.length
+      entries.length > 0
+        ? entries.reduce((sum, j) => sum + (j.content?.length ?? 0), 0) / entries.length
         : 0;
     const depthScore = Math.min(avgLength / 200, 1) * 30; // 200+ chars = 30 pts
     journalScore = clamp(Math.round(countScore + depthScore));
+    // If user has older journal entries but none recently, give a small base score
+    if (journalScore === 0 && journals.length > 0) {
+      journalScore = Math.min(journals.length * 2, 15); // up to 15 pts for having any entries
+    }
   }
 
   // --- Weighted total ---
@@ -210,8 +227,6 @@ export function calculateFreudScore(data: {
       journalScore * weights.journal,
   );
   const score = Math.max(0, Math.min(100, total));
-
-  console.log('score', score);
 
   return {
     score,

@@ -350,19 +350,22 @@ export default function AISuggestionsScreen() {
     setShowMoodCheckIn(true);
   };
 
+  const [newScoreValue, setNewScoreValue] = useState(0);
+
   const handleMoodComplete = async (moods: { moodBefore: MoodValue; moodAfter: MoodValue }) => {
     if (!pendingSuggestion) return;
     setShowMoodCheckIn(false);
     try {
-      await completeSuggestion({
+      const result = await completeSuggestion({
         suggestionId: pendingSuggestion.id,
         moodBefore: moods.moodBefore,
         moodAfter: moods.moodAfter,
       });
       setCompletedPoints(pendingSuggestion.points);
+      setNewScoreValue(result.newScore);
       setShowCompletion(true);
-    } catch {
-      // silent
+    } catch (e) {
+      console.warn('[AISuggestions] Failed to complete suggestion:', e);
     }
     setPendingSuggestion(null);
   };
@@ -371,11 +374,12 @@ export default function AISuggestionsScreen() {
     if (!pendingSuggestion) return;
     setShowMoodCheckIn(false);
     try {
-      await completeSuggestion({ suggestionId: pendingSuggestion.id });
+      const result = await completeSuggestion({ suggestionId: pendingSuggestion.id });
       setCompletedPoints(pendingSuggestion.points);
+      setNewScoreValue(result.newScore);
       setShowCompletion(true);
-    } catch {
-      // silent
+    } catch (e) {
+      console.warn('[AISuggestions] Failed to complete suggestion:', e);
     }
     setPendingSuggestion(null);
   };
@@ -391,7 +395,7 @@ export default function AISuggestionsScreen() {
 
           {/* Back button */}
           <Pressable
-            onPress={() => router.back()}
+            onPress={() => router.replace('/(tabs)/home')}
             style={({ pressed }) => [s.heroBackBtn, { opacity: pressed ? 0.7 : 1 }]}
           >
             <MaterialIcons
@@ -578,7 +582,7 @@ export default function AISuggestionsScreen() {
         visible={showCompletion}
         onClose={() => setShowCompletion(false)}
         points={completedPoints}
-        newScore={currentScore.score + completedPoints}
+        newScore={newScoreValue || Math.min(100, currentScore.score + completedPoints)}
         colors={colors}
       />
     </View>
