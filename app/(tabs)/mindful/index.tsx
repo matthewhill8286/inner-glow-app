@@ -240,9 +240,15 @@ export default function MindfulHoursMain() {
             const minutes = Math.round(entry.seconds / 60);
 
             return (
-              <View
+              <Pressable
                 key={entry.id}
-                style={{
+                onPress={() =>
+                  router.push({
+                    pathname: '/(tabs)/mindful/session-detail',
+                    params: { id: entry.id },
+                  })
+                }
+                style={({ pressed }) => ({
                   backgroundColor: colors.card,
                   borderRadius: UI.radius.lg,
                   padding: 14,
@@ -251,7 +257,8 @@ export default function MindfulHoursMain() {
                   gap: 12,
                   borderWidth: 1,
                   borderColor: colors.border,
-                }}
+                  opacity: pressed ? 0.7 : 1,
+                })}
               >
                 <View
                   style={{
@@ -285,19 +292,22 @@ export default function MindfulHoursMain() {
                     {formatSessionDate(entry.dateISO)}
                   </Text>
                 </View>
-                <View style={{ alignItems: 'flex-end' }}>
-                  <Text
-                    style={{
-                      fontSize: 16,
-                      fontWeight: '800',
-                      color: colors.primary,
-                    }}
-                  >
-                    {minutes}m
-                  </Text>
-                  <Text style={{ fontSize: 11, color: colors.mutedText }}>Duration</Text>
+                <View style={{ alignItems: 'flex-end', flexDirection: 'row', gap: 8 }}>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text
+                      style={{
+                        fontSize: 16,
+                        fontWeight: '800',
+                        color: colors.primary,
+                      }}
+                    >
+                      {minutes}m
+                    </Text>
+                    <Text style={{ fontSize: 11, color: colors.mutedText }}>Duration</Text>
+                  </View>
+                  <MaterialIcons name="chevron-right" size={20} color={colors.mutedText} />
                 </View>
-              </View>
+              </Pressable>
             );
           })}
         </ScrollView>

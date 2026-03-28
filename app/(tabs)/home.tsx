@@ -1,7 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, Pressable, ScrollView, Platform, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -72,6 +73,11 @@ export default function Home() {
   const { isExpired, hasFullAccess, isTrialActive, trialDaysLeft } = useSubscription();
   const { profile } = useProfile({ lazy: true });
   const router = useRouter();
+  const scrollRef = useRef<ScrollView>(null);
+
+  useFocusEffect(useCallback(() => {
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+  }, []));
 
   const { moodCheckIns, isLoading: moodLoading } = useMood();
   const { journalEntries, isLoading: journalLoading } = useJournal();
@@ -200,6 +206,7 @@ export default function Home() {
   return (
     <View style={[s.root, { backgroundColor: colors.background, paddingTop: insets.top + 6 }]}>
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={{ paddingBottom: 120 }}
         showsVerticalScrollIndicator={false}
       >

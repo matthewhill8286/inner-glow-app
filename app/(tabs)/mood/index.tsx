@@ -1,7 +1,8 @@
-import React, { useMemo, useState, useRef, useEffect } from 'react';
+import React, { useCallback, useMemo, useState, useRef, useEffect } from 'react';
 import { View, Text, Pressable, ScrollView, Animated, Dimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { useMood } from '@/hooks/useMood';
 import { useMoodInsights, MoodInsight } from '@/hooks/useMoodInsights';
 import { MoodCheckIn } from '@/lib/types';
@@ -37,6 +38,11 @@ export default function MoodIndex() {
   const { moodCheckIns: items, isLoading: loading } = useMood();
   const { insights, isLoading: insightsLoading } = useMoodInsights();
   const insets = useSafeAreaInsets();
+  const scrollRef = useRef<ScrollView>(null);
+
+  useFocusEffect(useCallback(() => {
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+  }, []));
 
   /* ── Bounce animation on hero emoji ── */
   const bounce = useRef(new Animated.Value(1)).current;
@@ -198,6 +204,7 @@ export default function MoodIndex() {
       </View>
 
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={{ paddingHorizontal: UI.spacing.xl, paddingBottom: 120, gap: 16 }}
         showsVerticalScrollIndicator={false}
       >

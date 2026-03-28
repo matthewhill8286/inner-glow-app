@@ -1,6 +1,7 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useRef } from 'react';
 import { View, Text, Pressable, ScrollView, Platform, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useSubscription } from '@/hooks/useSubscription';
 import { showAlert } from '@/lib/state';
@@ -27,6 +28,11 @@ export default function Chatbot() {
   const { topics } = useTopics();
   const { history, stats, isLoading: chatLoading } = useChat();
   const insets = useSafeAreaInsets();
+  const scrollRef = useRef<ScrollView>(null);
+
+  useFocusEffect(useCallback(() => {
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+  }, []));
 
   /** Gate action behind premium access — returns true if blocked. */
   const requirePremium = useCallback((): boolean => {
@@ -64,6 +70,19 @@ export default function Chatbot() {
     <View style={[s.container, { backgroundColor: colors.background }]}>
       {/* ── Header ────────────────────────────────── */}
       <View style={[s.header, { paddingTop: insets.top }]}>
+        <Pressable
+          onPress={() => router.back()}
+          style={({ pressed }) => [
+            s.headerBtn,
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+              opacity: pressed ? 0.7 : 1,
+            },
+          ]}
+        >
+          <MaterialIcons name="arrow-back-ios-new" size={16} color={colors.text} />
+        </Pressable>
         <View style={{ flex: 1 }}>
           <Text style={[s.headerTitle, { color: colors.text }]}>AI Therapy</Text>
           <Text style={[s.headerSub, { color: colors.mutedText }]}>
@@ -105,7 +124,7 @@ export default function Chatbot() {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView ref={scrollRef} contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
         {/* ── Stats Hero Card ────────────────────── */}
         <View style={[s.heroCard, { backgroundColor: '#8B6B47' }]}>
           <View style={[s.heroCircle1, { backgroundColor: 'rgba(255,255,255,0.08)' }]} />
