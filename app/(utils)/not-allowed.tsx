@@ -1,19 +1,20 @@
 import React from 'react';
 import { View, Text, Pressable, Platform, Linking } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { router } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, UI } from '@/constants/theme';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
 export default function NotAllowedScreen() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const theme = useColorScheme() ?? 'light';
   const colors = Colors[theme];
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      {/* Header */}
       <View
         style={{
           paddingTop: insets.top + 16,
@@ -45,7 +46,6 @@ export default function NotAllowedScreen() {
         </Pressable>
       </View>
 
-      {/* Content */}
       <View
         style={{
           flex: 1,
@@ -55,7 +55,6 @@ export default function NotAllowedScreen() {
           paddingBottom: 60,
         }}
       >
-        {/* Illustration */}
         <View
           style={{
             width: 200,
@@ -70,7 +69,6 @@ export default function NotAllowedScreen() {
           <MaterialIcons name="block" size={90} color="#C45B5B" />
         </View>
 
-        {/* Title */}
         <Text
           style={{
             fontSize: 26,
@@ -80,10 +78,9 @@ export default function NotAllowedScreen() {
             marginBottom: 10,
           }}
         >
-          Not Allowed
+          {t('notAllowed.title')}
         </Text>
 
-        {/* Subtitle */}
         <Text
           style={{
             fontSize: 14,
@@ -93,10 +90,9 @@ export default function NotAllowedScreen() {
             marginBottom: 20,
           }}
         >
-          Hey, you don't have permission.
+          {t('notAllowed.subtitle')}
         </Text>
 
-        {/* Contact Admin Badge */}
         <Pressable
           onPress={() => {
             Linking.openURL('mailto:support@freud.ai');
@@ -115,11 +111,10 @@ export default function NotAllowedScreen() {
           })}
         >
           <Text style={{ fontSize: 14 }}>{'\uD83D\uDCDE'}</Text>
-          <Text style={{ fontSize: 13, fontWeight: '700', color: '#C45B5B' }}>Contact Admin</Text>
+          <Text style={{ fontSize: 13, fontWeight: '700', color: '#C45B5B' }}>{t('notAllowed.contactAdmin')}</Text>
         </Pressable>
       </View>
 
-      {/* Take Me Home Button */}
       <View
         style={{ paddingHorizontal: UI.spacing.xl, paddingBottom: Platform.OS === 'ios' ? 44 : 28 }}
       >
@@ -137,7 +132,7 @@ export default function NotAllowedScreen() {
             ...UI.shadow.md,
           })}
         >
-          <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>Take Me Home</Text>
+          <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{t('errorScreen.takeMeHome')}</Text>
           <MaterialIcons name="home" size={20} color="#fff" />
         </Pressable>
       </View>

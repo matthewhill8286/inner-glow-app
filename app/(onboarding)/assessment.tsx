@@ -5,7 +5,6 @@ import {
   Pressable,
   TextInput,
   ScrollView,
-  Animated,
   FlatList,
   NativeSyntheticEvent,
   NativeScrollEvent,
@@ -135,8 +134,12 @@ function HorizontalRuler({
   unit?: string;
 }) {
   const flatListRef = React.useRef<FlatList>(null);
-  const scrollX = React.useRef(new Animated.Value(0)).current;
   const [width, setWidth] = useState(0);
+  const isUserScrolling = React.useRef(false);
+  const lastReportedValue = React.useRef(value);
+
+  /* Track the currently visible value during scrolling for display */
+  const [displayValue, setDisplayValue] = useState(value);
 
   const data = useMemo(() => {
     const items: number[] = [];
@@ -146,22 +149,57 @@ function HorizontalRuler({
     return [null, ...items, null];
   }, [min, max, step]);
 
-  const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const x = event.nativeEvent.contentOffset.x;
+  /* Helper: extract selected value from scroll offset */
+  const getValueFromOffset = (x: number): number | null => {
     const index = Math.round(x / TICK_SPACING);
     const actualIndex = index + 1;
     if (actualIndex >= 1 && actualIndex < data.length - 1) {
-      const selected = data[actualIndex];
-      if (selected !== null && selected !== value) {
-        onChange(selected);
-      }
+      return data[actualIndex] as number;
+    }
+    return null;
+  };
+
+  /* Update display value live during scroll so the big number follows the finger */
+  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const selected = getValueFromOffset(event.nativeEvent.contentOffset.x);
+    if (selected !== null) {
+      setDisplayValue(selected);
     }
   };
 
+  /* Commit the final value only after momentum ends (scroll fully settled) */
+  const handleMomentumEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    isUserScrolling.current = false;
+    const selected = getValueFromOffset(event.nativeEvent.contentOffset.x);
+    if (selected !== null && selected !== lastReportedValue.current) {
+      lastReportedValue.current = selected;
+      onChange(selected);
+    }
+  };
+
+  /* Also commit on drag end without momentum (slow drag released at rest) */
+  const handleScrollEndDrag = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    /* If there's momentum, onMomentumScrollEnd will handle it.
+       For a slow release we set a short timeout to commit if momentum doesn't fire. */
+    const selected = getValueFromOffset(event.nativeEvent.contentOffset.x);
+    setTimeout(() => {
+      if (isUserScrolling.current) {
+        isUserScrolling.current = false;
+        if (selected !== null && selected !== lastReportedValue.current) {
+          lastReportedValue.current = selected;
+          onChange(selected);
+        }
+      }
+    }, 120);
+  };
+
+  /* Only programmatically scroll when NOT actively scrolling (initial position, external changes) */
   React.useEffect(() => {
-    if (width > 0 && flatListRef.current) {
+    if (width > 0 && flatListRef.current && !isUserScrolling.current) {
       const index = Math.max(0, (value - min) / step);
       flatListRef.current.scrollToOffset({ offset: index * TICK_SPACING, animated: false });
+      lastReportedValue.current = value;
+      setDisplayValue(value);
     }
   }, [width, min, max, step, value]);
 
@@ -171,7 +209,7 @@ function HorizontalRuler({
       onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
     >
       <View style={{ flexDirection: 'row', alignItems: 'baseline', marginBottom: 16 }}>
-        <Text style={{ fontSize: 72, fontWeight: '900', color: C.brownLight }}>{value}</Text>
+        <Text style={{ fontSize: 72, fontWeight: '900', color: C.brownLight }}>{displayValue}</Text>
         {unit ? (
           <Text
             style={{
@@ -210,10 +248,10 @@ function HorizontalRuler({
             showsHorizontalScrollIndicator={false}
             snapToInterval={TICK_SPACING}
             decelerationRate="fast"
-            onScroll={(e) => {
-              scrollX.setValue(e.nativeEvent.contentOffset.x);
-              onScroll(e);
-            }}
+            onScrollBeginDrag={() => { isUserScrolling.current = true; }}
+            onScrollEndDrag={handleScrollEndDrag}
+            onMomentumScrollEnd={handleMomentumEnd}
+            onScroll={handleScroll}
             scrollEventThrottle={16}
             keyExtractor={(_, i) => i.toString()}
             getItemLayout={(_, index) => {

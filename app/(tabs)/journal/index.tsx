@@ -52,8 +52,8 @@ export default function JournalHome() {
   }, [journalEntries, year]);
 
   /* ── Contribution map: classify each day by mood ── */
-  const POSITIVE_MOODS = ['Calm', 'Okay', 'Great', 'Good', 'Happy'];
-  const NEGATIVE_MOODS = ['Anxious', 'Sad', 'Angry', 'Overwhelmed', 'Bad', 'Low'];
+  const POSITIVE_MOODS = useMemo(() => ['Calm', 'Okay', 'Great', 'Good', 'Happy'] ,[])
+  const NEGATIVE_MOODS = useMemo(() =>  ['Anxious', 'Sad', 'Angry', 'Overwhelmed', 'Bad', 'Low'], []);
 
   // 'positive' | 'negative' | 'noMood' per day index
   const dayMap = useMemo(() => {
@@ -75,7 +75,7 @@ export default function JournalHome() {
       }
     });
     return map;
-  }, [journalEntries, year]);
+  }, [NEGATIVE_MOODS, POSITIVE_MOODS, journalEntries, year]);
 
   const DOT_COLORS = {
     positive: '#5B8A5A',

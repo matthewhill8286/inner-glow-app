@@ -9,16 +9,18 @@ export default function Index() {
     useEffect(() => {
         (async () => {
             try {
-                /* ── 1. First-launch onboarding slides ── */
-                const onboardingSeen = await AsyncStorage.getItem('onboarding:seen:v1');
-                if (!onboardingSeen) return router.replace('/(onboarding)/splash-loading');
-
-                /* ── 2. Authenticated session? ── */
+                /* ── 1. Authenticated session? ── */
                 const {
                     data: { session },
                 } = await supabase.auth.getSession();
 
-                if (!session) return router.replace('/(auth)/sign-in');
+                if (!session) {
+                    /* ── 2. First-launch onboarding slides (only for unauthenticated users) ── */
+                    const onboardingSeen = await AsyncStorage.getItem('onboarding:seen:v1');
+                    if (!onboardingSeen) return router.replace('/(onboarding)/splash-loading');
+
+                    return router.replace('/(auth)/sign-in');
+                }
 
                 // Load token into state
                 authTokenVar(session.access_token);

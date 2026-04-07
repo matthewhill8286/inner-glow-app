@@ -19,6 +19,8 @@ import type { AISuggestion } from '@/lib/freudScore';
 import MoodCheckInModal from '@/components/MoodCheckInModal';
 import type { MoodValue } from '@/components/MoodCheckInModal';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import CitationSection from '@/components/CitationSection';
+import { MEDICAL_SOURCES } from '@/lib/citations';
 
 const BROWN = '#8B6B47';
 
@@ -564,6 +566,15 @@ export default function AISuggestionsScreen() {
                 <Text style={{ color: '#7E57C2', fontSize: 12, fontWeight: '600' }}>Focus</Text>
               </View>
             </View>
+
+            <CitationSection
+              citations={[
+                ...MEDICAL_SOURCES.mindfulness,
+                ...MEDICAL_SOURCES.exercise_mental_health.slice(0, 1),
+              ]}
+              accentColor={BROWN}
+              colors={colors as any}
+            />
           </View>
 
           <View style={{ height: 40 }} />

@@ -19,6 +19,7 @@ import { Colors, UI } from '@/constants/theme';
 import { useSubscription } from '@/hooks/useSubscription';
 import { showAlert } from '@/lib/state';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { useTranslation } from 'react-i18next';
 
 /* ─────────────────────────────────────────────
    Searchable catalogue – every item the user
@@ -37,9 +38,10 @@ type SearchCategory =
 
 type SearchItem = {
   key: string;
-  title: string;
-  subtitle: string;
+  titleKey: string;
+  subtitleKey: string;
   category: SearchCategory;
+  categoryKey: string;
   path: string;
   isPremium?: boolean;
   icon: string;
@@ -48,252 +50,49 @@ type SearchItem = {
 
 const SEARCH_ITEMS: SearchItem[] = [
   // ── Home ──
-  {
-    key: 'home',
-    title: 'Home & Score',
-    subtitle: 'In Dashboard',
-    category: 'Home',
-    path: '/(tabs)/home',
-    icon: 'home',
-    iconBg: '#8B6B47',
-  },
-
+  { key: 'home', titleKey: 'search.items.homeTitle', subtitleKey: 'search.items.homeSubtitle', category: 'Home', categoryKey: 'search.categories.home', path: '/(tabs)/home', icon: 'home', iconBg: '#8B6B47' },
   // ── Mood ──
-  {
-    key: 'mood-history',
-    title: 'My Mood History',
-    subtitle: 'In Mood & Emotions',
-    category: 'Mood',
-    path: '/(tabs)/mood',
-    icon: 'mood',
-    iconBg: '#E8985A',
-  },
-  {
-    key: 'mood-improvements',
-    title: 'Mood Improvements',
-    subtitle: 'In Resources & Videos',
-    category: 'Mood',
-    path: '/(tabs)/mood',
-    icon: 'trending-up',
-    iconBg: '#5B8A5A',
-  },
-  {
-    key: 'mood-journals',
-    title: 'Mood Journals',
-    subtitle: 'In Mental Health Journal',
-    category: 'Mood',
-    path: '/(tabs)/journal',
-    icon: 'menu-book',
-    iconBg: '#5B8A5A',
-  },
-  {
-    key: 'mood-ai',
-    title: 'AI Chatbot Mood Suggestions',
-    subtitle: 'In AI Therapy Chatbot',
-    category: 'Mood',
-    path: '/(tabs)/chat',
-    icon: 'smart-toy',
-    iconBg: '#7B6DC9',
-    isPremium: true,
-  },
-  {
-    key: 'my-mood',
-    title: 'My Current Mood',
-    subtitle: 'In Mood & Emotions',
-    category: 'Mood',
-    path: '/(tabs)/mood',
-    icon: 'emoji-emotions',
-    iconBg: '#E8985A',
-  },
-
+  { key: 'mood-history', titleKey: 'search.items.moodHistoryTitle', subtitleKey: 'search.items.moodHistorySubtitle', category: 'Mood', categoryKey: 'search.categories.mood', path: '/(tabs)/mood', icon: 'mood', iconBg: '#E8985A' },
+  { key: 'mood-improvements', titleKey: 'search.items.moodImprovementsTitle', subtitleKey: 'search.items.moodImprovementsSubtitle', category: 'Mood', categoryKey: 'search.categories.mood', path: '/(tabs)/mood', icon: 'trending-up', iconBg: '#5B8A5A' },
+  { key: 'mood-journals', titleKey: 'search.items.moodJournalsTitle', subtitleKey: 'search.items.moodJournalsSubtitle', category: 'Mood', categoryKey: 'search.categories.mood', path: '/(tabs)/journal', icon: 'menu-book', iconBg: '#5B8A5A' },
+  { key: 'mood-ai', titleKey: 'search.items.moodAiTitle', subtitleKey: 'search.items.moodAiSubtitle', category: 'Mood', categoryKey: 'search.categories.mood', path: '/(tabs)/chat', icon: 'smart-toy', iconBg: '#7B6DC9', isPremium: true },
+  { key: 'my-mood', titleKey: 'search.items.myMoodTitle', subtitleKey: 'search.items.myMoodSubtitle', category: 'Mood', categoryKey: 'search.categories.mood', path: '/(tabs)/mood', icon: 'emoji-emotions', iconBg: '#E8985A' },
   // ── Sleep ──
-  {
-    key: 'sleep-quality',
-    title: 'Sleep Quality',
-    subtitle: 'In Sleep Tracker',
-    category: 'Sleep',
-    path: '/(tabs)/sleep',
-    icon: 'bedtime',
-    iconBg: '#5A3E7A',
-  },
-  {
-    key: 'sleep-history',
-    title: 'Sleep History',
-    subtitle: 'In Sleep Tracker',
-    category: 'Sleep',
-    path: '/(tabs)/sleep/history',
-    icon: 'history',
-    iconBg: '#5A3E7A',
-  },
-  {
-    key: 'sleep-insights',
-    title: 'Sleep Insights',
-    subtitle: 'In Sleep Analytics',
-    category: 'Sleep',
-    path: '/(tabs)/sleep/insights',
-    icon: 'insights',
-    iconBg: '#7B6DC9',
-  },
-  {
-    key: 'sleep-schedule',
-    title: 'Sleep Schedule',
-    subtitle: 'In Sleep Tracker',
-    category: 'Sleep',
-    path: '/(tabs)/sleep/schedule',
-    icon: 'schedule',
-    iconBg: '#5A3E7A',
-  },
-  {
-    key: 'sleep-start',
-    title: 'Start Sleeping',
-    subtitle: 'In Sleep Tracker',
-    category: 'Sleep',
-    path: '/(tabs)/sleep/start',
-    icon: 'nightlight-round',
-    iconBg: '#2A1A3E',
-  },
-
+  { key: 'sleep-quality', titleKey: 'search.items.sleepQualityTitle', subtitleKey: 'search.items.sleepQualitySubtitle', category: 'Sleep', categoryKey: 'search.categories.sleep', path: '/(tabs)/sleep', icon: 'bedtime', iconBg: '#5A3E7A' },
+  { key: 'sleep-history', titleKey: 'search.items.sleepHistoryTitle', subtitleKey: 'search.items.sleepHistorySubtitle', category: 'Sleep', categoryKey: 'search.categories.sleep', path: '/(tabs)/sleep/history', icon: 'history', iconBg: '#5A3E7A' },
+  { key: 'sleep-insights', titleKey: 'search.items.sleepInsightsTitle', subtitleKey: 'search.items.sleepInsightsSubtitle', category: 'Sleep', categoryKey: 'search.categories.sleep', path: '/(tabs)/sleep/insights', icon: 'insights', iconBg: '#7B6DC9' },
+  { key: 'sleep-schedule', titleKey: 'search.items.sleepScheduleTitle', subtitleKey: 'search.items.sleepScheduleSubtitle', category: 'Sleep', categoryKey: 'search.categories.sleep', path: '/(tabs)/sleep/schedule', icon: 'schedule', iconBg: '#5A3E7A' },
+  { key: 'sleep-start', titleKey: 'search.items.sleepStartTitle', subtitleKey: 'search.items.sleepStartSubtitle', category: 'Sleep', categoryKey: 'search.categories.sleep', path: '/(tabs)/sleep/start', icon: 'nightlight-round', iconBg: '#2A1A3E' },
   // ── Meditation ──
-  {
-    key: 'meditation',
-    title: 'Meditation Practice',
-    subtitle: 'In Mindful Hours',
-    category: 'Meditation',
-    path: '/(tabs)/mindful',
-    icon: 'self-improvement',
-    iconBg: '#5B8A5A',
-  },
-  {
-    key: 'meditation-schedule',
-    title: 'Meditation Schedule',
-    subtitle: 'In Mindful Hours',
-    category: 'Meditation',
-    path: '/(tabs)/mindful',
-    icon: 'event',
-    iconBg: '#5B8A5A',
-  },
-  {
-    key: 'meditation-ai',
-    title: 'Meditation AI Suggestion',
-    subtitle: 'In AI Therapy Chatbot',
-    category: 'Meditation',
-    path: '/(tabs)/chat',
-    icon: 'auto-awesome',
-    iconBg: '#7B6DC9',
-    isPremium: true,
-  },
-  {
-    key: 'my-meditation',
-    title: 'My Meditation',
-    subtitle: 'In Mindful Hours',
-    category: 'Meditation',
-    path: '/(tabs)/mindful',
-    icon: 'spa',
-    iconBg: '#5B8A5A',
-  },
-
+  { key: 'meditation', titleKey: 'search.items.meditationTitle', subtitleKey: 'search.items.meditationSubtitle', category: 'Meditation', categoryKey: 'search.categories.meditation', path: '/(tabs)/mindful', icon: 'self-improvement', iconBg: '#5B8A5A' },
+  { key: 'meditation-schedule', titleKey: 'search.items.meditationScheduleTitle', subtitleKey: 'search.items.meditationScheduleSubtitle', category: 'Meditation', categoryKey: 'search.categories.meditation', path: '/(tabs)/mindful', icon: 'event', iconBg: '#5B8A5A' },
+  { key: 'meditation-ai', titleKey: 'search.items.meditationAiTitle', subtitleKey: 'search.items.meditationAiSubtitle', category: 'Meditation', categoryKey: 'search.categories.meditation', path: '/(tabs)/chat', icon: 'auto-awesome', iconBg: '#7B6DC9', isPremium: true },
+  { key: 'my-meditation', titleKey: 'search.items.myMeditationTitle', subtitleKey: 'search.items.myMeditationSubtitle', category: 'Meditation', categoryKey: 'search.categories.meditation', path: '/(tabs)/mindful', icon: 'spa', iconBg: '#5B8A5A' },
   // ── Journal ──
-  {
-    key: 'journal',
-    title: 'Mental Health Journal',
-    subtitle: 'In Journal & Writing',
-    category: 'Journal',
-    path: '/(tabs)/journal',
-    icon: 'edit-note',
-    iconBg: '#8B6B47',
-  },
-  {
-    key: 'journal-prompts',
-    title: 'Journal Prompts',
-    subtitle: 'In Journal & Writing',
-    category: 'Journal',
-    path: '/(tabs)/journal',
-    icon: 'lightbulb',
-    iconBg: '#E8985A',
-  },
-
+  { key: 'journal', titleKey: 'search.items.journalTitle', subtitleKey: 'search.items.journalSubtitle', category: 'Journal', categoryKey: 'search.categories.journal', path: '/(tabs)/journal', icon: 'edit-note', iconBg: '#8B6B47' },
+  { key: 'journal-prompts', titleKey: 'search.items.journalPromptsTitle', subtitleKey: 'search.items.journalPromptsSubtitle', category: 'Journal', categoryKey: 'search.categories.journal', path: '/(tabs)/journal', icon: 'lightbulb', iconBg: '#E8985A' },
   // ── Community ──
-  {
-    key: 'community',
-    title: 'Community Support',
-    subtitle: 'In Peer Support',
-    category: 'Community',
-    path: '/(tabs)/community',
-    icon: 'people',
-    iconBg: '#5B8A5A',
-  },
-
+  { key: 'community', titleKey: 'search.items.communityTitle', subtitleKey: 'search.items.communitySubtitle', category: 'Community', categoryKey: 'search.categories.community', path: '/(tabs)/community', icon: 'people', iconBg: '#5B8A5A' },
   // ── AI Chatbot ──
-  {
-    key: 'chatbot',
-    title: 'AI Therapy Chatbot',
-    subtitle: 'In AI Chatbot',
-    category: 'AI Chatbot',
-    path: '/(tabs)/chat',
-    icon: 'smart-toy',
-    iconBg: '#7B6DC9',
-    isPremium: true,
-  },
-
+  { key: 'chatbot', titleKey: 'search.items.chatbotTitle', subtitleKey: 'search.items.chatbotSubtitle', category: 'AI Chatbot', categoryKey: 'search.categories.aiChatbot', path: '/(tabs)/chat', icon: 'smart-toy', iconBg: '#7B6DC9', isPremium: true },
   // ── Resources ──
-  {
-    key: 'stress',
-    title: 'Stress Management',
-    subtitle: 'In Wellness Tools',
-    category: 'Resources',
-    path: '/(tabs)/stress',
-    icon: 'psychology',
-    iconBg: '#E8985A',
-  },
-  {
-    key: 'notifications',
-    title: 'Smart Notifications',
-    subtitle: 'In Settings',
-    category: 'Resources',
-    path: '/(tabs)/notifications',
-    icon: 'notifications',
-    iconBg: '#8B6B47',
-  },
-  {
-    key: 'profile',
-    title: 'Profile & Settings',
-    subtitle: 'In Settings',
-    category: 'Resources',
-    path: '/(tabs)/profile',
-    icon: 'person',
-    iconBg: '#8B6B47',
-  },
-  {
-    key: 'help',
-    title: 'Help Center',
-    subtitle: 'In Support',
-    category: 'Resources',
-    path: '/(utils)/help-center',
-    icon: 'help',
-    iconBg: '#5A8FB5',
-  },
-  {
-    key: 'assessment',
-    title: 'Mental Health Assessment',
-    subtitle: 'In Wellness Tools',
-    category: 'Resources',
-    path: '/(onboarding)/assessment',
-    icon: 'assignment',
-    iconBg: '#7B6DC9',
-    isPremium: true,
-  },
+  { key: 'stress', titleKey: 'search.items.stressTitle', subtitleKey: 'search.items.stressSubtitle', category: 'Resources', categoryKey: 'search.categories.resources', path: '/(tabs)/stress', icon: 'psychology', iconBg: '#E8985A' },
+  { key: 'notifications', titleKey: 'search.items.notificationsTitle', subtitleKey: 'search.items.notificationsSubtitle', category: 'Resources', categoryKey: 'search.categories.resources', path: '/(tabs)/notifications', icon: 'notifications', iconBg: '#8B6B47' },
+  { key: 'profile', titleKey: 'search.items.profileTitle', subtitleKey: 'search.items.profileSubtitle', category: 'Resources', categoryKey: 'search.categories.resources', path: '/(tabs)/profile', icon: 'person', iconBg: '#8B6B47' },
+  { key: 'help', titleKey: 'search.items.helpTitle', subtitleKey: 'search.items.helpSubtitle', category: 'Resources', categoryKey: 'search.categories.resources', path: '/(utils)/help-center', icon: 'help', iconBg: '#5A8FB5' },
+  { key: 'assessment', titleKey: 'search.items.assessmentTitle', subtitleKey: 'search.items.assessmentSubtitle', category: 'Resources', categoryKey: 'search.categories.resources', path: '/(onboarding)/assessment', icon: 'assignment', iconBg: '#7B6DC9', isPremium: true },
 ];
 
 /* ─── Category chips metadata ─── */
-const CATEGORIES: { label: SearchCategory; icon: string }[] = [
-  { label: 'Sleep', icon: 'bedtime' },
-  { label: 'Mood', icon: 'mood' },
-  { label: 'Meditation', icon: 'self-improvement' },
-  { label: 'Journal', icon: 'edit-note' },
-  { label: 'Community', icon: 'people' },
-  { label: 'Home', icon: 'home' },
-  { label: 'AI Chatbot', icon: 'smart-toy' },
-  { label: 'Resources', icon: 'more-horiz' },
+const CATEGORIES: { label: SearchCategory; labelKey: string; icon: string }[] = [
+  { label: 'Sleep', labelKey: 'search.categories.sleep', icon: 'bedtime' },
+  { label: 'Mood', labelKey: 'search.categories.mood', icon: 'mood' },
+  { label: 'Meditation', labelKey: 'search.categories.meditation', icon: 'self-improvement' },
+  { label: 'Journal', labelKey: 'search.categories.journal', icon: 'edit-note' },
+  { label: 'Community', labelKey: 'search.categories.community', icon: 'people' },
+  { label: 'Home', labelKey: 'search.categories.home', icon: 'home' },
+  { label: 'AI Chatbot', labelKey: 'search.categories.aiChatbot', icon: 'smart-toy' },
+  { label: 'Resources', labelKey: 'search.categories.resources', icon: 'more-horiz' },
 ];
 
 type SortMode = 'Newest' | 'Oldest' | 'A-Z';
@@ -302,6 +101,7 @@ type SortMode = 'Newest' | 'Oldest' | 'A-Z';
    Main Search Screen
    ═══════════════════════════════════════════════ */
 export default function Search() {
+  const { t } = useTranslation();
   const theme = useColorScheme() ?? 'light';
   const colors = Colors[theme];
   const { hasFullAccess } = useSubscription();
@@ -374,25 +174,25 @@ export default function Search() {
   const suggestions = useMemo(() => {
     const s = query.trim().toLowerCase();
     if (!s || s.length < 2) return [];
-    return SEARCH_ITEMS.filter((i) => i.title.toLowerCase().includes(s))
+    return SEARCH_ITEMS.filter((i) => t(i.titleKey).toLowerCase().includes(s))
       .slice(0, 5)
-      .map((i) => i.title);
-  }, [query]);
+      .map((i) => t(i.titleKey));
+  }, [query, t]);
 
   /* ── Filtered & sorted results ── */
   const results = useMemo(() => {
     const s = query.trim().toLowerCase();
     if (!s) return [];
     let items = SEARCH_ITEMS.filter((i) =>
-      (i.title + ' ' + i.subtitle + ' ' + i.category).toLowerCase().includes(s),
+      (t(i.titleKey) + ' ' + t(i.subtitleKey) + ' ' + t(i.categoryKey)).toLowerCase().includes(s),
     );
     if (appliedCategories.length > 0) {
       items = items.filter((i) => appliedCategories.includes(i.category));
     }
-    if (sortMode === 'A-Z') items.sort((a, b) => a.title.localeCompare(b.title));
+    if (sortMode === 'A-Z') items.sort((a, b) => t(a.titleKey).localeCompare(t(b.titleKey)));
     else if (sortMode === 'Oldest') items = [...items].reverse();
     return items;
-  }, [query, appliedCategories, sortMode]);
+  }, [query, appliedCategories, sortMode, t]);
 
   const activeFilterCount = appliedCategories.length + (filterDate ? 1 : 0);
 
@@ -401,9 +201,9 @@ export default function Search() {
     (item: SearchItem) => {
       Keyboard.dismiss();
       if (item.isPremium && !hasFullAccess) {
-        showAlert('Premium Feature', 'Upgrade to lifetime access to use this feature.', [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Upgrade', onPress: () => router.push('/(utils)/trial-upgrade' as any) },
+        showAlert(t('search.premiumFeature'), t('search.premiumMessage'), [
+          { text: t('search.cancel'), style: 'cancel' },
+          { text: t('search.upgrade'), onPress: () => router.push('/(utils)/trial-upgrade' as any) },
         ]);
         return;
       }
@@ -472,7 +272,7 @@ export default function Search() {
               style={{ marginLeft: 4 }}
             />
           </Pressable>
-          <Text style={{ fontSize: 22, fontWeight: '800', color: colors.text }}>Search</Text>
+          <Text style={{ fontSize: 22, fontWeight: '800', color: colors.text }}>{t('search.title')}</Text>
         </View>
       </View>
 
@@ -498,7 +298,7 @@ export default function Search() {
             onChangeText={setQuery}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setTimeout(() => setIsFocused(false), 200)}
-            placeholder="Search freud.ai..."
+            placeholder={t('search.placeholder')}
             placeholderTextColor={colors.placeholder}
             style={{ flex: 1, marginLeft: 10, fontSize: 15, color: colors.text }}
             returnKeyType="search"
@@ -587,7 +387,7 @@ export default function Search() {
               />
             ))}
           </View>
-          <Text style={{ color: colors.mutedText, fontSize: 15 }}>Loading...</Text>
+          <Text style={{ color: colors.mutedText, fontSize: 15 }}>{t('search.loading')}</Text>
         </View>
       )}
 
@@ -624,7 +424,7 @@ export default function Search() {
               marginBottom: 10,
             }}
           >
-            Not Found {'\uD83D\uDE22'}
+            {t('search.notFoundTitle')} {'\uD83D\uDE22'}
           </Text>
           <Text
             style={{
@@ -634,8 +434,7 @@ export default function Search() {
               lineHeight: 21,
             }}
           >
-            Unfortunately, the key you entered cannot be found 404 Error, please try another keyword
-            or check again.
+            {t('search.notFoundMessage')}
           </Text>
         </View>
       )}
@@ -654,14 +453,14 @@ export default function Search() {
             }}
           >
             <Text style={{ fontSize: 13, fontWeight: '600', color: colors.mutedText }}>
-              {results.length} Results Found
+              {t('search.resultsFound', { count: results.length })}
             </Text>
             <Pressable
               onPress={() => setShowSortMenu(!showSortMenu)}
               style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
             >
               <MaterialIcons name="sort" size={16} color={colors.mutedText} />
-              <Text style={{ fontSize: 13, color: colors.mutedText }}>{sortMode}</Text>
+              <Text style={{ fontSize: 13, color: colors.mutedText }}>{sortMode === 'Newest' ? t('search.sortNewest') : sortMode === 'Oldest' ? t('search.sortOldest') : t('search.sortAZ')}</Text>
               <MaterialIcons name="expand-more" size={16} color={colors.mutedText} />
             </Pressable>
           </View>
@@ -702,7 +501,7 @@ export default function Search() {
                       fontWeight: sortMode === m ? '700' : '400',
                     }}
                   >
-                    {m}
+                    {m === 'Newest' ? t('search.sortNewest') : m === 'Oldest' ? t('search.sortOldest') : t('search.sortAZ')}
                   </Text>
                 </Pressable>
               ))}
@@ -751,7 +550,7 @@ export default function Search() {
                       color: active ? '#fff' : colors.text,
                     }}
                   >
-                    {cat.label}
+                    {t(cat.labelKey)}
                   </Text>
                 </Pressable>
               );
@@ -794,10 +593,10 @@ export default function Search() {
                     style={{ fontSize: 15, fontWeight: '700', color: colors.text }}
                     numberOfLines={1}
                   >
-                    {item.title}
+                    {t(item.titleKey)}
                   </Text>
                   <Text style={{ fontSize: 12, color: colors.mutedText, marginTop: 2 }}>
-                    {item.subtitle}
+                    {t(item.subtitleKey)}
                   </Text>
                 </View>
                 {item.isPremium && !hasFullAccess ? (
@@ -826,7 +625,7 @@ export default function Search() {
           <Text
             style={{ fontSize: 14, fontWeight: '700', color: colors.mutedText, marginBottom: 12 }}
           >
-            Quick Access
+            {t('search.quickAccess')}
           </Text>
           <FlatList
             data={SEARCH_ITEMS.slice(0, 12)}
@@ -863,10 +662,10 @@ export default function Search() {
                     style={{ fontSize: 15, fontWeight: '700', color: colors.text }}
                     numberOfLines={1}
                   >
-                    {item.title}
+                    {t(item.titleKey)}
                   </Text>
                   <Text style={{ fontSize: 12, color: colors.mutedText, marginTop: 2 }}>
-                    {item.subtitle}
+                    {t(item.subtitleKey)}
                   </Text>
                 </View>
                 <MaterialIcons name="chevron-right" size={22} color={colors.mutedText} />
@@ -916,7 +715,7 @@ export default function Search() {
             }}
           >
             <Text style={{ fontSize: 20, fontWeight: '800', color: colors.text }}>
-              Filter Search Result
+              {t('search.filterTitle')}
             </Text>
             <Pressable onPress={() => setFilterVisible(false)}>
               <MaterialIcons name="close" size={22} color={colors.mutedText} />
@@ -928,7 +727,7 @@ export default function Search() {
             <Text
               style={{ fontSize: 14, fontWeight: '700', color: colors.mutedText, marginBottom: 12 }}
             >
-              Search Category
+              {t('search.searchCategory')}
             </Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 28 }}>
               {(['Journal', 'Sleep', 'Community', 'Mood', 'Meditation'] as SearchCategory[]).map(
@@ -963,7 +762,7 @@ export default function Search() {
                           color: sel ? '#fff' : colors.text,
                         }}
                       >
-                        {cat}
+                        {meta ? t(meta.labelKey) : cat}
                       </Text>
                     </Pressable>
                   );
@@ -975,7 +774,7 @@ export default function Search() {
             <Text
               style={{ fontSize: 14, fontWeight: '700', color: colors.mutedText, marginBottom: 12 }}
             >
-              Search Date
+              {t('search.searchDate')}
             </Text>
             <Pressable
               onPress={() => setFilterDate(filterDate ? null : new Date().toISOString())}
@@ -1006,7 +805,7 @@ export default function Search() {
                       month: 'long',
                       year: 'numeric',
                     })
-                  : 'Select date...'}
+                  : t('search.selectDate')}
               </Text>
               <MaterialIcons name="expand-more" size={20} color={colors.mutedText} />
             </Pressable>
@@ -1015,7 +814,7 @@ export default function Search() {
             <Text
               style={{ fontSize: 14, fontWeight: '700', color: colors.mutedText, marginBottom: 12 }}
             >
-              Search Limit
+              {t('search.searchLimit')}
             </Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 32 }}>
               <Text style={{ fontSize: 14, color: colors.mutedText, width: 24 }}>
@@ -1056,8 +855,7 @@ export default function Search() {
             })}
           >
             <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>
-              Filter Search Results (
-              {filterCategories.length > 0 ? results.length : SEARCH_ITEMS.length})
+              {t('search.filterButton', { count: filterCategories.length > 0 ? results.length : SEARCH_ITEMS.length })}
             </Text>
             <MaterialIcons name="tune" size={18} color="#fff" />
           </Pressable>

@@ -26,10 +26,6 @@ function StatRing({
   const colors = Colors[theme];
   const pct = total > 0 ? value / total : 0;
   const strokeWidth = 10;
-  const r = (size - strokeWidth) / 2;
-  // We'll approximate with a bordered view
-  const circumference = 2 * Math.PI * r;
-  const filled = circumference * pct;
 
   return (
     <View style={{ alignItems: 'center' }}>

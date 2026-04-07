@@ -1,12 +1,14 @@
 import React from 'react';
 import { View, Text, Pressable, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { router } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, UI } from '@/constants/theme';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
 export default function NotFoundScreen() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const theme = useColorScheme() ?? 'light';
   const colors = Colors[theme];
@@ -55,7 +57,6 @@ export default function NotFoundScreen() {
           paddingBottom: 60,
         }}
       >
-        {/* Illustration */}
         <View
           style={{
             width: 200,
@@ -70,7 +71,6 @@ export default function NotFoundScreen() {
           <MaterialIcons name="person-search" size={90} color={colors.mutedText} />
         </View>
 
-        {/* Title */}
         <Text
           style={{
             fontSize: 26,
@@ -80,10 +80,9 @@ export default function NotFoundScreen() {
             marginBottom: 10,
           }}
         >
-          Not Found
+          {t('errorScreen.notFoundTitle')}
         </Text>
 
-        {/* Subtitle */}
         <Text
           style={{
             fontSize: 14,
@@ -93,10 +92,9 @@ export default function NotFoundScreen() {
             marginBottom: 20,
           }}
         >
-          Whoops! Dr. F can't find this page :(
+          {t('errorScreen.notFoundSubtitle')}
         </Text>
 
-        {/* Status Badge */}
         <View
           style={{
             flexDirection: 'row',
@@ -112,7 +110,7 @@ export default function NotFoundScreen() {
         >
           <Text style={{ fontSize: 14 }}>{'\u26A0\uFE0F'}</Text>
           <Text style={{ fontSize: 13, fontWeight: '700', color: '#E8985A' }}>
-            Status Code: 404
+            {t('errorScreen.statusCode404')}
           </Text>
         </View>
       </View>
@@ -135,7 +133,7 @@ export default function NotFoundScreen() {
             ...UI.shadow.md,
           })}
         >
-          <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>Take Me Home</Text>
+          <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{t('errorScreen.takeMeHome')}</Text>
           <MaterialIcons name="home" size={20} color="#fff" />
         </Pressable>
       </View>

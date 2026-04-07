@@ -4,7 +4,9 @@ import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const BEDTIME_NOTIF_IDS_KEY = 'bedtime-notification-ids';
+const WAKEUP_NOTIF_IDS_KEY = 'wakeup-notification-ids';
 const BEDTIME_REMINDER_MINUTES = 30; // remind 30 min before bedtime
+const SNOOZE_INTERVAL_MINUTES = 5; // minutes between snooze alarms
 
 export async function registerForPushNotificationsAsync() {
   if (Platform.OS === 'android') {
@@ -123,6 +125,112 @@ export async function scheduleBedtimeReminders(opts: {
 
   // Persist IDs so we can cancel them later
   await AsyncStorage.setItem(BEDTIME_NOTIF_IDS_KEY, JSON.stringify(ids));
+
+  return ids;
+}
+
+/* ── Wake-up alarm notifications ─────────────────────────────── */
+
+/**
+ * Cancel all previously scheduled wake-up alarms.
+ */
+export async function cancelWakeUpAlarms() {
+  try {
+    const raw = await AsyncStorage.getItem(WAKEUP_NOTIF_IDS_KEY);
+    const ids: string[] = raw ? JSON.parse(raw) : [];
+    for (const id of ids) {
+      await Notifications.cancelScheduledNotificationAsync(id);
+    }
+    await AsyncStorage.removeItem(WAKEUP_NOTIF_IDS_KEY);
+  } catch (err) {
+    console.warn('[WakeUp] Failed to cancel alarms:', err);
+  }
+}
+
+/**
+ * Schedule repeating wake-up alarm notifications with snooze support.
+ *
+ * Schedules one weekly notification per selected day at the chosen
+ * wake-up time, plus additional snooze notifications at 5-minute
+ * intervals after the initial alarm.
+ */
+export async function scheduleWakeUpAlarms(opts: {
+  wakeHour: number;
+  wakeMin: number;
+  selectedDays: string[];
+  snoozeCount: number;
+}) {
+  const { wakeHour, wakeMin, selectedDays, snoozeCount } = opts;
+
+  // Always clear previous alarms first
+  await cancelWakeUpAlarms();
+
+  if (selectedDays.length === 0) return;
+
+  const ids: string[] = [];
+
+  for (const day of selectedDays) {
+    const weekday = DAY_MAP[day];
+    if (!weekday) continue;
+
+    // Main wake-up alarm
+    try {
+      const id = await Notifications.scheduleNotificationAsync({
+        content: {
+          title: 'Time to wake up!',
+          body: 'Good morning! Rise and shine — your day is waiting.',
+          data: { type: 'wakeup_alarm', route: '/(tabs)/sleep' },
+          sound: 'default',
+          priority: Notifications.AndroidNotificationPriority.MAX,
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
+          weekday,
+          hour: wakeHour,
+          minute: wakeMin,
+        },
+      });
+      ids.push(id);
+    } catch (err) {
+      console.warn(`[WakeUp] Failed to schedule main alarm for ${day}:`, err);
+    }
+
+    // Snooze alarms (5-minute intervals after the main alarm)
+    for (let s = 1; s <= snoozeCount; s++) {
+      let snoozeMin = wakeMin + s * SNOOZE_INTERVAL_MINUTES;
+      let snoozeHour = wakeHour;
+      if (snoozeMin >= 60) {
+        snoozeHour = (snoozeHour + Math.floor(snoozeMin / 60)) % 24;
+        snoozeMin = snoozeMin % 60;
+      }
+
+      try {
+        const id = await Notifications.scheduleNotificationAsync({
+          content: {
+            title: `Snooze ${s} of ${snoozeCount}`,
+            body: s === snoozeCount
+              ? 'Last snooze! Time to get up.'
+              : 'Still time for a stretch — but don\'t fall back asleep!',
+            data: { type: 'wakeup_snooze', snoozeNumber: s, route: '/(tabs)/sleep' },
+            sound: 'default',
+            priority: Notifications.AndroidNotificationPriority.MAX,
+          },
+          trigger: {
+            type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
+            weekday,
+            hour: snoozeHour,
+            minute: snoozeMin,
+          },
+        });
+        ids.push(id);
+      } catch (err) {
+        console.warn(`[WakeUp] Failed to schedule snooze ${s} for ${day}:`, err);
+      }
+    }
+  }
+
+  // Persist IDs so we can cancel them later
+  await AsyncStorage.setItem(WAKEUP_NOTIF_IDS_KEY, JSON.stringify(ids));
 
   return ids;
 }

@@ -1,12 +1,14 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { router } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, UI } from '@/constants/theme';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
 export default function PaymentFailure() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const theme = useColorScheme() ?? 'light';
   const colors = Colors[theme];
@@ -18,9 +20,9 @@ export default function PaymentFailure() {
           <MaterialIcons name="close" size={44} color="#FFF" />
         </View>
 
-        <Text style={[styles.title, { color: colors.text }]}>Payment Failed</Text>
+        <Text style={[styles.title, { color: colors.text }]}>{t('paymentFailure.title')}</Text>
         <Text style={[styles.message, { color: colors.mutedText }]}>
-          We couldn't process your payment. Please check your card details and try again.
+          {t('paymentFailure.message')}
         </Text>
 
         <Pressable
@@ -31,7 +33,7 @@ export default function PaymentFailure() {
           ]}
         >
           <MaterialIcons name="refresh" size={18} color="#FFF" />
-          <Text style={styles.retryButtonText}>Try Again</Text>
+          <Text style={styles.retryButtonText}>{t('paymentFailure.tryAgain')}</Text>
         </Pressable>
 
         <Pressable
@@ -41,7 +43,7 @@ export default function PaymentFailure() {
             { opacity: pressed ? 0.6 : 1 },
           ]}
         >
-          <Text style={[styles.cancelButtonText, { color: colors.mutedText }]}>Cancel</Text>
+          <Text style={[styles.cancelButtonText, { color: colors.mutedText }]}>{t('paymentFailure.cancel')}</Text>
         </Pressable>
       </View>
     </View>

@@ -1,24 +1,24 @@
 import React, { useCallback } from 'react';
 import { View, Text, Pressable, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { router } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, UI } from '@/constants/theme';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
 export default function NoInternetScreen() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const theme = useColorScheme() ?? 'light';
   const colors = Colors[theme];
 
   const handleRefresh = useCallback(() => {
-    // In production this would check connectivity
     router.back();
   }, []);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      {/* Header */}
       <View
         style={{
           paddingTop: insets.top + 16,
@@ -50,7 +50,6 @@ export default function NoInternetScreen() {
         </Pressable>
       </View>
 
-      {/* Content */}
       <View
         style={{
           flex: 1,
@@ -60,7 +59,6 @@ export default function NoInternetScreen() {
           paddingBottom: 60,
         }}
       >
-        {/* Illustration */}
         <View
           style={{
             width: 200,
@@ -75,7 +73,6 @@ export default function NoInternetScreen() {
           <MaterialIcons name="wifi-off" size={90} color={colors.mutedText} />
         </View>
 
-        {/* Title */}
         <Text
           style={{
             fontSize: 26,
@@ -85,10 +82,9 @@ export default function NoInternetScreen() {
             marginBottom: 10,
           }}
         >
-          No Internet!
+          {t('offlineScreen.title')}
         </Text>
 
-        {/* Subtitle */}
         <Text
           style={{
             fontSize: 14,
@@ -98,10 +94,9 @@ export default function NoInternetScreen() {
             marginBottom: 20,
           }}
         >
-          It seems you don't have active internet.
+          {t('offlineScreen.subtitle')}
         </Text>
 
-        {/* Status Badge */}
         <Pressable
           onPress={handleRefresh}
           style={({ pressed }) => ({
@@ -119,12 +114,11 @@ export default function NoInternetScreen() {
         >
           <MaterialIcons name="refresh" size={16} color="#5B8A5A" />
           <Text style={{ fontSize: 13, fontWeight: '700', color: '#5B8A5A' }}>
-            Refresh or Try Again
+            {t('offlineScreen.refresh')}
           </Text>
         </Pressable>
       </View>
 
-      {/* Take Me Home Button */}
       <View
         style={{ paddingHorizontal: UI.spacing.xl, paddingBottom: Platform.OS === 'ios' ? 44 : 28 }}
       >
@@ -142,7 +136,7 @@ export default function NoInternetScreen() {
             ...UI.shadow.md,
           })}
         >
-          <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>Take Me Home</Text>
+          <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{t('errorScreen.takeMeHome')}</Text>
           <MaterialIcons name="home" size={20} color="#fff" />
         </Pressable>
       </View>

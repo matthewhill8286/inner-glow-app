@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, Pressable, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { router } from 'expo-router';
 import { ISSUES, IssueKey } from '@/data/issues';
 import { suggestWithReasons } from '@/lib/suggestCategories';
@@ -9,6 +10,7 @@ import { SkeletonRect } from '@/components/Skeleton';
 import { useProfile } from '@/hooks/useProfile';
 
 export default function SuggestedCategories() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { assessment, fetchAssessment, updateProfile } = useProfile();
   const [suggested, setSuggested] = useState<{ key: IssueKey; score: number; reasons: string[] }[]>(
@@ -60,7 +62,7 @@ export default function SuggestedCategories() {
         >
           <Text style={{ color: 'white', fontSize: 24 }}>←</Text>
         </Pressable>
-        <Text style={{ color: 'white', fontSize: 18, fontWeight: '700' }}>Suggested Sections</Text>
+        <Text style={{ color: 'white', fontSize: 18, fontWeight: '700' }}>{t('suggestedCategories.header')}</Text>
       </View>
 
       <ScrollView
@@ -82,10 +84,10 @@ export default function SuggestedCategories() {
           ) : (
             <>
               <Text style={{ color: '#6a5e55', fontSize: 24, fontWeight: '900', marginTop: 10 }}>
-                Suggested sections
+                {t('suggestedCategories.title')}
               </Text>
               <Text style={{ color: '#6a5e55', opacity: 0.75, marginTop: 8, fontSize: 16 }}>
-                Based on your check-in. Tap to adjust.
+                {t('suggestedCategories.subtitle')}
               </Text>
 
               {suggested.length > 0 ? (
@@ -97,7 +99,7 @@ export default function SuggestedCategories() {
                       .map((s) => {
                         const item = ISSUES.find((i) => i.key === s.key);
                         const base = item?.title ?? String(s.key);
-                        return { id: s.key, label: `Top: ${base}` };
+                        return { id: s.key, label: t('suggestedCategories.topPrefix', { name: base }) };
                       })}
                     selectedIds={
                       new Set(
@@ -198,7 +200,7 @@ export default function SuggestedCategories() {
             }}
           >
             <Text style={{ color: 'white', fontWeight: '800', fontSize: 18 }} disabled={loading}>
-              Continue
+              {t('suggestedCategories.continue')}
             </Text>
             <Text style={{ color: 'white', fontSize: 20 }}>→</Text>
           </Pressable>

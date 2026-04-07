@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/supabase/supabase';
 import { useUser } from './useUser';
@@ -16,6 +16,7 @@ import {
   type FreudBreakdown,
 } from '@/lib/freudScore';
 import { notifySuggestionCompleted, notifyNewSuggestions } from '@/lib/notificationStore';
+import { useSuggestionBonusStore } from '@/lib/suggestionBonusStore';
 import {
   generateSuggestionsForUser,
   logActivityCompletion,
@@ -36,6 +37,12 @@ export type ActivityStats = {
   byCategory: Record<string, { count: number; points: number }>;
 };
 
+const EMPTY_SCORE: FreudScoreResult = {
+  score: 0,
+  label: getFreudLabel(0),
+  breakdown: { mood: 0, sleep: 0, stress: 0, mindfulness: 0, consistency: 0, journal: 0 },
+};
+
 /* ------------------------------------------------------------------ */
 /*  Hook                                                               */
 /* ------------------------------------------------------------------ */
@@ -46,27 +53,72 @@ export const useFreudScore = (opts?: { lazy?: boolean }) => {
   const { data: user } = useUser();
 
   const scoreKey = queryKeys.freudScore.list(user?.id);
+  const todayBestKey = queryKeys.freudScore.todayBest(user?.id);
   const suggestionsKey = queryKeys.suggestions.list(user?.id);
   const statsKey = queryKeys.activityStats.list(user?.id);
 
-  /* ---- local score override: set after activity completion to immediately reflect bump ---- */
-  const [scoreOverride, setScoreOverride] = useState<number | null>(null);
-  const clearScoreOverride = useCallback(() => setScoreOverride(null), []);
-
-  /* ---- pull all tracking data needed for the score ---- */
+  /* ═══════════════════════════════════════════════════════════════════
+   *  SOURCE DATA — the 5 tracking hooks that feed the score
+   * ═══════════════════════════════════════════════════════════════════ */
   const { moodCheckIns, isLoading: isMoodLoading } = useMood();
   const { journalEntries, isLoading: isJournalLoading } = useJournal();
   const { sleepEntries, isLoading: isSleepLoading } = useSleep();
   const { mindfulnessHistory, isLoading: isMindfulnessLoading } = useMindfulness();
   const { stressHistory, isLoading: isStressLoading } = useStress();
 
-  /* ---- combined loading state for all source data ---- */
+  /* ── True ONLY on cold start (no cached data at all yet) ── */
   const isDataLoading =
     isMoodLoading || isJournalLoading || isSleepLoading || isMindfulnessLoading || isStressLoading;
 
-  /* ---- live-calculated score (client-side) ---- */
-  const liveScore: FreudScoreResult = isDataLoading
-    ? { score: 0, label: 'Critically Low', breakdown: { mood: 0, sleep: 0, stress: 0, mindfulness: 0, consistency: 0, journal: 0 } }
+  /* ═══════════════════════════════════════════════════════════════════
+   *  LIVE SCORE — pure derivation from current data
+   *
+   *  Rules:
+   *  • On cold start (isLoading, no cache) → show loading placeholder
+   *  • Otherwise → ALWAYS calculate from current cached data
+   *  • During background refetches, cached data is still valid and
+   *    gets updated as each query completes — the score simply
+   *    recalculates on each render, converging to the correct value
+   *  • No DB history, no overrides, no Math.max tricks
+   * ═══════════════════════════════════════════════════════════════════ */
+  const hasEverLoaded = useRef(false);
+  if (!isDataLoading) hasEverLoaded.current = true;
+
+  /* ── Suggestion bonus: gamification points from completing AI suggestions ── */
+  /* Shared via Zustand so ALL useFreudScore() instances see the same bonus */
+  const suggestionBonus = useSuggestionBonusStore((s) => s.scoreBonus);
+  const breakdownBonus = useSuggestionBonusStore((s) => s.breakdownBonus);
+
+  /* ── Today's best saved score — persists suggestion bonuses across reloads ── */
+  const todayBestQuery = useQuery({
+    queryKey: todayBestKey,
+    enabled: !!user,
+    staleTime: STALE.short,
+    queryFn: async () => {
+      if (!user) throw new Error('Not authenticated');
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+
+      const { data, error } = await supabase
+        .from('freud_scores')
+        .select('score, breakdown')
+        .eq('user_id', user.id)
+        .gte('created_at', todayStart.toISOString())
+        .order('score', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) throw error;
+      return data
+        ? { score: data.score as number, breakdown: data.breakdown as unknown as FreudBreakdown }
+        : null;
+    },
+  });
+
+  const todayBest = todayBestQuery.data ?? null;
+
+  const rawScore: FreudScoreResult = (isDataLoading && !hasEverLoaded.current)
+    ? EMPTY_SCORE
     : calculateFreudScore({
         moodCheckIns,
         journalEntries,
@@ -75,7 +127,38 @@ export const useFreudScore = (opts?: { lazy?: boolean }) => {
         stressHistory,
       });
 
-  /* ---- saved score history from DB (skipped in lazy mode) ---- */
+  /* ── Final score: max of (live calc + session bonus) vs (today's best from DB) ──
+   *
+   *  • Session bonus (Zustand): gives instant feedback when completing suggestions
+   *  • Today's best (DB): persists bonuses across app restarts
+   *  • We take the higher of the two so progress is never lost
+   *  • Only compares against TODAY's saved scores, not historical ones,
+   *    so the score can naturally go down day-to-day based on real metrics
+   */
+  const liveWithBonus = Math.min(100, rawScore.score + suggestionBonus);
+  const dbScore = todayBest?.score ?? 0;
+  const finalScore = Math.max(liveWithBonus, dbScore);
+
+  const currentScore: FreudScoreResult = finalScore > rawScore.score
+    ? {
+        ...rawScore,
+        score: finalScore,
+        label: getFreudLabel(finalScore),
+        breakdown: {
+          mood: Math.min(100, Math.max(rawScore.breakdown.mood, todayBest?.breakdown?.mood ?? 0) + (breakdownBonus.mood ?? 0)),
+          sleep: Math.min(100, Math.max(rawScore.breakdown.sleep, todayBest?.breakdown?.sleep ?? 0) + (breakdownBonus.sleep ?? 0)),
+          stress: Math.min(100, Math.max(rawScore.breakdown.stress, todayBest?.breakdown?.stress ?? 0) + (breakdownBonus.stress ?? 0)),
+          mindfulness: Math.min(100, Math.max(rawScore.breakdown.mindfulness, todayBest?.breakdown?.mindfulness ?? 0) + (breakdownBonus.mindfulness ?? 0)),
+          consistency: Math.min(100, Math.max(rawScore.breakdown.consistency, todayBest?.breakdown?.consistency ?? 0) + (breakdownBonus.consistency ?? 0)),
+          journal: Math.min(100, Math.max(rawScore.breakdown.journal, todayBest?.breakdown?.journal ?? 0) + (breakdownBonus.journal ?? 0)),
+        },
+      }
+    : rawScore;
+
+  /* ═══════════════════════════════════════════════════════════════════
+   *  SCORE HISTORY (DB) — for the chart on the detail screen
+   *  Skipped in lazy mode (home screen doesn't need it)
+   * ═══════════════════════════════════════════════════════════════════ */
   const historyQuery = useQuery({
     queryKey: scoreKey,
     enabled: !!user && !lazy,
@@ -105,46 +188,19 @@ export const useFreudScore = (opts?: { lazy?: boolean }) => {
     },
   });
 
-  /* ---- display score: use higher of live calc vs latest saved DB score vs local override ---- */
-  const latestSaved = historyQuery.data?.[0];
-  const currentScore: FreudScoreResult = (() => {
-    // Determine the best known score from all sources
-    const savedScore = latestSaved?.score ?? 0;
-    const overrideScore = scoreOverride ?? 0;
-    const bestScore = Math.max(liveScore.score, savedScore, overrideScore);
-
-    if (isDataLoading && !scoreOverride) return liveScore;
-
-    // If the override or saved score is higher than the live calculation,
-    // use that score (activity completion bonuses aren't reflected in live calc)
-    if (bestScore > liveScore.score) {
-      const breakdown = latestSaved?.breakdown ?? liveScore.breakdown;
-      const mergedBreakdown: FreudBreakdown = {
-        mood: Math.max(breakdown.mood ?? 0, liveScore.breakdown.mood),
-        sleep: Math.max(breakdown.sleep ?? 0, liveScore.breakdown.sleep),
-        stress: Math.max(breakdown.stress ?? 0, liveScore.breakdown.stress),
-        mindfulness: Math.max(breakdown.mindfulness ?? 0, liveScore.breakdown.mindfulness),
-        consistency: Math.max(breakdown.consistency ?? 0, liveScore.breakdown.consistency),
-        journal: Math.max(breakdown.journal ?? 0, liveScore.breakdown.journal),
-      };
-      return {
-        score: bestScore,
-        label: getFreudLabel(bestScore),
-        breakdown: mergedBreakdown,
-      };
-    }
-
-    return liveScore;
-  })();
-
-  /* ---- save a new score snapshot (+ optionally auto-generate suggestions) ---- */
+  /* ═══════════════════════════════════════════════════════════════════
+   *  SAVE SCORE SNAPSHOT
+   * ═══════════════════════════════════════════════════════════════════ */
   const saveMutation = useMutation({
-    mutationFn: async (opts?: { result?: FreudScoreResult; generateSuggestions?: boolean }) => {
+    mutationFn: async (saveOpts?: { result?: FreudScoreResult; generateSuggestions?: boolean }) => {
       if (!user) throw new Error('Not authenticated');
-      const r = opts?.result ?? liveScore;
-      const shouldGenerate = opts?.generateSuggestions ?? true;
+      const r = saveOpts?.result ?? currentScore;
+      const shouldGenerate = saveOpts?.generateSuggestions ?? true;
 
-      // Check if a higher score already exists today (e.g. from activity completion)
+      // Don't save empty/loading scores
+      if (r.score === 0) return null;
+
+      // Check if a score already exists today
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
 
@@ -157,13 +213,10 @@ export const useFreudScore = (opts?: { lazy?: boolean }) => {
         .limit(1)
         .maybeSingle();
 
-      // If today already has a higher score, skip saving
       if (existing && existing.score >= r.score) {
         return existing;
       }
 
-      // Always INSERT a new record (UPDATE is blocked by RLS policy).
-      // The history query sorts by created_at DESC, so the newest record wins.
       const { data: inserted, error } = await supabase
         .from('freud_scores')
         .insert({
@@ -197,11 +250,14 @@ export const useFreudScore = (opts?: { lazy?: boolean }) => {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: scoreKey });
+      queryClient.invalidateQueries({ queryKey: todayBestKey });
       queryClient.invalidateQueries({ queryKey: suggestionsKey });
     },
   });
 
-  /* ---- AI suggestions (skipped in lazy mode) ---- */
+  /* ═══════════════════════════════════════════════════════════════════
+   *  AI SUGGESTIONS (skipped in lazy mode)
+   * ═══════════════════════════════════════════════════════════════════ */
   const suggestionsQuery = useQuery({
     queryKey: suggestionsKey,
     enabled: !!user && !lazy,
@@ -238,7 +294,9 @@ export const useFreudScore = (opts?: { lazy?: boolean }) => {
     },
   });
 
-  /* ---- complete a suggestion (+ log activity + bump score) ---- */
+  /* ═══════════════════════════════════════════════════════════════════
+   *  COMPLETE A SUGGESTION (+ log activity + save bumped score)
+   * ═══════════════════════════════════════════════════════════════════ */
   const completeSuggestionMutation = useMutation({
     mutationFn: async (input: {
       suggestionId: string;
@@ -258,7 +316,7 @@ export const useFreudScore = (opts?: { lazy?: boolean }) => {
       if (error) throw error;
       if (!data) throw new Error('Suggestion not found');
 
-      // Log the activity (non-blocking)
+      // Log the activity
       try {
         const durationStr = data.duration ?? '';
         const durationMinutes = parseInt(durationStr) || undefined;
@@ -277,46 +335,28 @@ export const useFreudScore = (opts?: { lazy?: boolean }) => {
         console.warn('[FreudScore] Failed to log activity');
       }
 
-      // Bump the score — ensure points defaults to 5 if null/undefined
+      // Bump score based on points
       const rawPoints = data.points ?? 5;
       const bonusPoints = Math.max(1, Math.min(rawPoints, 5));
+      const baseScore = currentScore.score;
+      const baseBreakdown: FreudBreakdown = { ...currentScore.breakdown };
 
-      // Fetch the latest score directly from DB to avoid stale closure values
-      const { data: latestFromDb, error: fetchErr } = await supabase
-        .from('freud_scores')
-        .select('id, score, label, breakdown, created_at')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (fetchErr) console.warn('[FreudScore] Failed to fetch latest score:', fetchErr);
-
-      const baseScore = latestFromDb?.score ?? liveScore.score;
-      const baseBreakdown: FreudBreakdown = {
-        ...(latestFromDb?.breakdown
-          ? (latestFromDb.breakdown as unknown as FreudBreakdown)
-          : liveScore.breakdown),
-      };
-
-      // Bump the relevant breakdown metric based on the suggestion category
       const categoryMetricMap: Record<string, keyof FreudBreakdown> = {
         mindfulness: 'mindfulness',
-        physical: 'stress',       // physical activity reduces stress
-        social: 'mood',           // social connection improves mood
-        professional: 'consistency', // professional support builds consistency
+        physical: 'stress',
+        social: 'mood',
+        professional: 'consistency',
       };
       const metricKey = categoryMetricMap[data.category];
       if (metricKey) {
-        const metricBonus = Math.min(15, bonusPoints * 3); // meaningful bump (3-15 pts)
+        const metricBonus = Math.min(15, bonusPoints * 3);
         baseBreakdown[metricKey] = Math.min(100, (baseBreakdown[metricKey] ?? 0) + metricBonus);
       }
 
       const newScore = Math.min(100, baseScore + bonusPoints);
       const newLabel = getFreudLabel(newScore);
 
-      // Always INSERT a new score record (UPDATE is blocked by RLS policy).
-      // The history query sorts by created_at DESC, so the newest record wins.
+      // Save the bumped score to DB
       const { error: insertErr } = await supabase
         .from('freud_scores')
         .insert({
@@ -331,7 +371,6 @@ export const useFreudScore = (opts?: { lazy?: boolean }) => {
         console.warn('[FreudScore] Failed to insert bumped score:', insertErr);
       }
 
-      console.log('[FreudScore] Score bumped:', baseScore, '->', newScore, '(+' + bonusPoints + ')', metricKey ? `[${metricKey} +${Math.min(15, bonusPoints * 3)}]` : '');
       return { suggestion: data, newScore, breakdown: baseBreakdown };
     },
     onMutate: async (input) => {
@@ -359,44 +398,35 @@ export const useFreudScore = (opts?: { lazy?: boolean }) => {
         notifySuggestionCompleted(suggestion.title, suggestion.points, suggestion.category);
       }
 
-      // Immediately set the local score override — this triggers a React state update
-      // which guarantees a re-render with the new score, bypassing React Query cache timing
-      if (result.newScore) {
-        console.log('[FreudScore] Setting score override to:', result.newScore);
-        setScoreOverride(result.newScore);
-
-        // Also update the query cache so other screens pick it up (including updated breakdown)
-        const updatedBreakdown = result.breakdown ?? liveScore.breakdown;
-        queryClient.setQueryData<FreudScoreRecord[]>(scoreKey, (old) => {
-          if (!old || old.length === 0) {
-            return [{
-              id: 'optimistic',
-              score: result.newScore,
-              label: getFreudLabel(result.newScore),
-              breakdown: updatedBreakdown,
-              source: 'activity_completion',
-              createdAt: new Date().toISOString(),
-            }];
-          }
-          const updated = [...old];
-          updated[0] = { ...updated[0], score: result.newScore, label: getFreudLabel(result.newScore), breakdown: updatedBreakdown, source: 'activity_completion' };
-          return updated;
-        });
-      }
+      /* ── Update suggestion bonus so currentScore reflects the bump immediately ── */
+      /* Uses shared Zustand store so ALL useFreudScore() instances update */
+      const bonusPoints = Math.max(1, Math.min(result.suggestion?.points ?? 5, 5));
+      const categoryMetricMap: Record<string, keyof FreudBreakdown> = {
+        mindfulness: 'mindfulness',
+        physical: 'stress',
+        social: 'mood',
+        professional: 'consistency',
+      };
+      const metricKey = categoryMetricMap[result.suggestion?.category];
+      const metricBonus = metricKey ? Math.min(15, bonusPoints * 3) : undefined;
+      useSuggestionBonusStore.getState().addBonus(bonusPoints, metricKey, metricBonus);
     },
     onSettled: () => {
-      // Invalidate suggestions and stats immediately
+      // Invalidate everything so live score recalculates on next render
       queryClient.invalidateQueries({ queryKey: suggestionsKey });
       queryClient.invalidateQueries({ queryKey: statsKey });
-      // Delay score refetch so the optimistic update has time to show in the UI
-      // before being potentially overwritten by the refetch
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: scoreKey });
-      }, 2000);
+      queryClient.invalidateQueries({ queryKey: scoreKey });
+      queryClient.invalidateQueries({ queryKey: todayBestKey });
+      // Also invalidate source data so the live calc picks up the new activity
+      queryClient.invalidateQueries({ queryKey: queryKeys.mood.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.stress.allHistory });
+      queryClient.invalidateQueries({ queryKey: queryKeys.mindfulness.all });
     },
   });
 
-  /* ---- add a suggestion manually ---- */
+  /* ═══════════════════════════════════════════════════════════════════
+   *  ADD SUGGESTION MANUALLY
+   * ═══════════════════════════════════════════════════════════════════ */
   const addSuggestionMutation = useMutation({
     mutationFn: async (input: {
       category: AISuggestion['category'];
@@ -430,33 +460,33 @@ export const useFreudScore = (opts?: { lazy?: boolean }) => {
     },
   });
 
-  /* ---- generate suggestions on demand ---- */
+  /* ═══════════════════════════════════════════════════════════════════
+   *  GENERATE SUGGESTIONS ON DEMAND
+   * ═══════════════════════════════════════════════════════════════════ */
   const generateSuggestionsMutation = useMutation({
-    mutationFn: async (opts?: { maxSuggestions?: number; category?: string }) => {
+    mutationFn: async (genOpts?: { maxSuggestions?: number; category?: string }) => {
       if (!user) throw new Error('Not authenticated');
-
-      const latestScore = historyQuery.data?.[0];
-      const score = latestScore?.score ?? currentScore.score;
-      const breakdown = latestScore?.breakdown ?? currentScore.breakdown;
 
       return generateSuggestionsForUser({
         userId: user.id,
-        score,
-        breakdown,
-        freudScoreId: latestScore?.id,
-        maxSuggestions: opts?.maxSuggestions ?? 6,
-        category: opts?.category,
+        score: currentScore.score,
+        breakdown: currentScore.breakdown,
+        freudScoreId: historyQuery.data?.[0]?.id,
+        maxSuggestions: genOpts?.maxSuggestions ?? 6,
+        category: genOpts?.category,
       });
     },
-    onSuccess: (_data, opts) => {
-      setTimeout(() => notifyNewSuggestions(opts?.maxSuggestions ?? 6), 600);
+    onSuccess: (_data, genOpts) => {
+      setTimeout(() => notifyNewSuggestions(genOpts?.maxSuggestions ?? 6), 600);
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: suggestionsKey });
     },
   });
 
-  /* ---- activity stats (skipped in lazy mode) ---- */
+  /* ═══════════════════════════════════════════════════════════════════
+   *  ACTIVITY STATS (skipped in lazy mode)
+   * ═══════════════════════════════════════════════════════════════════ */
   const activityStatsQuery = useQuery({
     queryKey: statsKey,
     enabled: !!user && !lazy,
@@ -467,17 +497,19 @@ export const useFreudScore = (opts?: { lazy?: boolean }) => {
     },
   });
 
+  /* ═══════════════════════════════════════════════════════════════════
+   *  RETURN — clean, predictable API
+   * ═══════════════════════════════════════════════════════════════════ */
   return {
-    // Live score
+    // Score — ONLY live-calculated, never from DB or overrides
     currentScore,
-    liveScore,
     isDataLoading,
 
-    // History
+    // History (for charts)
     scoreHistory: historyQuery.data ?? [],
     isLoadingHistory: historyQuery.isLoading,
 
-    // Save (now auto-generates suggestions)
+    // Save
     saveScore: saveMutation.mutateAsync,
     isSaving: saveMutation.isPending,
 
@@ -488,15 +520,12 @@ export const useFreudScore = (opts?: { lazy?: boolean }) => {
     addSuggestion: addSuggestionMutation.mutateAsync,
     isCompleting: completeSuggestionMutation.isPending,
 
-    // Generate suggestions on demand
+    // Generate suggestions
     generateSuggestions: generateSuggestionsMutation.mutateAsync,
     isGenerating: generateSuggestionsMutation.isPending,
 
     // Activity stats
     activityStats: activityStatsQuery.data as ActivityStats | undefined,
     isLoadingStats: activityStatsQuery.isLoading,
-
-    // Score override management
-    clearScoreOverride,
   };
 };

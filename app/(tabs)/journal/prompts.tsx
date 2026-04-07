@@ -1,6 +1,5 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, Pressable, TextInput, FlatList } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import ScreenHeader from '@/components/ScreenHeader';
@@ -10,7 +9,6 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, UI } from '@/constants/theme';
 
 export default function JournalPrompts() {
-  const insets = useSafeAreaInsets();
   const theme = useColorScheme() ?? 'light';
   const colors = Colors[theme];
   const { t } = useTranslation();
@@ -30,7 +28,6 @@ export default function JournalPrompts() {
         flex: 1,
         backgroundColor: colors.background,
         padding: UI.spacing.xl,
-        paddingTop: insets.top + 6,
       }}
     >
       <ScreenHeader

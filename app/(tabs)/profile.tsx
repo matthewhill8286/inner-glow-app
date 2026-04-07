@@ -15,14 +15,20 @@ import { useTranslation } from 'react-i18next';
 import { supabase } from '@/supabase/supabase';
 import { useQueryClient } from '@tanstack/react-query';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { toast } from '@/components/Toast';
 import { SUPPORTED_LANGUAGES, setLanguage, type LanguageCode } from '@/i18n';
 
-async function signOut(queryClient: any) {
-  await supabase.auth.signOut();
-  await AsyncStorage.removeItem(SESSION_KEY);
-  queryClient.clear();
-  authTokenVar(null);
-  router.replace('/(auth)/sign-in');
+async function signOut(queryClient: any, t: (key: string) => string) {
+  try {
+    await supabase.auth.signOut();
+    await AsyncStorage.removeItem(SESSION_KEY);
+    queryClient.clear();
+    authTokenVar(null);
+    router.replace('/(auth)/sign-in');
+  } catch (err) {
+    console.error('Sign out error:', err);
+    toast.error(t('toasts.signOutError'));
+  }
 }
 
 const SETTINGS_ITEMS: {
@@ -287,7 +293,7 @@ export default function Profile() {
 
             {/* Sign out */}
             <Pressable
-              onPress={() => signOut(queryClient)}
+              onPress={() => signOut(queryClient, t)}
               style={({ pressed }) => [
                 styles.signOutButton,
                 {
@@ -312,6 +318,9 @@ export default function Profile() {
             {/* App version footer */}
             <Text style={[styles.versionText, { color: colors.subtleText }]}>
               {t('profilePage.version')} — Made with 💛
+            </Text>
+            <Text style={[styles.medicalDisclaimer, { color: colors.subtleText }]}>
+              {t('profilePage.medicalDisclaimer')}
             </Text>
           </>
         )}
@@ -613,6 +622,16 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
     marginTop: 4,
+  },
+  medicalDisclaimer: {
+    textAlign: 'center',
+    fontSize: 10,
+    fontWeight: '400',
+    lineHeight: 14,
+    marginTop: 8,
+    marginBottom: 8,
+    paddingHorizontal: 20,
+    fontStyle: 'italic',
   },
 
   // Language modal

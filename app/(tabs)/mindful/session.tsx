@@ -10,8 +10,10 @@ import Svg, { Circle } from 'react-native-svg';
 import { useMindfulness } from '@/hooks/useMindfulness';
 import { playSoundscape, stopSoundscape, pauseSoundscape, resumeSoundscape } from '@/lib/soundscape';
 
-// Breathing phases
+// ─── Breathing phases ───────────────────────────
 type Phase = 'inhale' | 'hold' | 'exhale' | 'holdAfter';
+
+const PHASE_ORDER: Phase[] = ['inhale', 'hold', 'exhale', 'holdAfter'];
 
 const PHASE_DURATIONS: Record<string, Record<Phase, number>> = {
   focus: { inhale: 4, hold: 4, exhale: 4, holdAfter: 4 }, // Box breathing
@@ -28,11 +30,12 @@ const getPhaseLabels = (t: any): Record<Phase, string> => ({
   holdAfter: t('mindfulSession.holdAfter'),
 });
 
-const PHASE_COLORS: Record<Phase, { bg: string[]; accent: string }> = {
-  inhale: { bg: ['#2D5A3D', '#1A3D2A'], accent: '#5B8A5A' },
-  hold: { bg: ['#3D3D5A', '#2A2A3D'], accent: '#7B6DC9' },
-  exhale: { bg: ['#5A3D2D', '#3D2A1A'], accent: '#E8985A' },
-  holdAfter: { bg: ['#3D3D5A', '#2A2A3D'], accent: '#7B6DC9' },
+// ─── Green-themed phase colors (positive feeling) ───────
+const PHASE_COLORS: Record<Phase, { bg: string; accent: string }> = {
+  inhale: { bg: '#1B3A2A', accent: '#4ADE80' },
+  hold: { bg: '#1A3328', accent: '#86EFAC' },
+  exhale: { bg: '#1E3B2C', accent: '#22C55E' },
+  holdAfter: { bg: '#1A3328', accent: '#86EFAC' },
 };
 
 const RING_SIZE = 240;
@@ -43,8 +46,6 @@ function formatTime(sec: number): string {
   const s = sec % 60;
   return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 }
-
-const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 export default function Session() {
   const {
@@ -69,19 +70,45 @@ export default function Session() {
   const [currentPhase, setCurrentPhase] = useState<Phase>('inhale');
   const [phaseTimer, setPhaseTimer] = useState(0);
 
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
   const breatheAnim = useRef(new Animated.Value(0.7)).current;
-  const progressAnim = useRef(new Animated.Value(0)).current;
+  const breatheAnimRef = useRef<Animated.CompositeAnimation | null>(null);
 
   const phaseDurations = PHASE_DURATIONS[goal] || PHASE_DURATIONS.focus;
 
-  // Start soundscape on mount, stop on unmount
+  // ─── Refs for stable interval callback ────────────
+  // These avoid stale closures inside setInterval
+  const phaseRef = useRef(currentPhase);
+  const phaseTimerRef = useRef(phaseTimer);
+  const elapsedRef = useRef(elapsed);
+  const isActiveRef = useRef(isActive);
+  const addMindfulMinutesRef = useRef(addMindfulMinutes);
+
+  useEffect(() => { phaseRef.current = currentPhase; }, [currentPhase]);
+  useEffect(() => { phaseTimerRef.current = phaseTimer; }, [phaseTimer]);
+  useEffect(() => { elapsedRef.current = elapsed; }, [elapsed]);
+  useEffect(() => { isActiveRef.current = isActive; }, [isActive]);
+  useEffect(() => { addMindfulMinutesRef.current = addMindfulMinutes; }, [addMindfulMinutes]);
+
+  // ─── Get next phase (skipping phases with 0 duration) ────
+  const getNextPhase = useCallback(
+    (phase: Phase): Phase => {
+      const currentIdx = PHASE_ORDER.indexOf(phase);
+      for (let i = 1; i <= PHASE_ORDER.length; i++) {
+        const nextPhase = PHASE_ORDER[(currentIdx + i) % PHASE_ORDER.length];
+        if (phaseDurations[nextPhase] > 0) return nextPhase;
+      }
+      return 'inhale'; // fallback
+    },
+    [phaseDurations],
+  );
+
+  // ─── Start soundscape on mount, stop on unmount ────
   useEffect(() => {
     playSoundscape(soundscape);
     return () => { stopSoundscape(); };
   }, [soundscape]);
 
-  // Pause/resume soundscape when timer pauses/resumes
+  // ─── Pause/resume soundscape ────
   useEffect(() => {
     if (isActive) {
       resumeSoundscape();
@@ -90,101 +117,96 @@ export default function Session() {
     }
   }, [isActive]);
 
-  const getNextPhase = useCallback(
-    (phase: Phase): Phase => {
-      switch (phase) {
-        case 'inhale':
-          return phaseDurations.hold > 0 ? 'hold' : 'exhale';
-        case 'hold':
-          return 'exhale';
-        case 'exhale':
-          return phaseDurations.holdAfter > 0 ? 'holdAfter' : 'inhale';
-        case 'holdAfter':
-          return 'inhale';
-      }
-    },
-    [phaseDurations],
-  );
-
-  // Breathing animation
+  // ─── Breathing animation — restarts on each phase change ────
   useEffect(() => {
     if (!isActive) {
-      breatheAnim.stopAnimation();
+      breatheAnimRef.current?.stop();
       return;
     }
 
     const dur = phaseDurations[currentPhase] * 1000;
-    const toValue = currentPhase === 'inhale' ? 1.0 : currentPhase === 'exhale' ? 0.7 : 0.85;
+    let toValue: number;
 
-    Animated.timing(breatheAnim, {
-      toValue,
-      duration: dur,
-      easing: Easing.inOut(Easing.sin),
-      useNativeDriver: true,
-    }).start();
-  }, [currentPhase, isActive, phaseDurations, breatheAnim]);
-
-  // Main timer + phase management
-  useEffect(() => {
-    if (!isActive) {
-      if (timerRef.current) clearInterval(timerRef.current);
-      return;
+    switch (currentPhase) {
+      case 'inhale':
+        toValue = 1.0; // expand
+        break;
+      case 'exhale':
+        toValue = 0.7; // contract
+        break;
+      case 'hold':
+      case 'holdAfter':
+      default:
+        toValue = currentPhase === 'hold' ? 1.0 : 0.7; // hold at current size
+        break;
     }
 
-    // @ts-ignore
-      timerRef.current = setInterval(() => {
-      setElapsed((prev) => {
-        const next = prev + 1;
-        if (next >= totalSeconds) {
-          setIsActive(false);
-          stopSoundscape();
-          // Navigate to completed
-          const goalLabel = goal || 'focus';
-          addMindfulMinutes(totalSeconds, `${goalLabel} exercise`).catch(() => {});
-          setTimeout(() => {
-            router.replace({
-              pathname: '/(tabs)/mindful/completed',
-              params: { minutes, goal: goalLabel },
-            });
-          }, 500);
-          return totalSeconds;
-        }
-        return next;
-      });
+    const anim = Animated.timing(breatheAnim, {
+      toValue,
+      duration: dur,
+      easing:
+        currentPhase === 'inhale' || currentPhase === 'exhale'
+          ? Easing.inOut(Easing.sin)
+          : Easing.linear,
+      useNativeDriver: true,
+    });
 
-      setPhaseTimer((prev) => {
-        const phaseDur = phaseDurations[currentPhase];
-        if (prev + 1 >= phaseDur) {
-          setCurrentPhase((p) => getNextPhase(p));
-          return 0;
-        }
-        return prev + 1;
-      });
+    breatheAnimRef.current = anim;
+    anim.start();
+
+    return () => { anim.stop(); };
+  }, [currentPhase, isActive, phaseDurations, breatheAnim]);
+
+  // ─── Main timer — single stable interval ────
+  useEffect(() => {
+    if (!isActive) return;
+
+    const intervalId = setInterval(() => {
+      // Advance elapsed time
+      const nextElapsed = elapsedRef.current + 1;
+
+      if (nextElapsed >= totalSeconds) {
+        // Session complete
+        clearInterval(intervalId);
+        setIsActive(false);
+        setElapsed(totalSeconds);
+        stopSoundscape();
+
+        const goalLabel = goal || 'focus';
+        addMindfulMinutesRef.current(totalSeconds, `${goalLabel} exercise`).catch(() => {});
+
+        setTimeout(() => {
+          router.replace({
+            pathname: '/(tabs)/mindful/completed',
+            params: { minutes, goal: goalLabel },
+          });
+        }, 500);
+        return;
+      }
+
+      setElapsed(nextElapsed);
+
+      // Advance phase timer
+      const nextPhaseTimer = phaseTimerRef.current + 1;
+      const phaseDur = phaseDurations[phaseRef.current];
+
+      if (nextPhaseTimer >= phaseDur) {
+        // Move to next phase
+        const nextPhase = getNextPhase(phaseRef.current);
+        setCurrentPhase(nextPhase);
+        setPhaseTimer(0);
+      } else {
+        setPhaseTimer(nextPhaseTimer);
+      }
     }, 1000);
 
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [
-    isActive,
-    currentPhase,
-    phaseDurations,
-    totalSeconds,
-    getNextPhase,
-    addMindfulMinutes,
-    goal,
-    minutes,
-  ]);
+    return () => clearInterval(intervalId);
+    // Only depend on isActive and stable values — NOT on currentPhase or addMindfulMinutes
+    // We read those from refs to avoid tearing down the interval unnecessarily
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isActive, totalSeconds, phaseDurations, getNextPhase]);
 
-  // Progress animation
-  useEffect(() => {
-    Animated.timing(progressAnim, {
-      toValue: elapsed / totalSeconds,
-      duration: 300,
-      useNativeDriver: false,
-    }).start();
-  }, [elapsed, totalSeconds, progressAnim]);
-
+  // ─── Derived render values ────
   const phaseColors = PHASE_COLORS[currentPhase];
   const remaining = totalSeconds - elapsed;
   const progressPercent = elapsed / totalSeconds;
@@ -207,7 +229,7 @@ export default function Session() {
     <View
       style={{
         flex: 1,
-        backgroundColor: phaseColors.bg[0],
+        backgroundColor: phaseColors.bg,
         alignItems: 'center',
         justifyContent: 'center',
         paddingHorizontal: UI.spacing.xl,
@@ -229,7 +251,7 @@ export default function Session() {
           onPress={handleQuit}
           style={({ pressed }) => ({
             opacity: pressed ? 0.7 : 1,
-            backgroundColor: 'rgba(255,255,255,0.15)',
+            backgroundColor: 'rgba(255,255,255,0.12)',
             width: 44,
             height: 44,
             borderRadius: 22,
@@ -246,7 +268,7 @@ export default function Session() {
             flexDirection: 'row',
             alignItems: 'center',
             gap: 6,
-            backgroundColor: 'rgba(255,255,255,0.15)',
+            backgroundColor: 'rgba(255,255,255,0.12)',
             paddingHorizontal: 14,
             paddingVertical: 8,
             borderRadius: UI.radius.pill,
@@ -270,15 +292,16 @@ export default function Session() {
         style={{
           fontSize: 24,
           fontWeight: '800',
-          color: 'rgba(255,255,255,0.95)',
+          color: phaseColors.accent,
           marginBottom: 32,
           letterSpacing: 1,
+          textTransform: 'uppercase',
         }}
       >
         {getPhaseLabels(t)[currentPhase]}
       </Text>
 
-      {/* Circular progress ring */}
+      {/* Circular breathing ring */}
       <View style={{ alignItems: 'center', justifyContent: 'center' }}>
         <Animated.View
           style={{
@@ -291,7 +314,7 @@ export default function Session() {
               cx={RING_SIZE / 2}
               cy={RING_SIZE / 2}
               r={radius}
-              stroke="rgba(255,255,255,0.15)"
+              stroke="rgba(255,255,255,0.1)"
               strokeWidth={RING_STROKE}
               fill="none"
             />
@@ -333,17 +356,30 @@ export default function Session() {
           <Text
             style={{
               fontSize: 13,
-              color: 'rgba(255,255,255,0.6)',
+              color: 'rgba(255,255,255,0.5)',
               fontWeight: '600',
               marginTop: 4,
             }}
           >
             {formatTime(elapsed)} / {formatTime(totalSeconds)}
           </Text>
+
+          {/* Phase countdown */}
+          <Text
+            style={{
+              fontSize: 16,
+              fontWeight: '700',
+              color: phaseColors.accent,
+              marginTop: 10,
+              opacity: 0.9,
+            }}
+          >
+            {phaseDurations[currentPhase] - phaseTimer}s
+          </Text>
         </View>
       </View>
 
-      {/* Phase progress dots */}
+      {/* Phase indicator dots */}
       <View
         style={{
           flexDirection: 'row',
@@ -352,7 +388,7 @@ export default function Session() {
           marginBottom: 40,
         }}
       >
-        {(['inhale', 'hold', 'exhale', 'holdAfter'] as Phase[])
+        {PHASE_ORDER
           .filter((p) => phaseDurations[p] > 0)
           .map((p) => (
             <View
@@ -362,7 +398,7 @@ export default function Session() {
                 height: 8,
                 borderRadius: 4,
                 backgroundColor:
-                  currentPhase === p ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.3)',
+                  currentPhase === p ? phaseColors.accent : 'rgba(255,255,255,0.25)',
               }}
             />
           ))}
@@ -377,12 +413,10 @@ export default function Session() {
         }}
       >
         <Pressable
-          onPress={() => {
-            setElapsed(Math.max(0, elapsed - 15));
-          }}
+          onPress={() => setElapsed(Math.max(0, elapsed - 15))}
           style={({ pressed }) => ({
             opacity: pressed ? 0.7 : 1,
-            backgroundColor: 'rgba(255,255,255,0.15)',
+            backgroundColor: 'rgba(255,255,255,0.12)',
             width: 52,
             height: 52,
             borderRadius: 26,
@@ -397,7 +431,7 @@ export default function Session() {
           onPress={() => setIsActive(!isActive)}
           style={({ pressed }) => ({
             opacity: pressed ? 0.8 : 1,
-            backgroundColor: 'rgba(255,255,255,0.95)',
+            backgroundColor: phaseColors.accent,
             width: 72,
             height: 72,
             borderRadius: 36,
@@ -408,17 +442,15 @@ export default function Session() {
           <MaterialIcons
             name={isActive ? 'pause' : 'play-arrow'}
             size={36}
-            color={phaseColors.bg[0]}
+            color={phaseColors.bg}
           />
         </Pressable>
 
         <Pressable
-          onPress={() => {
-            setElapsed(Math.min(totalSeconds, elapsed + 15));
-          }}
+          onPress={() => setElapsed(Math.min(totalSeconds, elapsed + 15))}
           style={({ pressed }) => ({
             opacity: pressed ? 0.7 : 1,
-            backgroundColor: 'rgba(255,255,255,0.15)',
+            backgroundColor: 'rgba(255,255,255,0.12)',
             width: 52,
             height: 52,
             borderRadius: 26,

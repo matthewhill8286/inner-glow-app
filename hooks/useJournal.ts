@@ -193,6 +193,7 @@ export const useJournal = () => {
   return {
     journalEntries: journalQuery.data || [],
     isLoading: journalQuery.isLoading,
+    isFetching: journalQuery.isFetching,
     isError: journalQuery.isError,
     error: journalQuery.error,
     createJournalEntry: createJournalMutation.mutateAsync,

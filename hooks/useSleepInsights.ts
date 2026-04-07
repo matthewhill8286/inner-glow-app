@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/supabase/supabase';
 import { useSleep } from './useSleep';
 import { SleepEntry } from '@/lib/types';
+import { extractCitations, type Citation } from '@/lib/citations';
 
 /* ── Types ── */
 
@@ -11,10 +12,12 @@ export type SleepSuggestion = {
   title: string;
   subtitle: string;
   color: string;
+  citations?: Citation[];
 };
 
 export type SleepInsightsResult = {
   summary: string;
+  summaryCitations: Citation[];
   suggestions: SleepSuggestion[];
 };
 
@@ -87,9 +90,22 @@ export const useSleepInsights = () => {
 
       if (error) throw new Error(error.message ?? 'Failed to generate sleep insights');
 
+      const summary: string = data?.summary ?? '';
+      const rawSuggestions = (data?.suggestions ?? []) as SleepSuggestion[];
+
+      // Extract citations for the summary
+      const summaryCitations = extractCitations(summary, 3);
+
+      // Extract citations for each suggestion based on its content
+      const suggestionsWithCitations = rawSuggestions.map((sug) => ({
+        ...sug,
+        citations: extractCitations(`${sug.title} ${sug.subtitle}`, 2),
+      }));
+
       return {
-        summary: data?.summary ?? '',
-        suggestions: (data?.suggestions ?? []) as SleepSuggestion[],
+        summary,
+        summaryCitations,
+        suggestions: suggestionsWithCitations,
       };
     },
   });
@@ -97,6 +113,7 @@ export const useSleepInsights = () => {
   return {
     suggestions: insightsQuery.data?.suggestions ?? [],
     summary: insightsQuery.data?.summary ?? '',
+    summaryCitations: insightsQuery.data?.summaryCitations ?? [],
     isLoading: insightsQuery.isLoading || isSleepLoading,
     isFetching: insightsQuery.isFetching,
     isError: insightsQuery.isError,

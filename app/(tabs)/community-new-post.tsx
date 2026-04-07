@@ -9,7 +9,6 @@ import {
   StyleSheet,
   Switch,
   KeyboardAvoidingView,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -20,6 +19,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { CATEGORIES, type PostCategory, type PostType } from '@/lib/community';
 import { useMyProfile, useCreatePost } from '@/hooks/useCommunity';
+import { toast } from '@/components/Toast';
 
 /* ── safe back navigation helper ────────────────── */
 function goBack(from?: string) {
@@ -81,17 +81,14 @@ export default function NewPostScreen() {
           });
         },
         onError: (err) => {
-          Alert.alert(
-            t('communityNewPost.errorAlertTitle'),
-            err.message || t('communityNewPost.errorAlertMessage'),
-          );
+          toast.error(err.message || t('toasts.postError'));
         },
       },
     );
   };
 
   const handleSaveDraft = () => {
-    Alert.alert(t('communityNewPost.draftSavedTitle'), t('communityNewPost.draftSavedMessage'));
+    toast.success(t('toasts.draftSaved'));
     goBack(from);
   };
 

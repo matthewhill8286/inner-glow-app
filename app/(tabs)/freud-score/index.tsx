@@ -497,14 +497,14 @@ export default function FreudScoreScreen() {
       queryClient.invalidateQueries({ queryKey: queryKeys.mindfulness.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.stress.allHistory });
       queryClient.invalidateQueries({ queryKey: queryKeys.freudScore.all });
+      queryClient.invalidateQueries({ queryKey: ['freudScoreTodayBest'] });
     }, [queryClient]),
   );
 
-  /* ── Auto-save today's score snapshot once data is loaded ── */
+  /* ── Auto-save today's score snapshot once all data has settled ── */
   useEffect(() => {
     if (!isDataLoading && !isLoadingHistory && currentScore.score > 0 && !hasSavedRef.current) {
       hasSavedRef.current = true;
-      // Save the current display score (which is the higher of live vs DB)
       saveScore({ result: currentScore, generateSuggestions: false }).catch(() => {});
     }
   }, [isDataLoading, isLoadingHistory, currentScore, saveScore]);

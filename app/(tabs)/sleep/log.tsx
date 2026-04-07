@@ -14,6 +14,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, UI } from '@/constants/theme';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { useTranslation } from 'react-i18next';
 import { useSleep } from '@/hooks/useSleep';
 import { useSubscription } from '@/hooks/useSubscription';
 import { showAlert } from '@/lib/state';
@@ -25,16 +26,12 @@ function goBack(from?: string) {
   else router.back();
 }
 
-const QUALITY_OPTIONS = [
-  { val: 1, emoji: '😫', label: 'Terrible' },
-  { val: 2, emoji: '😟', label: 'Poor' },
-  { val: 3, emoji: '😐', label: 'Fair' },
-  { val: 4, emoji: '😊', label: 'Good' },
-  { val: 5, emoji: '😴', label: 'Excellent' },
-];
+const QUALITY_KEYS = ['terrible', 'poor', 'fair', 'good', 'excellent'] as const;
+const QUALITY_EMOJIS = ['😫', '😟', '😐', '😊', '😴'];
 
 /* ── Main Screen ─────────────────────────────────── */
 export default function LogSleepScreen() {
+  const { t } = useTranslation();
   const theme = useColorScheme() ?? 'light';
   const colors = Colors[theme];
   const insets = useSafeAreaInsets();
@@ -55,9 +52,9 @@ export default function LogSleepScreen() {
 
   const handleSave = async () => {
     if (!hasFullAccess) {
-      showAlert('Premium Feature', 'Upgrade to lifetime access to log new sleep entries.', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Upgrade', onPress: () => router.push('/(utils)/trial-upgrade') },
+      showAlert(t('sleepLog.premiumFeature'), t('sleepLog.premiumMessage'), [
+        { text: t('sleepLog.cancel'), style: 'cancel' },
+        { text: t('sleepLog.upgrade'), onPress: () => router.push('/(utils)/trial-upgrade') },
       ]);
       return;
     }
@@ -74,7 +71,7 @@ export default function LogSleepScreen() {
         duration: hours,
         notes: note || undefined,
       } as any);
-      toast.success('Sleep entry saved.');
+      toast.success(t('sleepLog.sleepSaved'));
       goBack(params.from);
     } finally {
       setSaving(false);
@@ -107,8 +104,8 @@ export default function LogSleepScreen() {
             />
           </Pressable>
           <View style={{ flex: 1 }}>
-            <Text style={[s.headerTitle, { color: colors.text }]}>Log Sleep</Text>
-            <Text style={[s.headerSub, { color: colors.mutedText }]}>How did you rest?</Text>
+            <Text style={[s.headerTitle, { color: colors.text }]}>{t('sleepLog.title')}</Text>
+            <Text style={[s.headerSub, { color: colors.mutedText }]}>{t('sleepLog.subtitle')}</Text>
           </View>
         </View>
 
@@ -119,37 +116,40 @@ export default function LogSleepScreen() {
         >
           {/* ── Quality Rating ────────────────── */}
           <View style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={[s.cardLabel, { color: colors.mutedText }]}>Sleep Quality</Text>
+            <Text style={[s.cardLabel, { color: colors.mutedText }]}>{t('sleepLog.sleepQuality')}</Text>
             <View style={s.qualityRow}>
-              {QUALITY_OPTIONS.map((opt) => (
+              {QUALITY_KEYS.map((key, idx) => {
+                const val = idx + 1;
+                return (
                 <Pressable
-                  key={opt.val}
-                  onPress={() => setQuality(opt.val)}
+                  key={key}
+                  onPress={() => setQuality(val)}
                   style={({ pressed }) => [
                     s.qualityBtn,
                     {
-                      backgroundColor: quality === opt.val ? '#8B6B47' : colors.inputBg,
-                      transform: [{ scale: pressed ? 0.92 : quality === opt.val ? 1.05 : 1 }],
+                      backgroundColor: quality === val ? '#8B6B47' : colors.inputBg,
+                      transform: [{ scale: pressed ? 0.92 : quality === val ? 1.05 : 1 }],
                     },
                   ]}
                 >
-                  <Text style={{ fontSize: 24 }}>{opt.emoji}</Text>
+                  <Text style={{ fontSize: 24 }}>{QUALITY_EMOJIS[idx]}</Text>
                   <Text
                     style={[
                       s.qualityLabel,
-                      { color: quality === opt.val ? '#FFF' : colors.mutedText },
+                      { color: quality === val ? '#FFF' : colors.mutedText },
                     ]}
                   >
-                    {opt.label}
+                    {t(`sleepLog.${key}`)}
                   </Text>
                 </Pressable>
-              ))}
+                );
+              })}
             </View>
           </View>
 
           {/* ── Duration ─────────────────────── */}
           <View style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={[s.cardLabel, { color: colors.mutedText }]}>Duration (Hours)</Text>
+            <Text style={[s.cardLabel, { color: colors.mutedText }]}>{t('sleepLog.duration')}</Text>
             <View style={s.durationRow}>
               {/* Quick buttons */}
               {['4', '6', '7', '8', '9'].map((h) => (
@@ -173,7 +173,7 @@ export default function LogSleepScreen() {
               value={duration}
               onChangeText={setDuration}
               keyboardType="numeric"
-              placeholder="Custom hours"
+              placeholder={t('sleepLog.customHours')}
               placeholderTextColor={colors.placeholder}
               style={[
                 s.input,
@@ -188,13 +188,13 @@ export default function LogSleepScreen() {
 
           {/* ── Notes ────────────────────────── */}
           <View style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={[s.cardLabel, { color: colors.mutedText }]}>Notes (Optional)</Text>
+            <Text style={[s.cardLabel, { color: colors.mutedText }]}>{t('sleepLog.notesOptional')}</Text>
             <TextInput
               value={note}
               onChangeText={setNote}
               multiline
               numberOfLines={4}
-              placeholder="Dreams, feelings, anything affecting your sleep…"
+              placeholder={t('sleepLog.notesPlaceholder')}
               placeholderTextColor={colors.placeholder}
               style={[
                 s.input,
@@ -212,7 +212,7 @@ export default function LogSleepScreen() {
           <View style={[s.tipCard, { backgroundColor: '#7B6DC915' }]}>
             <MaterialIcons name="lightbulb-outline" size={18} color="#7B6DC9" />
             <Text style={[s.tipText, { color: colors.mutedText }]}>
-              Consistent logging helps the AI give you better sleep recommendations
+              {t('sleepLog.aiTip')}
             </Text>
           </View>
 
@@ -230,7 +230,7 @@ export default function LogSleepScreen() {
             ]}
           >
             <MaterialIcons name="check-circle" size={20} color="#FFF" />
-            <Text style={s.saveBtnText}>{saving ? 'Saving…' : 'Save Sleep Entry'}</Text>
+            <Text style={s.saveBtnText}>{saving ? t('sleepLog.saving') : t('sleepLog.saveSleepEntry')}</Text>
           </Pressable>
         </ScrollView>
       </View>

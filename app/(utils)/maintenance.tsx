@@ -1,17 +1,18 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, Pressable, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { router } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, UI } from '@/constants/theme';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
 export default function MaintenanceScreen() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const theme = useColorScheme() ?? 'light';
   const colors = Colors[theme];
 
-  // Countdown timer (simulated 9h 12m from now)
   const [remainingSec, setRemainingSec] = useState(9 * 3600 + 12 * 60);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -26,11 +27,13 @@ export default function MaintenanceScreen() {
 
   const hours = Math.floor(remainingSec / 3600);
   const minutes = Math.floor((remainingSec % 3600) / 60);
-  const countdownLabel = `Come back in ${hours}h ${minutes.toString().padStart(2, '0')}m`;
+  const countdownLabel = t('maintenance.countdown', {
+    hours: String(hours),
+    minutes: minutes.toString().padStart(2, '0'),
+  });
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      {/* Header */}
       <View
         style={{
           paddingTop: insets.top + 16,
@@ -62,7 +65,6 @@ export default function MaintenanceScreen() {
         </Pressable>
       </View>
 
-      {/* Content */}
       <View
         style={{
           flex: 1,
@@ -72,7 +74,6 @@ export default function MaintenanceScreen() {
           paddingBottom: 60,
         }}
       >
-        {/* Illustration */}
         <View
           style={{
             width: 200,
@@ -87,7 +88,6 @@ export default function MaintenanceScreen() {
           <MaterialIcons name="construction" size={90} color={colors.mutedText} />
         </View>
 
-        {/* Title */}
         <Text
           style={{
             fontSize: 26,
@@ -97,10 +97,9 @@ export default function MaintenanceScreen() {
             marginBottom: 10,
           }}
         >
-          Maintenance
+          {t('maintenance.title')}
         </Text>
 
-        {/* Subtitle */}
         <Text
           style={{
             fontSize: 14,
@@ -110,10 +109,9 @@ export default function MaintenanceScreen() {
             marginBottom: 20,
           }}
         >
-          We're undergoing maintenance.
+          {t('maintenance.subtitle')}
         </Text>
 
-        {/* Countdown Badge */}
         <View
           style={{
             flexDirection: 'row',
@@ -134,7 +132,6 @@ export default function MaintenanceScreen() {
         </View>
       </View>
 
-      {/* Take Me Home Button */}
       <View
         style={{ paddingHorizontal: UI.spacing.xl, paddingBottom: Platform.OS === 'ios' ? 44 : 28 }}
       >
@@ -152,7 +149,7 @@ export default function MaintenanceScreen() {
             ...UI.shadow.md,
           })}
         >
-          <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>Take Me Home</Text>
+          <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{t('errorScreen.takeMeHome')}</Text>
           <MaterialIcons name="home" size={20} color="#fff" />
         </Pressable>
       </View>

@@ -19,6 +19,8 @@ import ScreenHeader from '@/components/ScreenHeader';
 import MoodCheckInModal from '@/components/MoodCheckInModal';
 import type { MoodValue } from '@/components/MoodCheckInModal';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import CitationSection from '@/components/CitationSection';
+import { extractCitations } from '@/lib/citations';
 
 /* ------------------------------------------------------------------ */
 /*  Category config                                                    */
@@ -217,6 +219,20 @@ function SuggestionCard({
           {suggestion.description}
         </Text>
       ) : null}
+
+      {/* Citations — extracted from title + description */}
+      {(() => {
+        const text = `${suggestion.title} ${suggestion.description ?? ''}`;
+        const citations = extractCitations(text, 3);
+        return citations.length > 0 ? (
+          <CitationSection
+            citations={citations}
+            accentColor={accentColor}
+            colors={colors as any}
+            compact
+          />
+        ) : null;
+      })()}
 
       {/* Footer */}
       <View style={[styles.cardFooter, { borderTopColor: colors.border }]}>

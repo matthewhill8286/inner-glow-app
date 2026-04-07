@@ -19,6 +19,7 @@ import { useJournal } from '@/hooks/useJournal';
 import { supabase } from '@/supabase/supabase';
 import * as FileSystem from 'expo-file-system';
 import SoundPulse from '@/components/SoundPulse';
+import { toast } from '@/components/Toast';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
 /* ── Design-system colors (matches assessment / Figma) ── */
@@ -251,9 +252,11 @@ export default function VoiceJournal() {
         isVoiceEntry: true,
         recordingDurationMs,
       });
+      toast.success(t('toasts.voiceJournalSaved'));
       router.replace('/(tabs)/journal');
     } catch (err) {
       console.error('[VoiceJournal] Failed to save entry:', err);
+      toast.error(t('toasts.voiceJournalSaveError'));
     }
   }
 

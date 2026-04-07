@@ -17,7 +17,7 @@ import { Colors, UI } from '@/constants/theme';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useTopics } from '@/hooks/useTopics';
 import { useChat } from '@/hooks/useChat';
-import { getPersona } from '@/lib/chat';
+import { getPersona, getTopicKeyPrefix } from '@/lib/chat';
 import { buildChatKey, buildNewChatKey } from '@/lib/chatKeys';
 
 /* ── safe back navigation ────────────────────────── */
@@ -30,38 +30,101 @@ function goBack(from?: string) {
 }
 
 /* ── suggestion categories ───────────────────────── */
-const getSuggestionGroups = (t: any) => [
-  {
-    label: t('chatNew.feelingLabel'),
-    emoji: '💭',
-    suggestions: [
-      t('chatNew.suggestion_feeling_1'),
-      t('chatNew.suggestion_feeling_2'),
-      t('chatNew.suggestion_feeling_3'),
-      t('chatNew.suggestion_feeling_4'),
-    ],
-  },
-  {
-    label: t('chatNew.needHelpLabel'),
-    emoji: '🤲',
-    suggestions: [
-      t('chatNew.suggestion_help_1'),
-      t('chatNew.suggestion_help_2'),
-      t('chatNew.suggestion_help_3'),
-      t('chatNew.suggestion_help_4'),
-    ],
-  },
-  {
-    label: t('chatNew.guideMeLabel'),
-    emoji: '🧘',
-    suggestions: [
-      t('chatNew.suggestion_guide_1'),
-      t('chatNew.suggestion_guide_2'),
-      t('chatNew.suggestion_guide_3'),
-      t('chatNew.suggestion_guide_4'),
-    ],
-  },
-];
+const PERSONA_EMOJIS: Record<string, [string, string, string]> = {
+  freud: ['💭', '🤲', '🧘'],
+  calm:  ['🌿', '🧘', '🌊'],
+  sleep: ['🌙', '😴', '🛏️'],
+  mood:  ['🎭', '💡', '🌈'],
+};
+
+const TOPIC_EMOJIS: Record<string, [string, string, string]> = {
+  topic_anxiety:      ['😰', '🧠', '🌬️'],
+  topic_depression:   ['💙', '🌱', '☀️'],
+  topic_stress:       ['🔥', '⚖️', '🧘'],
+  topic_sleep:        ['🌙', '🛏️', '😴'],
+  topic_relationships:['💬', '🤝', '❤️'],
+  topic_selfEsteem:   ['🪞', '💪', '⭐'],
+  topic_grief:        ['🕊️', '💐', '🌅'],
+  topic_anger:        ['🌋', '🧊', '🎯'],
+  topic_mindfulness:  ['🧘', '🌿', '🔔'],
+  topic_motivation:   ['🚀', '🎯', '💡'],
+};
+
+const getSuggestionGroups = (t: any, personaId: string = 'freud', topicPrefix?: string) => {
+  // If a topic-specific prefix is available, use topic suggestions
+  if (topicPrefix) {
+    const emojis = TOPIC_EMOJIS[topicPrefix] ?? PERSONA_EMOJIS[personaId] ?? PERSONA_EMOJIS.freud;
+    return [
+      {
+        label: t(`chatNew.${topicPrefix}_feelingLabel`),
+        emoji: emojis[0],
+        suggestions: [
+          t(`chatNew.${topicPrefix}_suggestion_feeling_1`),
+          t(`chatNew.${topicPrefix}_suggestion_feeling_2`),
+          t(`chatNew.${topicPrefix}_suggestion_feeling_3`),
+          t(`chatNew.${topicPrefix}_suggestion_feeling_4`),
+        ],
+      },
+      {
+        label: t(`chatNew.${topicPrefix}_needHelpLabel`),
+        emoji: emojis[1],
+        suggestions: [
+          t(`chatNew.${topicPrefix}_suggestion_help_1`),
+          t(`chatNew.${topicPrefix}_suggestion_help_2`),
+          t(`chatNew.${topicPrefix}_suggestion_help_3`),
+          t(`chatNew.${topicPrefix}_suggestion_help_4`),
+        ],
+      },
+      {
+        label: t(`chatNew.${topicPrefix}_guideMeLabel`),
+        emoji: emojis[2],
+        suggestions: [
+          t(`chatNew.${topicPrefix}_suggestion_guide_1`),
+          t(`chatNew.${topicPrefix}_suggestion_guide_2`),
+          t(`chatNew.${topicPrefix}_suggestion_guide_3`),
+          t(`chatNew.${topicPrefix}_suggestion_guide_4`),
+        ],
+      },
+    ];
+  }
+
+  // Fall back to persona-specific suggestions
+  const prefix = personaId === 'freud' ? '' : `${personaId}_`;
+  const emojis = PERSONA_EMOJIS[personaId] ?? PERSONA_EMOJIS.freud;
+
+  return [
+    {
+      label: t(`chatNew.${prefix}feelingLabel`),
+      emoji: emojis[0],
+      suggestions: [
+        t(`chatNew.${prefix}suggestion_feeling_1`),
+        t(`chatNew.${prefix}suggestion_feeling_2`),
+        t(`chatNew.${prefix}suggestion_feeling_3`),
+        t(`chatNew.${prefix}suggestion_feeling_4`),
+      ],
+    },
+    {
+      label: t(`chatNew.${prefix}needHelpLabel`),
+      emoji: emojis[1],
+      suggestions: [
+        t(`chatNew.${prefix}suggestion_help_1`),
+        t(`chatNew.${prefix}suggestion_help_2`),
+        t(`chatNew.${prefix}suggestion_help_3`),
+        t(`chatNew.${prefix}suggestion_help_4`),
+      ],
+    },
+    {
+      label: t(`chatNew.${prefix}guideMeLabel`),
+      emoji: emojis[2],
+      suggestions: [
+        t(`chatNew.${prefix}suggestion_guide_1`),
+        t(`chatNew.${prefix}suggestion_guide_2`),
+        t(`chatNew.${prefix}suggestion_guide_3`),
+        t(`chatNew.${prefix}suggestion_guide_4`),
+      ],
+    },
+  ];
+};
 
 export default function NewConversationScreen() {
   const insets = useSafeAreaInsets();
@@ -72,14 +135,17 @@ export default function NewConversationScreen() {
     from,
     initialMessage,
     persona: personaParam,
+    topicName: topicNameParam,
   } = useLocalSearchParams<{
     from?: string;
     initialMessage?: string;
     persona?: string;
+    topicName?: string;
   }>();
   const { topics } = useTopics();
   const { isLoading: chatLoading } = useChat();
   const persona = getPersona(personaParam);
+  const topicPrefix = topicNameParam ? getTopicKeyPrefix(topicNameParam) : undefined;
 
   const [inputText, setInputText] = useState(initialMessage || '');
   const inputRef = useRef<TextInput>(null);
@@ -104,7 +170,7 @@ export default function NewConversationScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={{ flex: 1, backgroundColor: colors.background }}
     >
-      <View style={[s.container, { backgroundColor: colors.background, paddingTop: insets.top + 6 }]}>
+      <View style={[s.container, { backgroundColor: colors.background }]}>
         {/* ── Header ──────────────────────────────── */}
         <View style={[s.header, { marginTop: insets.top + 14 }]}>
           <Pressable
@@ -168,7 +234,7 @@ export default function NewConversationScreen() {
           </View>
 
           {/* ── Suggestions ──────────────────────── */}
-          {getSuggestionGroups(t).map((group, gi) => (
+          {getSuggestionGroups(t, persona.id, topicPrefix).map((group, gi) => (
             <View key={gi}>
               <View style={s.groupHeader}>
                 <Text style={{ fontSize: 16 }}>{group.emoji}</Text>

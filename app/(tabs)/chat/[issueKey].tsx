@@ -20,11 +20,12 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, UI } from '@/constants/theme';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import TypingBubble from '@/components/TypingBubble';
-import { sendChatToAI, getPersona, type PersonaId, type PersonaMeta } from '@/lib/chat';
+import { sendChatToAI, getPersona, getTopicKeyPrefix, type PersonaId, type PersonaMeta } from '@/lib/chat';
 import { useChat } from '@/hooks/useChat';
 import { ChatMessage } from '@/lib/types';
 import { useTopics } from '@/hooks/useTopics';
 import { parseChatKey } from '@/lib/chatKeys';
+import CitationSection from '@/components/CitationSection';
 
 /* ── Helpers ────────────────────────────────────────── */
 
@@ -50,6 +51,8 @@ function MessageBubble({
   colors: AppColors;
 }) {
   const isUser = item.role === 'user';
+  const hasCitations = !isUser && item.citations && item.citations.length > 0;
+
   return (
     <View style={[s.msgRow, { justifyContent: isUser ? 'flex-end' : 'flex-start' }]}>
       {!isUser && (
@@ -66,6 +69,16 @@ function MessageBubble({
         ]}
       >
         <Text style={[s.msgText, { color: isUser ? '#FFF' : colors.text }]}>{item.content}</Text>
+
+        {hasCitations && (
+          <CitationSection
+            citations={item.citations!}
+            accentColor={persona.color}
+            colors={colors as any}
+            compact
+          />
+        )}
+
         <Text
           style={[s.msgTime, { color: isUser ? 'rgba(255,255,255,0.6)' : colors.subtleText }]}
         >
@@ -200,10 +213,26 @@ export default function Chat() {
   const isTyping = isAiTyping;
   const topicName = issue?.name ?? persona.speciality;
 
-  const suggestions = useMemo(
-    () => [t('chat.suggestion1'), t('chat.suggestion2'), t('chat.suggestion3'), t('chat.suggestion4')],
-    [t],
-  );
+  const suggestions = useMemo(() => {
+    // Try topic-specific suggestions first
+    const topicPrefix = getTopicKeyPrefix(issue?.name, issue?.context_tags ?? undefined);
+    if (topicPrefix) {
+      return [
+        t(`chat.${topicPrefix}_suggestion1`),
+        t(`chat.${topicPrefix}_suggestion2`),
+        t(`chat.${topicPrefix}_suggestion3`),
+        t(`chat.${topicPrefix}_suggestion4`),
+      ];
+    }
+    // Fall back to persona-specific suggestions
+    const personaPrefix = persona.id === 'freud' ? '' : `${persona.id}_`;
+    return [
+      t(`chat.${personaPrefix}suggestion1`),
+      t(`chat.${personaPrefix}suggestion2`),
+      t(`chat.${personaPrefix}suggestion3`),
+      t(`chat.${personaPrefix}suggestion4`),
+    ];
+  }, [t, persona.id, issue]);
 
   /* ── Send ── */
   const sendMessage = useCallback(
@@ -225,7 +254,7 @@ export default function Chat() {
       setIsAiTyping(true);
 
       try {
-        const aiText = await sendChatToAI(
+        const aiResponse = await sendChatToAI(
           topicName,
           issue?.context_tags ?? [],
           withUserMsg.map((m) => ({ role: m.role, content: m.content })),
@@ -235,8 +264,9 @@ export default function Chat() {
         const aiMsg: ChatMessage = {
           id: `msg_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
           role: 'assistant',
-          content: aiText,
+          content: aiResponse.text,
           createdAt: new Date().toISOString(),
+          citations: aiResponse.citations.length > 0 ? aiResponse.citations : undefined,
         };
 
         const withAiMsg = [...withUserMsg, aiMsg];

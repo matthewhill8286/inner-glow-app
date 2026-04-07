@@ -8,6 +8,9 @@ import {
   ImageSourcePropType,
   KeyboardAvoidingView,
   Animated,
+  PanResponder,
+  GestureResponderEvent,
+  PanResponderGestureState,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -60,6 +63,45 @@ export default function WelcomeComp({
   const contentOpacity = useRef(new Animated.Value(1)).current;
   const contentTranslate = useRef(new Animated.Value(0)).current;
 
+  /* ── Swipe gesture handling ── */
+  const SWIPE_THRESHOLD = 50; // minimum horizontal distance to trigger a swipe
+  const SWIPE_VELOCITY = 0.3; // minimum velocity to trigger a swipe
+
+  // Keep callbacks in refs so the PanResponder always calls the latest versions
+  const onNextRef = useRef(onNext);
+  const onBackRef = useRef(onBack);
+  useEffect(() => { onNextRef.current = onNext; }, [onNext]);
+  useEffect(() => { onBackRef.current = onBack; }, [onBack]);
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (
+        _evt: GestureResponderEvent,
+        gestureState: PanResponderGestureState,
+      ) => {
+        // Only capture horizontal drags (avoid interfering with vertical scrolls / taps)
+        return (
+          Math.abs(gestureState.dx) > 10 &&
+          Math.abs(gestureState.dx) > Math.abs(gestureState.dy * 1.5)
+        );
+      },
+      onPanResponderRelease: (
+        _evt: GestureResponderEvent,
+        gestureState: PanResponderGestureState,
+      ) => {
+        const { dx, vx } = gestureState;
+        if (dx < -SWIPE_THRESHOLD || vx < -SWIPE_VELOCITY) {
+          // Swiped left → next slide
+          onNextRef.current?.();
+        } else if (dx > SWIPE_THRESHOLD || vx > SWIPE_VELOCITY) {
+          // Swiped right → previous slide
+          onBackRef.current?.();
+        }
+      },
+    }),
+  ).current;
+
   useEffect(() => {
     Animated.timing(progressAnim, {
       toValue: progress,
@@ -97,7 +139,7 @@ export default function WelcomeComp({
   if (isLanding) {
     return (
       <KeyboardAvoidingView style={styles.safe}>
-        <View style={styles.screen}>
+        <View style={styles.screen} {...panResponder.panHandlers}>
           {/* Logo */}
           <View style={[styles.landingLogoRow, { paddingTop: insets.top + 12 }]}>
             <View style={styles.logoIcon}>
@@ -157,7 +199,7 @@ export default function WelcomeComp({
   /* ===================== STEP SLIDES (slides 1–5) ===================== */
   return (
     <KeyboardAvoidingView style={styles.safe}>
-      <View style={styles.screen}>
+      <View style={styles.screen} {...panResponder.panHandlers}>
         {/* Back button */}
         {onBack ? (
           <Pressable

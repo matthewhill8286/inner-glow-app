@@ -8,6 +8,7 @@ import { Colors, UI } from '@/constants/theme';
 import { useJournal } from '@/hooks/useJournal';
 import { JournalEntry } from '@/lib/types';
 import { showAlert } from '@/lib/state';
+import { toast } from '@/components/Toast';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
 /* ── Mood config ── */
@@ -143,14 +144,20 @@ export default function JournalDetail() {
 
   async function saveEdit() {
     if (!entry) return;
-    await upsertJournalEntry({
-      ...entry,
-      title: editTitle.trim() || 'Untitled',
-      content: editContent.trim(),
-      mood: editMood,
-      updatedAt: new Date().toISOString(),
-    });
-    setEditing(false);
+    try {
+      await upsertJournalEntry({
+        ...entry,
+        title: editTitle.trim() || 'Untitled',
+        content: editContent.trim(),
+        mood: editMood,
+        updatedAt: new Date().toISOString(),
+      });
+      toast.success(t('toasts.journalSaved'));
+      setEditing(false);
+    } catch (err) {
+      console.error('Failed to save journal edit:', err);
+      toast.error(t('toasts.journalSaveError'));
+    }
   }
 
   async function remove() {
@@ -160,8 +167,14 @@ export default function JournalDetail() {
         text: t('common.delete'),
         style: 'destructive',
         onPress: async () => {
-          await deleteJournalEntry(String(id));
-          router.back();
+          try {
+            await deleteJournalEntry(String(id));
+            toast.success(t('toasts.journalDeleted'));
+            router.back();
+          } catch (err) {
+            console.error('Failed to delete journal entry:', err);
+            toast.error(t('toasts.journalDeleteError'));
+          }
         },
       },
     ]);

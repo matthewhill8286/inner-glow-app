@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { router } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, UI } from '@/constants/theme';
@@ -8,13 +9,13 @@ import { useSubscription } from '@/hooks/useSubscription';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
 export default function PaymentSuccess() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const theme = useColorScheme() ?? 'light';
   const colors = Colors[theme];
   const { subscription, isPending, refresh } = useSubscription();
   const [checking, setChecking] = useState(true);
 
-  // Poll for webhook confirmation (Stripe webhook may take a few seconds)
   useEffect(() => {
     let attempts = 0;
     const maxAttempts = 10;
@@ -27,7 +28,6 @@ export default function PaymentSuccess() {
       }
     };
 
-    // Initial check
     poll();
 
     const interval = setInterval(async () => {
@@ -42,21 +42,22 @@ export default function PaymentSuccess() {
     return () => clearInterval(interval);
   }, [refresh]);
 
-  // Stop checking once subscription is confirmed active
   useEffect(() => {
     if (subscription && !isPending && subscription.status === 'active') {
       setChecking(false);
     }
   }, [subscription, isPending]);
 
-  const planLabel =
+  const planLabelKey =
     subscription?.type === 'lifetime'
-      ? 'Lifetime'
+      ? 'paymentSuccess.lifetime'
       : subscription?.type === 'monthly'
-        ? 'Monthly'
+        ? 'paymentSuccess.monthly'
         : subscription?.type === 'trial'
-          ? '7-Day Trial'
-          : 'Premium';
+          ? 'paymentSuccess.trial'
+          : 'paymentSuccess.premium';
+
+  const planLabel = t(planLabelKey);
 
   const handleContinue = () => {
     router.replace('/');
@@ -65,33 +66,32 @@ export default function PaymentSuccess() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
       <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        {/* Success icon */}
         <View style={styles.iconCircle}>
           <MaterialIcons name="check" size={44} color="#FFF" />
         </View>
 
         <Text style={[styles.title, { color: colors.text }]}>
-          {checking ? 'Processing...' : 'Payment Successful!'}
+          {checking ? t('paymentSuccess.processing') : t('paymentSuccess.title')}
         </Text>
 
         {checking ? (
           <View style={styles.checkingRow}>
             <ActivityIndicator size="small" color="#8B6B47" />
             <Text style={[styles.message, { color: colors.mutedText }]}>
-              Confirming your payment with Stripe...
+              {t('paymentSuccess.confirming')}
             </Text>
           </View>
         ) : (
           <>
             <Text style={[styles.message, { color: colors.mutedText }]}>
-              Welcome to Freud {planLabel}! Your account has been upgraded and all premium features
-              are now unlocked.
+              {t('paymentSuccess.welcome', { plan: planLabel })}
             </Text>
 
-            {/* Plan badge */}
             <View style={[styles.planBadge, { backgroundColor: '#5B8A5A' + '15' }]}>
               <Text style={{ fontSize: 16 }}>✨</Text>
-              <Text style={[styles.planBadgeText, { color: '#5B8A5A' }]}>{planLabel} Active</Text>
+              <Text style={[styles.planBadgeText, { color: '#5B8A5A' }]}>
+                {t('paymentSuccess.planActive', { plan: planLabel })}
+              </Text>
             </View>
           </>
         )}
@@ -108,7 +108,7 @@ export default function PaymentSuccess() {
           ]}
         >
           <Text style={styles.buttonText}>
-            {checking ? 'Please wait...' : 'Get Started'}
+            {checking ? t('paymentSuccess.pleaseWait') : t('paymentSuccess.getStarted')}
           </Text>
           {!checking && <MaterialIcons name="arrow-forward" size={18} color="#FFF" />}
         </Pressable>

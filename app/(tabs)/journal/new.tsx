@@ -9,11 +9,13 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, UI } from '@/constants/theme';
 import { useJournal } from '@/hooks/useJournal';
 import { JournalEntry } from '@/lib/types';
 import { JOURNAL_PROMPTS } from '@/data/journalPrompts';
+import { toast } from '@/components/Toast';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
 /* ── Emotions grid ── */
@@ -55,6 +57,7 @@ const TAGS = [
 ];
 
 export default function NewJournalEntry() {
+  const { t } = useTranslation();
   const theme = useColorScheme() ?? 'light';
   const colors = Colors[theme];
   const insets = useSafeAreaInsets();
@@ -99,8 +102,14 @@ export default function NewJournalEntry() {
       mood,
       tags: selectedTags,
     };
-    await createJournalEntry(entryInput as any);
-    router.replace('/(tabs)/journal');
+    try {
+      await createJournalEntry(entryInput as any);
+      toast.success(t('toasts.journalCreated'));
+      router.replace('/(tabs)/journal');
+    } catch (err) {
+      console.error('Failed to create journal entry:', err);
+      toast.error(t('toasts.journalCreateError'));
+    }
   }
 
   const canSave = title.trim().length > 0 || body.trim().length > 0;

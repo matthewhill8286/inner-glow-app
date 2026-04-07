@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, Pressable, FlatList } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import ScreenHeader from '@/components/ScreenHeader';
 import { router } from 'expo-router';
 import { ISSUES, IssueKey } from '@/data/issues';
@@ -12,6 +13,7 @@ import { useProfile } from '@/hooks/useProfile';
 import { SkeletonRect } from '@/components/Skeleton';
 
 export default function Settings() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const theme = useColorScheme() ?? 'light';
   const colors = Colors[theme];
@@ -29,13 +31,13 @@ export default function Settings() {
 
   async function save() {
     if (selectedArray.length === 0) {
-      toast.warning('Choose one or more sections to continue.');
+      toast.warning(t('settings.chooseWarning'));
       return;
     }
     await updateProfile({
       selectedIssues: selectedArray,
     });
-    toast.success('Your preferences were updated.');
+    toast.success(t('settings.updated'));
     router.back();
   }
 
@@ -48,7 +50,7 @@ export default function Settings() {
         paddingTop: insets.top + 6,
       }}
     >
-      <ScreenHeader title="Settings" subtitle="Choose which sections you want to see." />
+      <ScreenHeader title={t('settings.title')} subtitle={t('settings.subtitle')} />
 
       <View
         style={{
@@ -93,7 +95,7 @@ export default function Settings() {
                 >
                   <Text style={{ fontWeight: '900', color: colors.text }}>{item.title}</Text>
                   <Text style={{ color: colors.mutedText, marginTop: 4 }}>
-                    {isOn ? 'Selected' : 'Tap to select'}
+                    {isOn ? t('settings.selected') : t('settings.tapToSelect')}
                   </Text>
                 </Pressable>
               );
@@ -113,7 +115,7 @@ export default function Settings() {
           opacity: pressed ? 0.7 : 1,
         })}
       >
-        <Text style={{ color: colors.onPrimary, fontWeight: '900' }}>Save</Text>
+        <Text style={{ color: colors.onPrimary, fontWeight: '900' }}>{t('settings.save')}</Text>
       </Pressable>
     </View>
   );

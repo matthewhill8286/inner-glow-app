@@ -18,6 +18,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useSleep } from '@/hooks/useSleep';
 import { useSleepInsights } from '@/hooks/useSleepInsights';
 import { SleepEntry } from '@/lib/types';
+import CitationSection from '@/components/CitationSection';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -114,12 +115,14 @@ function AISuggestionItem({
   subtitle,
   color,
   colors,
+  citations,
 }: {
   icon: string;
   title: string;
   subtitle: string;
   color: string;
   colors: any;
+  citations?: Array<{ source: string; title: string; url: string }>;
 }) {
   return (
     <View style={[sugS.item, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -129,6 +132,14 @@ function AISuggestionItem({
       <View style={{ flex: 1 }}>
         <Text style={[sugS.title, { color: colors.text }]}>{title}</Text>
         <Text style={[sugS.subtitle, { color: colors.mutedText }]}>{subtitle}</Text>
+        {citations && citations.length > 0 && (
+          <CitationSection
+            citations={citations}
+            accentColor={color}
+            colors={colors}
+            compact
+          />
+        )}
       </View>
       <MaterialIcons name="chevron-right" size={18} color={colors.subtleText} />
     </View>
@@ -167,6 +178,7 @@ export default function SleepInsightsScreen() {
   const {
     suggestions: aiSuggestionData,
     summary: aiSummary,
+    summaryCitations: aiSummaryCitations,
     isLoading: aiLoading,
     isFetching: aiFetching,
     isError: aiError,
@@ -455,6 +467,14 @@ export default function SleepInsightsScreen() {
             <Text style={{ fontSize: 14, color: colors.text, lineHeight: 20, fontWeight: '500' }}>
               {aiSummary}
             </Text>
+            {aiSummaryCitations.length > 0 && (
+              <CitationSection
+                citations={aiSummaryCitations}
+                accentColor="#5A8FB5"
+                colors={colors as any}
+                compact
+              />
+            )}
           </View>
         ) : null}
 
@@ -538,6 +558,7 @@ export default function SleepInsightsScreen() {
               subtitle={sug.subtitle}
               color={sug.color}
               colors={colors}
+              citations={sug.citations}
             />
           ))
         )}

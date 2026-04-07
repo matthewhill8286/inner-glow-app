@@ -19,6 +19,7 @@ import { useProfile } from '@/hooks/useProfile';
 import { useSleep } from '@/hooks/useSleep';
 import { useMindfulness } from '@/hooks/useMindfulness';
 import { useStress } from '@/hooks/useStress';
+import { useChat } from '@/hooks/useChat';
 import { useNotificationStore } from '@/lib/notificationStore';
 import type { MoodCheckIn } from '@/lib/types';
 
@@ -94,6 +95,7 @@ export default function Home() {
   const { sleepEntries, isLoading: sleepLoading } = useSleep();
   const { mindfulnessHistory, isLoading: mindfulnessLoading } = useMindfulness();
   const { stressKit, isLoading: stressLoading } = useStress({ lazy: true });
+  const { stats: chatStats, isLoading: chatLoading } = useChat();
 
   const moodCount = moodCheckIns?.length || 0;
   const journalCount = journalEntries?.length || 0;
@@ -135,11 +137,12 @@ export default function Home() {
     return totalHrs / recent.length;
   }, [sleepEntries]);
   const sleepLabel = useMemo(() => {
-    if (sleepAvgHrs === 0) return 'No data yet';
-    if (sleepAvgHrs >= 7) return `Healthy (~${sleepAvgHrs.toFixed(0)}h Avg)`;
-    if (sleepAvgHrs >= 5) return `Fair (~${sleepAvgHrs.toFixed(0)}h Avg)`;
-    return `Insomniac (~${sleepAvgHrs.toFixed(0)}h Avg)`;
-  }, [sleepAvgHrs]);
+    if (sleepAvgHrs === 0) return t('home.sleepNoData');
+    const hours = sleepAvgHrs.toFixed(0);
+    if (sleepAvgHrs >= 7) return t('home.sleepHealthy', { hours });
+    if (sleepAvgHrs >= 5) return t('home.sleepFair', { hours });
+    return t('home.sleepInsomniac', { hours });
+  }, [sleepAvgHrs, t]);
   const sleepDots = Math.min(4, Math.max(0, sleepQuality));
 
   // Journal: entries this week + streak
@@ -175,11 +178,11 @@ export default function Home() {
   }, [moodCheckIns, stressKit]);
   const stressNorm = Math.round(latestStress / 2); // 0-10 → 0-5
   const stressLevelLabel = useMemo(() => {
-    if (latestStress <= 2) return `Level ${latestStress} (Low)`;
-    if (latestStress <= 5) return `Level ${latestStress} (Normal)`;
-    if (latestStress <= 7) return `Level ${latestStress} (High)`;
-    return `Level ${latestStress} (Very High)`;
-  }, [latestStress]);
+    if (latestStress <= 2) return t('home.stressLow', { level: latestStress });
+    if (latestStress <= 5) return t('home.stressNormal', { level: latestStress });
+    if (latestStress <= 7) return t('home.stressHigh', { level: latestStress });
+    return t('home.stressVeryHigh', { level: latestStress });
+  }, [latestStress, t]);
 
   // Mood Tracker: last 3 moods as flow
   const last3Moods = useMemo(() => {
@@ -293,7 +296,7 @@ export default function Home() {
           style={[s.searchBar, { backgroundColor: colors.card, borderColor: colors.border }]}
         >
           <Text style={[s.searchPlaceholder, { color: colors.placeholder }]}>
-            Search anything...
+            {t('home.searchPlaceholder')}
           </Text>
           <MaterialIcons name="search" size={18} color={colors.icon} />
         </Pressable>
@@ -341,7 +344,7 @@ export default function Home() {
             )}
 
             {/* ── Mindful Tracker ── */}
-            <Text style={[s.sectionTitle, { color: colors.text }]}>Mindful Tracker</Text>
+            <Text style={[s.sectionTitle, { color: colors.text }]}>{t('home.mindfulTracker')}</Text>
 
             <View
               style={[s.trackerCard, { backgroundColor: colors.card, borderColor: colors.border }]}
@@ -354,8 +357,8 @@ export default function Home() {
               ) : (
                 <TrackerItem
                   icon="schedule"
-                  title="Mindful Hours"
-                  subtitle={`${mindfulTodayHrs}h/${mindfulGoalHrs}h Today`}
+                  title={t('home.mindfulHours')}
+                  subtitle={t('home.mindfulHoursSubtitle', { current: mindfulTodayHrs, goal: mindfulGoalHrs })}
                   colors={colors}
                   onPress={() => router.push('/(tabs)/mindful')}
                   indicator={<MiniDots count={4} active={mindfulDots} color={SAGE} />}
@@ -371,7 +374,7 @@ export default function Home() {
               ) : (
                 <TrackerItem
                   icon="bedtime"
-                  title="Sleep Quality"
+                  title={t('home.sleepQuality')}
                   subtitle={sleepLabel}
                   colors={colors}
                   onPress={() => router.push('/(tabs)/sleep')}
@@ -394,11 +397,11 @@ export default function Home() {
               ) : (
                 <TrackerItem
                   icon="menu-book"
-                  title="Mindful Journal"
+                  title={t('home.mindfulJournal')}
                   subtitle={
                     journalStreak > 0
-                      ? `${journalStreak} Day Streak`
-                      : `${journalThisWeek} this week`
+                      ? t('home.journalDayStreak', { count: journalStreak })
+                      : t('home.journalThisWeek', { count: journalThisWeek })
                   }
                   colors={colors}
                   onPress={() => router.push('/(tabs)/journal')}
@@ -415,7 +418,7 @@ export default function Home() {
               ) : (
                 <TrackerItem
                   icon={latestStress <= 5 ? 'trending-down' : 'trending-up'}
-                  title="Stress Level"
+                  title={t('home.stressLevel')}
                   subtitle={stressLevelLabel}
                   colors={colors}
                   onPress={() => router.push('/(tabs)/stress')}
@@ -432,9 +435,9 @@ export default function Home() {
               ) : (
                 <TrackerItem
                   icon="mood"
-                  title="Mood Tracker"
+                  title={t('home.moodTracker')}
                   subtitle={
-                    moodCount > 0 ? `${moodCount} check-in${moodCount !== 1 ? 's' : ''}` : 'No data yet'
+                    moodCount > 0 ? t('home.moodCheckIns', { count: moodCount }) : t('home.moodNoData')
                   }
                   colors={colors}
                   onPress={() => router.push('/(tabs)/mood')}
@@ -445,10 +448,10 @@ export default function Home() {
 
             {/* ── AI Therapy Chatbot ── */}
             <Pressable onPress={() => router.push('/(tabs)/chat')}>
-              <Text style={[s.sectionTitle, { color: colors.text }]}>AI Therapy Chatbot</Text>
+              <Text style={[s.sectionTitle, { color: colors.text }]}>{t('home.aiTherapyChatbot')}</Text>
             </Pressable>
 
-            {moodLoading && journalLoading ? (
+            {chatLoading ? (
               <SkeletonRect height={130} borderRadius={UI.radius.xxl} />
             ) : (
               <Pressable
@@ -465,7 +468,7 @@ export default function Home() {
                     <View style={[s.chatDot, { backgroundColor: SAGE + '30' }]} />
                   </View>
                   <Text style={[s.chatCount, { color: colors.text }]}>
-                    {moodCount + journalCount > 0 ? moodCount + journalCount : 0}
+                    {chatStats.totalConversations}
                   </Text>
                   <Text style={[s.chatLabel, { color: colors.mutedText }]}>Conversations</Text>
                   {hasFullAccess ? (

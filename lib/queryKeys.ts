@@ -35,6 +35,7 @@ export const queryKeys = {
   freudScore: {
     all: ['freudScores'] as const,
     list: (userId?: string) => ['freudScores', userId] as const,
+    todayBest: (userId?: string) => ['freudScoreTodayBest', userId] as const,
   },
   suggestions: {
     all: ['aiSuggestions'] as const,

@@ -7,6 +7,7 @@ import { Colors, UI } from '@/constants/theme';
 import { useMood } from '@/hooks/useMood';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { showAlert } from '@/lib/state';
+import { toast } from '@/components/Toast';
 import { useTranslation } from 'react-i18next';
 
 /* ── Mood metadata ── */
@@ -123,8 +124,14 @@ export default function MoodDetailScreen() {
         text: t('common.delete'),
         style: 'destructive',
         onPress: async () => {
-          await deleteMoodCheckIn(id as string);
-          router.back();
+          try {
+            await deleteMoodCheckIn(id as string);
+            toast.success(t('toasts.moodDeleted'));
+            router.back();
+          } catch (err) {
+            console.error('Failed to delete mood check-in:', err);
+            toast.error(t('toasts.moodDeleteError'));
+          }
         },
       },
     ]);

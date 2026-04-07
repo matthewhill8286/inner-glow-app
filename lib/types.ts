@@ -83,4 +83,10 @@ export type ChatMessage = {
   content: string;
   text?: string;
   createdAt: string;
+  /** Optional citations for AI-generated medical/health content */
+  citations?: Array<{
+    source: string;
+    title: string;
+    url: string;
+  }>;
 };

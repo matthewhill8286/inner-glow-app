@@ -12,6 +12,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '@/supabase/supabase';
 import { authTokenVar } from '@/lib/state';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
@@ -57,6 +58,9 @@ export default function SignIn() {
       const { session } = data;
       const token = session.access_token;
       authTokenVar(token);
+
+      // Mark onboarding as seen so returning users skip it on future launches
+      await AsyncStorage.setItem('onboarding:seen:v1', 'true');
 
       // Check if user has MFA enabled — redirect to verification if so
       const { data: factorsData } = await supabase.auth.mfa.listFactors();

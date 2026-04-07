@@ -18,6 +18,7 @@ import { useTranslation } from 'react-i18next';
 import { router } from 'expo-router';
 import { supabase } from '@/supabase/supabase';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { toast } from '@/components/Toast';
 
 /* ── Authenticator app deep links ── */
 const AUTH_APPS = [
@@ -96,6 +97,7 @@ export default function TwoFactorSetup() {
         await Share.share({ message: secret, title: 'TOTP Secret' });
       }
       setSecretCopied(true);
+      toast.success(t('toasts.copiedToClipboard'));
       setTimeout(() => setSecretCopied(false), 2500);
     } catch {
       // User cancelled or clipboard unavailable
@@ -144,6 +146,7 @@ export default function TwoFactorSetup() {
       }
     } catch (err: any) {
       console.error('[2FA] Check status error:', err);
+      toast.error(t('toasts.twoFactorSetupError'));
       setError(err?.message || 'Failed to check 2FA status');
       setStep('error');
     }
@@ -164,6 +167,7 @@ export default function TwoFactorSetup() {
       setStep('enroll');
     } catch (err: any) {
       console.error('[2FA] Enroll error:', err);
+      toast.error(t('toasts.twoFactorSetupError'));
       setError(err?.message || 'Failed to set up 2FA');
       setStep('error');
     }
@@ -193,6 +197,7 @@ export default function TwoFactorSetup() {
       await generateRecoveryCodes();
     } catch (err: any) {
       console.error('[2FA] Verify error:', err);
+      toast.error(t('toasts.twoFactorVerifyError'));
       setError(err?.message || t('twoFactor.invalidCode'));
     } finally {
       setLoading(false);
@@ -238,6 +243,7 @@ export default function TwoFactorSetup() {
         // On native, use the Share API as a copy fallback
         await Share.share({ message: text, title: 'Recovery Codes' });
       }
+      toast.success(t('toasts.copiedToClipboard'));
     } catch (_) {
       // Fallback: no-op if clipboard is unavailable
     }
@@ -260,9 +266,11 @@ export default function TwoFactorSetup() {
     try {
       const { error } = await supabase.auth.mfa.unenroll({ factorId });
       if (error) throw error;
+      toast.success(t('toasts.twoFactorDisabled'));
       router.back();
     } catch (err: any) {
       console.error('[2FA] Unenroll error:', err);
+      toast.error(t('toasts.twoFactorDisableError'));
       setError(err?.message || 'Failed to disable 2FA');
     } finally {
       setLoading(false);

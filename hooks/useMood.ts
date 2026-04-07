@@ -144,6 +144,7 @@ export const useMood = () => {
   return {
     moodCheckIns: moodQuery.data || [],
     isLoading: moodQuery.isLoading,
+    isFetching: moodQuery.isFetching,
     isError: moodQuery.isError,
     error: moodQuery.error,
     addMoodCheckIn: addMoodMutation.mutateAsync,

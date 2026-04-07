@@ -1,6 +1,5 @@
-import React, { useMemo, useEffect, useState, useCallback } from 'react';
-import { View, Text, Pressable, ScrollView, StyleSheet, Platform, Dimensions } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import React, { useMemo, useState, useCallback } from 'react';
+import { View, Text, Pressable, ScrollView, StyleSheet, Dimensions } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -18,7 +17,6 @@ export default function WatchVideoScreen() {
   const { t } = useTranslation();
   const theme = useColorScheme() ?? 'light';
   const colors = Colors[theme];
-  const insets = useSafeAreaInsets();
   const [playing, setPlaying] = useState(false);
 
   const video = STRESS_VIDEOS.find((v) => v.id === videoId);
@@ -58,7 +56,7 @@ export default function WatchVideoScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top + 6 }]}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={{ paddingHorizontal: UI.spacing.xl }}>
         <ScreenHeader title={video.title} showBack />
       </View>

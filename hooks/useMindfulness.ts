@@ -86,6 +86,7 @@ export const useMindfulness = () => {
   return {
     mindfulnessHistory: mindfulnessQuery.data || [],
     isLoading: mindfulnessQuery.isLoading,
+    isFetching: mindfulnessQuery.isFetching,
     isError: mindfulnessQuery.isError,
     error: mindfulnessQuery.error,
     addMindfulMinutes: (seconds: number, note?: string) =>

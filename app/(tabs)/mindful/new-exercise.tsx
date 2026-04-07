@@ -401,18 +401,13 @@ function StepTime({
         {t('newExercise.timeSubtitle')}
       </Text>
 
-      {/* Large time display */}
-      <View
-        style={{
-          alignItems: 'center',
-          marginBottom: 32,
-        }}
-      >
+      {/* Large time display with integrated +/- controls */}
+      <View style={{ alignItems: 'center', marginBottom: 32 }}>
         <View
           style={{
-            width: 180,
-            height: 180,
-            borderRadius: 90,
+            width: 200,
+            height: 200,
+            borderRadius: 100,
             backgroundColor: colors.card,
             alignItems: 'center',
             justifyContent: 'center',
@@ -423,13 +418,13 @@ function StepTime({
         >
           <Text
             style={{
-              fontSize: 48,
+              fontSize: 52,
               fontWeight: '900',
               color: colors.primary,
               letterSpacing: -1,
             }}
           >
-            {selectedMinutes}:00
+            {selectedMinutes}
           </Text>
           <Text
             style={{
@@ -444,22 +439,23 @@ function StepTime({
         </View>
       </View>
 
-      {/* +/- controls */}
+      {/* +/- stepper controls */}
       <View
         style={{
           flexDirection: 'row',
           justifyContent: 'center',
           alignItems: 'center',
-          gap: 24,
+          gap: 20,
           marginBottom: 28,
         }}
       >
+        {/* -5 button */}
         <Pressable
           onPress={() => onSelect(Math.max(1, selectedMinutes - 5))}
           style={({ pressed }) => ({
-            width: 52,
-            height: 52,
-            borderRadius: 26,
+            width: 48,
+            height: 48,
+            borderRadius: 24,
             backgroundColor: colors.card,
             alignItems: 'center',
             justifyContent: 'center',
@@ -468,14 +464,52 @@ function StepTime({
             opacity: pressed ? 0.7 : 1,
           })}
         >
-          <MaterialIcons name="remove" size={28} color={colors.text} />
+          <Text style={{ fontSize: 18, fontWeight: '800', color: colors.text }}>−5</Text>
         </Pressable>
+
+        {/* -1 button */}
+        <Pressable
+          onPress={() => onSelect(Math.max(1, selectedMinutes - 1))}
+          style={({ pressed }) => ({
+            width: 48,
+            height: 48,
+            borderRadius: 24,
+            backgroundColor: colors.card,
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderWidth: 1,
+            borderColor: colors.border,
+            opacity: pressed ? 0.7 : 1,
+          })}
+        >
+          <Text style={{ fontSize: 18, fontWeight: '800', color: colors.text }}>−1</Text>
+        </Pressable>
+
+        {/* +1 button */}
+        <Pressable
+          onPress={() => onSelect(Math.min(60, selectedMinutes + 1))}
+          style={({ pressed }) => ({
+            width: 48,
+            height: 48,
+            borderRadius: 24,
+            backgroundColor: colors.card,
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderWidth: 1,
+            borderColor: colors.border,
+            opacity: pressed ? 0.7 : 1,
+          })}
+        >
+          <Text style={{ fontSize: 18, fontWeight: '800', color: colors.text }}>+1</Text>
+        </Pressable>
+
+        {/* +5 button */}
         <Pressable
           onPress={() => onSelect(Math.min(60, selectedMinutes + 5))}
           style={({ pressed }) => ({
-            width: 52,
-            height: 52,
-            borderRadius: 26,
+            width: 48,
+            height: 48,
+            borderRadius: 24,
             backgroundColor: colors.card,
             alignItems: 'center',
             justifyContent: 'center',
@@ -484,11 +518,11 @@ function StepTime({
             opacity: pressed ? 0.7 : 1,
           })}
         >
-          <MaterialIcons name="add" size={28} color={colors.text} />
+          <Text style={{ fontSize: 18, fontWeight: '800', color: colors.text }}>+5</Text>
         </Pressable>
       </View>
 
-      {/* Preset buttons */}
+      {/* Preset quick-select buttons */}
       <View
         style={{
           flexDirection: 'row',

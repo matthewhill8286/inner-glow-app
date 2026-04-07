@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, Pressable, ScrollView, Platform, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -7,7 +7,13 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, UI } from '@/constants/theme';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useSleep } from '@/hooks/useSleep';
-import { scheduleBedtimeReminders, cancelBedtimeReminders } from '@/lib/notifications';
+import { toast } from '@/components/Toast';
+import {
+  scheduleBedtimeReminders,
+  cancelBedtimeReminders,
+  scheduleWakeUpAlarms,
+  cancelWakeUpAlarms,
+} from '@/lib/notifications';
 
 /* ── helpers ──────────────────────────────────────── */
 function goBack(from?: string) {
@@ -68,24 +74,43 @@ export default function SleepScheduleScreen() {
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const { from } = useLocalSearchParams<{ from?: string }>();
-  const { setSleepMode } = useSleep();
+  const { setSleepMode, saveSchedule, schedule } = useSleep();
 
-  // Sleep time state
-  const [sleepHour, setSleepHour] = useState(22);
-  const [sleepMin, setSleepMin] = useState(0);
-  const [wakeHour, setWakeHour] = useState(6);
-  const [wakeMin, setWakeMin] = useState(0);
+  // Sleep time state — initialised from saved schedule
+  const [sleepHour, setSleepHour] = useState(schedule.sleepHour);
+  const [sleepMin, setSleepMin] = useState(schedule.sleepMin);
+  const [wakeHour, setWakeHour] = useState(schedule.wakeHour);
+  const [wakeMin, setWakeMin] = useState(schedule.wakeMin);
 
   // Repeat snooze (1-5)
-  const [snoozeCount, setSnoozeCount] = useState(1);
+  const [snoozeCount, setSnoozeCount] = useState(schedule.snoozeCount);
 
   // Days of week
-  const [selectedDays, setSelectedDays] = useState<string[]>(['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
+  const [selectedDays, setSelectedDays] = useState<string[]>(schedule.selectedDays);
 
   // Toggles
-  const [autoDisplayStats, setAutoDisplayStats] = useState(true);
-  const [autoSetAlarm, setAutoSetAlarm] = useState(false);
-  const [bedtimeReminder, setBedtimeReminder] = useState(true);
+  const [autoDisplayStats, setAutoDisplayStats] = useState(schedule.autoDisplayStats);
+  const [autoSetAlarm, setAutoSetAlarm] = useState(schedule.autoSetAlarm);
+  const [bedtimeReminder, setBedtimeReminder] = useState(schedule.bedtimeReminder);
+
+  // Sync local state when the persisted schedule loads from AsyncStorage
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => {
+    if (!hydrated && schedule.savedAt) {
+      setSleepHour(schedule.sleepHour);
+      setSleepMin(schedule.sleepMin);
+      setWakeHour(schedule.wakeHour);
+      setWakeMin(schedule.wakeMin);
+      setSnoozeCount(schedule.snoozeCount);
+      setSelectedDays(schedule.selectedDays);
+      setAutoDisplayStats(schedule.autoDisplayStats);
+      setAutoSetAlarm(schedule.autoSetAlarm);
+      setBedtimeReminder(schedule.bedtimeReminder);
+      setHydrated(true);
+    }
+  }, [schedule.savedAt]);
+
+  const [saving, setSaving] = useState(false);
 
   const toggleDay = (day: string) => {
     setSelectedDays((prev) =>
@@ -104,33 +129,59 @@ export default function SleepScheduleScreen() {
   };
 
   const handleSave = async () => {
-    // Build a suggested wake time and save schedule
-    const now = new Date();
-    const sleepDate = new Date(now);
-    sleepDate.setHours(sleepHour, sleepMin, 0, 0);
-    if (sleepDate < now) sleepDate.setDate(sleepDate.getDate() + 1);
+    setSaving(true);
+    try {
+      // Build a suggested wake time
+      const now = new Date();
+      const sleepDate = new Date(now);
+      sleepDate.setHours(sleepHour, sleepMin, 0, 0);
+      if (sleepDate < now) sleepDate.setDate(sleepDate.getDate() + 1);
 
-    const wakeDate = new Date(sleepDate);
-    wakeDate.setHours(wakeHour, wakeMin, 0, 0);
-    if (wakeDate <= sleepDate) wakeDate.setDate(wakeDate.getDate() + 1);
+      const wakeDate = new Date(sleepDate);
+      wakeDate.setHours(wakeHour, wakeMin, 0, 0);
+      if (wakeDate <= sleepDate) wakeDate.setDate(wakeDate.getDate() + 1);
 
-    await setSleepMode({
-      suggestedWakeISO: wakeDate.toISOString(),
-      autoDetectionEnabled: autoSetAlarm,
-    });
+      // 1. Save sleep mode (wake time + auto-detection)
+      await setSleepMode({
+        suggestedWakeISO: wakeDate.toISOString(),
+        autoDetectionEnabled: autoSetAlarm,
+      });
 
-    // Schedule or cancel bedtime reminder notifications
-    if (bedtimeReminder && selectedDays.length > 0) {
-      await scheduleBedtimeReminders({
+      // 2. Persist the full schedule so it reloads on next visit
+      await saveSchedule({
         sleepHour,
         sleepMin,
+        wakeHour,
+        wakeMin,
+        snoozeCount,
         selectedDays,
+        autoDisplayStats,
+        autoSetAlarm,
+        bedtimeReminder,
       });
-    } else {
-      await cancelBedtimeReminders();
-    }
 
-    goBack(from);
+      // 3. Schedule or cancel bedtime reminder notifications
+      if (bedtimeReminder && selectedDays.length > 0) {
+        await scheduleBedtimeReminders({ sleepHour, sleepMin, selectedDays });
+      } else {
+        await cancelBedtimeReminders();
+      }
+
+      // 4. Schedule or cancel wake-up alarm notifications
+      if (autoSetAlarm && selectedDays.length > 0) {
+        await scheduleWakeUpAlarms({ wakeHour, wakeMin, selectedDays, snoozeCount });
+      } else {
+        await cancelWakeUpAlarms();
+      }
+
+      toast.success(t('sleepSchedule.scheduleSaved'));
+      router.replace('/(tabs)/sleep' as any);
+    } catch (err) {
+      console.error('Failed to save schedule:', err);
+      toast.error(t('sleepSchedule.scheduleSaveError'));
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -364,13 +415,20 @@ export default function SleepScheduleScreen() {
         {/* ── Save Button ───────────────────────── */}
         <Pressable
           onPress={handleSave}
+          disabled={saving}
           style={({ pressed }) => [
             s.saveBtn,
-            { backgroundColor: '#8B6B47', transform: [{ scale: pressed ? 0.97 : 1 }] },
+            {
+              backgroundColor: '#8B6B47',
+              transform: [{ scale: pressed ? 0.97 : 1 }],
+              opacity: saving ? 0.7 : 1,
+            },
           ]}
         >
           <MaterialIcons name="check-circle" size={20} color="#FFF" />
-          <Text style={s.saveBtnText}>{t('sleepSchedule.setSchedule')}</Text>
+          <Text style={s.saveBtnText}>
+            {saving ? t('sleepSchedule.saving') : t('sleepSchedule.setSchedule')}
+          </Text>
         </Pressable>
       </ScrollView>
     </View>

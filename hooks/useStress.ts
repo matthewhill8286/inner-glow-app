@@ -171,6 +171,7 @@ export const useStress = (opts?: { lazy?: boolean }) => {
     stressKit: stressKitQuery.data || null,
     stressHistory: stressHistoryQuery.data || [],
     isLoading: stressKitQuery.isLoading || (!lazy && stressHistoryQuery.isLoading),
+    isFetching: stressKitQuery.isFetching || (!lazy && stressHistoryQuery.isFetching),
     isError: stressKitQuery.isError || stressHistoryQuery.isError,
     error: stressKitQuery.error || stressHistoryQuery.error,
     saveStressKit: saveStressKitMutation.mutateAsync,

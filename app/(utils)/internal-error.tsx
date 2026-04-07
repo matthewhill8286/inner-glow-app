@@ -1,19 +1,20 @@
 import React from 'react';
 import { View, Text, Pressable, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { router } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, UI } from '@/constants/theme';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
 export default function InternalErrorScreen() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const theme = useColorScheme() ?? 'light';
   const colors = Colors[theme];
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      {/* Header */}
       <View
         style={{
           paddingTop: insets.top + 16,
@@ -45,7 +46,6 @@ export default function InternalErrorScreen() {
         </Pressable>
       </View>
 
-      {/* Content */}
       <View
         style={{
           flex: 1,
@@ -55,7 +55,6 @@ export default function InternalErrorScreen() {
           paddingBottom: 60,
         }}
       >
-        {/* Illustration - Warning triangle */}
         <View
           style={{
             width: 200,
@@ -70,7 +69,6 @@ export default function InternalErrorScreen() {
           <MaterialIcons name="warning" size={90} color="#E8985A" />
         </View>
 
-        {/* Title */}
         <Text
           style={{
             fontSize: 26,
@@ -80,10 +78,9 @@ export default function InternalErrorScreen() {
             marginBottom: 10,
           }}
         >
-          Internal Error
+          {t('internalError.title')}
         </Text>
 
-        {/* Subtitle */}
         <Text
           style={{
             fontSize: 14,
@@ -93,10 +90,9 @@ export default function InternalErrorScreen() {
             marginBottom: 20,
           }}
         >
-          Whoops! Our server seems to error :(
+          {t('internalError.subtitle')}
         </Text>
 
-        {/* Status Badge */}
         <View
           style={{
             flexDirection: 'row',
@@ -112,12 +108,11 @@ export default function InternalErrorScreen() {
         >
           <Text style={{ fontSize: 14 }}>{'\u26A0\uFE0F'}</Text>
           <Text style={{ fontSize: 13, fontWeight: '700', color: '#E8985A' }}>
-            Status Code: 500
+            {t('internalError.statusCode500')}
           </Text>
         </View>
       </View>
 
-      {/* Take Me Home Button */}
       <View
         style={{ paddingHorizontal: UI.spacing.xl, paddingBottom: Platform.OS === 'ios' ? 44 : 28 }}
       >
@@ -135,7 +130,7 @@ export default function InternalErrorScreen() {
             ...UI.shadow.md,
           })}
         >
-          <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>Take Me Home</Text>
+          <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{t('errorScreen.takeMeHome')}</Text>
           <MaterialIcons name="home" size={20} color="#fff" />
         </Pressable>
       </View>

@@ -1,19 +1,20 @@
 import React from 'react';
 import { View, Text, Pressable, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { router } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, UI } from '@/constants/theme';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
 export default function EmptyStateScreen() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const theme = useColorScheme() ?? 'light';
   const colors = Colors[theme];
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      {/* Header */}
       <View
         style={{
           paddingTop: insets.top + 16,
@@ -45,7 +46,6 @@ export default function EmptyStateScreen() {
         </Pressable>
       </View>
 
-      {/* Content */}
       <View
         style={{
           flex: 1,
@@ -78,7 +78,7 @@ export default function EmptyStateScreen() {
             marginBottom: 10,
           }}
         >
-          Nothing Here Yet
+          {t('emptyScreen.title')}
         </Text>
 
         <Text
@@ -90,7 +90,7 @@ export default function EmptyStateScreen() {
             marginBottom: 20,
           }}
         >
-          This space is waiting to be filled with your content.
+          {t('emptyScreen.subtitle')}
         </Text>
 
         <View
@@ -107,11 +107,10 @@ export default function EmptyStateScreen() {
           }}
         >
           <MaterialIcons name="hourglass-empty" size={16} color="#5A8FB5" />
-          <Text style={{ fontSize: 13, fontWeight: '700', color: '#5A8FB5' }}>Empty State</Text>
+          <Text style={{ fontSize: 13, fontWeight: '700', color: '#5A8FB5' }}>{t('emptyScreen.badge')}</Text>
         </View>
       </View>
 
-      {/* Take Me Home Button */}
       <View
         style={{ paddingHorizontal: UI.spacing.xl, paddingBottom: Platform.OS === 'ios' ? 44 : 28 }}
       >
@@ -129,7 +128,7 @@ export default function EmptyStateScreen() {
             ...UI.shadow.md,
           })}
         >
-          <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>Take Me Home</Text>
+          <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{t('errorScreen.takeMeHome')}</Text>
           <MaterialIcons name="home" size={20} color="#fff" />
         </Pressable>
       </View>
