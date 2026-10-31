@@ -65,6 +65,13 @@ const SETTINGS_ITEMS: {
     route: '/(tabs)/profile/categories',
   },
   {
+    key: 'connectedApps',
+    emoji: '❤️',
+    label: 'connectedApps.title',
+    tint: '#C45B5B',
+    route: '/(tabs)/profile/connected-apps',
+  },
+  {
     key: 'help',
     emoji: '💬',
     label: 'profilePage.helpCenter',

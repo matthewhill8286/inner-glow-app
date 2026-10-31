@@ -12,6 +12,7 @@ import { useSleep } from '@/hooks/useSleep';
 import { SleepEntry } from '@/lib/types';
 import { useTranslation } from 'react-i18next';
 import { useSleepDetection } from '@/hooks/useSleepDetection';
+import { SleepNoData } from '@/components/sleep/SleepNoData';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -287,6 +288,8 @@ export default function SleepScreen() {
 
   // Improvement calculation (mock)
   const improvement = entries.length > 3 ? 87 : entries.length > 1 ? 42 : 0;
+
+  if (!loading && entries.length === 0) return <SleepNoData />;
 
   return (
     <View style={[s.container, { backgroundColor: colors.background, paddingTop: insets.top + 6 }]}>

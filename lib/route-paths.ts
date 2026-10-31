@@ -81,6 +81,7 @@ export const ROUTE_PATHS = [
   "/(tabs)/profile",
   "/(tabs)/search",
   "/(tabs)/profile/categories",
+  "/(tabs)/profile/connected-apps",
   "/(tabs)/sleep/[id]",
   "/(tabs)/sleep/history",
   "/(tabs)/sleep",

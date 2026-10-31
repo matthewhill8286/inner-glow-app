@@ -144,7 +144,8 @@ export const useSleep = () => {
           end_iso: input.endISO,
           quality: input.quality,
           awakenings: input.awakenings,
-          duration: input.duration,
+          // `sleep.duration` is an integer column read as hours, so 7.5 must not reach it unrounded.
+          duration: input.duration == null ? input.duration : Math.round(input.duration),
           notes: input.notes,
           created_at: input.createdAtISO || new Date().toISOString(),
         })

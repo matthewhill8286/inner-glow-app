@@ -64,6 +64,9 @@ export default function LogSleepScreen() {
       } as any);
       toast.success(t('sleepLog.sleepSaved'));
       goBack(params.from);
+    } catch (err) {
+      console.warn('[sleep-log] save failed', err);
+      toast.error(t('sleepLog.sleepSaveFailed'));
     } finally {
       setSaving(false);
     }
