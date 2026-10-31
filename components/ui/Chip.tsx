@@ -72,14 +72,15 @@ export function Chip({
 
 /** Small non-interactive chips: meta ("4 min"), info (icon + text), Go Pro. */
 export function MetaChip({ label, variant = 'meta', icon, style }: { label: string; variant?: 'meta' | 'info' | 'pro'; icon?: IconName; style?: StyleProp<ViewStyle> }) {
+  // Paddings from Figma: meta 4/10, info 6/14/6/12, Go Pro 10/12/10/10.
   const look =
     variant === 'meta'
-      ? { h: 22, padH: 10, bg: palette.border, fg: palette.plumDeep }
+      ? { h: 22, padL: 10, padR: 10, bg: palette.border, fg: palette.plumDeep }
       : variant === 'info'
-        ? { h: 29, padH: 13, bg: palette.selected, fg: palette.plum }
-        : { h: 37, padH: 11, bg: palette.plum, fg: palette.white };
+        ? { h: 29, padL: 12, padR: 14, bg: palette.selected, fg: palette.plum }
+        : { h: 37, padL: 10, padR: 12, bg: palette.plum, fg: palette.white };
   return (
-    <View style={[{ height: look.h, paddingHorizontal: look.padH, borderRadius: 999, backgroundColor: look.bg, flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start' }, style]}>
+    <View style={[{ height: look.h, paddingLeft: look.padL, paddingRight: look.padR, borderRadius: 999, backgroundColor: look.bg, flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start' }, style]}>
       {icon && <Icon name={icon} size={variant === 'pro' ? 16 : 14} color={look.fg} />}
       <Text style={[Type.caption, { color: look.fg }, variant === 'pro' && { fontSize: 14, fontWeight: '700' }]}>{label}</Text>
     </View>
@@ -90,10 +91,10 @@ export function MetaChip({ label, variant = 'meta', icon, style }: { label: stri
 export function Tag({ label, onRemove, style }: { label: string; onRemove?: () => void; style?: StyleProp<ViewStyle> }) {
   return (
     <View style={[{ height: 24, borderRadius: 32, paddingHorizontal: 8, backgroundColor: palette.selected, flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start' }, style]}>
-      <Text style={[Type.caption, { fontWeight: '700', letterSpacing: -0.02, color: palette.plum }]}>{label}</Text>
+      <Text style={[Type.caption, { fontWeight: '700', letterSpacing: -0.018, color: palette.plumDeep }]}>{label}</Text>
       {onRemove && (
         <Pressable accessibilityRole="button" accessibilityLabel={`Remove ${label}`} onPress={onRemove} hitSlop={10}>
-          <Icon name="arrow/close" size={16} color={palette.plum} />
+          <Icon name="arrow/close" size={16} color={palette.plumDeep} />
         </Pressable>
       )}
     </View>

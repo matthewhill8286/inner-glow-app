@@ -13,6 +13,8 @@ import { Icon } from '@/components/icons/Icon';
 import { ICONS, type IconName } from '@/components/icons/iconData';
 import { GlowField, GlowOrb } from '@/components/glow/Glow';
 import { LogoLockup, LogoMark } from '@/components/brand/LogoMark';
+import { GlowTabBar, type GlowTab } from '@/components/navigation/GlowTabBar';
+import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 
 /**
  * Developer gallery of the design foundations (docs/design-handoff/00-foundations.md),
@@ -61,7 +63,11 @@ export default function DesignSystemScreen() {
           <AppButton title="Continue" />
           <AppButton title="Soft" variant="soft" />
           <AppButton title="Outline" variant="outline" />
-          <AppButton title="Selected" variant="selected" />
+          <View style={{ flexDirection: 'row', gap: 16 }}>
+            <AppButton title="Yes" size="lg" variant="selected" style={{ flex: 1 }} />
+            <AppButton title="No" size="lg" variant="unselected" style={{ flex: 1 }} />
+          </View>
+          <AppButton title="Voice" variant="outline" icon="line/mic" iconPosition="left" style={{ alignSelf: 'flex-start' }} />
           <AppButton title="Prefer to skip, thanks" variant="ghost" icon="arrow/close" />
           <AppButton title="Delete account" variant="danger" />
           <AppButton title="Text button" variant="text" />
@@ -123,6 +129,12 @@ export default function DesignSystemScreen() {
           <LegalNote text="INNER GLOW supports your wellbeing. It is not a medical service and does not replace professional care." />
         </Section>
 
+        <Section title="Tab bar">
+          <View style={{ height: 130, marginHorizontal: -24, justifyContent: 'flex-end' }}>
+            <GlowTabBar {...TAB_BAR_MOCK} tabs={PREVIEW_TABS} activeRoute="home" />
+          </View>
+        </Section>
+
         <Section title="Icons">
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 14 }}>
             {(Object.keys(ICONS) as IconName[]).map((name) => (
@@ -151,6 +163,22 @@ function TopFade({ height }: { height: number }) {
     </Svg>
   );
 }
+
+const PREVIEW_TABS: GlowTab[] = [
+  { route: 'home', label: 'Home', icon: 'line/home' },
+  { route: 'mindful', label: 'Practices', icon: 'line/meditate' },
+  { route: 'chat', label: 'Glow AI', icon: 'line/sparkle', centre: true },
+  { route: 'journal', label: 'Journal', icon: 'line/journal' },
+  { route: 'profile', label: 'Profile', icon: 'line/user' },
+];
+
+// Static navigator stand-ins so the bar can be previewed outside the tab navigator.
+const TAB_BAR_MOCK = {
+  state: { routes: PREVIEW_TABS.map((t) => ({ key: t.route, name: t.route })) },
+  navigation: { emit: () => ({ defaultPrevented: true }), navigate: () => {} },
+  descriptors: {},
+  insets: { top: 0, right: 0, bottom: 0, left: 0 },
+} as unknown as BottomTabBarProps;
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (

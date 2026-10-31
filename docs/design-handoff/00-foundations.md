@@ -334,7 +334,7 @@ h40, radius 32, padding 8/14, stroke 1 `#8E7FA6`, no fill, label SemiBold 16 ls 
 343×48 row, gap 12: back container 48 (above) → title SemiBold 20 ls −0.5% `#4E3A5E` (fills) → step tag (Tag Master sm: h28, radius 32, padding 6/10, label Bold 14 ls −0.2%; currently old `#E8DDD9`/`#926247` → use `#F1ECF5`/`#6B5279`). Variant "Icon Left Only" = back container only. In Mindful two Top Nav instances (`219×24`, `265×24`, fill `#4E3A5E`) are misused as something else — ignore.
 
 ### 4.5 Nav / Tab Bar (set `6604:2177`; variants Home `6604:2068`, Practices `6604:2090`, Glow AI `6604:2112`, Journal `6604:2133`, Profile `6604:2155`)
-- Frame 375×92 placed at y719 (overlaps the 34 home-indicator zone). Bar = rect y22, 375×70, fill `#FFFFFF`, no radius, `shadow.tabBar`.
+- Frame 375×92 placed at y719 (overlaps the 34 home-indicator zone). Bar = rect y22, 375×70, fill `#FFFFFF`, top corners radius 32 (bottom square), `shadow.tabBar`.
 - 5 slots of 75: Home, Practices, **Glow AI (centre)**, Journal, Profile. Icons Icon/Line 24 (`home 6604:2063`, `meditate 6598:1789`, `journal 6598:1795`, `user 6604:2067`) at y32, centred in slot. Labels at y60, slot-wide, centred, Urbanist 11: active **Bold `#4E3A5E`**, inactive **Medium `#A6A09B`**; icon stroke active `#6B5279` (Journal variant uses `#4E3A5E`, inconsistency), inactive `#A6A09B`.
 - Active glow: ellipse 36×36 `#E2CC40@0.30`, LAYER_BLUR 10, centred on the active icon (x = slot centre − 18, y26).
 - Centre button: 60×60 circle at x157.5, **y−6** (rises 28 above bar top), RADIAL `#8E7FA6`→`#6B5279`, stroke 5 `#F7F4F2` (outside ring), `shadow.glowButton`, Icon/Line `sparkle` 26 at 17,17 stroked `#FFFFFF` 1.7 with mustard accent. Label "Glow AI" under it at y60 (Bold `#4E3A5E` when active).

@@ -58,7 +58,7 @@ export function GlowTabBar({
                   </Defs>
                   <Circle cx={35} cy={35} r={32.5} fill="url(#glowTab)" stroke={palette.bg} strokeWidth={5} />
                 </Svg>
-                <Icon name={tab.icon} size={26} color={palette.white} strokeWidth={1.57} />
+                <Icon name={tab.icon} size={26} color={palette.white} strokeWidth={1.6} />
               </View>
             ) : (
               <View style={styles.iconWrap}>
@@ -84,16 +84,20 @@ const styles = StyleSheet.create({
     bottom: 0,
     flexDirection: 'row',
     backgroundColor: palette.white,
+    // Bar rectangle in all 25 Figma instances: top corners 32, bottom square.
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
   },
   slot: { flex: 1, alignItems: 'center', paddingTop: 10 },
   iconWrap: { width: 24, height: 24, alignItems: 'center', justifyContent: 'center' },
   activeGlow: { position: 'absolute', left: -6, top: -6 },
-  // 60pt button with a 5pt background-coloured ring, rising 28pt above the bar.
+  // 60pt button whose circle top sits 28pt above the bar, plus a 5pt outside ring in the
+  // background colour (70pt box). Slot padding is 10, so the box starts 10 + 28 + 5 = 43pt up.
   centreButton: {
     width: 70,
     height: 70,
-    marginTop: -38,
-    marginBottom: -8,
+    marginTop: -43,
+    marginBottom: -3,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 35,

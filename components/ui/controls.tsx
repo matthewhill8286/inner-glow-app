@@ -164,9 +164,9 @@ export function LegalNote({ text, style }: { text: string; style?: StyleProp<Vie
   return (
     <View style={[{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }, style]}>
       <Svg width={14} height={14} viewBox="0 0 14 14" style={{ marginTop: 1 }}>
-        <Circle cx={7} cy={7} r={6.2} stroke={palette.lavender} strokeWidth={1.05} fill="none" />
-        <Line x1={7} y1={6.3} x2={7} y2={10} stroke={palette.lavender} strokeWidth={1.2} strokeLinecap="round" />
-        <Circle cx={7} cy={4.2} r={0.8} fill={palette.lavender} />
+        <Circle cx={7} cy={7} r={5.54} stroke={palette.lavender} strokeWidth={1.05} fill="none" />
+        <Line x1={7} y1={6.42} x2={7} y2={9.92} stroke={palette.lavender} strokeWidth={1.05} strokeLinecap="round" />
+        <Circle cx={7} cy={4.43} r={0.7} fill={palette.lavender} />
       </Svg>
       <Text style={[Type.legal, { color: palette.textLegal, flex: 1 }]}>{text}</Text>
     </View>

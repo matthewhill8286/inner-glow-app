@@ -18,17 +18,19 @@ import { Icon, type IconName } from '@/components/icons/Icon';
  * `size="lg"` is the 18pt label used by in-flow component buttons;
  * `md` is the 16pt label used by full-width bottom CTAs.
  */
-export type ButtonVariant = 'primary' | 'secondary' | 'soft' | 'outline' | 'selected' | 'ghost' | 'text' | 'danger';
+export type ButtonVariant = 'primary' | 'secondary' | 'soft' | 'outline' | 'selected' | 'unselected' | 'ghost' | 'text' | 'danger';
 
 type VariantStyle = { bg: string; border?: string; borderWidth?: number; fg: string };
 
 const VARIANTS: Record<ButtonVariant, VariantStyle> = {
   primary: { bg: palette.plum, fg: palette.white },
   // `secondary` is the pre-redesign name; it now renders as the outline button.
-  secondary: { bg: 'transparent', border: palette.plum, borderWidth: 1.5, fg: palette.plum },
-  outline: { bg: 'transparent', border: palette.plum, borderWidth: 1.5, fg: palette.plum },
+  secondary: { bg: palette.white, border: palette.plum, borderWidth: 1.5, fg: palette.plum },
+  outline: { bg: palette.white, border: palette.plum, borderWidth: 1.5, fg: palette.plum },
   soft: { bg: palette.softButton, fg: palette.ink },
+  // Yes / No option pair (Assessment `4002:14809` / `4002:14810`).
   selected: { bg: palette.selected, border: palette.plum, borderWidth: 1.5, fg: palette.ink },
+  unselected: { bg: palette.white, fg: palette.plumDeep },
   ghost: { bg: palette.selected, fg: palette.plum },
   text: { bg: 'transparent', fg: palette.plum },
   danger: { bg: palette.danger, fg: palette.white },
@@ -59,7 +61,10 @@ export function AppButton({
   const v = VARIANTS[variant];
   const isText = variant === 'text';
   const label = size === 'lg' ? { fontSize: 18, letterSpacing: -0.07 } : { fontSize: 16, letterSpacing: 0 };
-  const iconNode = icon ? <Icon name={icon} size={24} color={v.fg} /> : null;
+  // Component buttons (lg) carry a 24pt icon with a 12 gap; full-width frame buttons an 18pt icon with 10 (outline 8).
+  const iconSize = size === 'lg' ? 24 : 18;
+  const gap = size === 'lg' ? 12 : variant === 'outline' || variant === 'secondary' ? 8 : 10;
+  const iconNode = icon ? <Icon name={icon} size={iconSize} color={v.fg} /> : null;
   return (
     <Pressable
       {...props}
@@ -72,7 +77,7 @@ export function AppButton({
           paddingHorizontal: isText ? 12 : 24,
           borderRadius: 999,
           flexDirection: 'row',
-          gap: 12,
+          gap,
           justifyContent: 'center',
           alignItems: 'center',
           backgroundColor: v.bg,
