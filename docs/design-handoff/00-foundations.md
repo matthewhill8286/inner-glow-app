@@ -526,3 +526,139 @@ Not in code at all: Glow renderer, icon module, logo SVGs, Legal/Note, toggle, r
 - "Helper" component is ruler ticks, not helper text; no helper/error text style exists.
 - Main components are stale (old palette, ExtraBold); every instance carries overrides, so detaching or resetting overrides in Figma would revert screens to brown.
 - Arrow/Soft and Arrow/Sketch styles are not used by any ready screen; confirm whether they replace the Glow arrows.
+
+---
+
+## 11. New component library ("🧩 Design System" page `6746:4318`)
+
+Added on 31 Oct 2026 (afternoon). Docs 08, 09 and 10 build their 35 screens from it. Unlike the main components in §4, this library is already in the Dusk Plum palette and Urbanist SemiBold, so its main components are the source of truth, not the instances. Extracted with read-only `use_figma` scripts. Library frame: `6750:4545`. Colour frame `6750:4131`, typography frame `6750:4349`.
+
+Code: every component below is in `components/ui` and shown in the dev gallery `app/(utils)/design-system.tsx` (sections prefixed "Library").
+
+### 11.0 Tokens and type
+
+Primitives in the colour frame that were not in `palette`:
+
+| Figma | Hex | Code token | Used for |
+|---|---|---|---|
+| plum/200 (border/strong) | `#CFC6D6` | `palette.borderStrong` | Back Button stroke, Radio and Checkbox off, sheet grabber |
+| danger/50 (surface/danger) | `#FBEDEE` | `palette.dangerSoft` | danger surfaces |
+| plum/150 (control/off) | `#E1DAE6` | `palette.toggleOffAlt` (exists) | Toggle off, disabled button fill |
+| plum/120 | `#DDD3E8` | not added | Okay mood colour candidate (99 §0) |
+| glow/cream | `#FAEDB8` | not added | not used by components |
+| glow/gold | `#B39A1E` | `Colors.light.warning` (exists) | text/gold |
+
+Semantic map in Figma: bg/canvas → `#F7F4F2`, bg/night → `#241A2E`, surface/card → `#FFFFFF`, surface/selected → `#F1ECF5`, surface/subtle → `#F5F1F7`, surface/danger → `#FBEDEE`, border/default → `#E6E0EA`, border/strong → `#CFC6D6`, border/selected → `#6B5279`, divider → `#EFEAF2`, text/primary → `#241A2E`, text/secondary → `#4E3A5E`, text/brand → `#6B5279`, text/accent → `#8E7FA6`, text/muted → `#736B66`, text/subtle → `#A6A09B`, text/on-brand → `#FFFFFF`, text/danger → `#B4505A`, action/primary → `#6B5279`, action/danger → `#B4505A`, control/off → `#E1DAE6`.
+
+Type styles (all Urbanist, auto line height). New `Type` tokens in `constants/typography.ts` cover the ones the components use: `bodyM` Regular 15, `bodyMMedium` Medium 15, `bodyMSemi` SemiBold 15, `bodyS` Regular 14, `bodySMedium` Medium 14, `buttonL` SemiBold 16, `buttonS` SemiBold 14, `captionM` Regular 13, `captionS` Regular 12, `labelM` Bold 12, `tag` SemiBold 12, `note` Regular 11. The full Figma scale is Display XL/L/M 64/56/40 Regular, Heading XL/H1/H2/H3 32/30/26/22 SemiBold, Title L/M/S 20/18/16 SemiBold, Body XL 18 Regular, Body L 16 Regular/Medium, Body M 15 Regular/Medium/SemiBold, Body S 14 Regular/Medium/SemiBold, Caption 13 Regular/Medium/SemiBold, Label M 12 Bold, Caption S 12 Regular/Medium/SemiBold, Micro 11 Regular/Medium/SemiBold, Micro XS 10 Medium, Button L 16 SemiBold, Button S 14 SemiBold.
+
+### 11.1 Nav Bar (set `6753:4187`)
+
+| Variant | Spec |
+|---|---|
+| Theme=Light `6753:4165` | 327×44 row, gap 8, centred vertically: Back Button Light 44 → Title 223 wide, SemiBold 15 `#4E3A5E`, centred → empty 44×44 "Right slot". Placed at x24 y54 on screens. |
+| Theme=Dark `6753:4176` | Same, Back Button Dark, title `#FFFFFF`. |
+
+Code: `TopNav layout="bar"` (and the `NavBar` wrapper) in `components/ui/IconButton.tsx`; `tone="dark"` for Theme=Dark; `trailing` fills the right slot.
+
+### 11.2 Back Button (set `6746:4457`) and Icon Button (set `6753:4143`)
+
+All 44×44, radius 22, Icon/Arrow 22 at 11,11 (back `6589:1632` or close `6589:1672`).
+
+| Variant | Fill | Stroke | Code |
+|---|---|---|---|
+| Back Button Theme=Light `6746:4449` | `#FFFFFF` @0.70 | 1 `#CFC6D6` | `IconButton variant="nav"` |
+| Back Button Theme=Dark `6746:4453` | none | 1 `#FFFFFF` @0.40 | `variant="nav" tone="white"` |
+| Icon Button Style=Outline `6753:4131` | `#FFFFFF` @0.70 | 1 `#CFC6D6` | `variant="nav" icon="arrow/close"` |
+| Icon Button Style=Filled `6753:4135` | `#F1ECF5` | none | `variant="filled"` |
+| Icon Button Style=On dark `6753:4139` | `#FFFFFF` @0.08 | 1 `#FFFFFF` @0.20 | `variant="onDark"` |
+| Right-slot circle (practice screens, not a component) | `#FFFFFF`, active `#F1ECF5` | none | `variant="solid" active iconSize={20}` |
+
+Conflict: the Nav Bar instances override the Light fill to solid `#FFFFFF` and the Dark stroke to solid `#FFFFFF`. Code uses the main component values (@0.70, @0.40).
+
+### 11.3 List Row (set `6746:4495`)
+
+Row 327×60, horizontal, padding 12/16, gap 12, centred vertically.
+- Leading "Icon bg" 36×36 `#F1ECF5` r18 with Icon/Line 20 at 8,8 (heart in the main).
+- Text column gap 2: Label Medium 15 `#241A2E`; supporting text (from screens) Regular 12 `#736B66`.
+- Trailing: Chevron = Value text Regular 13 `#736B66` + Icon/Arrow chevron-right 18 at x293 (`6746:4458`); Toggle = Toggle On instance 46×28 at x265 y16 (`6746:4469`); Radio = Radio Off 22 at x289 y19 (`6746:4478`); Value = Regular 13 `#736B66` right-aligned (`6746:4487`).
+- Style=Grouped: no fill; rows sit in a `#FFFFFF` r24 card with no padding; screens draw a 1px `#EFEAF2` divider at x64 (247 wide) on rows 2+.
+- Style=Card (`6753:4194` chevron, `6753:4203` toggle, `6753:4211` radio, `6753:4219` value): row fill `#FFFFFF` r20.
+
+Code: `ListGroup` (`appearance="grouped" | "card"`) and `ListRow` (`trailing="chevron" | "toggle" | "radio" | "value" | "none"`, `icon`, `supportingText`, `value`) in `components/ui/ListRow.tsx`. The divider starts under the label (x64) when there is an icon and at x16 when there is none.
+
+### 11.4 Button (set `6746:4335`)
+
+Sizes: L 327×56, padding 0/24, label SemiBold 16; S hug×40, padding 0/16, label SemiBold 14. All r999, no icon.
+
+| Type | Default | Pressed | Disabled |
+|---|---|---|---|
+| Primary (`6746:4319`, S `6746:4327`) | `#6B5279`, text `#FFFFFF` | `#4E3A5E` (`6762:4815`) | `#E1DAE6`, text `#A6A09B` (`6762:4817`) |
+| Secondary (`6746:4321`, S `6746:4329`) | `#F1ECF5` + 1.5 `#6B5279`, text `#6B5279` | `#EFEAF2` + 1.5 `#6B5279` (`6762:4819`) | `#F5F1F7` + 1.5 `#E6E0EA`, text `#A6A09B` (`6762:4821`) |
+| Ghost (`6746:4323`, S `6746:4331`) | no fill, text `#6B5279` | `#F1ECF5` (`6762:4823`) | no fill, text `#A6A09B` (`6762:4825`) |
+| Danger (`6746:4325`, S `6746:4333`) | `#B4505A`, text `#FFFFFF` | `#B4505A` @0.85 (`6762:4827`) | `#E1DAE6`, text `#A6A09B` (`6762:4829`) |
+| On dark (`6762:4811`, S `6762:4813`) | `#EFEAF2`, text `#000000` | `#E6E0EA` (`6762:4847`) | `#E1DAE6`, text `#A6A09B` (`6762:4849`) |
+
+Code: `AppButton variant="primary" | "secondary" | "ghost" | "danger" | "onDark"`, `size="md"` (L) or `"s"` (S); Pressed and Disabled use these looks. `secondary` changed from the white outline to the lavender fill, and `ghost` changed from a lavender fill to transparent. The old looks stay available as `outline` (white + plum ring) and `tonal` (lavender fill, no stroke). On dark text is `#000000` in Figma; code uses ink `#241A2E` like every other dark label.
+
+### 11.5 Field (set `6746:4369`) and Search Field (`6753:4157`)
+
+Field: column 327×74, gap 8. Label Bold 12 `#8E7FA6`. Box 327×52, `#FFFFFF`, r16, padding 0/16, value Regular 15.
+
+| State | Box | Value colour |
+|---|---|---|
+| Default `6746:4357` | stroke 1 `#E6E0EA` | placeholder `#A6A09B` |
+| Focus `6746:4361` | stroke 1.5 `#6B5279` (no ring) | `#241A2E` |
+| Filled `6746:4365` | stroke 1 `#E6E0EA` | `#241A2E` |
+| Error `6762:4859` | stroke 1.5 `#B4505A` | `#241A2E` |
+| Disabled `6762:4864` | fill `#F5F1F7`, stroke 1 `#000000`; label `#A6A09B` | `#A6A09B` |
+
+Search Field: 327×48, `#F5F1F7`, stroke 1 `#E6E0EA`, r24, padding 0/16, gap 10. Glyph 20×20, stroke 1.5 `#8E7FA6` (now Icon/Line search `6753:4275`). Placeholder Regular 14 `#A6A09B`; typed text `#241A2E`. Focused (10 §2): stroke 1.5 `#6B5279`.
+
+Code: `AppField variant="box"` and `variant="search"`; `editable={false}` gives the disabled look. The disabled stroke `#000000` reads as a slip; code uses `#E6E0EA`. There is still no error message style; code shows the message in caption danger under the box.
+
+### 11.6 Controls, chip, tag, segmented, legal note
+
+| Component | Spec | Code |
+|---|---|---|
+| Toggle `6746:4340` (On `6746:4336`, Off `6746:4338`) | 46×28 r999; on `#6B5279`, off `#E1DAE6`; knob 22 `#FFFFFF` at x21 (on) / x3 (off) | `Toggle` |
+| Radio `6746:4346` (On `6746:4341`, Off `6746:4344`) | 22. On: filled `#6B5279` with 1.5 `#6B5279` stroke and an 8 `#FFFFFF` dot at 7,7. Off: ring 1.5 `#CFC6D6`, no fill | `Radio` |
+| Checkbox `6746:4351` (On `6746:4347`, Off `6746:4350`) | 22 r7. On: `#6B5279` + 1.5 `#6B5279`, check 10×7 stroke 1.8 `#FFFFFF`. Off: `#FFFFFF` + 1.5 `#CFC6D6` | `Checkbox` |
+| Chip `6746:4356` (Default `6746:4352`, Selected `6746:4354`) | h34, padding 8/14, r999. Default `#FFFFFF` + 1 `#E6E0EA`, Medium 13 `#4E3A5E`. Selected `#F1ECF5` + 1.5 `#6B5279`, Medium 13 `#6B5279` | `Chip kind="preset"` |
+| Tag `6753:4154` | h22 r999, padding 4/10, gap 4, SemiBold 12. Default `6753:4146` `#F1ECF5`/`#6B5279`; Brand `6753:4148` `#6B5279`/`#FFFFFF`; Glow `6753:4150` `#E2CC40`/`#241A2E`; On dark `6753:4152` `#FFFFFF`@0.12/`#FFFFFF` | `Tag variant=…`, `ProTag` (Brand "PRO"); `onRemove` keeps the removable form |
+| Segmented `6746:4380` (`6746:4370`, `6746:4375`) | 327×44, `#FFFFFF` + 1 `#E6E0EA`, r999, padding 4, gap 4. Segment h36 r999; active `#F1ECF5` + 1.5 `#6B5279`, SemiBold 14 `#6B5279`; inactive Medium 14 `#736B66` | `SegmentedControl variant="compact"` |
+| Legal/Note `6674:2966` | 327 row, gap 8: info 14 (stroke 1.05 `#8E7FA6`) + Regular 11 auto `#8E7FA6` | `LegalNote` (text was `#8A8296` 140%) |
+
+Related frame-level changes from 10 §2 also applied: meta chip fill `#E6E0EA` (`MetaChip`), speed pill selected weight SemiBold.
+
+### 11.7 Bottom sheet, toast and empty state (frames, not components)
+
+Bottom sheet: overlay `#241A2E` @0.45 (Mood day details `6787:9463`, Reminder `6787:7643`, Choose a sound `6787:6251`) or @0.40 (Entry options `6764:5708`). Sheet `#F7F4F2`, top radii 32/32, bottom 0, padding 12/24/40/24 (42 bottom on Entry options), column gap 16 (`6787:9464`, `6787:7644`) or 20 (`6787:6252`, `6770:4929`), centred. Grabber 40×4 `#CFC6D6` r2 at x168 y12. The End early sheet `6787:6575` still uses the older style: `#FFFFFF`, r40, no grabber. Code: `BottomSheet` (modal, fade overlay, slide-up sheet) and `SheetPanel` in `components/ui/BottomSheet.tsx`; `overlayOpacity`, `gap`, `radius` and `background` cover the variants.
+
+Toast `6787:6370`: hug×41, `#241A2E` r999, padding 12/16, gap 10, Icon/Line 16 `#FFFFFF`, Medium 14 `#FFFFFF`, centred 16 above the CTA. Code: `Toast` in `components/ui/Toast.tsx` (presentational; `components/Toast.tsx` keeps the queued light toasts).
+
+Empty state (09 §2.4): column padding 40/8, gap 12, centred; illustration 160 = glow 128 at 16,16 (`glowColor` @0.35, blur 40) + aura `6787:8542` + core 22 at 69,69 (radial `#FFF6D6` → `#F2D96A`); title SemiBold 22 `#241A2E`; body Regular 14 `#736B66`. Code: `EmptyState` (`glowColor`, `title`, `body`, `children` for the CTA) in `components/ui/EmptyState.tsx`.
+
+### 11.8 Icons added to Icon/Line (`6598:1860`)
+
+Fifteen new variants, drawn at stroke **1.5** (the older Icon/Line variants are 1.6): `settings 6753:4241`, `globe 6753:4248`, `logout 6753:4255`, `trash 6753:4261`, `email 6753:4268`, `search 6753:4275`, `shield 6753:4281`, `mic-off 6764:5036`, `send 6764:5043`, `play 6764:5049`, `pause 6764:5055`, `edit 6764:5062`, `calendar 6764:5069`, `download 6764:5076`, `more 6764:5084`. Plus `line/heart-filled`: the heart instance with its fill switched on (Favourites `6787:6413`). All are in `components/icons/iconData.ts` (`line15` helper). `sliders` and device icons (phone, tablet, laptop) are still not drawn.
+
+### 11.9 Exported art (`assets/svg/illustrations/`)
+
+| File | Node | Size | Notes |
+|---|---|---|---|
+| `empty/aura.svg` | `6787:8542` | 160×160 | Five contours `#6B5279` @0.30–0.10. Glow and core are drawn in code. |
+| `assessment/searching-rings.svg` | `6787:5748` | 96×96 | Three rings @0.12/0.22/0.35 + 14 `#F2D96A` dot. |
+| `setup/checkin-aura.svg` | `6787:5789` | 234.5×216 (viewBox cropped from the 375×812 frame at 71.5,226.8) | Six contours @0.32–0.06. |
+| `practices/sleep-sounds-hero.svg` | `6787:6131` | 327×176 | Sound lines `6787:6134` + moon `6787:6140`. Glow `6787:6133` (158.4 `#D8B4D8`@0.25 blur 30) stays as Skia data. |
+| `practices/box-breathing-hero.svg` | `6787:6283` | 327×176 | Rings `6787:6286/6287` + aura `6787:6288`. Glows `6787:6284/6285/6296` stay as Skia data; the "4 · 4 · 4 · 4" label is live text. |
+| `settings/shield.svg` | `6787:7678` | 200×140 | Three shield outlines + gold and mustard discs. |
+
+### 11.10 Conflicts and Figma slips (design-system value used unless stated)
+
+- Radio: library is 1.5 stroke, filled plum with an 8 white dot; the 08 plan cards draw a 2px ring with a 12 plum dot. Code follows the library.
+- Toggle off: library `#E1DAE6`; the Set up option rows draw `#E6E0EA` (10 §2). Knob: library `#FFFFFF`; Notifications and Security rows use `#FFF6D6` (08 §5). Code follows the library.
+- Back Button fill: main @0.70 white, Nav Bar instance solid white. Code uses @0.70.
+- Field Disabled stroke is `#000000`, and Button On dark text is `#000000`. Both look like slips; code uses `#E6E0EA` and `#241A2E`.
+- List Row divider stays at x64 on rows without an icon (medication list). Code insets to x16.
+- Box breathing hero rings `6787:6286/6287` are at full opacity, and the shield's 48 mustard disc `6787:7684` sits on top of the 28 gold disc `6787:7683`, hiding it. The exports keep both as drawn.
