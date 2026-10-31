@@ -1,6 +1,7 @@
+import { Typography } from '@/constants/typography';
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
+import MaterialIcons from '@/components/AppIcon';
 import { UI, Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
@@ -67,11 +68,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: '900',
-  },
+  cardTitle: { ...Typography.cardHeading, },
   cardDescription: {
+    fontFamily: Typography.family.body,
     fontSize: 14,
     lineHeight: 20,
     marginBottom: 18,

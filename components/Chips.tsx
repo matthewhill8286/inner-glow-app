@@ -1,3 +1,4 @@
+import { Typography } from '@/constants/typography';
 import React from 'react';
 import { View, Text, Pressable, StyleSheet, Animated } from 'react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -80,5 +81,9 @@ function Chip({
 const styles = StyleSheet.create({
   container: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 16 },
   chip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: UI.radius.pill },
-  text: { fontSize: 15, fontWeight: '700' },
+  text: {
+    fontFamily: Typography.family.body,
+    fontSize: 15,
+    fontWeight: Typography.weight.semibold,
+  },
 });

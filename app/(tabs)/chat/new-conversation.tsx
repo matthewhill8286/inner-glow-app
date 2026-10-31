@@ -1,3 +1,7 @@
+import { Typography } from '@/constants/typography';
+import { stageChatDraft } from '@/lib/chat-drafts';
+import { backTo } from '@/lib/navigation';
+import { WellnessIconText } from '@/components/WellnessIconText';
 import React, { useState, useRef } from 'react';
 import {
   View,
@@ -14,7 +18,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, UI } from '@/constants/theme';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialIcons from '@/components/AppIcon';
 import { useTopics } from '@/hooks/useTopics';
 import { useChat } from '@/hooks/useChat';
 import { getPersona, getTopicKeyPrefix } from '@/lib/chat';
@@ -22,32 +26,28 @@ import { buildChatKey, buildNewChatKey } from '@/lib/chatKeys';
 
 /* ── safe back navigation ────────────────────────── */
 function goBack(from?: string) {
-  if (from) {
-    router.replace(from as any);
-  } else {
-    router.back();
-  }
+  backTo(from, '/(tabs)/chat');
 }
 
 /* ── suggestion categories ───────────────────────── */
 const PERSONA_EMOJIS: Record<string, [string, string, string]> = {
   freud: ['💭', '🤲', '🧘'],
-  calm:  ['🌿', '🧘', '🌊'],
+  calm: ['🌿', '🧘', '🌊'],
   sleep: ['🌙', '😴', '🛏️'],
-  mood:  ['🎭', '💡', '🌈'],
+  mood: ['🎭', '💡', '🌈'],
 };
 
 const TOPIC_EMOJIS: Record<string, [string, string, string]> = {
-  topic_anxiety:      ['😰', '🧠', '🌬️'],
-  topic_depression:   ['💙', '🌱', '☀️'],
-  topic_stress:       ['🔥', '⚖️', '🧘'],
-  topic_sleep:        ['🌙', '🛏️', '😴'],
-  topic_relationships:['💬', '🤝', '❤️'],
-  topic_selfEsteem:   ['🪞', '💪', '⭐'],
-  topic_grief:        ['🕊️', '💐', '🌅'],
-  topic_anger:        ['🌋', '🧊', '🎯'],
-  topic_mindfulness:  ['🧘', '🌿', '🔔'],
-  topic_motivation:   ['🚀', '🎯', '💡'],
+  topic_anxiety: ['😰', '🧠', '🌬️'],
+  topic_depression: ['💙', '🌱', '☀️'],
+  topic_stress: ['🔥', '⚖️', '🧘'],
+  topic_sleep: ['🌙', '🛏️', '😴'],
+  topic_relationships: ['💬', '🤝', '❤️'],
+  topic_selfEsteem: ['🪞', '💪', '⭐'],
+  topic_grief: ['🕊️', '💐', '🌅'],
+  topic_anger: ['🌋', '🧊', '🎯'],
+  topic_mindfulness: ['🧘', '🌿', '🔔'],
+  topic_motivation: ['🚀', '🎯', '💡'],
 };
 
 const getSuggestionGroups = (t: any, personaId: string = 'freud', topicPrefix?: string) => {
@@ -154,12 +154,11 @@ export default function NewConversationScreen() {
     const text = (message || inputText).trim();
     if (!text || chatLoading) return;
 
-    router.push({
+    router.replace({
       pathname: '/(tabs)/chat/[issueKey]',
       params: {
-        issueKey: buildNewChatKey(persona.id),
+        issueKey: stageChatDraft(buildNewChatKey(persona.id), text),
         from: '/(tabs)/chat',
-        initialMessage: text,
         persona: persona.id,
       },
     });
@@ -172,8 +171,10 @@ export default function NewConversationScreen() {
     >
       <View style={[s.container, { backgroundColor: colors.background }]}>
         {/* ── Header ──────────────────────────────── */}
-        <View style={[s.header, { marginTop: insets.top + 14 }]}>
+        <View style={[s.header, { marginTop: insets.top + 8 }]}>
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Back to conversations"
             onPress={() => goBack(from)}
             style={({ pressed }) => [
               s.backBtn,
@@ -190,11 +191,14 @@ export default function NewConversationScreen() {
               color={colors.text}
             />
           </Pressable>
-          <View style={[s.headerAvatarWrap, { backgroundColor: persona.color + '15' }]}>
-            <Text style={{ fontSize: 20 }}>{persona.emoji}</Text>
-          </View>
           <View style={{ flex: 1 }}>
-            <Text style={[s.headerTitle, { color: colors.text }]}>{t('chatNew.title')}</Text>
+            <Text
+              numberOfLines={2}
+              accessibilityRole="header"
+              style={[s.headerTitle, { color: colors.text }]}
+            >
+              {t('chatNew.title')}
+            </Text>
             <Text style={[s.headerSub, { color: colors.mutedText }]}>
               {persona.name} · {persona.speciality}
             </Text>
@@ -208,11 +212,12 @@ export default function NewConversationScreen() {
         >
           {/* ── AI Welcome Card ──────────────────── */}
           <View style={[s.welcomeCard, { backgroundColor: persona.color }]}>
-            <View style={[s.welcomeCircle1, { backgroundColor: 'rgba(255,255,255,0.08)' }]} />
-            <View style={[s.welcomeCircle2, { backgroundColor: 'rgba(255,255,255,0.06)' }]} />
-
             <View style={s.welcomeAvatarWrap}>
-              <Text style={{ fontSize: 44 }}>{persona.emoji}</Text>
+              <WellnessIconText
+                style={{ fontFamily: Typography.family.body, fontSize: 28, color: '#FFFFFF' }}
+              >
+                {persona.emoji}
+              </WellnessIconText>
             </View>
             <Text style={s.welcomeTitle}>{persona.name}</Text>
             <Text style={s.welcomeSub}>{persona.speciality}</Text>
@@ -237,7 +242,9 @@ export default function NewConversationScreen() {
           {getSuggestionGroups(t, persona.id, topicPrefix).map((group, gi) => (
             <View key={gi}>
               <View style={s.groupHeader}>
-                <Text style={{ fontSize: 16 }}>{group.emoji}</Text>
+                <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 16 }}>
+                  {group.emoji}
+                </WellnessIconText>
                 <Text style={[s.groupLabel, { color: colors.text }]}>{group.label}</Text>
               </View>
               <View style={s.suggestionsWrap}>
@@ -266,7 +273,9 @@ export default function NewConversationScreen() {
           {topics.length > 0 && (
             <>
               <View style={s.groupHeader}>
-                <Text style={{ fontSize: 16 }}>📋</Text>
+                <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 16 }}>
+                  📋
+                </WellnessIconText>
                 <Text style={[s.groupLabel, { color: colors.text }]}>{t('chatNew.pickTopic')}</Text>
               </View>
               <ScrollView
@@ -305,7 +314,12 @@ export default function NewConversationScreen() {
         </ScrollView>
 
         {/* ── Input Bar ──────────────────────────── */}
-        <View style={[s.inputBar, { borderTopColor: colors.border }]}>
+        <View
+          style={[
+            s.inputBar,
+            { borderTopColor: colors.border, paddingBottom: Math.max(insets.bottom, 12) },
+          ]}
+        >
           <TextInput
             ref={inputRef}
             value={inputText}
@@ -324,6 +338,8 @@ export default function NewConversationScreen() {
           />
           <Pressable
             onPress={() => handleStart()}
+            accessibilityRole="button"
+            accessibilityLabel="Send message"
             disabled={!inputText.trim() || chatLoading}
             style={({ pressed }) => [
               s.sendBtn,
@@ -361,8 +377,8 @@ const s = StyleSheet.create({
     marginBottom: 4,
   },
   backBtn: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
@@ -375,8 +391,8 @@ const s = StyleSheet.create({
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
   },
-  headerTitle: { fontSize: 20, fontWeight: '900' },
-  headerSub: { fontSize: 12, marginTop: 2 },
+  headerTitle: { ...Typography.heading },
+  headerSub: { fontFamily: Typography.family.body, fontSize: 12, marginTop: 2 },
 
   scrollContent: {
     paddingTop: 16,
@@ -387,7 +403,7 @@ const s = StyleSheet.create({
   /* welcome card */
   welcomeCard: {
     borderRadius: UI.radius.xxl,
-    padding: 24,
+    padding: 18,
     alignItems: 'center',
     overflow: 'hidden',
     ...UI.shadow.md,
@@ -409,21 +425,17 @@ const s = StyleSheet.create({
     left: -20,
   },
   welcomeAvatarWrap: {
-    width: 80,
-    height: 80,
+    width: 48,
+    height: 48,
     borderRadius: 28,
     backgroundColor: 'rgba(255,255,255,0.18)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
   },
-  welcomeTitle: {
-    color: '#FFF',
-    fontSize: 20,
-    fontWeight: '900',
-    marginBottom: 6,
-  },
+  welcomeTitle: { ...Typography.heading, color: '#FFF', fontSize: 20, marginBottom: 6 },
   welcomeSub: {
+    fontFamily: Typography.family.body,
     color: 'rgba(255,255,255,0.80)',
     fontSize: 14,
     lineHeight: 21,
@@ -444,8 +456,12 @@ const s = StyleSheet.create({
     gap: 6,
     marginBottom: 6,
   },
-  noticeTitle: { fontSize: 14, fontWeight: '800' },
-  noticeText: { fontSize: 13, lineHeight: 20 },
+  noticeTitle: {
+    fontFamily: Typography.family.body,
+    fontSize: 14,
+    fontWeight: Typography.weight.semibold,
+  },
+  noticeText: { fontFamily: Typography.family.body, fontSize: 13, lineHeight: 20 },
 
   /* suggestion groups */
   groupHeader: {
@@ -453,7 +469,11 @@ const s = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  groupLabel: { fontSize: 15, fontWeight: '800' },
+  groupLabel: {
+    fontFamily: Typography.family.body,
+    fontSize: 15,
+    fontWeight: Typography.weight.medium,
+  },
   suggestionsWrap: { gap: 8, marginTop: 8 },
   suggestionBtn: {
     flexDirection: 'row',
@@ -464,7 +484,12 @@ const s = StyleSheet.create({
     borderRadius: UI.radius.lg,
     borderWidth: 1,
   },
-  suggestionBtnText: { fontSize: 14, fontWeight: '700', flex: 1 },
+  suggestionBtnText: {
+    fontFamily: Typography.family.body,
+    fontSize: 14,
+    fontWeight: Typography.weight.semibold,
+    flex: 1,
+  },
 
   /* topic chips */
   topicChipsRow: { gap: 8, marginTop: 8 },
@@ -474,7 +499,11 @@ const s = StyleSheet.create({
     borderRadius: UI.radius.lg,
     borderWidth: 1,
   },
-  topicChipText: { fontSize: 13, fontWeight: '700' },
+  topicChipText: {
+    fontFamily: Typography.family.body,
+    fontSize: 13,
+    fontWeight: Typography.weight.semibold,
+  },
 
   /* input bar */
   inputBar: {
@@ -486,6 +515,7 @@ const s = StyleSheet.create({
     borderTopWidth: 1,
   },
   input: {
+    fontFamily: Typography.family.body,
     flex: 1,
     borderRadius: 22,
     paddingHorizontal: 18,

@@ -83,11 +83,11 @@ export function getFreudLabel(score: number): FreudLabel {
 /* ------------------------------------------------------------------ */
 
 export function getFreudColor(score: number): string {
-  if (score >= 80) return '#5AAF8B'; // green
-  if (score >= 60) return '#8BC34A'; // light green
-  if (score >= 40) return '#FFC107'; // amber
-  if (score >= 20) return '#FF9800'; // orange
-  return '#F44336'; // red
+  if (score >= 80) return '#526651'; // green
+  if (score >= 60) return '#64836A'; // light green
+  if (score >= 40) return '#9A7138'; // amber
+  if (score >= 20) return '#AD683F'; // orange
+  return '#AE5555'; // red
 }
 
 /* ------------------------------------------------------------------ */
@@ -270,7 +270,12 @@ export function calculateInitialFreudScore(assessment: {
   goal?: string | null;
 }): FreudScoreResult {
   // Mood: map the selected mood label to a 0-100 score
-  const moodScore = clamp(MOOD_SCORE_MAP[assessment.mood ?? ''] ?? 50);
+  const moodValues = [...new Set((assessment.mood ?? '').split('\n').map((mood) => mood.trim()))]
+    .filter((mood) => Object.hasOwn(MOOD_SCORE_MAP, mood))
+    .map((mood) => MOOD_SCORE_MAP[mood]);
+  const moodScore = clamp(moodValues.length
+    ? moodValues.reduce((sum, value) => sum + value, 0) / moodValues.length
+    : 50);
 
   // Sleep: quality is 1-5, map to 0-100  (1→20, 2→40, 3→60, 4→80, 5→100)
   const sleepScore = assessment.sleepQuality != null

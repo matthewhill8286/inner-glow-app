@@ -1,3 +1,4 @@
+import { Typography } from '@/constants/typography';
 import React from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,6 +15,9 @@ export default function Screen() {
       <Text style={styles.sub}>{t('helpCenter.subtitle')}</Text>
 
       <View style={{ marginTop: 16, gap: 10 }}>
+        <Pressable onPress={() => router.push('/(utils)/support')}>
+          <Text style={{ color: '#8B6B47', paddingVertical: 12 }}>Contact Support</Text>
+        </Pressable>
         <Pressable onPress={() => router.push('/(tabs)/profile')} style={styles.link}>
           <Text style={styles.linkText}>{t('helpCenter.backToProfile')}</Text>
         </Pressable>
@@ -27,8 +31,8 @@ export default function Screen() {
 
 const styles: any = {
   page: { flex: 1, backgroundColor: '#f6f4f2', padding: 24 },
-  h1: { fontSize: 26, fontWeight: '900' },
+  h1: { fontFamily: Typography.family.body, fontSize: 26, fontWeight: Typography.weight.semibold },
   sub: { opacity: 0.7, marginTop: 8 },
   link: { backgroundColor: 'white', padding: 14, borderRadius: 18 },
-  linkText: { fontWeight: '900' },
+  linkText: { fontFamily: Typography.family.body, fontWeight: Typography.weight.semibold },
 };

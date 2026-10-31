@@ -1,3 +1,4 @@
+import { normalizeProfileChoice } from '@/lib/profile-choices';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/supabase/supabase';
 import { UserProfile } from '@/lib/types';
@@ -28,8 +29,8 @@ export const useProfile = (opts?: { lazy?: boolean }) => {
 
       const profile: UserProfile = {
         name: data.name,
-        intention: data.intention,
-        routine: data.routine,
+        intention: normalizeProfileChoice(data.intention, 'goal'),
+        routine: normalizeProfileChoice(data.routine, 'routine'),
         selectedIssues: data.selected_issues as string[] | undefined,
         updatedAt: data.updated_at,
       };
@@ -65,8 +66,8 @@ export const useProfile = (opts?: { lazy?: boolean }) => {
         .upsert({
           user_id: user.id,
           name: profile.name,
-          intention: profile.intention,
-          routine: profile.routine,
+          intention: normalizeProfileChoice(profile.intention, 'goal'),
+          routine: normalizeProfileChoice(profile.routine, 'routine'),
           selected_issues: profile.selectedIssues,
           updated_at: new Date().toISOString(),
         })
@@ -77,8 +78,8 @@ export const useProfile = (opts?: { lazy?: boolean }) => {
 
       const updatedProfile: UserProfile = {
         name: data.name,
-        intention: data.intention,
-        routine: data.routine,
+        intention: normalizeProfileChoice(data.intention, 'goal'),
+        routine: normalizeProfileChoice(data.routine, 'routine'),
         selectedIssues: data.selected_issues as string[] | undefined,
         updatedAt: data.updated_at,
       };
@@ -107,8 +108,10 @@ export const useProfile = (opts?: { lazy?: boolean }) => {
         updated_at: new Date().toISOString(),
       };
       if (updates.name !== undefined) dbUpdates.name = updates.name;
-      if (updates.intention !== undefined) dbUpdates.intention = updates.intention;
-      if (updates.routine !== undefined) dbUpdates.routine = updates.routine;
+      if (updates.intention !== undefined)
+        dbUpdates.intention = normalizeProfileChoice(updates.intention, 'goal');
+      if (updates.routine !== undefined)
+        dbUpdates.routine = normalizeProfileChoice(updates.routine, 'routine');
       if (updates.selectedIssues !== undefined) dbUpdates.selected_issues = updates.selectedIssues;
 
       const { data, error } = await supabase.from('profiles').upsert(dbUpdates).select().single();
@@ -117,8 +120,8 @@ export const useProfile = (opts?: { lazy?: boolean }) => {
 
       const updatedProfile: UserProfile = {
         name: data.name,
-        intention: data.intention,
-        routine: data.routine,
+        intention: normalizeProfileChoice(data.intention, 'goal'),
+        routine: normalizeProfileChoice(data.routine, 'routine'),
         selectedIssues: data.selected_issues as string[] | undefined,
         updatedAt: data.updated_at,
       };
@@ -155,16 +158,20 @@ export const useProfile = (opts?: { lazy?: boolean }) => {
       if (assessment.weight !== undefined) row.weight = assessment.weight;
       if (assessment.weightUnit !== undefined) row.weight_unit = assessment.weightUnit;
       if (assessment.mood !== undefined) row.mood = assessment.mood;
-      if (assessment.soughtHelpBefore !== undefined) row.sought_help_before = assessment.soughtHelpBefore;
-      if (assessment.physicalDistress !== undefined) row.physical_distress = assessment.physicalDistress;
-      if (assessment.physicalDistressNotes !== undefined) row.physical_distress_notes = assessment.physicalDistressNotes;
+      if (assessment.soughtHelpBefore !== undefined)
+        row.sought_help_before = assessment.soughtHelpBefore;
+      if (assessment.physicalDistress !== undefined)
+        row.physical_distress = assessment.physicalDistress;
+      if (assessment.physicalDistressNotes !== undefined)
+        row.physical_distress_notes = assessment.physicalDistressNotes;
       if (assessment.sleepQuality !== undefined) row.sleep_quality = assessment.sleepQuality;
       if (assessment.takingMeds !== undefined) row.taking_meds = assessment.takingMeds;
       if (assessment.meds !== undefined) row.meds = assessment.meds;
       if (assessment.otherSymptoms !== undefined) row.other_symptoms = assessment.otherSymptoms;
       if (assessment.stressLevel !== undefined) row.stress_level = assessment.stressLevel;
       if (assessment.soundCheck !== undefined) row.sound_check = assessment.soundCheck;
-      if (assessment.expressionCheck !== undefined) row.expression_check = assessment.expressionCheck;
+      if (assessment.expressionCheck !== undefined)
+        row.expression_check = assessment.expressionCheck;
 
       const { error } = await supabase.from('assessments').upsert(row as any);
 

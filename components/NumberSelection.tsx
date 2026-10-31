@@ -1,3 +1,4 @@
+import { Typography } from '@/constants/typography';
 import React from 'react';
 import { View, Text, StyleSheet, Pressable, ViewStyle, TextStyle } from 'react-native';
 
@@ -89,8 +90,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   stepNumber: {
+    fontFamily: Typography.family.body,
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: Typography.weight.bold,
     color: '#8B6B43',
   },
   selectedOuterRing: {
@@ -113,8 +115,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#4E5A47', // deep olive
   },
   stepNumberSelected: {
+    fontFamily: Typography.family.body,
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: Typography.weight.bold,
     color: '#FFFFFF',
   },
 });

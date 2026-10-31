@@ -226,6 +226,24 @@ export type Database = {
         }
         Relationships: []
       }
+      community_blocks: {
+        Row: {
+          blocked_id: string
+          blocker_id: string
+          created_at: string
+        }
+        Insert: {
+          blocked_id: string
+          blocker_id: string
+          created_at?: string
+        }
+        Update: {
+          blocked_id?: string
+          blocker_id?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
       community_bookmarks: {
         Row: {
           created_at: string
@@ -466,6 +484,42 @@ export type Database = {
         }
         Relationships: []
       }
+      community_reports: {
+        Row: {
+          content_snapshot: string
+          created_at: string
+          id: string
+          reason: string
+          reported_user_id: string | null
+          reporter_id: string
+          status: string
+          target_id: string
+          target_type: string
+        }
+        Insert: {
+          content_snapshot: string
+          created_at?: string
+          id?: string
+          reason: string
+          reported_user_id?: string | null
+          reporter_id: string
+          status?: string
+          target_id: string
+          target_type: string
+        }
+        Update: {
+          content_snapshot?: string
+          created_at?: string
+          id?: string
+          reason?: string
+          reported_user_id?: string | null
+          reporter_id?: string
+          status?: string
+          target_id?: string
+          target_type?: string
+        }
+        Relationships: []
+      }
       freud_scores: {
         Row: {
           breakdown: Json
@@ -690,6 +744,30 @@ export type Database = {
         }
         Relationships: []
       }
+      recovery_codes: {
+        Row: {
+          code_hash: string
+          created_at: string
+          id: string
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          code_hash: string
+          created_at?: string
+          id?: string
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          code_hash?: string
+          created_at?: string
+          id?: string
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       sleep: {
         Row: {
           awakenings: number | null
@@ -805,9 +883,16 @@ export type Database = {
         Row: {
           created_at: string | null
           current_period_end: string | null
+          environment: string | null
           id: string
           plan: string
+          product_id: string | null
+          provider: string
+          revenuecat_app_user_id: string | null
+          revenuecat_original_app_user_id: string | null
+          revenuecat_synced_at: string | null
           status: string
+          store: string | null
           stripe_customer_id: string | null
           stripe_session_id: string | null
           stripe_subscription_id: string | null
@@ -818,9 +903,16 @@ export type Database = {
         Insert: {
           created_at?: string | null
           current_period_end?: string | null
+          environment?: string | null
           id?: string
           plan: string
+          product_id?: string | null
+          provider?: string
+          revenuecat_app_user_id?: string | null
+          revenuecat_original_app_user_id?: string | null
+          revenuecat_synced_at?: string | null
           status?: string
+          store?: string | null
           stripe_customer_id?: string | null
           stripe_session_id?: string | null
           stripe_subscription_id?: string | null
@@ -831,9 +923,16 @@ export type Database = {
         Update: {
           created_at?: string | null
           current_period_end?: string | null
+          environment?: string | null
           id?: string
           plan?: string
+          product_id?: string | null
+          provider?: string
+          revenuecat_app_user_id?: string | null
+          revenuecat_original_app_user_id?: string | null
+          revenuecat_synced_at?: string | null
           status?: string
+          store?: string | null
           stripe_customer_id?: string | null
           stripe_session_id?: string | null
           stripe_subscription_id?: string | null
@@ -888,6 +987,36 @@ export type Database = {
         }
         Relationships: []
       }
+      support_requests: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          message: string
+          source_hash: string
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          message: string
+          source_hash: string
+          status?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          message?: string
+          source_hash?: string
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       topics: {
         Row: {
           context_tags: string[] | null
@@ -920,9 +1049,60 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      community_user_is_blocked: { Args: { target: string }; Returns: boolean }
+      delete_innerglow_account: {
+        Args: { p_user_id: string }
+        Returns: undefined
+      }
+      report_community_content: {
+        Args: { p_reason: string; p_target_id: string; p_target_type: string }
+        Returns: undefined
+      }
       safe_float: { Args: { v: string }; Returns: number }
       safe_int: { Args: { v: string }; Returns: number }
       safe_ts: { Args: { v: string }; Returns: string }
+      start_free_trial: {
+        Args: never
+        Returns: {
+          created_at: string | null
+          current_period_end: string | null
+          environment: string | null
+          id: string
+          plan: string
+          product_id: string | null
+          provider: string
+          revenuecat_app_user_id: string | null
+          revenuecat_original_app_user_id: string | null
+          revenuecat_synced_at: string | null
+          status: string
+          store: string | null
+          stripe_customer_id: string | null
+          stripe_session_id: string | null
+          stripe_subscription_id: string | null
+          trial_end: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "subscriptions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      submit_support_request: {
+        Args: {
+          p_email: string
+          p_message: string
+          p_source_hash: string
+          p_user_id?: string
+        }
+        Returns: string
+      }
+      sync_revenuecat_subscription: {
+        Args: { p_state: Json; p_synced_at: string; p_user_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       journal_phase: "reflection" | "coping" | "awareness" | "general"
@@ -941,12 +1121,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -970,11 +1150,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -995,11 +1175,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1020,11 +1200,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1037,11 +1217,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }

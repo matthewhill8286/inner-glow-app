@@ -1,3 +1,7 @@
+import { toast } from '@/components/Toast';
+import { Typography } from '@/constants/typography';
+import { backTo } from '@/lib/navigation';
+import { WellnessIconText, AnimatedWellnessIconText } from '@/components/WellnessIconText';
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   View,
@@ -15,11 +19,10 @@ import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useMood } from '@/hooks/useMood';
 import { MoodCheckIn } from '@/lib/types';
-import { useSubscription } from '@/hooks/useSubscription';
 import { showAlert } from '@/lib/state';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, UI } from '@/constants/theme';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialIcons from '@/components/AppIcon';
 
 /* ── Mood definitions with full-screen colors ── */
 function getMoods(t: any): {
@@ -79,7 +82,6 @@ export default function MoodCheckIn_Screen() {
   const colors = Colors[theme];
   const { t } = useTranslation();
   const { addMoodCheckIn } = useMood();
-  const { hasFullAccess } = useSubscription();
   const insets = useSafeAreaInsets();
 
   const [step, setStep] = useState<'mood' | 'details'>('mood');
@@ -87,6 +89,8 @@ export default function MoodCheckIn_Screen() {
   const [energy, setEnergy] = useState<MoodCheckIn['energy']>(3);
   const [stress, setStress] = useState<MoodCheckIn['stress']>(5);
   const [note, setNote] = useState('');
+  const [saving, setSaving] = useState(false);
+  const saveInProgress = useRef(false);
 
   const MOODS = getMoods(t);
   const current = MOODS[selectedIdx];
@@ -130,23 +134,19 @@ export default function MoodCheckIn_Screen() {
   ).current;
 
   async function saveMood() {
-    if (!hasFullAccess) {
-      showAlert(t('moodCheckIn.premiumFeature'), t('moodCheckIn.upgradeToLogMood'), [
-        { text: t('moodCheckIn.cancel'), style: 'cancel' },
-        {
-          text: t('moodCheckIn.upgrade'),
-          onPress: () => router.push('/(utils)/trial-upgrade' as any),
-        },
-      ]);
-      return;
+    if (saveInProgress.current) return;
+    saveInProgress.current = true;
+    setSaving(true);
+    try {
+      await addMoodCheckIn({ mood: current.key, energy, stress, note: note.trim() || undefined });
+      toast.success(`Mood recorded: ${current.label}.`, 4000);
+      backTo(undefined, '/(tabs)/mood');
+    } catch {
+      toast.error('Your mood could not be saved. Please try again.');
+    } finally {
+      saveInProgress.current = false;
+      setSaving(false);
     }
-    await addMoodCheckIn({
-      mood: current.key,
-      energy,
-      stress,
-      note: note.trim() || undefined,
-    });
-    router.back();
   }
 
   if (step === 'mood') {
@@ -163,7 +163,7 @@ export default function MoodCheckIn_Screen() {
           }}
         >
           <Pressable
-            onPress={() => router.back()}
+            onPress={() => backTo(undefined, '/(tabs)/mood')}
             style={({ pressed }) => ({
               width: 36,
               height: 36,
@@ -176,7 +176,14 @@ export default function MoodCheckIn_Screen() {
           >
             <MaterialIcons name="close" size={20} color="#fff" />
           </Pressable>
-          <Text style={{ fontSize: 16, fontWeight: '700', color: 'rgba(255,255,255,0.7)' }}>
+          <Text
+            style={{
+              fontFamily: Typography.family.body,
+              fontSize: 16,
+              fontWeight: Typography.weight.semibold,
+              color: 'rgba(255,255,255,0.7)',
+            }}
+          >
             {selectedIdx + 1} / {MOODS.length}
           </Text>
         </View>
@@ -185,25 +192,28 @@ export default function MoodCheckIn_Screen() {
         <View
           style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40 }}
         >
-          <Text
-            style={{
-              fontSize: 18,
-              fontWeight: '700',
-              color: 'rgba(255,255,255,0.8)',
-              marginBottom: 20,
-            }}
-          >
+          <Text style={{ ...Typography.heading, color: 'rgba(255,255,255,0.8)', marginBottom: 20 }}>
             {t('moodCheckIn.howFeeling')}
           </Text>
-          <Animated.Text
+          <AnimatedWellnessIconText
             style={{
+              fontFamily: Typography.family.body,
               fontSize: 120,
+              color: '#FFFFFF',
               transform: [{ scale: faceScale }],
             }}
           >
             {current.face}
-          </Animated.Text>
-          <Text style={{ fontSize: 22, fontWeight: '900', color: '#fff', marginTop: 24 }}>
+          </AnimatedWellnessIconText>
+          <Text
+            style={{
+              fontFamily: Typography.family.body,
+              fontSize: 22,
+              fontWeight: Typography.weight.semibold,
+              color: '#fff',
+              marginTop: 24,
+            }}
+          >
             {current.description}
           </Text>
         </View>
@@ -251,8 +261,9 @@ export default function MoodCheckIn_Screen() {
 
             <Text
               style={{
+                fontFamily: Typography.family.body,
                 fontSize: 16,
-                fontWeight: '700',
+                fontWeight: Typography.weight.semibold,
                 color: 'rgba(255,255,255,0.7)',
                 width: 100,
                 textAlign: 'center',
@@ -280,6 +291,8 @@ export default function MoodCheckIn_Screen() {
 
           {/* Set Mood Button */}
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Continue mood check-in"
             onPress={() => setStep('details')}
             style={({ pressed }) => ({
               flexDirection: 'row',
@@ -293,8 +306,17 @@ export default function MoodCheckIn_Screen() {
               ...UI.shadow.md,
             })}
           >
-            <Text style={{ fontSize: 18, fontWeight: '900', color: current.bg }}>Set Mood</Text>
-            <MaterialIcons name="check" size={20} color={current.bg} />
+            <Text
+              style={{
+                fontFamily: Typography.family.body,
+                fontSize: 18,
+                fontWeight: Typography.weight.semibold,
+                color: current.bg,
+              }}
+            >
+              Continue
+            </Text>
+            <MaterialIcons name="arrow-forward" size={20} color={current.bg} />
           </Pressable>
         </View>
       </Animated.View>
@@ -341,7 +363,7 @@ export default function MoodCheckIn_Screen() {
                 style={{ marginLeft: 4 }}
               />
             </Pressable>
-            <Text style={{ fontSize: 22, fontWeight: '800', color: colors.text }}>
+            <Text style={{ ...Typography.heading, color: colors.text }}>
               {t('moodCheckIn.details')}
             </Text>
           </View>
@@ -356,8 +378,17 @@ export default function MoodCheckIn_Screen() {
               backgroundColor: current.bg + '20',
             }}
           >
-            <Text style={{ fontSize: 18 }}>{current.face}</Text>
-            <Text style={{ fontSize: 13, fontWeight: '800', color: current.bg }}>
+            <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 18 }}>
+              {current.face}
+            </WellnessIconText>
+            <Text
+              style={{
+                fontFamily: Typography.family.body,
+                fontSize: 13,
+                fontWeight: Typography.weight.semibold,
+                color: current.bg,
+              }}
+            >
               {current.label}
             </Text>
           </View>
@@ -382,8 +413,9 @@ export default function MoodCheckIn_Screen() {
         >
           <Text
             style={{
+              fontFamily: Typography.family.body,
               fontSize: 12,
-              fontWeight: '700',
+              fontWeight: Typography.weight.semibold,
               color: colors.mutedText,
               textTransform: 'uppercase',
               letterSpacing: 0.5,
@@ -413,8 +445,9 @@ export default function MoodCheckIn_Screen() {
                 >
                   <Text
                     style={{
+                      fontFamily: Typography.family.body,
                       fontSize: 18,
-                      fontWeight: '800',
+                      fontWeight: Typography.weight.semibold,
                       color: active ? fills[v - 1] : colors.mutedText,
                     }}
                   >
@@ -423,8 +456,9 @@ export default function MoodCheckIn_Screen() {
                   {(v === 1 || v === 5) && (
                     <Text
                       style={{
+                        fontFamily: Typography.family.body,
                         fontSize: 9,
-                        fontWeight: '600',
+                        fontWeight: Typography.weight.semibold,
                         color: colors.mutedText,
                         marginTop: 2,
                       }}
@@ -451,8 +485,9 @@ export default function MoodCheckIn_Screen() {
         >
           <Text
             style={{
+              fontFamily: Typography.family.body,
               fontSize: 12,
-              fontWeight: '700',
+              fontWeight: Typography.weight.semibold,
               color: colors.mutedText,
               textTransform: 'uppercase',
               letterSpacing: 0.5,
@@ -487,8 +522,9 @@ export default function MoodCheckIn_Screen() {
                 >
                   <Text
                     style={{
+                      fontFamily: Typography.family.body,
                       fontSize: 14,
-                      fontWeight: active ? '900' : '600',
+                      fontWeight: active ? Typography.weight.bold : '600',
                       color: active ? '#FFFFFF' : colors.mutedText,
                     }}
                   >
@@ -499,10 +535,24 @@ export default function MoodCheckIn_Screen() {
             })}
           </View>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 }}>
-            <Text style={{ fontSize: 10, fontWeight: '600', color: colors.mutedText }}>
+            <Text
+              style={{
+                fontFamily: Typography.family.body,
+                fontSize: 10,
+                fontWeight: Typography.weight.semibold,
+                color: colors.mutedText,
+              }}
+            >
               {t('moodCheckIn.none')}
             </Text>
-            <Text style={{ fontSize: 10, fontWeight: '600', color: colors.mutedText }}>
+            <Text
+              style={{
+                fontFamily: Typography.family.body,
+                fontSize: 10,
+                fontWeight: Typography.weight.semibold,
+                color: colors.mutedText,
+              }}
+            >
               {t('moodCheckIn.extreme')}
             </Text>
           </View>
@@ -521,8 +571,9 @@ export default function MoodCheckIn_Screen() {
         >
           <Text
             style={{
+              fontFamily: Typography.family.body,
               fontSize: 12,
-              fontWeight: '700',
+              fontWeight: Typography.weight.semibold,
               color: colors.mutedText,
               textTransform: 'uppercase',
               letterSpacing: 0.5,
@@ -538,6 +589,7 @@ export default function MoodCheckIn_Screen() {
             placeholderTextColor={colors.placeholder}
             multiline
             style={{
+              fontFamily: Typography.family.body,
               fontSize: 15,
               lineHeight: 22,
               color: colors.text,
@@ -552,6 +604,10 @@ export default function MoodCheckIn_Screen() {
 
         {/* Save Button */}
         <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Save mood check-in"
+          accessibilityState={{ busy: saving, disabled: saving }}
+          disabled={saving}
           onPress={saveMood}
           style={({ pressed }) => ({
             flexDirection: 'row',
@@ -565,9 +621,18 @@ export default function MoodCheckIn_Screen() {
             ...UI.shadow.md,
           })}
         >
-          <Text style={{ fontSize: 22 }}>{current.face}</Text>
-          <Text style={{ fontSize: 17, fontWeight: '900', color: '#fff' }}>
-            {t('moodCheckIn.logCheckIn')}
+          <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 22 }}>
+            {current.face}
+          </WellnessIconText>
+          <Text
+            style={{
+              fontFamily: Typography.family.body,
+              fontSize: 17,
+              fontWeight: Typography.weight.semibold,
+              color: '#fff',
+            }}
+          >
+            {saving ? 'Saving your mood…' : t('moodCheckIn.logCheckIn')}
           </Text>
         </Pressable>
       </ScrollView>

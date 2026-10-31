@@ -1,3 +1,4 @@
+import { Typography } from '@/constants/typography';
 import React, { useMemo } from 'react';
 import Animated, { useSharedValue } from 'react-native-reanimated';
 import type { AnimatedProps } from 'react-native-reanimated';
@@ -72,9 +73,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   overlayText: {
+    fontFamily: Typography.family.body,
     color: 'white',
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: Typography.weight.semibold,
   },
   overlayTextContainer: {
     backgroundColor: 'rgba(0, 0, 0, 0.5)',

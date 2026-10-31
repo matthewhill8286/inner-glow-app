@@ -1,3 +1,5 @@
+import { Typography } from '@/constants/typography';
+import { backTo } from '@/lib/navigation';
 import React, { useState } from 'react';
 import {
   View,
@@ -14,8 +16,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { router } from 'expo-router';
 import { supabase } from '@/supabase/supabase';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import * as Linking from 'expo-linking';
+import MaterialIcons from '@/components/AppIcon';
+import { PASSWORD_RESET_REDIRECT } from '@/lib/auth-redirects';
 
 /* ── Design tokens ── */
 const C = {
@@ -149,7 +151,7 @@ export default function ForgotPassword() {
     setError(null);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: Linking.createURL('/(auth)/reset-password'),
+        redirectTo: PASSWORD_RESET_REDIRECT,
       });
       if (error) throw error;
       setStep('sent');
@@ -211,7 +213,7 @@ export default function ForgotPassword() {
 
       // Recovery code verified — send password reset email
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: Linking.createURL('/(auth)/reset-password'),
+        redirectTo: PASSWORD_RESET_REDIRECT,
       });
       if (resetError) throw resetError;
 
@@ -245,7 +247,7 @@ export default function ForgotPassword() {
       // Send password reset email — the TOTP verification acts as identity confirmation
       // In production, you'd verify the TOTP server-side before sending the reset
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: Linking.createURL('/(auth)/reset-password'),
+        redirectTo: PASSWORD_RESET_REDIRECT,
       });
       if (resetError) throw resetError;
 
@@ -320,7 +322,7 @@ export default function ForgotPassword() {
         >
           {/* ── Back button ── */}
           <Pressable
-            onPress={() => (step === 'input' ? resetFlow() : router.back())}
+            onPress={() => (step === 'select' ? backTo(undefined, '/(auth)/sign-in') : resetFlow())}
             style={({ pressed }) => ({
               width: 44,
               height: 44,
@@ -334,14 +336,17 @@ export default function ForgotPassword() {
               marginBottom: 28,
             })}
           >
-            <Text style={{ color: C.brownText, fontSize: 22 }}>{'←'}</Text>
+            <Text style={{ fontFamily: Typography.family.body, color: C.brownText, fontSize: 22 }}>
+              {'←'}
+            </Text>
           </Pressable>
 
           {/* ── Title ── */}
           <Text
             style={{
+              fontFamily: Typography.family.body,
               fontSize: 32,
-              fontWeight: '900',
+              fontWeight: Typography.weight.semibold,
               color: C.brownLight,
               marginBottom: 8,
             }}
@@ -350,6 +355,7 @@ export default function ForgotPassword() {
           </Text>
           <Text
             style={{
+              fontFamily: Typography.family.body,
               fontSize: 15,
               color: C.brownLight,
               opacity: 0.6,
@@ -369,8 +375,9 @@ export default function ForgotPassword() {
             <>
               <Text
                 style={{
+                  fontFamily: Typography.family.body,
                   fontSize: 12,
-                  fontWeight: '700',
+                  fontWeight: Typography.weight.semibold,
                   color: C.brownLight,
                   textTransform: 'uppercase',
                   letterSpacing: 0.5,
@@ -388,12 +395,13 @@ export default function ForgotPassword() {
                 autoCapitalize="none"
                 autoComplete="email"
                 style={{
+                  fontFamily: Typography.family.body,
                   backgroundColor: C.cardBg,
                   borderRadius: 18,
                   paddingHorizontal: 20,
                   paddingVertical: Platform.OS === 'ios' ? 18 : 14,
                   fontSize: 16,
-                  fontWeight: '600',
+                  fontWeight: Typography.weight.semibold,
                   color: C.brownLight,
                   marginBottom: 24,
                   shadowColor: '#000',
@@ -407,8 +415,9 @@ export default function ForgotPassword() {
               {/* ── Method cards ── */}
               <Text
                 style={{
+                  fontFamily: Typography.family.body,
                   fontSize: 12,
-                  fontWeight: '700',
+                  fontWeight: Typography.weight.semibold,
                   color: C.brownLight,
                   textTransform: 'uppercase',
                   letterSpacing: 0.5,
@@ -446,8 +455,9 @@ export default function ForgotPassword() {
                       <View style={{ flex: 1 }}>
                         <Text
                           style={{
+                            fontFamily: Typography.family.body,
                             fontSize: 16,
-                            fontWeight: '800',
+                            fontWeight: Typography.weight.semibold,
                             color: C.brownLight,
                           }}
                         >
@@ -455,6 +465,7 @@ export default function ForgotPassword() {
                         </Text>
                         <Text
                           style={{
+                            fontFamily: Typography.family.body,
                             fontSize: 12,
                             color: C.brownText,
                             opacity: 0.7,
@@ -499,10 +510,24 @@ export default function ForgotPassword() {
                   <MaterialIcons name="vpn-key" size={20} color={C.purple} />
                 </View>
                 <View>
-                  <Text style={{ fontSize: 16, fontWeight: '800', color: C.brownLight }}>
+                  <Text
+                    style={{
+                      fontFamily: Typography.family.body,
+                      fontSize: 16,
+                      fontWeight: Typography.weight.semibold,
+                      color: C.brownLight,
+                    }}
+                  >
                     {t('twoFactor.recoveryCodeLabel')}
                   </Text>
-                  <Text style={{ fontSize: 12, color: C.brownText, opacity: 0.6 }}>
+                  <Text
+                    style={{
+                      fontFamily: Typography.family.body,
+                      fontSize: 12,
+                      color: C.brownText,
+                      opacity: 0.6,
+                    }}
+                  >
                     {email}
                   </Text>
                 </View>
@@ -524,7 +549,7 @@ export default function ForgotPassword() {
                   paddingHorizontal: 20,
                   paddingVertical: Platform.OS === 'ios' ? 20 : 16,
                   fontSize: 24,
-                  fontWeight: '900',
+                  fontWeight: Typography.weight.semibold,
                   color: C.brownLight,
                   textAlign: 'center',
                   letterSpacing: 6,
@@ -559,10 +584,24 @@ export default function ForgotPassword() {
                   <MaterialIcons name="security" size={20} color={C.olive} />
                 </View>
                 <View>
-                  <Text style={{ fontSize: 16, fontWeight: '800', color: C.brownLight }}>
+                  <Text
+                    style={{
+                      fontFamily: Typography.family.body,
+                      fontSize: 16,
+                      fontWeight: Typography.weight.semibold,
+                      color: C.brownLight,
+                    }}
+                  >
                     {t('twoFactor.authCode')}
                   </Text>
-                  <Text style={{ fontSize: 12, color: C.brownText, opacity: 0.6 }}>
+                  <Text
+                    style={{
+                      fontFamily: Typography.family.body,
+                      fontSize: 12,
+                      color: C.brownText,
+                      opacity: 0.6,
+                    }}
+                  >
                     {email}
                   </Text>
                 </View>
@@ -577,12 +616,13 @@ export default function ForgotPassword() {
                 maxLength={6}
                 autoFocus
                 style={{
+                  fontFamily: Typography.family.body,
                   backgroundColor: C.inputBg,
                   borderRadius: 16,
                   paddingHorizontal: 20,
                   paddingVertical: Platform.OS === 'ios' ? 20 : 16,
                   fontSize: 32,
-                  fontWeight: '900',
+                  fontWeight: Typography.weight.semibold,
                   color: C.brownLight,
                   textAlign: 'center',
                   letterSpacing: 14,
@@ -605,7 +645,15 @@ export default function ForgotPassword() {
               }}
             >
               <MaterialIcons name="error-outline" size={18} color={C.red} />
-              <Text style={{ flex: 1, fontSize: 13, fontWeight: '600', color: C.red }}>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  flex: 1,
+                  fontSize: 13,
+                  fontWeight: Typography.weight.semibold,
+                  color: C.red,
+                }}
+              >
                 {error}
               </Text>
             </View>
@@ -643,7 +691,14 @@ export default function ForgotPassword() {
             })}
           >
             {loading ? <ActivityIndicator size="small" color="#fff" /> : null}
-            <Text style={{ color: 'white', fontWeight: '800', fontSize: 17 }}>
+            <Text
+              style={{
+                fontFamily: Typography.family.body,
+                color: 'white',
+                fontWeight: Typography.weight.semibold,
+                fontSize: 17,
+              }}
+            >
               {getPrimaryButtonLabel()}
             </Text>
             <MaterialIcons name="lock-open" size={18} color="#fff" />
@@ -669,7 +724,7 @@ export default function ForgotPassword() {
         >
           {/* Top back button */}
           <Pressable
-            onPress={() => router.back()}
+            onPress={() => backTo(undefined, '/(auth)/sign-in')}
             style={{
               position: 'absolute',
               top: Platform.OS === 'ios' ? 60 : 44,
@@ -684,7 +739,15 @@ export default function ForgotPassword() {
               zIndex: 10,
             }}
           >
-            <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 22 }}>{'←'}</Text>
+            <Text
+              style={{
+                fontFamily: Typography.family.body,
+                color: 'rgba(255,255,255,0.7)',
+                fontSize: 22,
+              }}
+            >
+              {'←'}
+            </Text>
           </Pressable>
 
           {/* Illustration area */}
@@ -743,19 +806,19 @@ export default function ForgotPassword() {
           >
             <Text
               style={{
+                fontFamily: Typography.family.body,
                 fontSize: 26,
-                fontWeight: '900',
+                fontWeight: Typography.weight.semibold,
                 color: C.brownLight,
                 lineHeight: 34,
                 marginBottom: 12,
               }}
             >
-              {step === 'verified'
-                ? t('auth.identityVerified')
-                : t('auth.checkYourEmail')}
+              {step === 'verified' ? t('auth.identityVerified') : t('auth.checkYourEmail')}
             </Text>
             <Text
               style={{
+                fontFamily: Typography.family.body,
                 fontSize: 14,
                 color: C.brownLight,
                 opacity: 0.6,
@@ -789,7 +852,14 @@ export default function ForgotPassword() {
               })}
             >
               {loading ? <ActivityIndicator size="small" color="#fff" /> : null}
-              <Text style={{ color: 'white', fontWeight: '800', fontSize: 17 }}>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  color: 'white',
+                  fontWeight: Typography.weight.semibold,
+                  fontSize: 17,
+                }}
+              >
                 {step === 'verified' ? t('auth.sendResetLink') : t('auth.resendPassword')}
               </Text>
               <MaterialIcons name="lock-open" size={18} color="#fff" />
@@ -808,7 +878,14 @@ export default function ForgotPassword() {
                 opacity: pressed ? 0.5 : 0.6,
               })}
             >
-              <Text style={{ fontSize: 15, fontWeight: '700', color: C.brownLight }}>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  fontSize: 15,
+                  fontWeight: Typography.weight.semibold,
+                  color: C.brownLight,
+                }}
+              >
                 {t('auth.backToSignIn')}
               </Text>
             </Pressable>

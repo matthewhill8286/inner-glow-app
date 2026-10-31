@@ -1,3 +1,6 @@
+import { screenBottomPadding } from '@/lib/screen-layout';
+import { Typography } from '@/constants/typography';
+import { WellnessIconText } from '@/components/WellnessIconText';
 import React, { useCallback, useMemo, useRef } from 'react';
 import { View, Text, Pressable, ScrollView, Animated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,7 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, UI } from '@/constants/theme';
 import { useJournal } from '@/hooks/useJournal';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialIcons from '@/components/AppIcon';
 
 /* ── helpers ── */
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -24,9 +27,11 @@ export default function JournalHome() {
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
 
-  useFocusEffect(useCallback(() => {
-    scrollRef.current?.scrollTo({ y: 0, animated: false });
-  }, []));
+  useFocusEffect(
+    useCallback(() => {
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+    }, []),
+  );
 
   const now = new Date();
   const year = now.getFullYear();
@@ -52,8 +57,11 @@ export default function JournalHome() {
   }, [journalEntries, year]);
 
   /* ── Contribution map: classify each day by mood ── */
-  const POSITIVE_MOODS = useMemo(() => ['Calm', 'Okay', 'Great', 'Good', 'Happy'] ,[])
-  const NEGATIVE_MOODS = useMemo(() =>  ['Anxious', 'Sad', 'Angry', 'Overwhelmed', 'Bad', 'Low'], []);
+  const POSITIVE_MOODS = useMemo(() => ['Calm', 'Okay', 'Great', 'Good', 'Happy'], []);
+  const NEGATIVE_MOODS = useMemo(
+    () => ['Anxious', 'Sad', 'Angry', 'Overwhelmed', 'Bad', 'Low'],
+    [],
+  );
 
   // 'positive' | 'negative' | 'noMood' per day index
   const dayMap = useMemo(() => {
@@ -133,26 +141,9 @@ export default function JournalHome() {
           }}
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
-            <Pressable
-              onPress={() => router.back()}
-              style={({ pressed }) => ({
-                width: 40,
-                height: 40,
-                borderRadius: 12,
-                backgroundColor: colors.card,
-                borderWidth: 1,
-                borderColor: colors.border,
-                alignItems: 'center',
-                justifyContent: 'center',
-                opacity: pressed ? 0.7 : 1,
-              })}
-            >
-              <MaterialIcons name="arrow-back-ios-new" size={16} color={colors.text} />
-            </Pressable>
             <Text
               style={{
-                fontSize: 26,
-                fontWeight: '900',
+                ...Typography.heading,
                 color: colors.text,
                 flexShrink: 1,
               }}
@@ -182,13 +173,13 @@ export default function JournalHome() {
 
       <ScrollView
         ref={scrollRef}
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={{ paddingBottom: screenBottomPadding(insets.bottom) }}
         showsVerticalScrollIndicator={false}
       >
         {/* ═══ Stats Card ═══ */}
         <View
           style={{
-            backgroundColor: '#8B6B47',
+            backgroundColor: '#526651',
             marginHorizontal: UI.spacing.xl,
             marginTop: 12,
             padding: 20,
@@ -198,16 +189,24 @@ export default function JournalHome() {
           {/* Big number */}
           <Text
             style={{
-              fontSize: 64,
-              fontWeight: '900',
+              fontFamily: Typography.family.body,
+              fontSize: 42,
+              fontWeight: Typography.weight.semibold,
               color: '#fff',
-              lineHeight: 72,
+              lineHeight: 50,
               marginBottom: 4,
             }}
           >
             {isLoading ? '--' : stats.total}
           </Text>
-          <Text style={{ fontSize: 15, color: 'rgba(255,255,255,0.8)', marginBottom: 20 }}>
+          <Text
+            style={{
+              fontFamily: Typography.family.body,
+              fontSize: 15,
+              color: 'rgba(255,255,255,0.8)',
+              marginBottom: 20,
+            }}
+          >
             {t('journalHome.journalsThisYear')}
           </Text>
 
@@ -253,7 +252,15 @@ export default function JournalHome() {
                 <View
                   style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: item.color }}
                 />
-                <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)' }}>{item.label}</Text>
+                <Text
+                  style={{
+                    fontFamily: Typography.family.body,
+                    fontSize: 11,
+                    color: 'rgba(255,255,255,0.7)',
+                  }}
+                >
+                  {item.label}
+                </Text>
               </View>
             ))}
           </View>
@@ -290,10 +297,17 @@ export default function JournalHome() {
                 <MaterialIcons name="bar-chart" size={24} color="#fff" />
               </View>
               <View>
-                <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text }}>
+                <Text style={{ ...Typography.cardHeading, color: colors.text }}>
                   {t('journalHome.journalStatistics')}
                 </Text>
-                <Text style={{ fontSize: 12, color: colors.mutedText, marginTop: 2 }}>
+                <Text
+                  style={{
+                    fontFamily: Typography.family.body,
+                    fontSize: 12,
+                    color: colors.mutedText,
+                    marginTop: 2,
+                  }}
+                >
                   {t('journalHome.journalTrend', { year })}
                 </Text>
               </View>
@@ -304,7 +318,7 @@ export default function JournalHome() {
 
         {/* ═══ Quick Actions ═══ */}
         <View style={{ paddingHorizontal: UI.spacing.xl, marginTop: 20 }}>
-          <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 12 }}>
+          <Text style={{ ...Typography.section, color: colors.text, marginBottom: 12 }}>
             {t('journalHome.quickActions')}
           </Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
@@ -339,8 +353,14 @@ export default function JournalHome() {
                   <MaterialIcons name={a.icon as any} size={20} color="#fff" />
                 </View>
                 <Text
-                  style={{ fontSize: 13, fontWeight: '600', color: colors.text, flex: 1 }}
-                  numberOfLines={1}
+                  style={{
+                    fontFamily: Typography.family.body,
+                    fontSize: 13,
+                    fontWeight: Typography.weight.semibold,
+                    color: colors.text,
+                    flex: 1,
+                  }}
+                  numberOfLines={2}
                 >
                   {a.label}
                 </Text>
@@ -359,11 +379,18 @@ export default function JournalHome() {
               marginBottom: 12,
             }}
           >
-            <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text }}>
+            <Text style={{ ...Typography.section, color: colors.text }}>
               {t('journalHome.recentJournals')}
             </Text>
             <Pressable onPress={() => router.push('/(tabs)/journal/history')}>
-              <Text style={{ fontSize: 13, fontWeight: '600', color: '#8B6B47' }}>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  fontSize: 13,
+                  fontWeight: Typography.weight.semibold,
+                  color: '#8B6B47',
+                }}
+              >
                 {t('journalHome.seeAll')}
               </Text>
             </Pressable>
@@ -384,10 +411,24 @@ export default function JournalHome() {
             >
               <MaterialIcons name="mood" size={22} color="#7B6DC9" />
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 13, fontWeight: '700', color: '#7B6DC9' }}>
+                <Text
+                  style={{
+                    fontFamily: Typography.family.body,
+                    fontSize: 13,
+                    fontWeight: Typography.weight.semibold,
+                    color: '#7B6DC9',
+                  }}
+                >
                   {t('journalHome.noMoodNudge', { count: stats.skipped })}
                 </Text>
-                <Text style={{ fontSize: 12, color: colors.mutedText, marginTop: 2 }}>
+                <Text
+                  style={{
+                    fontFamily: Typography.family.body,
+                    fontSize: 12,
+                    color: colors.mutedText,
+                    marginTop: 2,
+                  }}
+                >
                   {t('journalHome.noMoodNudgeSubtitle')}
                 </Text>
               </View>
@@ -416,11 +457,24 @@ export default function JournalHome() {
             >
               <MaterialIcons name="edit-note" size={40} color={colors.mutedText} />
               <Text
-                style={{ fontSize: 15, fontWeight: '600', color: colors.mutedText, marginTop: 8 }}
+                style={{
+                  fontFamily: Typography.family.body,
+                  fontSize: 15,
+                  fontWeight: Typography.weight.semibold,
+                  color: colors.mutedText,
+                  marginTop: 8,
+                }}
               >
                 {t('journalHome.noJournalsYet')}
               </Text>
-              <Text style={{ fontSize: 13, color: colors.subtleText, marginTop: 4 }}>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  fontSize: 13,
+                  color: colors.subtleText,
+                  marginTop: 4,
+                }}
+              >
                 {t('journalHome.startWriting')}
               </Text>
             </View>
@@ -454,27 +508,52 @@ export default function JournalHome() {
                       justifyContent: 'center',
                     }}
                   >
-                    <Text style={{ fontSize: 20 }}>{moodEmoji}</Text>
+                    <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 20 }}>
+                      {moodEmoji}
+                    </WellnessIconText>
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text
-                      style={{ fontSize: 15, fontWeight: '700', color: colors.text }}
+                      style={{
+                        fontFamily: Typography.family.body,
+                        fontSize: 15,
+                        fontWeight: Typography.weight.semibold,
+                        color: colors.text,
+                      }}
                       numberOfLines={1}
                     >
                       {entry.title || t('journalHome.untitledEntry')}
                     </Text>
                     <Text
-                      style={{ fontSize: 12, color: colors.mutedText, marginTop: 2 }}
+                      style={{
+                        fontFamily: Typography.family.body,
+                        fontSize: 12,
+                        color: colors.mutedText,
+                        marginTop: 2,
+                      }}
                       numberOfLines={1}
                     >
                       {entry.content}
                     </Text>
                   </View>
                   <View style={{ alignItems: 'flex-end' }}>
-                    <Text style={{ fontSize: 11, color: colors.subtleText }}>
+                    <Text
+                      style={{
+                        fontFamily: Typography.family.body,
+                        fontSize: 11,
+                        color: colors.subtleText,
+                      }}
+                    >
                       {d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                     </Text>
-                    <Text style={{ fontSize: 10, color: colors.subtleText, marginTop: 2 }}>
+                    <Text
+                      style={{
+                        fontFamily: Typography.family.body,
+                        fontSize: 10,
+                        color: colors.subtleText,
+                        marginTop: 2,
+                      }}
+                    >
                       {d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
                     </Text>
                   </View>

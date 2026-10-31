@@ -1,3 +1,4 @@
+import { Typography } from '@/constants/typography';
 import React from 'react';
 import { View, Text, Pressable, FlatList } from 'react-native';
 import { router } from 'expo-router';
@@ -6,7 +7,7 @@ import ScreenHeader from '@/components/ScreenHeader';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, UI } from '@/constants/theme';
 import { BREATHING_EXERCISES, BreathingExercise } from '@/data/breathingExercises';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialIcons from '@/components/AppIcon';
 
 export default function BreathingListScreen() {
   const theme = useColorScheme() ?? 'light';
@@ -79,9 +80,7 @@ function BreathingCard({ exercise }: { exercise: BreathingExercise }) {
       </View>
 
       <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: 18, fontWeight: '900', color: colors.text }}>
-          {exercise.title}
-        </Text>
+        <Text style={{ ...Typography.cardHeading, color: colors.text }}>{exercise.title}</Text>
         <Text style={{ color: colors.mutedText, marginTop: 4 }}>{exercise.subtitle}</Text>
       </View>
 

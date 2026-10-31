@@ -1,3 +1,5 @@
+import { functionError } from '@/lib/function-errors';
+import { invokeAI } from '@/lib/ai-privacy';
 import { supabase } from '@/supabase/supabase';
 import { extractCitations, type Citation } from '@/lib/citations';
 
@@ -14,12 +16,14 @@ export async function sendChatToAI(
   messages: { role: string; content: string }[],
   persona: PersonaId = 'freud',
 ): Promise<ChatAIResponse> {
-  const { data, error } = await supabase.functions.invoke('chat', {
+  const { data, error } = await invokeAI('chat', {
     body: { issueTitle, issueTags, messages, persona },
   });
 
-  if (error) throw error;
+  if (error) throw await functionError(error);
 
+  if (typeof data?.text !== 'string' || !data.text.trim())
+    throw new Error('The AI returned an empty response. Please try again.');
   const text: string = data.text;
 
   // Extract relevant medical citations from the response content
@@ -42,7 +46,7 @@ export const PERSONAS: PersonaMeta[] = [
   {
     id: 'freud',
     name: 'Dr. Freud AI',
-    role: 'Therapist',
+    role: 'AI reflection guide',
     emoji: '🧑‍⚕️',
     color: '#8B6B47',
     speciality: 'CBT & Talk Therapy',
@@ -50,7 +54,7 @@ export const PERSONAS: PersonaMeta[] = [
   {
     id: 'calm',
     name: 'Calm Guide',
-    role: 'Mindfulness',
+    role: 'AI mindfulness guide',
     emoji: '🧘',
     color: '#5B8A5A',
     speciality: 'Meditation & Breathing',
@@ -58,7 +62,7 @@ export const PERSONAS: PersonaMeta[] = [
   {
     id: 'sleep',
     name: 'Sleep Coach',
-    role: 'Sleep Expert',
+    role: 'AI sleep guide',
     emoji: '😴',
     color: '#5A8FB5',
     speciality: 'Sleep Hygiene & Routines',
@@ -66,7 +70,7 @@ export const PERSONAS: PersonaMeta[] = [
   {
     id: 'mood',
     name: 'Mood Buddy',
-    role: 'Emotional Support',
+    role: 'AI mood support',
     emoji: '😊',
     color: '#7B6DC9',
     speciality: 'Mood Tracking & Support',
@@ -107,10 +111,7 @@ const TOPIC_KEY_MAP: Record<string, string> = {
  * Resolves a topic name (or context tags) to a translation key prefix.
  * Returns undefined if no match found — caller should fall back to persona-based suggestions.
  */
-export function getTopicKeyPrefix(
-  topicName?: string,
-  contextTags?: string[],
-): string | undefined {
+export function getTopicKeyPrefix(topicName?: string, contextTags?: string[]): string | undefined {
   // Try exact match on topic name first
   if (topicName) {
     const normalized = topicName.toLowerCase().trim();

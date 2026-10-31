@@ -1,6 +1,7 @@
+import { Typography } from '@/constants/typography';
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
+import MaterialIcons from '@/components/AppIcon';
 import { UI, Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
@@ -78,20 +79,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 10,
   },
-  title: {
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
+  title: { ...Typography.label, fontSize: 12, textTransform: 'uppercase' },
   statLabel: {
+    fontFamily: Typography.family.body,
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: Typography.weight.bold,
     textTransform: 'uppercase',
     marginBottom: 2,
   },
   statValue: {
+    fontFamily: Typography.family.body,
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: Typography.weight.bold,
   },
 });

@@ -1,10 +1,14 @@
+import { useTranslation } from 'react-i18next';
+import { parentRouteForPath, isPrimaryTabPath } from '@/lib/route-parents';
+import { Type, Typography } from '@/constants/typography';
+import { backTo } from '@/lib/navigation';
 import React from 'react';
-import { View, Text, Pressable, Platform } from 'react-native';
+import { View, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { router } from 'expo-router';
+import { IconButton } from '@/components/ui/IconButton';
+import { router, usePathname, type Href } from 'expo-router';
 
 export default function ScreenHeader({
   title,
@@ -12,53 +16,52 @@ export default function ScreenHeader({
   rightElement,
   showBack,
   onBack,
+  safeArea = true,
 }: Readonly<{
   title: string;
   subtitle?: string;
   rightElement?: React.ReactNode;
   showBack?: boolean;
   onBack?: () => void;
+  safeArea?: boolean;
 }>) {
+  const { t } = useTranslation();
   const theme = useColorScheme() ?? 'light';
   const colors = Colors[theme];
+  const pathname = usePathname();
   const canGoBack = router.canGoBack();
-  const shouldShowBack = showBack ?? canGoBack;
+  const shouldShowBack = showBack ?? (!isPrimaryTabPath(pathname) || canGoBack);
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={{ marginTop: insets.top + 4 }}>
+    <View style={{ marginTop: (safeArea ? insets.top : 0) + 10, marginBottom: 12 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
           {shouldShowBack && (
-            <Pressable
-              onPress={() => (onBack ? onBack() : router.back())}
-              style={({ pressed }) => ({
-                padding: 4,
-                opacity: pressed ? 0.7 : 1,
-              })}
-            >
-              <MaterialIcons
-                name={Platform.OS === 'ios' ? 'arrow-back-ios' : 'arrow-back'}
-                size={24}
-                color={colors.text}
-              />
-            </Pressable>
+            <IconButton
+              accessibilityLabel={t('common.back')}
+              onPress={() => (onBack ? onBack() : backTo(undefined, parentRouteForPath(pathname) as Href))}
+            />
           )}
           <Text
             style={{
-              fontSize: Platform.OS === 'ios' ? 26 : 22,
-              fontWeight: Platform.OS === 'ios' ? '900' : '700',
-              color: colors.text,
+              ...Type.titleSm,
+              color: colors.heading,
               flexShrink: 1,
             }}
-            numberOfLines={1}
+            accessibilityRole="header"
+            numberOfLines={2}
           >
             {title}
           </Text>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>{rightElement}</View>
       </View>
-      {subtitle ? <Text style={{ color: colors.mutedText, marginTop: 8 }}>{subtitle}</Text> : null}
+      {subtitle ? (
+        <Text style={{ ...Typography.body, color: colors.mutedText, marginTop: 8 }}>
+          {subtitle}
+        </Text>
+      ) : null}
     </View>
   );
 }

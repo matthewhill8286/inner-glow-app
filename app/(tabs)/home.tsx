@@ -1,11 +1,18 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, Pressable, ScrollView, Platform, StyleSheet, Animated, PanResponder } from 'react-native';
+import { WellbeingScoreCard } from '@/components/WellbeingScoreCard';
+import { screenBottomPadding } from '@/lib/screen-layout';
+import { openConversations } from '@/lib/navigation';
+import { AppCard } from '@/components/ui/AppCard';
+import { AppButton } from '@/components/ui/AppButton';
+import { Typography } from '@/constants/typography';
+import { WellnessIconText } from '@/components/WellnessIconText';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryKeys';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialIcons from '@/components/AppIcon';
 import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useSubscription } from '@/hooks/useSubscription';
@@ -19,11 +26,8 @@ import { useProfile } from '@/hooks/useProfile';
 import { useSleep } from '@/hooks/useSleep';
 import { useMindfulness } from '@/hooks/useMindfulness';
 import { useStress } from '@/hooks/useStress';
-import { useChat } from '@/hooks/useChat';
 import { useNotificationStore } from '@/lib/notificationStore';
-import type { MoodCheckIn } from '@/lib/types';
 
-import Svg, { Circle, Defs, LinearGradient, Stop, Line } from 'react-native-svg';
 import { SkeletonRect } from '@/components/Skeleton';
 import { HorizontalActionList } from '@/components/HorizontalActionList';
 
@@ -74,28 +78,31 @@ export default function Home() {
   const theme = useColorScheme() ?? 'light';
   const colors = Colors[theme];
   const { isExpired, hasFullAccess, isTrialActive, trialDaysLeft } = useSubscription();
-  const { profile } = useProfile({ lazy: true });
+  const { profile, isLoading: profileLoading } = useProfile({ lazy: true });
   const router = useRouter();
   const scrollRef = useRef<ScrollView>(null);
   const queryClient = useQueryClient();
 
-  useFocusEffect(useCallback(() => {
-    scrollRef.current?.scrollTo({ y: 0, animated: false });
-    // Refresh all tracking data so Freud Score and stats are up to date
-    queryClient.invalidateQueries({ queryKey: queryKeys.mood.all });
-    queryClient.invalidateQueries({ queryKey: queryKeys.sleep.all });
-    queryClient.invalidateQueries({ queryKey: queryKeys.journal.all });
-    queryClient.invalidateQueries({ queryKey: queryKeys.mindfulness.all });
-    queryClient.invalidateQueries({ queryKey: queryKeys.stress.allHistory });
-  }, [queryClient]));
+  useFocusEffect(
+    useCallback(() => {
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+      // Refresh all tracking data so Freud Score and stats are up to date
+      queryClient.invalidateQueries({ queryKey: queryKeys.mood.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.sleep.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.journal.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.mindfulness.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.stress.allHistory });
+    }, [queryClient]),
+  );
 
   const { moodCheckIns, isLoading: moodLoading } = useMood();
   const { journalEntries, isLoading: journalLoading } = useJournal();
-  const { currentScore: freudScore, isDataLoading: freudDataLoading } = useFreudScore({ lazy: true });
+  const { currentScore: freudScore, isDataLoading: freudDataLoading } = useFreudScore({
+    lazy: true,
+  });
   const { sleepEntries, isLoading: sleepLoading } = useSleep();
   const { mindfulnessHistory, isLoading: mindfulnessLoading } = useMindfulness();
   const { stressKit, isLoading: stressLoading } = useStress({ lazy: true });
-  const { stats: chatStats, isLoading: chatLoading } = useChat();
 
   const moodCount = moodCheckIns?.length || 0;
   const journalCount = journalEntries?.length || 0;
@@ -219,7 +226,7 @@ export default function Home() {
     <View style={[s.root, { backgroundColor: colors.background, paddingTop: insets.top + 6 }]}>
       <ScrollView
         ref={scrollRef}
-        contentContainerStyle={{ paddingBottom: 120 }}
+        contentContainerStyle={{ paddingBottom: screenBottomPadding(insets.bottom) }}
         showsVerticalScrollIndicator={false}
       >
         {/* ── Top bar: date + notification bell ── */}
@@ -229,7 +236,12 @@ export default function Home() {
             <Text style={[s.dateText, { color: colors.mutedText }]}>{dateStr}</Text>
           </View>
           <Pressable
-            onPress={() => router.push('/(tabs)/notifications')}
+            onPress={() =>
+              router.navigate({
+                pathname: '/(tabs)/notifications',
+                params: { from: '/(tabs)/home' },
+              })
+            }
             style={({ pressed }) => [
               s.bellBtn,
               {
@@ -255,7 +267,9 @@ export default function Home() {
         {/* ── Greeting with avatar + badges ── */}
         <View style={s.greetingRow}>
           <View style={[s.avatar, { backgroundColor: SAGE }]}>
-            <Text style={s.avatarText}>{userName ? userName.charAt(0).toUpperCase() : '😊'}</Text>
+            <WellnessIconText style={s.avatarText}>
+              {userName ? userName.charAt(0).toUpperCase() : '😊'}
+            </WellnessIconText>
           </View>
           <View style={{ flex: 1 }}>
             <Text style={[s.greetingName, { color: colors.text }]}>
@@ -264,18 +278,10 @@ export default function Home() {
             <View style={s.badgeRow}>
               {hasFullAccess && (
                 <View style={[s.badge, { backgroundColor: SAGE + '18' }]}>
-                  <Text style={[s.badgeEmoji, { color: SAGE }]}>★</Text>
+                  <WellnessIconText style={[s.badgeEmoji, { color: SAGE }]}>★</WellnessIconText>
                   <Text style={[s.badgeLabel, { color: SAGE }]}>
                     {isTrialActive ? `Trial · ${trialDaysLeft}d left` : 'Pro'}
                   </Text>
-                </View>
-              )}
-              {freudDataLoading ? (
-                <SkeletonRect width={56} height={22} borderRadius={11} />
-              ) : (
-                <View style={[s.badge, { backgroundColor: scoreColor + '18' }]}>
-                  <Text style={[s.badgeEmoji, { color: scoreColor }]}>⬆</Text>
-                  <Text style={[s.badgeLabel, { color: scoreColor }]}>{score}%</Text>
                 </View>
               )}
               {moodLabel ? (
@@ -302,229 +308,182 @@ export default function Home() {
         </Pressable>
 
         <View style={s.content}>
-            {/* ── Trial expired banner ── */}
-            {isExpired && (
-              <Pressable
-                onPress={() => router.push('/(utils)/trial-upgrade')}
-                style={[s.trialBanner, { backgroundColor: colors.primary }]}
-              >
-                <View style={{ flex: 1 }}>
-                  <Text style={s.trialTitle}>{t('common.trialExpired')}</Text>
-                  <Text style={s.trialSub}>{t('common.upgradeToLifetime')}</Text>
-                </View>
-                <Text style={s.trialArrow}>→</Text>
-              </Pressable>
-            )}
+          <WellbeingScoreCard
+            score={score}
+            label={freudScore?.label ?? ''}
+            loading={
+              freudDataLoading || moodLoading || sleepLoading || journalLoading || profileLoading
+            }
+            hasRecords={
+              !!(
+                moodCheckIns?.length ||
+                sleepEntries?.length ||
+                journalEntries?.length ||
+                mindfulnessHistory?.length
+              )
+            }
+          />
+          {/* ── Quick actions ── */}
+          <HorizontalActionList title={t('common.quickActions')} />
 
-            {/* ── Mental Health Metrics card ── */}
-            {freudDataLoading ? (
-              <View style={[s.metricsCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                {/* Tab row skeleton */}
-                <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
-                  <SkeletonRect width={90} height={28} borderRadius={14} />
-                  <SkeletonRect width={56} height={28} borderRadius={14} />
-                </View>
-                {/* Score ring skeleton */}
-                <View style={{ alignItems: 'center', marginVertical: 12 }}>
-                  <SkeletonRect width={180} height={180} borderRadius={90} />
-                </View>
-                {/* CTA skeleton */}
-                <SkeletonRect height={44} borderRadius={16} />
+          {/* ── Trial expired banner ── */}
+          {isExpired && (
+            <Pressable
+              onPress={() => router.push('/(utils)/trial-upgrade')}
+              style={[s.trialBanner, { backgroundColor: colors.primary }]}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={s.trialTitle}>{t('common.trialExpired')}</Text>
+                <Text style={s.trialSub}>{t('common.upgradeToLifetime')}</Text>
+              </View>
+              <Text style={s.trialArrow}>→</Text>
+            </Pressable>
+          )}
+
+          <AppCard style={{ marginTop: 20 }}>
+            <Text accessibilityRole="header" style={[Typography.section, { color: colors.text }]}>
+              For today
+            </Text>
+            <Text style={[Typography.body, { color: colors.mutedText }]}>
+              Start with a small check-in, or pick up where you left off.
+            </Text>
+            <AppButton
+              title="Check in with your mood"
+              onPress={() => router.push('/(tabs)/mood/check-in')}
+            />
+            <AppButton
+              title="Continue a conversation"
+              variant="secondary"
+              onPress={openConversations}
+            />
+            <AppButton
+              title="Explore suggested activities"
+              variant="secondary"
+              onPress={() => router.push('/(tabs)/freud-score/ai-suggestions')}
+            />
+          </AppCard>
+          {/* ── Mindful Tracker ── */}
+          <Text style={[s.sectionTitle, { color: colors.text }]}>{t('home.mindfulTracker')}</Text>
+
+          <View
+            style={[s.trackerCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+          >
+            {/* Mindful Hours */}
+            {mindfulnessLoading ? (
+              <View style={{ paddingHorizontal: 16, paddingVertical: 14 }}>
+                <SkeletonRect height={44} borderRadius={UI.radius.md} />
               </View>
             ) : (
-              <MetricsCard
+              <TrackerItem
+                icon="schedule"
+                title={t('home.mindfulHours')}
+                subtitle={t('home.mindfulHoursSubtitle', {
+                  current: mindfulTodayHrs,
+                  goal: mindfulGoalHrs,
+                })}
                 colors={colors}
-                score={score}
-                scoreColor={scoreColor}
-                freudScore={freudScore}
-                freudDataLoading={freudDataLoading}
-                moodCheckIns={moodCheckIns}
-                t={t}
+                onPress={() => router.push('/(tabs)/mindful')}
+                indicator={<MiniDots count={4} active={mindfulDots} color={SAGE} />}
               />
             )}
+            <Divider color={colors.divider} />
 
-            {/* ── Mindful Tracker ── */}
-            <Text style={[s.sectionTitle, { color: colors.text }]}>{t('home.mindfulTracker')}</Text>
-
-            <View
-              style={[s.trackerCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-            >
-              {/* Mindful Hours */}
-              {mindfulnessLoading ? (
-                <View style={{ paddingHorizontal: 16, paddingVertical: 14 }}>
-                  <SkeletonRect height={44} borderRadius={UI.radius.md} />
-                </View>
-              ) : (
-                <TrackerItem
-                  icon="schedule"
-                  title={t('home.mindfulHours')}
-                  subtitle={t('home.mindfulHoursSubtitle', { current: mindfulTodayHrs, goal: mindfulGoalHrs })}
-                  colors={colors}
-                  onPress={() => router.push('/(tabs)/mindful')}
-                  indicator={<MiniDots count={4} active={mindfulDots} color={SAGE} />}
-                />
-              )}
-              <Divider color={colors.divider} />
-
-              {/* Sleep Quality */}
-              {sleepLoading ? (
-                <View style={{ paddingHorizontal: 16, paddingVertical: 14 }}>
-                  <SkeletonRect height={44} borderRadius={UI.radius.md} />
-                </View>
-              ) : (
-                <TrackerItem
-                  icon="bedtime"
-                  title={t('home.sleepQuality')}
-                  subtitle={sleepLabel}
-                  colors={colors}
-                  onPress={() => router.push('/(tabs)/sleep')}
-                  indicator={
-                    <MiniDots
-                      count={4}
-                      active={sleepDots}
-                      color={sleepQuality >= 3 ? SAGE : '#E8985A'}
-                    />
-                  }
-                />
-              )}
-              <Divider color={colors.divider} />
-
-              {/* Journal */}
-              {journalLoading ? (
-                <View style={{ paddingHorizontal: 16, paddingVertical: 14 }}>
-                  <SkeletonRect height={44} borderRadius={UI.radius.md} />
-                </View>
-              ) : (
-                <TrackerItem
-                  icon="menu-book"
-                  title={t('home.mindfulJournal')}
-                  subtitle={
-                    journalStreak > 0
-                      ? t('home.journalDayStreak', { count: journalStreak })
-                      : t('home.journalThisWeek', { count: journalThisWeek })
-                  }
-                  colors={colors}
-                  onPress={() => router.push('/(tabs)/journal')}
-                  indicator={<MiniDots count={5} active={journalGoalDots} color={SAGE} />}
-                />
-              )}
-              <Divider color={colors.divider} />
-
-              {/* Stress Level */}
-              {stressLoading ? (
-                <View style={{ paddingHorizontal: 16, paddingVertical: 14 }}>
-                  <SkeletonRect height={44} borderRadius={UI.radius.md} />
-                </View>
-              ) : (
-                <TrackerItem
-                  icon={latestStress <= 5 ? 'trending-down' : 'trending-up'}
-                  title={t('home.stressLevel')}
-                  subtitle={stressLevelLabel}
-                  colors={colors}
-                  onPress={() => router.push('/(tabs)/stress')}
-                  indicator={<StressBar level={stressNorm} />}
-                />
-              )}
-              <Divider color={colors.divider} />
-
-              {/* Mood Tracker */}
-              {moodLoading ? (
-                <View style={{ paddingHorizontal: 16, paddingVertical: 14 }}>
-                  <SkeletonRect height={44} borderRadius={UI.radius.md} />
-                </View>
-              ) : (
-                <TrackerItem
-                  icon="mood"
-                  title={t('home.moodTracker')}
-                  subtitle={
-                    moodCount > 0 ? t('home.moodCheckIns', { count: moodCount }) : t('home.moodNoData')
-                  }
-                  colors={colors}
-                  onPress={() => router.push('/(tabs)/mood')}
-                  indicator={<MoodFlow moods={last3Moods} />}
-                />
-              )}
-            </View>
-
-            {/* ── AI Therapy Chatbot ── */}
-            <Pressable onPress={() => router.push('/(tabs)/chat')}>
-              <Text style={[s.sectionTitle, { color: colors.text }]}>{t('home.aiTherapyChatbot')}</Text>
-            </Pressable>
-
-            {chatLoading ? (
-              <SkeletonRect height={130} borderRadius={UI.radius.xxl} />
+            {/* Sleep Quality */}
+            {sleepLoading ? (
+              <View style={{ paddingHorizontal: 16, paddingVertical: 14 }}>
+                <SkeletonRect height={44} borderRadius={UI.radius.md} />
+              </View>
             ) : (
-              <Pressable
-                onPress={() => router.push('/(tabs)/chat')}
-                style={({ pressed }) => [
-                  s.chatCard,
-                  { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.85 : 1 },
-                ]}
-              >
-                <View style={{ flex: 1 }}>
-                  <View style={s.chatDotsRow}>
-                    <View style={[s.chatDot, { backgroundColor: SAGE }]} />
-                    <View style={[s.chatDot, { backgroundColor: SAGE + '60' }]} />
-                    <View style={[s.chatDot, { backgroundColor: SAGE + '30' }]} />
-                  </View>
-                  <Text style={[s.chatCount, { color: colors.text }]}>
-                    {chatStats.totalConversations}
-                  </Text>
-                  <Text style={[s.chatLabel, { color: colors.mutedText }]}>Conversations</Text>
-                  {hasFullAccess ? (
-                    <Text style={[s.chatPro, { color: SAGE, marginTop: 8 }]}>
-                      {isTrialActive ? `★ Trial · ${trialDaysLeft}d left` : '★ Pro'}
-                    </Text>
-                  ) : (
-                    <Pressable
-                      onPress={(e) => {
-                        e.stopPropagation();
-                        router.push('/(utils)/trial-upgrade');
-                      }}
-                      style={({ pressed }) => [
-                        s.chatProBtn,
-                        { backgroundColor: pressed ? SAGE + '25' : SAGE + '15' },
-                      ]}
-                    >
-                      <Text style={[s.chatPro, { color: SAGE }]}>★ Go Pro Now!</Text>
-                    </Pressable>
-                  )}
-                </View>
-                <View style={[s.chatRobot, { backgroundColor: SAGE + '10' }]}>
-                  <Text style={{ fontSize: 48 }}>🤖</Text>
-                </View>
-              </Pressable>
+              <TrackerItem
+                icon="bedtime"
+                title={t('home.sleepQuality')}
+                subtitle={sleepLabel}
+                colors={colors}
+                onPress={() => router.push('/(tabs)/sleep')}
+                indicator={
+                  <MiniDots
+                    count={4}
+                    active={sleepDots}
+                    color={sleepQuality >= 3 ? SAGE : '#E8985A'}
+                  />
+                }
+              />
             )}
+            <Divider color={colors.divider} />
 
-            {/* ── Quick actions ── */}
-            <HorizontalActionList title={t('common.quickActions')} />
+            {/* Journal */}
+            {journalLoading ? (
+              <View style={{ paddingHorizontal: 16, paddingVertical: 14 }}>
+                <SkeletonRect height={44} borderRadius={UI.radius.md} />
+              </View>
+            ) : (
+              <TrackerItem
+                icon="menu-book"
+                title={t('home.mindfulJournal')}
+                subtitle={
+                  journalStreak > 0
+                    ? t('home.journalDayStreak', { count: journalStreak })
+                    : t('home.journalThisWeek', { count: journalThisWeek })
+                }
+                colors={colors}
+                onPress={() => router.push('/(tabs)/journal')}
+                indicator={<MiniDots count={5} active={journalGoalDots} color={SAGE} />}
+              />
+            )}
+            <Divider color={colors.divider} />
 
-            {/* ── Quick reset CTA ── */}
-            <View
-              style={[s.resetCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-            >
-              <Text style={[s.resetTitle, { color: colors.text }]}>
-                {t('common.needQuickReset')}
-              </Text>
-              <Text style={[s.resetBody, { color: colors.mutedText }]}>
-                {t('common.tapForBreathing')}
-              </Text>
-              <Pressable
+            {/* Stress Level */}
+            {stressLoading ? (
+              <View style={{ paddingHorizontal: 16, paddingVertical: 14 }}>
+                <SkeletonRect height={44} borderRadius={UI.radius.md} />
+              </View>
+            ) : (
+              <TrackerItem
+                icon={latestStress <= 5 ? 'trending-down' : 'trending-up'}
+                title={t('home.stressLevel')}
+                subtitle={stressLevelLabel}
+                colors={colors}
                 onPress={() => router.push('/(tabs)/stress')}
-                style={({ pressed }) => [
-                  s.resetBtn,
-                  {
-                    backgroundColor: pressed ? colors.primary + '15' : colors.primary + '08',
-                    borderColor: colors.primary + '25',
-                  },
-                ]}
-              >
-                <Text style={[s.resetBtnLabel, { color: colors.primary }]}>
-                  {t('common.openStressToolkit')}
-                </Text>
-              </Pressable>
-            </View>
+                indicator={<StressBar level={stressNorm} />}
+              />
+            )}
+            <Divider color={colors.divider} />
+
+            {/* Mood Tracker */}
+            {moodLoading ? (
+              <View style={{ paddingHorizontal: 16, paddingVertical: 14 }}>
+                <SkeletonRect height={44} borderRadius={UI.radius.md} />
+              </View>
+            ) : (
+              <TrackerItem
+                icon="mood"
+                title={t('home.moodTracker')}
+                subtitle={
+                  moodCount > 0
+                    ? t('home.moodCheckIns', { count: moodCount })
+                    : t('home.moodNoData')
+                }
+                colors={colors}
+                onPress={() => router.push('/(tabs)/mood')}
+                indicator={<MoodFlow moods={last3Moods} />}
+              />
+            )}
           </View>
+
+          <AppCard style={{ marginTop: 20 }}>
+            <Text style={[Typography.section, { color: colors.text }]}>
+              {t('community.headerTitle')}
+            </Text>
+            <Text style={[Typography.body, { color: colors.mutedText }]}>
+              {t('community.entryDescription')}
+            </Text>
+            <AppButton
+              title={t('community.entryButton')}
+              variant="secondary"
+              onPress={() => router.navigate('/(tabs)/community')}
+            />
+          </AppCard>
+        </View>
       </ScrollView>
     </View>
   );
@@ -533,368 +492,6 @@ export default function Home() {
 /* ═══════════ Sub-components ═══════════ */
 
 /* ── Score Ring with tick marks (compact version for home card) ── */
-function HomeScoreRing({
-  score,
-  color,
-  label,
-  colors,
-}: {
-  score: number;
-  color: string;
-  label: string;
-  colors: any;
-}) {
-  const size = 160;
-  const strokeWidth = 10;
-  const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const progress = Math.max(0, Math.min(100, score));
-  const strokeDashoffset = circumference - (progress / 100) * circumference;
-
-  const tickCount = 36;
-  const ticks = Array.from({ length: tickCount }, (_, i) => {
-    const angle = (i / tickCount) * 360 - 90;
-    const rad = (angle * Math.PI) / 180;
-    const outerR = radius + strokeWidth / 2 + 5;
-    const innerR = radius + strokeWidth / 2 + 1;
-    return {
-      x1: size / 2 + Math.cos(rad) * innerR,
-      y1: size / 2 + Math.sin(rad) * innerR,
-      x2: size / 2 + Math.cos(rad) * outerR,
-      y2: size / 2 + Math.sin(rad) * outerR,
-      active: (i / tickCount) * 100 <= progress,
-    };
-  });
-
-  return (
-    <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-      <View
-        style={{
-          width: size + 20,
-          height: size + 20,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <Svg width={size + 20} height={size + 20}>
-          <Defs>
-            <LinearGradient id="homeRingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <Stop offset="0%" stopColor={color} stopOpacity="1" />
-              <Stop offset="100%" stopColor={color} stopOpacity="0.6" />
-            </LinearGradient>
-          </Defs>
-
-          {/* Tick marks */}
-          {ticks.map((tick, i) => (
-            <Line
-              key={i}
-              x1={tick.x1 + 10}
-              y1={tick.y1 + 10}
-              x2={tick.x2 + 10}
-              y2={tick.y2 + 10}
-              stroke={tick.active ? color : colors.border}
-              strokeWidth={1.5}
-              strokeLinecap="round"
-              opacity={tick.active ? 0.6 : 0.25}
-            />
-          ))}
-
-          {/* Background circle */}
-          <Circle
-            cx={(size + 20) / 2}
-            cy={(size + 20) / 2}
-            r={radius}
-            stroke={color}
-            strokeWidth={strokeWidth}
-            fill="none"
-            opacity={0.1}
-          />
-          {/* Progress arc */}
-          <Circle
-            cx={(size + 20) / 2}
-            cy={(size + 20) / 2}
-            r={radius}
-            stroke="url(#homeRingGrad)"
-            strokeWidth={strokeWidth}
-            fill="none"
-            strokeDasharray={`${circumference} ${circumference}`}
-            strokeDashoffset={strokeDashoffset}
-            strokeLinecap="round"
-            rotation="-90"
-            origin={`${(size + 20) / 2}, ${(size + 20) / 2}`}
-          />
-        </Svg>
-
-        {/* Center content */}
-        <View style={{ position: 'absolute', alignItems: 'center' }}>
-          <Text style={{ fontSize: 42, fontWeight: '900', color, letterSpacing: -2 }}>
-            {score || '–'}
-          </Text>
-          <Text
-            style={{
-              fontSize: 10,
-              fontWeight: '700',
-              color: colors.mutedText,
-              marginTop: -2,
-              letterSpacing: 1.5,
-              textTransform: 'uppercase',
-            }}
-          >
-            {label}
-          </Text>
-        </View>
-      </View>
-    </View>
-  );
-}
-
-/* ── Metrics Card with Freud Score / Mood toggle ── */
-function MetricsCard({
-  colors,
-  score,
-  scoreColor,
-  freudScore,
-  freudDataLoading,
-  moodCheckIns,
-  t,
-}: {
-  colors: any;
-  score: number;
-  scoreColor: string;
-  freudScore: any;
-  freudDataLoading: boolean;
-  moodCheckIns: MoodCheckIn[] | undefined;
-  t: (k: string, opts?: any) => string;
-}) {
-  const [activeTab, setActiveTab] = useState<'freud' | 'mood'>('freud');
-  const router = useRouter();
-
-  /* Build last-14-days mood history for the mood bar chart */
-  const moodBars = useMemo(() => {
-    const moods = moodCheckIns ?? [];
-    const last14 = moods.slice(0, 14).reverse();
-    if (last14.length === 0) return [];
-    return last14.map((m) => {
-      const meta = MOOD_META[m.mood] ?? { color: SAGE, value: 3 };
-      return { height: Math.max(0.06, meta.value / 5), color: meta.color };
-    });
-  }, [moodCheckIns]);
-
-  const latestMood = moodCheckIns?.[0];
-  const latestMoodMeta = latestMood ? MOOD_META[latestMood.mood] : null;
-
-  /* ── Swipe-left gesture to navigate to AI suggestions ── */
-  const swipeX = useRef(new Animated.Value(0)).current;
-  const swipedRef = useRef(false);
-
-  const panResponder = useMemo(
-    () =>
-      PanResponder.create({
-        onMoveShouldSetPanResponder: (_evt, gs) =>
-          activeTab === 'freud' && Math.abs(gs.dx) > Math.abs(gs.dy) && Math.abs(gs.dx) > 10,
-        onPanResponderMove: (_evt, gs) => {
-          // Only allow dragging left (negative dx)
-          if (gs.dx < 0) {
-            swipeX.setValue(gs.dx);
-          }
-        },
-        onPanResponderRelease: (_evt, gs) => {
-          if (gs.dx < -80 && !swipedRef.current) {
-            // Swipe threshold met — animate out then navigate
-            swipedRef.current = true;
-            Animated.timing(swipeX, {
-              toValue: -400,
-              duration: 200,
-              useNativeDriver: true,
-            }).start(() => {
-              router.push('/(tabs)/freud-score/ai-suggestions' as any);
-              // Reset after navigation
-              setTimeout(() => {
-                swipeX.setValue(0);
-                swipedRef.current = false;
-              }, 500);
-            });
-          } else {
-            // Snap back
-            Animated.spring(swipeX, {
-              toValue: 0,
-              useNativeDriver: true,
-              tension: 100,
-              friction: 10,
-            }).start();
-          }
-        },
-        onPanResponderTerminate: () => {
-          Animated.spring(swipeX, {
-            toValue: 0,
-            useNativeDriver: true,
-          }).start();
-        },
-      }),
-    [activeTab, router, swipeX],
-  );
-
-  return (
-    <View style={[s.metricsCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-      {/* Tabs */}
-      <View style={s.metricsTabRow}>
-        <Pressable
-          onPress={() => setActiveTab('freud')}
-          style={activeTab === 'freud' ? [s.metricsTabPill, { borderColor: colors.text }] : undefined}
-        >
-          <Text
-            style={[
-              activeTab === 'freud' ? s.metricsTabActiveText : s.metricsTabText,
-              { color: activeTab === 'freud' ? colors.text : colors.mutedText },
-            ]}
-          >
-            Freud Score
-          </Text>
-        </Pressable>
-        <Pressable
-          onPress={() => setActiveTab('mood')}
-          style={activeTab === 'mood' ? [s.metricsTabPill, { borderColor: colors.text }] : undefined}
-        >
-          <Text
-            style={[
-              activeTab === 'mood' ? s.metricsTabActiveText : s.metricsTabText,
-              { color: activeTab === 'mood' ? colors.text : colors.mutedText },
-            ]}
-          >
-            Mood
-          </Text>
-        </Pressable>
-        <View style={{ flex: 1 }} />
-        <Pressable
-          onPress={() =>
-            router.push(activeTab === 'freud' ? '/(tabs)/freud-score' : '/(tabs)/mood')
-          }
-        >
-          <Text style={{ color: colors.mutedText, fontSize: 18 }}>⋮</Text>
-        </Pressable>
-      </View>
-
-      {activeTab === 'freud' ? (
-        <Animated.View
-          {...panResponder.panHandlers}
-          style={{ transform: [{ translateX: swipeX }] }}
-        >
-          {/* Big score ring with tick marks */}
-          <Pressable onPress={() => router.push('/(tabs)/freud-score')}>
-            <HomeScoreRing
-              score={freudDataLoading ? 0 : score}
-              color={scoreColor}
-              label={
-                freudDataLoading
-                  ? t('freudScore.calculatingScore', { defaultValue: 'Calculating…' })
-                  : (freudScore?.label ?? '')
-              }
-              colors={colors}
-            />
-          </Pressable>
-
-          {/* Swipe for AI suggestions CTA */}
-          <Pressable
-            onPress={() => router.push('/(tabs)/freud-score/ai-suggestions' as any)}
-            style={({ pressed }) => ({
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 8,
-              marginTop: 12,
-              paddingHorizontal: 16,
-              paddingVertical: 12,
-              borderRadius: 16,
-              borderWidth: 1,
-              backgroundColor: SAGE + '12',
-              borderColor: SAGE + '25',
-              opacity: pressed ? 0.8 : 1,
-            })}
-          >
-            <MaterialIcons name="auto-awesome" size={16} color={SAGE} />
-            <Text style={{ fontSize: 13, color: SAGE, fontWeight: '700', flex: 1 }}>
-              {t('freudScore.swipeForSuggestions', { defaultValue: 'Swipe for AI suggestions' })}
-            </Text>
-            <MaterialIcons name="chevron-right" size={18} color={SAGE} />
-          </Pressable>
-        </Animated.View>
-      ) : (
-        <>
-          {/* Mood display row */}
-          <Pressable onPress={() => router.push('/(tabs)/mood')} style={s.scoreRow}>
-            {latestMoodMeta ? (
-              <>
-                <View
-                  style={[
-                    s.scoreCircle,
-                    { borderColor: latestMoodMeta.color },
-                  ]}
-                >
-                  <View
-                    style={[
-                      s.scoreInner,
-                      { backgroundColor: latestMoodMeta.color + '15' },
-                    ]}
-                  >
-                    <Text style={{ fontSize: 28 }}>{latestMoodMeta.emoji}</Text>
-                  </View>
-                </View>
-                <View style={{ marginLeft: 16, flex: 1 }}>
-                  <Text
-                    style={{
-                      fontSize: 22,
-                      fontWeight: '900',
-                      color: latestMoodMeta.color,
-                      marginBottom: 2,
-                    }}
-                  >
-                    {latestMood!.mood}
-                  </Text>
-                  <Text style={[s.scoreLabel, { color: colors.mutedText }]}>
-                    {t('home.currentMood', { defaultValue: 'Current Mood' })}
-                  </Text>
-                </View>
-              </>
-            ) : (
-              <View style={{ flex: 1, alignItems: 'center', paddingVertical: 8 }}>
-                <Text style={{ fontSize: 28, marginBottom: 6 }}>😶</Text>
-                <Text style={[s.scoreLabel, { color: colors.mutedText }]}>
-                  {t('home.noMoodYet', { defaultValue: 'No mood logged yet' })}
-                </Text>
-              </View>
-            )}
-          </Pressable>
-
-          {/* Mood history bars */}
-          {moodBars.length > 0 ? (
-            <View style={s.chartRow}>
-              {moodBars.map((bar, i) => (
-                <View key={i} style={s.chartColWrap}>
-                  <View
-                    style={[
-                      s.chartCol,
-                      {
-                        height: bar.height * 50,
-                        backgroundColor:
-                          i === moodBars.length - 1 ? bar.color : bar.color + '70',
-                      },
-                    ]}
-                  />
-                </View>
-              ))}
-            </View>
-          ) : (
-            <View style={{ alignItems: 'center', paddingVertical: 8 }}>
-              <Text style={{ color: colors.mutedText, fontSize: 12 }}>
-                {t('home.logMoodToSee', { defaultValue: 'Log your mood to see trends' })}
-              </Text>
-            </View>
-          )}
-        </>
-      )}
-    </View>
-  );
-}
-
 function TrackerItem({
   icon,
   title,
@@ -977,9 +574,12 @@ function MoodFlow({ moods }: { moods: string[] }) {
     return (
       <View style={{ flexDirection: 'row', gap: 2 }}>
         {['😢', '😟', '😐', '😊', '😄'].map((m, i) => (
-          <Text key={i} style={{ fontSize: 12, opacity: 0.25 }}>
+          <WellnessIconText
+            key={i}
+            style={{ fontFamily: Typography.family.body, fontSize: 12, opacity: 0.25 }}
+          >
             {m}
-          </Text>
+          </WellnessIconText>
         ))}
       </View>
     );
@@ -992,7 +592,16 @@ function MoodFlow({ moods }: { moods: string[] }) {
         return (
           <React.Fragment key={i}>
             {i > 0 && (
-              <Text style={{ fontSize: 10, color: '#C4B8AC', fontWeight: '600' }}>→</Text>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  fontSize: 10,
+                  color: '#C4B8AC',
+                  fontWeight: Typography.weight.semibold,
+                }}
+              >
+                →
+              </Text>
             )}
             <View
               style={{
@@ -1002,7 +611,14 @@ function MoodFlow({ moods }: { moods: string[] }) {
                 borderRadius: 8,
               }}
             >
-              <Text style={{ fontSize: 11, fontWeight: '700', color: meta?.color ?? '#999' }}>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  fontSize: 11,
+                  fontWeight: Typography.weight.semibold,
+                  color: meta?.color ?? '#999',
+                }}
+              >
                 {mood}
               </Text>
             </View>
@@ -1028,7 +644,12 @@ const s = StyleSheet.create({
   },
   dateRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   greenDot: { width: 8, height: 8, borderRadius: 4 },
-  dateText: { fontSize: 12, fontWeight: '600', letterSpacing: 0.2 },
+  dateText: {
+    fontFamily: Typography.family.body,
+    fontSize: 12,
+    fontWeight: Typography.weight.semibold,
+    letterSpacing: 0.2,
+  },
   bellBtn: {
     width: 36,
     height: 36,
@@ -1052,9 +673,10 @@ const s = StyleSheet.create({
     borderColor: '#FAF8F5',
   },
   bellBadgeText: {
+    fontFamily: Typography.family.body,
     color: '#fff',
     fontSize: 10,
-    fontWeight: '800',
+    fontWeight: Typography.weight.medium,
     lineHeight: 12,
   },
 
@@ -1074,12 +696,13 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarText: { color: '#FFF', fontSize: 20, fontWeight: '800' },
-  greetingName: {
-    fontSize: Platform.OS === 'ios' ? 22 : 20,
-    fontWeight: '900',
-    marginBottom: 4,
+  avatarText: {
+    fontFamily: Typography.family.body,
+    color: '#FFF',
+    fontSize: 20,
+    fontWeight: Typography.weight.semibold,
   },
+  greetingName: { ...Typography.heading, fontSize: 20, marginBottom: 4 },
   badgeRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
   badge: {
     flexDirection: 'row',
@@ -1089,8 +712,16 @@ const s = StyleSheet.create({
     borderRadius: 10,
     gap: 3,
   },
-  badgeEmoji: { fontSize: 10, fontWeight: '700' },
-  badgeLabel: { fontSize: 11, fontWeight: '700' },
+  badgeEmoji: {
+    fontFamily: Typography.family.body,
+    fontSize: 10,
+    fontWeight: Typography.weight.medium,
+  },
+  badgeLabel: {
+    fontFamily: Typography.family.body,
+    fontSize: 11,
+    fontWeight: Typography.weight.medium,
+  },
 
   /* ── Search ── */
   searchBar: {
@@ -1104,68 +735,19 @@ const s = StyleSheet.create({
     borderWidth: 1,
     marginBottom: 16,
   },
-  searchPlaceholder: { fontSize: 14, fontWeight: '500' },
+  searchPlaceholder: {
+    fontFamily: Typography.family.body,
+    fontSize: 14,
+    fontWeight: Typography.weight.medium,
+  },
 
   /* ── Content ── */
   content: { paddingHorizontal: 20 },
 
-  /* ── Metrics card ── */
-  metricsCard: {
-    borderRadius: UI.radius.xxl,
-    borderWidth: 1,
-    padding: 18,
-    marginBottom: 4,
-  },
-  metricsTabRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 16,
-  },
-  metricsTabPill: {
-    borderWidth: 1.5,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-  },
-  metricsTabActiveText: { fontSize: 14, fontWeight: '800' },
-  metricsTabText: { fontSize: 14, fontWeight: '600' },
-  scoreRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  scoreCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    borderWidth: 3,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  scoreInner: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  scoreNum: { fontSize: 26, fontWeight: '900' },
-  scoreLabel: { fontSize: 13, fontWeight: '500' },
-  chartRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 4,
-    height: 54,
-    marginTop: 4,
-  },
-  chartColWrap: { flex: 1, height: '100%', justifyContent: 'flex-end' },
-  chartCol: { width: '100%', borderRadius: 3, minHeight: 4 },
-
   /* ── Section title ── */
   sectionTitle: {
-    fontSize: 17,
-    fontWeight: '800',
+    ...Typography.section,
+    fontSize: 20,
     marginTop: 22,
     marginBottom: 12,
     paddingHorizontal: 4,
@@ -1190,38 +772,12 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  trackerTitle: { fontSize: 14, fontWeight: '700' },
-  trackerSub: { fontSize: 12, marginTop: 1 },
-
-  /* ── Chatbot ── */
-  chatCard: {
-    borderRadius: UI.radius.xxl,
-    borderWidth: 1,
-    padding: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    overflow: 'hidden',
+  trackerTitle: {
+    fontFamily: Typography.family.body,
+    fontSize: 14,
+    fontWeight: Typography.weight.semibold,
   },
-  chatDotsRow: { flexDirection: 'row', gap: 4, marginBottom: 10 },
-  chatDot: { width: 8, height: 8, borderRadius: 4 },
-  chatCount: { fontSize: 36, fontWeight: '900', lineHeight: 40 },
-  chatLabel: { fontSize: 14, fontWeight: '600', marginTop: 2 },
-  chatPro: { fontSize: 12, fontWeight: '700' },
-  chatProBtn: {
-    marginTop: 8,
-    alignSelf: 'flex-start',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 10,
-  },
-  chatRobot: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 12,
-  },
+  trackerSub: { fontFamily: Typography.family.body, fontSize: 12, marginTop: 1 },
 
   /* ── Trial banner ── */
   trialBanner: {
@@ -1233,26 +789,23 @@ const s = StyleSheet.create({
     alignItems: 'center',
     ...UI.shadow.md,
   },
-  trialTitle: { color: 'white', fontWeight: '900', fontSize: 16 },
-  trialSub: { color: 'rgba(255,255,255,0.8)', marginTop: 4, fontSize: 13 },
-  trialArrow: { color: 'white', fontSize: 22, fontWeight: '700', marginLeft: 10 },
-
-  /* ── Reset CTA ── */
-  resetCard: {
-    borderRadius: UI.radius.xxl,
-    padding: 20,
-    marginTop: 24,
-    borderWidth: 1,
-    ...UI.shadow.sm,
+  trialTitle: {
+    ...Typography.section,
+    color: 'white',
+    fontWeight: Typography.weight.regular,
+    fontSize: 20,
   },
-  resetTitle: { fontWeight: '800', fontSize: 16 },
-  resetBody: { marginTop: 6, fontSize: 14, lineHeight: 20 },
-  resetBtn: {
-    marginTop: 14,
-    borderWidth: 1.5,
-    padding: 14,
-    borderRadius: UI.radius.lg,
-    alignItems: 'center',
+  trialSub: {
+    fontFamily: Typography.family.body,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 4,
+    fontSize: 13,
   },
-  resetBtnLabel: { fontWeight: '800', fontSize: 15 },
+  trialArrow: {
+    fontFamily: Typography.family.body,
+    color: 'white',
+    fontSize: 22,
+    fontWeight: Typography.weight.semibold,
+    marginLeft: 10,
+  },
 });

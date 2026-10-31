@@ -1,3 +1,4 @@
+import { Typography } from '@/constants/typography';
 import React from 'react';
 import { View, Text } from 'react-native';
 
@@ -15,7 +16,9 @@ export default function ProfileProgressRing({ progress }: Readonly<{ progress: n
         backgroundColor: 'white',
       }}
     >
-      <Text style={{ fontWeight: '900' }}>{progress}%</Text>
+      <Text style={{ fontFamily: Typography.family.body, fontWeight: Typography.weight.semibold }}>
+        {progress}%
+      </Text>
     </View>
   );
 }

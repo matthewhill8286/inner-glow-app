@@ -1,10 +1,13 @@
+import { Typography } from '@/constants/typography';
+import { backTo } from '@/lib/navigation';
+import { WellnessIconText } from '@/components/WellnessIconText';
 import React from 'react';
 import { View, Text, Pressable, ScrollView, Platform, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, UI } from '@/constants/theme';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialIcons from '@/components/AppIcon';
 import { useSleep } from '@/hooks/useSleep';
 import { showAlert } from '@/lib/state';
 import { useTranslation } from 'react-i18next';
@@ -18,8 +21,7 @@ const SLEEP_COLORS = {
 
 /* ── helpers ──────────────────────────────────────── */
 function goBack(from?: string) {
-  if (from) router.replace(from as any);
-  else router.back();
+  backTo(from, '/(tabs)/sleep');
 }
 
 function getQualityEmoji(q: number) {
@@ -123,7 +125,16 @@ function DonutRing({
             justifyContent: 'center',
           }}
         >
-          <Text style={{ color: '#FFF', fontSize: 14, fontWeight: '700' }}>Breakdown</Text>
+          <Text
+            style={{
+              fontFamily: Typography.family.body,
+              color: '#FFF',
+              fontSize: 14,
+              fontWeight: Typography.weight.semibold,
+            }}
+          >
+            Breakdown
+          </Text>
         </View>
       </View>
 
@@ -141,11 +152,30 @@ function DonutRing({
                 justifyContent: 'center',
               }}
             >
-              <Text style={{ fontSize: 16 }}>{seg.emoji}</Text>
+              <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 16 }}>
+                {seg.emoji}
+              </WellnessIconText>
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ color: '#FFF', fontSize: 14, fontWeight: '800' }}>{seg.label}</Text>
-              <Text style={{ color: 'rgba(255,255,255,0.60)', fontSize: 12 }}>{seg.value}</Text>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  color: '#FFF',
+                  fontSize: 14,
+                  fontWeight: Typography.weight.semibold,
+                }}
+              >
+                {seg.label}
+              </Text>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  color: 'rgba(255,255,255,0.60)',
+                  fontSize: 12,
+                }}
+              >
+                {seg.value}
+              </Text>
             </View>
             <View
               style={{
@@ -155,7 +185,16 @@ function DonutRing({
                 borderRadius: 8,
               }}
             >
-              <Text style={{ color: seg.color, fontSize: 12, fontWeight: '700' }}>{seg.pct}%</Text>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  color: seg.color,
+                  fontSize: 12,
+                  fontWeight: Typography.weight.semibold,
+                }}
+              >
+                {seg.pct}%
+              </Text>
             </View>
           </View>
         ))}
@@ -203,11 +242,24 @@ export default function SleepDetailScreen() {
         </View>
         <View style={s.centerContent}>
           <MaterialIcons name="hotel" size={52} color={colors.border} />
-          <Text style={{ color: colors.mutedText, fontSize: 16, marginTop: 12 }}>
+          <Text
+            style={{
+              fontFamily: Typography.family.body,
+              color: colors.mutedText,
+              fontSize: 16,
+              marginTop: 12,
+            }}
+          >
             {t('sleepDetail.entryNotFound')}
           </Text>
           <Pressable onPress={() => goBack(from)} style={{ marginTop: 16 }}>
-            <Text style={{ color: colors.primary, fontWeight: '700' }}>
+            <Text
+              style={{
+                fontFamily: Typography.family.body,
+                color: colors.primary,
+                fontWeight: Typography.weight.semibold,
+              }}
+            >
               {t('sleepDetail.goBack')}
             </Text>
           </Pressable>
@@ -315,7 +367,9 @@ export default function SleepDetailScreen() {
         {entry.quality && (
           <View style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={s.qualityRow}>
-              <Text style={{ fontSize: 32 }}>{getQualityEmoji(entry.quality)}</Text>
+              <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 32 }}>
+                {getQualityEmoji(entry.quality)}
+              </WellnessIconText>
               <View style={{ flex: 1 }}>
                 <Text style={[s.qualityLabel, { color: colors.mutedText }]}>
                   {t('sleepDetail.sleepQuality')}
@@ -398,7 +452,7 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
   },
-  headerTitle: { fontSize: 22, fontWeight: '900' },
+  headerTitle: { ...Typography.heading },
 
   centerContent: {
     flex: 1,
@@ -448,21 +502,19 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  heroTitle: {
-    color: 'rgba(255,255,255,0.70)',
-    fontSize: 16,
-    fontWeight: '700',
-  },
+  heroTitle: { ...Typography.heading, color: 'rgba(255,255,255,0.70)', fontSize: 20 },
   heroDuration: {
+    fontFamily: Typography.family.body,
     color: '#FFF',
     fontSize: 42,
-    fontWeight: '900',
+    fontWeight: Typography.weight.semibold,
     marginTop: 4,
   },
   heroDate: {
+    fontFamily: Typography.family.body,
     color: 'rgba(255,255,255,0.55)',
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: Typography.weight.semibold,
     marginTop: 4,
   },
 
@@ -490,8 +542,16 @@ const s = StyleSheet.create({
     height: 40,
     marginHorizontal: 12,
   },
-  timeLabel: { fontSize: 12, fontWeight: '600' },
-  timeValue: { fontSize: 18, fontWeight: '900' },
+  timeLabel: {
+    fontFamily: Typography.family.body,
+    fontSize: 12,
+    fontWeight: Typography.weight.bold,
+  },
+  timeValue: {
+    fontFamily: Typography.family.body,
+    fontSize: 18,
+    fontWeight: Typography.weight.bold,
+  },
 
   /* quality */
   qualityRow: {
@@ -499,8 +559,16 @@ const s = StyleSheet.create({
     alignItems: 'center',
     gap: 14,
   },
-  qualityLabel: { fontSize: 12, fontWeight: '600' },
-  qualityValue: { fontSize: 16, fontWeight: '800' },
+  qualityLabel: {
+    fontFamily: Typography.family.body,
+    fontSize: 12,
+    fontWeight: Typography.weight.medium,
+  },
+  qualityValue: {
+    fontFamily: Typography.family.body,
+    fontSize: 16,
+    fontWeight: Typography.weight.bold,
+  },
 
   /* info */
   infoRow: {
@@ -508,18 +576,29 @@ const s = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
   },
-  infoLabel: { flex: 1, fontSize: 14, fontWeight: '700' },
-  infoValue: { fontSize: 18, fontWeight: '900' },
+  infoLabel: {
+    fontFamily: Typography.family.body,
+    flex: 1,
+    fontSize: 14,
+    fontWeight: Typography.weight.medium,
+  },
+  infoValue: {
+    fontFamily: Typography.family.body,
+    fontSize: 18,
+    fontWeight: Typography.weight.bold,
+  },
 
   /* notes */
   notesLabel: {
+    fontFamily: Typography.family.body,
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: Typography.weight.medium,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 8,
   },
   notesText: {
+    fontFamily: Typography.family.body,
     fontSize: 14,
     lineHeight: 22,
     fontStyle: 'italic',
@@ -534,9 +613,10 @@ const s = StyleSheet.create({
     ...UI.shadow.sm,
   },
   gotItText: {
+    fontFamily: Typography.family.body,
     color: '#FFF',
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: Typography.weight.semibold,
   },
   deleteBtn: {
     flexDirection: 'row',
@@ -549,8 +629,9 @@ const s = StyleSheet.create({
     borderRadius: UI.radius.lg,
   },
   deleteBtnText: {
+    fontFamily: Typography.family.body,
     color: '#C45B5B',
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: Typography.weight.semibold,
   },
 });

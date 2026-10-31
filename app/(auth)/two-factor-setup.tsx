@@ -1,3 +1,7 @@
+import { Typography } from '@/constants/typography';
+import { UI } from '@/constants/theme';
+import { backTo } from '@/lib/navigation';
+import { WellnessIconText } from '@/components/WellnessIconText';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -17,7 +21,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { router } from 'expo-router';
 import { supabase } from '@/supabase/supabase';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialIcons from '@/components/AppIcon';
 import { toast } from '@/components/Toast';
 
 /* ── Authenticator app deep links ── */
@@ -105,7 +109,7 @@ export default function TwoFactorSetup() {
   }, [secret]);
 
   /** Open an authenticator app or its store listing */
-  const openAuthApp = useCallback(async (app: typeof AUTH_APPS[number]) => {
+  const openAuthApp = useCallback(async (app: (typeof AUTH_APPS)[number]) => {
     const storeUrl = Platform.OS === 'ios' ? app.ios : app.android;
     try {
       // Try opening the app directly first
@@ -206,7 +210,9 @@ export default function TwoFactorSetup() {
 
   async function generateRecoveryCodes() {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (!session) throw new Error('No session');
 
       const res = await fetch(
@@ -267,7 +273,7 @@ export default function TwoFactorSetup() {
       const { error } = await supabase.auth.mfa.unenroll({ factorId });
       if (error) throw error;
       toast.success(t('toasts.twoFactorDisabled'));
-      router.back();
+      backTo(undefined, '/(tabs)/profile');
     } catch (err: any) {
       console.error('[2FA] Unenroll error:', err);
       toast.error(t('toasts.twoFactorDisableError'));
@@ -302,7 +308,7 @@ export default function TwoFactorSetup() {
       >
         {/* ── Back button ── */}
         <Pressable
-          onPress={() => router.back()}
+          onPress={() => backTo(undefined, '/(tabs)/profile')}
           style={({ pressed }) => ({
             width: 44,
             height: 44,
@@ -316,15 +322,18 @@ export default function TwoFactorSetup() {
             marginBottom: 24,
           })}
         >
-          <Text style={{ color: C.brownText, fontSize: 22 }}>{'←'}</Text>
+          <Text style={{ fontFamily: Typography.family.body, color: C.brownText, fontSize: 22 }}>
+            {'←'}
+          </Text>
         </Pressable>
 
         {/* ── Title ── */}
-        <Text style={{ fontSize: 28, fontWeight: '900', color: C.brownLight, marginBottom: 6 }}>
+        <Text style={{ ...Typography.heading, fontSize: 24, color: C.brownLight, marginBottom: 6 }}>
           {t('twoFactor.title')}
         </Text>
         <Text
           style={{
+            fontFamily: Typography.family.body,
             fontSize: 14,
             color: C.brownLight,
             opacity: 0.6,
@@ -336,9 +345,7 @@ export default function TwoFactorSetup() {
         </Text>
 
         {step === 'loading' && (
-          <View
-            style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 80 }}
-          >
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 80 }}>
             <ActivityIndicator size="large" color={C.olive} />
           </View>
         )}
@@ -368,9 +375,25 @@ export default function TwoFactorSetup() {
                     justifyContent: 'center',
                   }}
                 >
-                  <Text style={{ color: '#fff', fontSize: 13, fontWeight: '800' }}>1</Text>
+                  <Text
+                    style={{
+                      fontFamily: Typography.family.body,
+                      color: '#fff',
+                      fontSize: 13,
+                      fontWeight: Typography.weight.semibold,
+                    }}
+                  >
+                    1
+                  </Text>
                 </View>
-                <Text style={{ fontSize: 15, fontWeight: '700', color: C.brownLight }}>
+                <Text
+                  style={{
+                    fontFamily: Typography.family.body,
+                    fontSize: 15,
+                    fontWeight: Typography.weight.semibold,
+                    color: C.brownLight,
+                  }}
+                >
                   {t('twoFactor.step1')}
                 </Text>
               </View>
@@ -401,6 +424,7 @@ export default function TwoFactorSetup() {
               {/* Manual secret — tap to copy */}
               <Text
                 style={{
+                  fontFamily: Typography.family.body,
                   fontSize: 12,
                   color: C.brownLight,
                   opacity: 0.5,
@@ -429,8 +453,9 @@ export default function TwoFactorSetup() {
                 <Text
                   selectable
                   style={{
+                    fontFamily: Typography.family.body,
                     fontSize: 14,
-                    fontWeight: '700',
+                    fontWeight: Typography.weight.semibold,
                     color: secretCopied ? C.green : C.brownLight,
                     letterSpacing: 2,
                     textAlign: 'center',
@@ -446,7 +471,16 @@ export default function TwoFactorSetup() {
                 />
               </Pressable>
               {secretCopied && (
-                <Text style={{ fontSize: 12, color: C.green, textAlign: 'center', marginTop: 6, fontWeight: '600' }}>
+                <Text
+                  style={{
+                    fontFamily: Typography.family.body,
+                    fontSize: 12,
+                    color: C.green,
+                    textAlign: 'center',
+                    marginTop: 6,
+                    fontWeight: Typography.weight.semibold,
+                  }}
+                >
                   {t('twoFactor.secretCopied')}
                 </Text>
               )}
@@ -460,7 +494,15 @@ export default function TwoFactorSetup() {
                 padding: 24,
               }}
             >
-              <Text style={{ fontSize: 14, fontWeight: '700', color: C.brownLight, marginBottom: 16 }}>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  fontSize: 14,
+                  fontWeight: Typography.weight.semibold,
+                  color: C.brownLight,
+                  marginBottom: 16,
+                }}
+              >
                 {t('twoFactor.compatibleApps')}
               </Text>
               {AUTH_APPS.map((app) => (
@@ -488,13 +530,30 @@ export default function TwoFactorSetup() {
                       justifyContent: 'center',
                     }}
                   >
-                    <Text style={{ fontSize: 22 }}>{app.icon}</Text>
+                    <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 22 }}>
+                      {app.icon}
+                    </WellnessIconText>
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 15, fontWeight: '700', color: C.brownLight }}>
+                    <Text
+                      style={{
+                        fontFamily: Typography.family.body,
+                        fontSize: 15,
+                        fontWeight: Typography.weight.semibold,
+                        color: C.brownLight,
+                      }}
+                    >
                       {app.name}
                     </Text>
-                    <Text style={{ fontSize: 12, color: C.brownText, opacity: 0.6, marginTop: 2 }}>
+                    <Text
+                      style={{
+                        fontFamily: Typography.family.body,
+                        fontSize: 12,
+                        color: C.brownText,
+                        opacity: 0.6,
+                        marginTop: 2,
+                      }}
+                    >
                       {t('twoFactor.tapToOpen')}
                     </Text>
                   </View>
@@ -524,9 +583,25 @@ export default function TwoFactorSetup() {
                     justifyContent: 'center',
                   }}
                 >
-                  <Text style={{ color: '#fff', fontSize: 13, fontWeight: '800' }}>2</Text>
+                  <Text
+                    style={{
+                      fontFamily: Typography.family.body,
+                      color: '#fff',
+                      fontSize: 13,
+                      fontWeight: Typography.weight.semibold,
+                    }}
+                  >
+                    2
+                  </Text>
                 </View>
-                <Text style={{ fontSize: 15, fontWeight: '700', color: C.brownLight }}>
+                <Text
+                  style={{
+                    fontFamily: Typography.family.body,
+                    fontSize: 15,
+                    fontWeight: Typography.weight.semibold,
+                    color: C.brownLight,
+                  }}
+                >
                   {t('twoFactor.step2')}
                 </Text>
               </View>
@@ -539,12 +614,13 @@ export default function TwoFactorSetup() {
                 keyboardType="number-pad"
                 maxLength={6}
                 style={{
+                  fontFamily: Typography.family.body,
                   backgroundColor: C.inputBg,
                   borderRadius: 16,
                   paddingHorizontal: 20,
                   paddingVertical: Platform.OS === 'ios' ? 18 : 14,
                   fontSize: 28,
-                  fontWeight: '800',
+                  fontWeight: Typography.weight.semibold,
                   color: C.brownLight,
                   textAlign: 'center',
                   letterSpacing: 12,
@@ -564,7 +640,15 @@ export default function TwoFactorSetup() {
                   }}
                 >
                   <MaterialIcons name="error-outline" size={16} color={C.red} />
-                  <Text style={{ flex: 1, fontSize: 13, fontWeight: '600', color: C.red }}>
+                  <Text
+                    style={{
+                      fontFamily: Typography.family.body,
+                      flex: 1,
+                      fontSize: 13,
+                      fontWeight: Typography.weight.semibold,
+                      color: C.red,
+                    }}
+                  >
                     {error}
                   </Text>
                 </View>
@@ -582,8 +666,7 @@ export default function TwoFactorSetup() {
                 gap: 10,
                 paddingVertical: 20,
                 borderRadius: 35,
-                backgroundColor:
-                  loading || code.length !== 6 ? 'rgba(160,123,85,0.5)' : C.brown,
+                backgroundColor: loading || code.length !== 6 ? 'rgba(160,123,85,0.5)' : C.brown,
                 opacity: pressed ? 0.9 : 1,
                 shadowColor: '#000',
                 shadowOffset: { width: 0, height: 4 },
@@ -593,7 +676,14 @@ export default function TwoFactorSetup() {
               })}
             >
               {loading ? <ActivityIndicator size="small" color="#fff" /> : null}
-              <Text style={{ color: 'white', fontWeight: '800', fontSize: 18 }}>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  color: 'white',
+                  fontWeight: Typography.weight.semibold,
+                  fontSize: 18,
+                }}
+              >
                 {t('twoFactor.verifyAndEnable')}
               </Text>
             </Pressable>
@@ -627,8 +717,8 @@ export default function TwoFactorSetup() {
               </View>
               <Text
                 style={{
-                  fontSize: 22,
-                  fontWeight: '900',
+                  ...Typography.heading,
+                  fontSize: 24,
                   color: C.brownLight,
                   textAlign: 'center',
                   marginBottom: 8,
@@ -638,6 +728,7 @@ export default function TwoFactorSetup() {
               </Text>
               <Text
                 style={{
+                  fontFamily: Typography.family.body,
                   fontSize: 14,
                   color: C.brownLight,
                   opacity: 0.6,
@@ -663,9 +754,10 @@ export default function TwoFactorSetup() {
               <MaterialIcons name="warning" size={20} color="#D97706" />
               <Text
                 style={{
+                  fontFamily: Typography.family.body,
                   flex: 1,
                   fontSize: 13,
-                  fontWeight: '600',
+                  fontWeight: Typography.weight.semibold,
                   color: '#92400E',
                   lineHeight: 19,
                 }}
@@ -706,8 +798,9 @@ export default function TwoFactorSetup() {
                   >
                     <Text
                       style={{
+                        fontFamily: Typography.family.body,
                         fontSize: 11,
-                        fontWeight: '700',
+                        fontWeight: Typography.weight.semibold,
                         color: C.brownText,
                         opacity: 0.5,
                       }}
@@ -718,7 +811,7 @@ export default function TwoFactorSetup() {
                       selectable
                       style={{
                         fontSize: 15,
-                        fontWeight: '800',
+                        fontWeight: Typography.weight.semibold,
                         color: C.brownLight,
                         letterSpacing: 1.5,
                         fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
@@ -759,8 +852,9 @@ export default function TwoFactorSetup() {
                   />
                   <Text
                     style={{
+                      fontFamily: Typography.family.body,
                       fontSize: 14,
-                      fontWeight: '700',
+                      fontWeight: Typography.weight.semibold,
                       color: codesCopied ? C.green : C.brownText,
                     }}
                   >
@@ -786,7 +880,14 @@ export default function TwoFactorSetup() {
                     })}
                   >
                     <MaterialIcons name="share" size={18} color={C.brownText} />
-                    <Text style={{ fontSize: 14, fontWeight: '700', color: C.brownText }}>
+                    <Text
+                      style={{
+                        fontFamily: Typography.family.body,
+                        fontSize: 14,
+                        fontWeight: Typography.weight.semibold,
+                        color: C.brownText,
+                      }}
+                    >
                       {t('twoFactor.recoveryCodesShare')}
                     </Text>
                   </Pressable>
@@ -820,9 +921,10 @@ export default function TwoFactorSetup() {
               </View>
               <Text
                 style={{
+                  fontFamily: Typography.family.body,
                   flex: 1,
                   fontSize: 14,
-                  fontWeight: '600',
+                  fontWeight: Typography.weight.semibold,
                   color: C.brownLight,
                   lineHeight: 20,
                 }}
@@ -851,7 +953,14 @@ export default function TwoFactorSetup() {
                 elevation: codesConfirmed ? 4 : 0,
               })}
             >
-              <Text style={{ color: 'white', fontWeight: '800', fontSize: 18 }}>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  color: 'white',
+                  fontWeight: Typography.weight.semibold,
+                  fontSize: 18,
+                }}
+              >
                 {t('twoFactor.recoveryCodesContinue')}
               </Text>
             </Pressable>
@@ -883,8 +992,7 @@ export default function TwoFactorSetup() {
             </View>
             <Text
               style={{
-                fontSize: 24,
-                fontWeight: '900',
+                ...Typography.heading,
                 color: C.brownLight,
                 textAlign: 'center',
                 marginBottom: 8,
@@ -894,7 +1002,7 @@ export default function TwoFactorSetup() {
             </Text>
             <Text
               style={{
-                fontSize: 14,
+                ...Typography.heading,
                 color: C.brownLight,
                 opacity: 0.6,
                 textAlign: 'center',
@@ -907,7 +1015,7 @@ export default function TwoFactorSetup() {
             </Text>
 
             <Pressable
-              onPress={() => router.back()}
+              onPress={() => backTo(undefined, '/(tabs)/profile')}
               style={({ pressed }) => ({
                 flexDirection: 'row',
                 alignItems: 'center',
@@ -925,7 +1033,14 @@ export default function TwoFactorSetup() {
                 elevation: 4,
               })}
             >
-              <Text style={{ color: 'white', fontWeight: '800', fontSize: 18 }}>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  color: 'white',
+                  fontWeight: Typography.weight.semibold,
+                  fontSize: 18,
+                }}
+              >
                 {t('twoFactor.done')}
               </Text>
             </Pressable>
@@ -957,8 +1072,7 @@ export default function TwoFactorSetup() {
             </View>
             <Text
               style={{
-                fontSize: 22,
-                fontWeight: '800',
+                ...Typography.heading,
                 color: C.brownLight,
                 textAlign: 'center',
                 marginBottom: 8,
@@ -968,7 +1082,7 @@ export default function TwoFactorSetup() {
             </Text>
             <Text
               style={{
-                fontSize: 14,
+                ...Typography.heading,
                 color: C.brownLight,
                 opacity: 0.6,
                 textAlign: 'center',
@@ -993,7 +1107,15 @@ export default function TwoFactorSetup() {
                 }}
               >
                 <MaterialIcons name="error-outline" size={16} color={C.red} />
-                <Text style={{ flex: 1, fontSize: 13, fontWeight: '600', color: C.red }}>
+                <Text
+                  style={{
+                    fontFamily: Typography.family.body,
+                    flex: 1,
+                    fontSize: 13,
+                    fontWeight: Typography.weight.semibold,
+                    color: C.red,
+                  }}
+                >
                   {error}
                 </Text>
               </View>
@@ -1018,7 +1140,14 @@ export default function TwoFactorSetup() {
             >
               {loading ? <ActivityIndicator size="small" color="#fff" /> : null}
               <MaterialIcons name="vpn-key" size={20} color="#fff" />
-              <Text style={{ color: 'white', fontWeight: '800', fontSize: 16 }}>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  color: 'white',
+                  fontWeight: Typography.weight.semibold,
+                  fontSize: 16,
+                }}
+              >
                 {t('twoFactor.regenerateCodes')}
               </Text>
             </Pressable>
@@ -1043,20 +1172,34 @@ export default function TwoFactorSetup() {
             >
               {loading ? <ActivityIndicator size="small" color={C.red} /> : null}
               <MaterialIcons name="remove-circle-outline" size={20} color={C.red} />
-              <Text style={{ color: C.red, fontWeight: '800', fontSize: 16 }}>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  color: C.red,
+                  fontWeight: Typography.weight.semibold,
+                  fontSize: 16,
+                }}
+              >
                 {t('twoFactor.disable')}
               </Text>
             </Pressable>
 
             <Pressable
-              onPress={() => router.back()}
+              onPress={() => backTo(undefined, '/(tabs)/profile')}
               style={({ pressed }) => ({
                 paddingVertical: 14,
                 marginTop: 12,
                 opacity: pressed ? 0.6 : 1,
               })}
             >
-              <Text style={{ fontSize: 15, fontWeight: '700', color: C.brownText }}>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  fontSize: 15,
+                  fontWeight: Typography.weight.semibold,
+                  color: C.brownText,
+                }}
+              >
                 {t('twoFactor.goBack')}
               </Text>
             </Pressable>
@@ -1087,8 +1230,9 @@ export default function TwoFactorSetup() {
             </View>
             <Text
               style={{
+                fontFamily: Typography.family.body,
                 fontSize: 16,
-                fontWeight: '700',
+                fontWeight: Typography.weight.semibold,
                 color: C.brownLight,
                 textAlign: 'center',
                 marginBottom: 20,
@@ -1115,7 +1259,14 @@ export default function TwoFactorSetup() {
               })}
             >
               <MaterialIcons name="replay" size={20} color="#fff" />
-              <Text style={{ color: 'white', fontWeight: '800', fontSize: 16 }}>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  color: 'white',
+                  fontWeight: Typography.weight.semibold,
+                  fontSize: 16,
+                }}
+              >
                 {t('twoFactor.tryAgain')}
               </Text>
             </Pressable>

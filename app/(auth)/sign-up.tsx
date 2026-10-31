@@ -1,3 +1,5 @@
+import { Typography } from '@/constants/typography';
+import { LegalLinks } from '@/components/LegalLinks';
 import React, { useState } from 'react';
 import {
   View,
@@ -14,7 +16,7 @@ import { useTranslation } from 'react-i18next';
 import { router } from 'expo-router';
 import { supabase } from '@/supabase/supabase';
 import { authTokenVar } from '@/lib/state';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialIcons from '@/components/AppIcon';
 
 /* ── Design tokens (matches Figma assessment palette) ── */
 const C = {
@@ -106,8 +108,9 @@ export default function SignUp() {
           </View>
           <Text
             style={{
+              fontFamily: Typography.family.body,
               fontSize: 28,
-              fontWeight: '900',
+              fontWeight: Typography.weight.semibold,
               color: C.brownLight,
               textAlign: 'center',
             }}
@@ -116,6 +119,7 @@ export default function SignUp() {
           </Text>
           <Text
             style={{
+              fontFamily: Typography.family.body,
               fontSize: 15,
               color: C.brownLight,
               opacity: 0.7,
@@ -152,7 +156,13 @@ export default function SignUp() {
             >
               <MaterialIcons name="error-outline" size={18} color={C.red} />
               <Text
-                style={{ flex: 1, fontSize: 13, fontWeight: '600', color: C.red }}
+                style={{
+                  fontFamily: Typography.family.body,
+                  flex: 1,
+                  fontSize: 13,
+                  fontWeight: Typography.weight.semibold,
+                  color: C.red,
+                }}
               >
                 {error}
               </Text>
@@ -230,6 +240,7 @@ export default function SignUp() {
           {/* Password hint */}
           <Text
             style={{
+              fontFamily: Typography.family.body,
               fontSize: 12,
               color: C.brownLight,
               opacity: 0.5,
@@ -262,28 +273,21 @@ export default function SignUp() {
             elevation: 4,
           })}
         >
-          {loading ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : null}
-          <Text style={{ color: 'white', fontWeight: '800', fontSize: 18 }}>
+          {loading ? <ActivityIndicator size="small" color="#fff" /> : null}
+          <Text
+            style={{
+              fontFamily: Typography.family.body,
+              color: 'white',
+              fontWeight: Typography.weight.semibold,
+              fontSize: 18,
+            }}
+          >
             {loading ? t('auth.creatingAccount') : t('auth.createAccountBtn')}
           </Text>
         </Pressable>
 
         {/* ── Terms ── */}
-        <Text
-          style={{
-            fontSize: 12,
-            color: C.brownLight,
-            opacity: 0.5,
-            textAlign: 'center',
-            marginTop: 16,
-            paddingHorizontal: 12,
-            lineHeight: 18,
-          }}
-        >
-          {t('auth.termsAndPrivacy')}
-        </Text>
+        <LegalLinks color={C.brownLight} />
 
         {/* ── Footer link ── */}
         <View style={{ alignItems: 'center', marginTop: 20 }}>
@@ -291,7 +295,14 @@ export default function SignUp() {
             onPress={() => router.navigate('/(auth)/sign-in')}
             style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
           >
-            <Text style={{ fontSize: 14, fontWeight: '700', color: C.brownLight }}>
+            <Text
+              style={{
+                fontFamily: Typography.family.body,
+                fontSize: 14,
+                fontWeight: Typography.weight.semibold,
+                color: C.brownLight,
+              }}
+            >
               {t('auth.alreadyHaveAccountShort')}{' '}
               <Text style={{ color: C.brown, textDecorationLine: 'underline' }}>
                 {t('auth.signIn')}
@@ -306,8 +317,9 @@ export default function SignUp() {
 
 /* ── Shared styles ── */
 const labelStyle = {
+  fontFamily: Typography.family.body,
   fontSize: 12,
-  fontWeight: '700' as const,
+  fontWeight: Typography.weight.semibold,
   color: C.brownLight,
   textTransform: 'uppercase' as const,
   letterSpacing: 0.5,
@@ -324,8 +336,9 @@ const inputWrap = {
 };
 
 const inputField = {
+  fontFamily: Typography.family.body,
   flex: 1,
   fontSize: 15,
-  fontWeight: '600' as const,
+  fontWeight: Typography.weight.semibold,
   color: '#1B1A18',
 };

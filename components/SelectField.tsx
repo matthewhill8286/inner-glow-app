@@ -1,3 +1,4 @@
+import { Typography } from '@/constants/typography';
 import React, { useMemo, useState } from 'react';
 import { View, Text, Pressable, Modal, FlatList, TextInput } from 'react-native';
 
@@ -37,7 +38,15 @@ export default function SelectField({
 
   return (
     <View style={{ marginTop: 14 }}>
-      <Text style={{ fontWeight: '900', marginBottom: 8 }}>{label}</Text>
+      <Text
+        style={{
+          fontFamily: Typography.family.body,
+          fontWeight: Typography.weight.semibold,
+          marginBottom: 8,
+        }}
+      >
+        {label}
+      </Text>
       <Pressable
         onPress={() => setOpen(true)}
         style={{
@@ -47,7 +56,15 @@ export default function SelectField({
           backgroundColor: '#f2f2f2',
         }}
       >
-        <Text style={{ opacity: value ? 1 : 0.6, fontWeight: '700' }}>{display}</Text>
+        <Text
+          style={{
+            fontFamily: Typography.family.body,
+            opacity: value ? 1 : 0.6,
+            fontWeight: Typography.weight.semibold,
+          }}
+        >
+          {display}
+        </Text>
       </Pressable>
 
       <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
@@ -68,9 +85,24 @@ export default function SelectField({
                 alignItems: 'center',
               }}
             >
-              <Text style={{ fontSize: 16, fontWeight: '900' }}>{label}</Text>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  fontSize: 16,
+                  fontWeight: Typography.weight.semibold,
+                }}
+              >
+                {label}
+              </Text>
               <Pressable onPress={() => setOpen(false)} style={{ padding: 10 }}>
-                <Text style={{ fontWeight: '900' }}>Close</Text>
+                <Text
+                  style={{
+                    fontFamily: Typography.family.body,
+                    fontWeight: Typography.weight.semibold,
+                  }}
+                >
+                  Close
+                </Text>
               </Pressable>
             </View>
 
@@ -92,14 +124,28 @@ export default function SelectField({
                       backgroundColor: value === item.value ? '#dff7df' : '#f2f2f2',
                     }}
                   >
-                    <Text style={{ fontWeight: '800' }}>{item.label}</Text>
+                    <Text
+                      style={{
+                        fontFamily: Typography.family.body,
+                        fontWeight: Typography.weight.semibold,
+                      }}
+                    >
+                      {item.label}
+                    </Text>
                   </Pressable>
                 );
               }}
               ListFooterComponent={
                 allowCustom ? (
                   <View style={{ marginTop: 10 }}>
-                    <Text style={{ fontWeight: '900' }}>Custom</Text>
+                    <Text
+                      style={{
+                        fontFamily: Typography.family.body,
+                        fontWeight: Typography.weight.semibold,
+                      }}
+                    >
+                      Custom
+                    </Text>
                     <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
                       <TextInput
                         value={custom}
@@ -127,7 +173,15 @@ export default function SelectField({
                           justifyContent: 'center',
                         }}
                       >
-                        <Text style={{ color: 'white', fontWeight: '900' }}>Use</Text>
+                        <Text
+                          style={{
+                            fontFamily: Typography.family.body,
+                            color: 'white',
+                            fontWeight: Typography.weight.semibold,
+                          }}
+                        >
+                          Use
+                        </Text>
                       </Pressable>
                     </View>
                   </View>

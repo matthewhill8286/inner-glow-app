@@ -9,7 +9,7 @@ import type {
   PostCategory,
   PostType,
 } from '@/lib/community';
-import { timeAgo } from '@/lib/community';
+import { publishCommunityContent } from '@/lib/community-safety';
 
 /* ── Row types from Supabase ────────────────────── */
 type PostRow = {
@@ -106,14 +106,18 @@ const FALLBACK_USER: CommunityUser = {
    ═══════════════════════════════════════════════════ */
 export function useCommunityFeed(opts?: {
   category?: PostCategory;
+  categories?: PostCategory[];
+  types?: PostType[];
   sortBy?: 'recent' | 'popular';
 }) {
   const { data: user } = useUser();
   const category = opts?.category;
   const sortBy = opts?.sortBy ?? 'recent';
+  const categories = [...new Set(opts?.categories ?? [])].sort();
+  const types = [...new Set(opts?.types ?? [])].sort();
 
   return useQuery({
-    queryKey: ['communityFeed', user?.id, category, sortBy],
+    queryKey: ['communityFeed', user?.id, category, categories.join(','), types.join(','), sortBy],
     enabled: !!user,
     queryFn: async () => {
       if (!user) throw new Error('Not authenticated');
@@ -122,6 +126,8 @@ export function useCommunityFeed(opts?: {
       let postQ = supabase.from('community_posts').select('*').eq('is_hidden', false);
 
       if (category) postQ = postQ.eq('category', category);
+      if (categories.length) postQ = postQ.in('category', categories);
+      if (types.length) postQ = postQ.in('post_type', types);
 
       if (sortBy === 'popular') {
         postQ = postQ.order('likes_count', { ascending: false });
@@ -139,11 +145,12 @@ export function useCommunityFeed(opts?: {
       const userIds = [...new Set((posts as PostRow[]).map((p) => p.user_id))];
 
       /* 3) fetch profiles for those users */
-      const { data: profiles } = await supabase
+      const { data: profiles, error: profilesError } = await supabase
         .from('community_profiles')
         .select('*')
         .in('user_id', userIds);
 
+      if (profilesError) throw profilesError;
       const profileMap = new Map<string, ProfileRow>();
       (profiles || []).forEach((p: ProfileRow) => profileMap.set(p.user_id, p));
 
@@ -163,6 +170,8 @@ export function useCommunityFeed(opts?: {
           .in('post_id', postIds),
       ]);
 
+      if (likesRes.error) throw likesRes.error;
+      if (bookmarksRes.error) throw bookmarksRes.error;
       const likedIds = new Set((likesRes.data || []).map((l: any) => l.post_id));
       const bookmarkedIds = new Set((bookmarksRes.data || []).map((b: any) => b.post_id));
 
@@ -178,9 +187,11 @@ export function useCommunityFeed(opts?: {
           postType: p.post_type as PostType,
           content: p.content,
           image: p.image_key || undefined,
+          isHidden: p.is_hidden,
           createdAt: formatTimeAgo(p.created_at),
           likes: p.likes_count,
           comments: [], // comments loaded on detail
+          commentCount: p.comments_count,
           isLiked: likedIds.has(p.id),
           isBookmarked: bookmarkedIds.has(p.id),
         };
@@ -212,6 +223,7 @@ export function useCommunityPost(postId: string | undefined) {
 
       if (postErr) throw postErr;
       const p = post as PostRow;
+      if (p.is_hidden && p.user_id !== user.id) throw new Error('Post unavailable');
 
       /* fetch author profile */
       const { data: authorProfile } = await supabase
@@ -225,12 +237,13 @@ export function useCommunityPost(postId: string | undefined) {
         : { ...FALLBACK_USER, id: p.user_id };
 
       /* fetch comments with their author profiles */
-      const { data: comments } = await supabase
+      const { data: comments, error: commentsError } = await supabase
         .from('community_comments')
         .select('*')
         .eq('post_id', postId)
         .order('created_at', { ascending: true });
 
+      if (commentsError) throw commentsError;
       const commentRows = (comments || []) as CommentRow[];
       const commentUserIds = [...new Set(commentRows.map((c) => c.user_id))];
 
@@ -243,6 +256,18 @@ export function useCommunityPost(postId: string | undefined) {
         (cProfiles || []).forEach((cp: ProfileRow) => commentProfiles.set(cp.user_id, cp));
       }
 
+      const commentIds = commentRows.map((c) => c.id);
+      const likedCommentIds = new Set<string>();
+      if (commentIds.length) {
+        const { data: commentLikes, error: likesError } = await supabase
+          .from('community_likes')
+          .select('comment_id')
+          .eq('user_id', user.id)
+          .in('comment_id', commentIds);
+        if (likesError) throw likesError;
+        for (const like of commentLikes || [])
+          if (like.comment_id) likedCommentIds.add(like.comment_id);
+      }
       const mappedComments: CommunityComment[] = commentRows.map((c) => {
         const cProfile = commentProfiles.get(c.user_id);
         const cAuthor = cProfile ? profileToUser(cProfile) : { ...FALLBACK_USER, id: c.user_id };
@@ -252,6 +277,7 @@ export function useCommunityPost(postId: string | undefined) {
           content: c.content,
           createdAt: formatTimeAgo(c.created_at),
           likes: c.likes_count,
+          isLiked: likedCommentIds.has(c.id),
         };
       });
 
@@ -278,6 +304,7 @@ export function useCommunityPost(postId: string | undefined) {
         postType: p.post_type as PostType,
         content: p.content,
         image: p.image_key || undefined,
+        isHidden: p.is_hidden,
         createdAt: formatTimeAgo(p.created_at),
         likes: p.likes_count,
         comments: mappedComments,
@@ -303,23 +330,11 @@ export function useCreatePost() {
       postType: PostType;
       content: string;
       imageKey?: string;
+      isHidden?: boolean;
     }) => {
       if (!user) throw new Error('Not authenticated');
 
-      const { data, error } = await supabase
-        .from('community_posts')
-        .insert({
-          user_id: user.id,
-          category: input.category,
-          post_type: input.postType,
-          content: input.content,
-          image_key: input.imageKey || null,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
+      return publishCommunityContent({ type: 'post', ...input });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['communityFeed'] });
@@ -342,6 +357,7 @@ export function useDeletePost() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['communityFeed'] });
       queryClient.invalidateQueries({ queryKey: ['communityPost'] });
+      queryClient.invalidateQueries({ queryKey: ['communityProfile'] });
     },
   });
 }
@@ -378,6 +394,7 @@ export function useToggleLike() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['communityFeed'] });
       queryClient.invalidateQueries({ queryKey: ['communityPost'] });
+      queryClient.invalidateQueries({ queryKey: ['communityProfile'] });
     },
   });
 }
@@ -412,6 +429,7 @@ export function useToggleBookmark() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['communityFeed'] });
       queryClient.invalidateQueries({ queryKey: ['communityPost'] });
+      queryClient.invalidateQueries({ queryKey: ['communityProfile'] });
     },
   });
 }
@@ -427,21 +445,11 @@ export function useAddComment() {
     mutationFn: async ({ postId, content }: { postId: string; content: string }) => {
       if (!user) throw new Error('Not authenticated');
 
-      const { data, error } = await supabase
-        .from('community_comments')
-        .insert({
-          post_id: postId,
-          user_id: user.id,
-          content,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
+      return publishCommunityContent({ type: 'comment', postId, content });
     },
     onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ['communityPost', vars.postId] });
+      queryClient.invalidateQueries({ queryKey: ['communityProfile'] });
       queryClient.invalidateQueries({ queryKey: ['communityFeed'] });
     },
   });
@@ -461,6 +469,7 @@ export function useDeleteComment() {
     },
     onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ['communityPost', vars.postId] });
+      queryClient.invalidateQueries({ queryKey: ['communityProfile'] });
       queryClient.invalidateQueries({ queryKey: ['communityFeed'] });
     },
   });
@@ -488,13 +497,13 @@ export function useCommunityProfile(userId: string | undefined) {
       if (error) throw error;
       const user = profileToUser(profile as ProfileRow);
 
-      /* fetch their posts */
-      const { data: posts } = await supabase
-        .from('community_posts')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('is_hidden', false)
-        .order('created_at', { ascending: false });
+      /* Owners can find their private posts; other profiles expose public posts only. */
+      let postsQuery = supabase.from('community_posts').select('*').eq('user_id', userId);
+      if (currentUser.id !== userId) postsQuery = postsQuery.eq('is_hidden', false);
+      const { data: posts, error: postsError } = await postsQuery.order('created_at', {
+        ascending: false,
+      });
+      if (postsError) throw postsError;
 
       /* check if current user follows this user */
       const { data: followRow } = await supabase
@@ -512,9 +521,11 @@ export function useCommunityProfile(userId: string | undefined) {
         postType: p.post_type as PostType,
         content: p.content,
         image: p.image_key || undefined,
+        isHidden: p.is_hidden,
         createdAt: formatTimeAgo(p.created_at),
         likes: p.likes_count,
         comments: [],
+        commentCount: p.comments_count,
         isLiked: false,
         isBookmarked: false,
       }));
@@ -581,6 +592,7 @@ export function useToggleFollow() {
       isFollowing: boolean;
     }) => {
       if (!user) throw new Error('Not authenticated');
+      if (targetUserId === user.id) throw new Error('You cannot follow yourself');
 
       if (isFollowing) {
         /* unfollow */
@@ -631,7 +643,10 @@ export function useCommunityNotifications() {
       const notifs: CommunityNotification[] = ((data || []) as NotifRow[]).map((n) => ({
         id: n.id,
         type: n.type as CommunityNotification['type'],
-        user: '', // will be enriched if needed
+        user: '',
+        createdAt: n.created_at,
+        postId: n.post_id || undefined,
+        actorId: n.actor_id || undefined,
         description: n.description,
         time: formatTimeAgo(n.created_at),
         read: n.read,
@@ -674,24 +689,44 @@ export function useUpdateProfile() {
     mutationFn: async (input: { displayName?: string; avatar?: string; bio?: string }) => {
       if (!user) throw new Error('Not authenticated');
 
-      const updates: Record<string, any> = {};
-      if (input.displayName !== undefined) updates.display_name = input.displayName;
-      if (input.avatar !== undefined) updates.avatar = input.avatar;
-      if (input.bio !== undefined) updates.bio = input.bio;
-
-      const { data, error } = await supabase
-        .from('community_profiles')
-        .update(updates)
-        .eq('user_id', user.id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
+      return publishCommunityContent({ type: 'profile', ...input });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['myProfile'] });
       queryClient.invalidateQueries({ queryKey: ['communityProfile'] });
+    },
+  });
+}
+
+/** Persist comment reactions in the same protected likes table used by posts. */
+export function useToggleCommentLike() {
+  const queryClient = useQueryClient();
+  const { data: user } = useUser();
+  return useMutation({
+    mutationFn: async ({
+      commentId,
+      isLiked,
+      postId,
+    }: {
+      commentId: string;
+      isLiked: boolean;
+      postId: string;
+    }) => {
+      if (!user) throw new Error('Not authenticated');
+      const result = isLiked
+        ? await supabase
+            .from('community_likes')
+            .delete()
+            .eq('user_id', user.id)
+            .eq('comment_id', commentId)
+        : await supabase
+            .from('community_likes')
+            .insert({ user_id: user.id, comment_id: commentId });
+      if (result.error) throw result.error;
+      return { postId };
+    },
+    onSuccess: (_, vars) => {
+      queryClient.invalidateQueries({ queryKey: ['communityPost', vars.postId] });
     },
   });
 }

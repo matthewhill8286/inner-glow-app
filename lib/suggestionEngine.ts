@@ -1,3 +1,4 @@
+import { invokeAI } from '@/lib/ai-privacy';
 import { supabase } from '@/supabase/supabase';
 import type { FreudBreakdown } from './freudScore';
 
@@ -79,9 +80,10 @@ async function generateAISuggestions(opts: {
   categories: string[];
   existingTitles: string[];
   maxSuggestions: number;
+  required?: boolean;
 }): Promise<AISuggestionFromLLM[] | null> {
   try {
-    const { data, error } = await supabase.functions.invoke('generate-suggestions', {
+    const { data, error } = await invokeAI('generate-suggestions', {
       body: {
         score: opts.score,
         breakdown: opts.breakdown,
@@ -104,6 +106,7 @@ async function generateAISuggestions(opts: {
 
     return data.suggestions as AISuggestionFromLLM[];
   } catch (err) {
+    if (opts.required) throw err;
     console.warn('[SuggestionEngine] AI generation failed:', err);
     return null;
   }
@@ -212,6 +215,8 @@ export async function generateSuggestionsForUser(opts: {
   maxSuggestions?: number;
   /** When set, only generate suggestions for this specific category */
   category?: string;
+  allowAI?: boolean;
+  requireAI?: boolean;
 }): Promise<{ inserted: number; source: 'ai' | 'templates' | 'mixed' }> {
   const { userId, score, breakdown, freudScoreId, maxSuggestions = 6, category } = opts;
 
@@ -249,14 +254,18 @@ export async function generateSuggestionsForUser(opts: {
   const existingTitles = await getExistingSuggestionTitles(userId);
 
   // 4. Try AI-powered generation first
-  const aiSuggestions = await generateAISuggestions({
+  const aiSuggestions = opts.allowAI ? await generateAISuggestions({
     score,
     breakdown,
     weakAreas,
     categories,
     existingTitles: Array.from(existingTitles),
     maxSuggestions,
-  });
+    required: opts.requireAI,
+  }) : null;
+  if (opts.requireAI && !aiSuggestions?.length) {
+    throw new Error("AI suggestions are unavailable. Please try again.");
+  }
 
   let insertedCount = 0;
   let source: 'ai' | 'templates' | 'mixed' = 'templates';

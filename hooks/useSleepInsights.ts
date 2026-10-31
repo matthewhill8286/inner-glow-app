@@ -1,3 +1,4 @@
+import { invokeAI } from '@/lib/ai-privacy';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/supabase/supabase';
 import { useSleep } from './useSleep';
@@ -72,9 +73,7 @@ export const useSleepInsights = () => {
       }));
 
       const avgDuration =
-        entries.length > 0
-          ? entries.reduce((a, e) => a + e.duration, 0) / entries.length
-          : 0;
+        entries.length > 0 ? entries.reduce((a, e) => a + e.duration, 0) / entries.length : 0;
 
       const qualityEntries = entries.filter((e) => e.quality);
       const avgQuality =
@@ -84,7 +83,7 @@ export const useSleepInsights = () => {
 
       const irregularity = computeIrregularity(sleepEntries.slice(0, 30));
 
-      const { data, error } = await supabase.functions.invoke('sleep-insights', {
+      const { data, error } = await invokeAI('sleep-insights', {
         body: { sleepEntries: entries, irregularity, avgDuration, avgQuality },
       });
 

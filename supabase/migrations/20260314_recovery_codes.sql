@@ -27,6 +27,6 @@ create policy "Users can delete own recovery codes"
 
 -- Only the service role (edge functions) can insert / update
 create policy "Service role can manage recovery codes"
-  on public.recovery_codes for all
+  on public.recovery_codes for all to service_role
   using (true)
   with check (true);

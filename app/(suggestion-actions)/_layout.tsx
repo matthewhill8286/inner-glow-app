@@ -1,5 +1,6 @@
+import { SessionGate } from '@/components/SessionGate';
 import { Stack } from 'expo-router';
 
 export default function SuggestionActionsLayout() {
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return <SessionGate><Stack screenOptions={{ headerShown: false }} /></SessionGate>;
 }

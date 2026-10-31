@@ -1,3 +1,6 @@
+import { Typography } from '@/constants/typography';
+import { backTo } from '@/lib/navigation';
+import { WellnessIconText } from '@/components/WellnessIconText';
 import React, { useMemo } from 'react';
 import { View, Text, Pressable, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -5,7 +8,7 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, UI } from '@/constants/theme';
 import { useMood } from '@/hooks/useMood';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialIcons from '@/components/AppIcon';
 import { showAlert } from '@/lib/state';
 import { toast } from '@/components/Toast';
 import { useTranslation } from 'react-i18next';
@@ -127,7 +130,7 @@ export default function MoodDetailScreen() {
           try {
             await deleteMoodCheckIn(id as string);
             toast.success(t('toasts.moodDeleted'));
-            router.back();
+            backTo(undefined, '/(tabs)/mood');
           } catch (err) {
             console.error('Failed to delete mood check-in:', err);
             toast.error(t('toasts.moodDeleteError'));
@@ -148,7 +151,7 @@ export default function MoodDetailScreen() {
           }}
         >
           <Pressable
-            onPress={() => router.back()}
+            onPress={() => backTo(undefined, '/(tabs)/mood')}
             style={({ pressed }) => ({
               width: 36,
               height: 36,
@@ -171,11 +174,15 @@ export default function MoodDetailScreen() {
           </Pressable>
         </View>
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 }}>
-          <Text style={{ fontSize: 40 }}>🔍</Text>
-          <Text style={{ fontSize: 18, fontWeight: '700', color: colors.text }}>
+          <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 40 }}>
+            🔍
+          </WellnessIconText>
+          <Text style={{ ...Typography.heading, color: colors.text }}>
             {t('moodDetail.entryNotFound')}
           </Text>
-          <Text style={{ fontSize: 14, color: colors.mutedText }}>
+          <Text
+            style={{ fontFamily: Typography.family.body, fontSize: 14, color: colors.mutedText }}
+          >
             This check-in may have been deleted.
           </Text>
         </View>
@@ -208,7 +215,7 @@ export default function MoodDetailScreen() {
           }}
         >
           <Pressable
-            onPress={() => router.back()}
+            onPress={() => backTo(undefined, '/(tabs)/mood')}
             style={({ pressed }) => ({
               width: 36,
               height: 36,
@@ -240,14 +247,27 @@ export default function MoodDetailScreen() {
 
         {/* Emoji + mood info */}
         <View style={{ alignItems: 'center' }}>
-          <Text style={{ fontSize: 80 }}>{meta.emoji}</Text>
-          <Text style={{ fontSize: 26, fontWeight: '900', color: '#fff', marginTop: 8 }}>
+          <WellnessIconText
+            style={{ fontFamily: Typography.family.body, fontSize: 80, color: meta.color }}
+          >
+            {meta.emoji}
+          </WellnessIconText>
+          <Text
+            style={{
+              fontFamily: Typography.family.body,
+              fontSize: 26,
+              fontWeight: Typography.weight.semibold,
+              color: '#fff',
+              marginTop: 8,
+            }}
+          >
             {meta.label}
           </Text>
           <Text
             style={{
+              fontFamily: Typography.family.body,
               fontSize: 14,
-              fontWeight: '600',
+              fontWeight: Typography.weight.semibold,
               color: 'rgba(255,255,255,0.75)',
               marginTop: 6,
             }}
@@ -297,8 +317,9 @@ export default function MoodDetailScreen() {
               </View>
               <Text
                 style={{
+                  fontFamily: Typography.family.body,
                   fontSize: 11,
-                  fontWeight: '700',
+                  fontWeight: Typography.weight.semibold,
                   color: colors.mutedText,
                   textTransform: 'uppercase',
                   letterSpacing: 0.5,
@@ -307,12 +328,34 @@ export default function MoodDetailScreen() {
                 {t('moodDetail.energy')}
               </Text>
             </View>
-            <Text style={{ fontSize: 32, fontWeight: '900', color: '#5B8A5A' }}>
+            <Text
+              style={{
+                fontFamily: Typography.family.body,
+                fontSize: 32,
+                fontWeight: Typography.weight.semibold,
+                color: '#5B8A5A',
+              }}
+            >
               {entry.energy}
-              <Text style={{ fontSize: 16, fontWeight: '600', color: colors.mutedText }}>/5</Text>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  fontSize: 16,
+                  fontWeight: Typography.weight.semibold,
+                  color: colors.mutedText,
+                }}
+              >
+                /5
+              </Text>
             </Text>
             <Text
-              style={{ fontSize: 12, fontWeight: '600', color: colors.mutedText, marginTop: 4 }}
+              style={{
+                fontFamily: Typography.family.body,
+                fontSize: 12,
+                fontWeight: Typography.weight.semibold,
+                color: colors.mutedText,
+                marginTop: 4,
+              }}
             >
               {energyLabel(entry.energy)}
             </Text>
@@ -363,8 +406,9 @@ export default function MoodDetailScreen() {
               </View>
               <Text
                 style={{
+                  fontFamily: Typography.family.body,
                   fontSize: 11,
-                  fontWeight: '700',
+                  fontWeight: Typography.weight.semibold,
                   color: colors.mutedText,
                   textTransform: 'uppercase',
                   letterSpacing: 0.5,
@@ -373,12 +417,34 @@ export default function MoodDetailScreen() {
                 {t('moodDetail.stress')}
               </Text>
             </View>
-            <Text style={{ fontSize: 32, fontWeight: '900', color: '#E8985A' }}>
+            <Text
+              style={{
+                fontFamily: Typography.family.body,
+                fontSize: 32,
+                fontWeight: Typography.weight.semibold,
+                color: '#E8985A',
+              }}
+            >
               {entry.stress}
-              <Text style={{ fontSize: 16, fontWeight: '600', color: colors.mutedText }}>/10</Text>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  fontSize: 16,
+                  fontWeight: Typography.weight.semibold,
+                  color: colors.mutedText,
+                }}
+              >
+                /10
+              </Text>
             </Text>
             <Text
-              style={{ fontSize: 12, fontWeight: '600', color: colors.mutedText, marginTop: 4 }}
+              style={{
+                fontFamily: Typography.family.body,
+                fontSize: 12,
+                fontWeight: Typography.weight.semibold,
+                color: colors.mutedText,
+                marginTop: 4,
+              }}
             >
               {stressLabel(entry.stress)}
             </Text>
@@ -417,8 +483,9 @@ export default function MoodDetailScreen() {
           >
             <Text
               style={{
+                fontFamily: Typography.family.body,
                 fontSize: 12,
-                fontWeight: '700',
+                fontWeight: Typography.weight.semibold,
                 color: colors.mutedText,
                 textTransform: 'uppercase',
                 letterSpacing: 0.5,
@@ -440,7 +507,16 @@ export default function MoodDetailScreen() {
                     borderColor: meta.color + '30',
                   }}
                 >
-                  <Text style={{ fontSize: 13, fontWeight: '700', color: meta.color }}>#{tag}</Text>
+                  <Text
+                    style={{
+                      fontFamily: Typography.family.body,
+                      fontSize: 13,
+                      fontWeight: Typography.weight.semibold,
+                      color: meta.color,
+                    }}
+                  >
+                    #{tag}
+                  </Text>
                 </View>
               ))}
             </View>
@@ -477,8 +553,9 @@ export default function MoodDetailScreen() {
             <View style={{ flex: 1 }}>
               <Text
                 style={{
+                  fontFamily: Typography.family.body,
                   fontSize: 11,
-                  fontWeight: '700',
+                  fontWeight: Typography.weight.semibold,
                   color: colors.mutedText,
                   textTransform: 'uppercase',
                   letterSpacing: 0.5,
@@ -486,7 +563,15 @@ export default function MoodDetailScreen() {
               >
                 Context
               </Text>
-              <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text, marginTop: 2 }}>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  fontSize: 14,
+                  fontWeight: Typography.weight.semibold,
+                  color: colors.text,
+                  marginTop: 2,
+                }}
+              >
                 {entry.topicContext}
               </Text>
             </View>
@@ -509,8 +594,9 @@ export default function MoodDetailScreen() {
               <MaterialIcons name="edit-note" size={20} color={colors.mutedText} />
               <Text
                 style={{
+                  fontFamily: Typography.family.body,
                   fontSize: 12,
-                  fontWeight: '700',
+                  fontWeight: Typography.weight.semibold,
                   color: colors.mutedText,
                   textTransform: 'uppercase',
                   letterSpacing: 0.5,
@@ -521,13 +607,14 @@ export default function MoodDetailScreen() {
             </View>
             <Text
               style={{
+                fontFamily: Typography.family.body,
                 fontSize: 15,
                 lineHeight: 24,
                 color: colors.text,
                 fontStyle: 'italic',
               }}
             >
-              "{entry.note}"
+              &quot;{entry.note}&quot;
             </Text>
           </View>
         )}
@@ -544,7 +631,7 @@ export default function MoodDetailScreen() {
             }}
           >
             <MaterialIcons name="auto-awesome" size={18} color="#8B6B47" />
-            <Text style={{ fontSize: 16, fontWeight: '800', color: colors.text }}>AI Insights</Text>
+            <Text style={{ ...Typography.section, color: colors.text }}>AI Insights</Text>
           </View>
           <View style={{ gap: 10 }}>
             {insights.map((insight, idx) => (
@@ -574,12 +661,21 @@ export default function MoodDetailScreen() {
                   >
                     <MaterialIcons name={insight.icon as any} size={18} color={insight.color} />
                   </View>
-                  <Text style={{ fontSize: 14, fontWeight: '800', color: colors.text, flex: 1 }}>
+                  <Text
+                    style={{
+                      fontFamily: Typography.family.body,
+                      fontSize: 14,
+                      fontWeight: Typography.weight.semibold,
+                      color: colors.text,
+                      flex: 1,
+                    }}
+                  >
                     {insight.title}
                   </Text>
                 </View>
                 <Text
                   style={{
+                    fontFamily: Typography.family.body,
                     fontSize: 13,
                     lineHeight: 20,
                     color: colors.mutedText,
@@ -612,7 +708,16 @@ export default function MoodDetailScreen() {
           })}
         >
           <MaterialIcons name="delete-outline" size={18} color="#C45B5B" />
-          <Text style={{ fontSize: 14, fontWeight: '700', color: '#C45B5B' }}>Delete Check-In</Text>
+          <Text
+            style={{
+              fontFamily: Typography.family.body,
+              fontSize: 14,
+              fontWeight: Typography.weight.semibold,
+              color: '#C45B5B',
+            }}
+          >
+            Delete Check-In
+          </Text>
         </Pressable>
       </ScrollView>
     </View>

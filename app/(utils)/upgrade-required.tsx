@@ -1,3 +1,5 @@
+import { Typography } from '@/constants/typography';
+import { UI } from '@/constants/theme';
 import React from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -17,11 +19,21 @@ export default function UpgradeRequired() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#6f6660', padding: 24, justifyContent: 'center', paddingTop: insets.top + 6 }}>
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: '#6f6660',
+        padding: 24,
+        justifyContent: 'center',
+        paddingTop: insets.top + 6,
+      }}
+    >
       <View
         style={{ backgroundColor: 'white', borderRadius: 28, padding: 26, alignItems: 'center' }}
       >
-        <Text style={{ fontSize: 24, fontWeight: '900', color: '#6a5e55', textAlign: 'center' }}>
+        <Text
+          style={{ ...Typography.heading, fontSize: 24, color: '#6a5e55', textAlign: 'center' }}
+        >
           {t('upgradeRequired.title')}
         </Text>
         <Text style={{ opacity: 0.7, marginTop: 12, textAlign: 'center', lineHeight: 22 }}>
@@ -40,17 +52,42 @@ export default function UpgradeRequired() {
             alignItems: 'center',
           }}
         >
-          <Text style={{ color: 'white', fontWeight: '900', fontSize: 16 }}>{t('upgradeRequired.upgradeNow')}</Text>
+          <Text
+            style={{
+              fontFamily: Typography.family.body,
+              color: 'white',
+              fontWeight: Typography.weight.semibold,
+              fontSize: 16,
+            }}
+          >
+            {t('upgradeRequired.upgradeNow')}
+          </Text>
         </Pressable>
 
         <Pressable onPress={() => router.replace('/(tabs)/home')} style={{ marginTop: 16 }}>
-          <Text style={{ color: '#6a5e55', fontWeight: '800', opacity: 0.8 }}>
+          <Text
+            style={{
+              fontFamily: Typography.family.body,
+              color: '#6a5e55',
+              fontWeight: Typography.weight.semibold,
+              opacity: 0.8,
+            }}
+          >
             {t('upgradeRequired.continueLimit')}
           </Text>
         </Pressable>
 
         <Pressable onPress={signOut} style={{ marginTop: 20 }}>
-          <Text style={{ color: '#6a5e55', fontWeight: '800', opacity: 0.6 }}>{t('upgradeRequired.signOut')}</Text>
+          <Text
+            style={{
+              fontFamily: Typography.family.body,
+              color: '#6a5e55',
+              fontWeight: Typography.weight.semibold,
+              opacity: 0.6,
+            }}
+          >
+            {t('upgradeRequired.signOut')}
+          </Text>
         </Pressable>
       </View>
     </View>

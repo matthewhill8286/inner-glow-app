@@ -2,6 +2,7 @@ import { useCallback, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/supabase/supabase';
 import { useUser } from './useUser';
+import { useSubscription } from './useSubscription';
 import { useMood } from './useMood';
 import { useJournal } from './useJournal';
 import { useSleep } from './useSleep';
@@ -49,6 +50,7 @@ const EMPTY_SCORE: FreudScoreResult = {
 
 export const useFreudScore = (opts?: { lazy?: boolean }) => {
   const lazy = opts?.lazy ?? false;
+  const { hasFullAccess } = useSubscription();
   const queryClient = useQueryClient();
   const { data: user } = useUser();
 
@@ -240,6 +242,7 @@ export const useFreudScore = (opts?: { lazy?: boolean }) => {
             breakdown: r.breakdown,
             freudScoreId: data?.id,
             maxSuggestions: 6,
+            allowAI: false,
           });
         } catch {
           console.warn('[FreudScore] Failed to auto-generate suggestions');
@@ -466,6 +469,7 @@ export const useFreudScore = (opts?: { lazy?: boolean }) => {
   const generateSuggestionsMutation = useMutation({
     mutationFn: async (genOpts?: { maxSuggestions?: number; category?: string }) => {
       if (!user) throw new Error('Not authenticated');
+      if (!hasFullAccess) throw new Error('Premium or an active trial is required.');
 
       return generateSuggestionsForUser({
         userId: user.id,
@@ -474,6 +478,8 @@ export const useFreudScore = (opts?: { lazy?: boolean }) => {
         freudScoreId: historyQuery.data?.[0]?.id,
         maxSuggestions: genOpts?.maxSuggestions ?? 6,
         category: genOpts?.category,
+        allowAI: true,
+        requireAI: true,
       });
     },
     onSuccess: (_data, genOpts) => {

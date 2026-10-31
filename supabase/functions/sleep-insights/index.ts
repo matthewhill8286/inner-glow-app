@@ -1,3 +1,4 @@
+import { authenticationError } from '../_shared/auth.ts';
 // @ts-ignore
 // eslint-disable-next-line import/no-unresolved
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
@@ -25,6 +26,9 @@ serve(async (req: Request) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  const authError = await authenticationError(req, corsHeaders);
+  if (authError) return authError;
+
   try {
     // @ts-ignore
     const openaiKey = Deno.env.get('OPENAI_API_KEY');
@@ -36,12 +40,7 @@ serve(async (req: Request) => {
     }
 
     const body = await req.json();
-    const {
-      sleepEntries = [],
-      irregularity = 0,
-      avgDuration = 0,
-      avgQuality = 0,
-    } = body;
+    const { sleepEntries = [], irregularity = 0, avgDuration = 0, avgQuality = 0 } = body;
 
     if (!sleepEntries.length) {
       return new Response(
@@ -108,14 +107,18 @@ Patterns:
 - Sleep notes: ${recentNotes.length > 0 ? recentNotes.join(' | ') : 'none'}
 
 Raw entries (most recent first, up to 15):
-${JSON.stringify(sleepEntries.slice(0, 15).map((e: any) => ({
-  bedtime: e.startISO,
-  wakeTime: e.endISO,
-  duration: e.duration,
-  quality: e.quality,
-  awakenings: e.awakenings,
-  notes: e.notes,
-})), null, 2)}
+${JSON.stringify(
+  sleepEntries.slice(0, 15).map((e: any) => ({
+    bedtime: e.startISO,
+    wakeTime: e.endISO,
+    duration: e.duration,
+    quality: e.quality,
+    awakenings: e.awakenings,
+    notes: e.notes,
+  })),
+  null,
+  2,
+)}
 
 Generate personalised sleep improvement suggestions. Return this JSON structure:
 {

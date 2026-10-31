@@ -1,3 +1,5 @@
+import { Typography } from '@/constants/typography';
+import { WellnessIconText } from '@/components/WellnessIconText';
 import React from 'react';
 import { View, Text, useColorScheme } from 'react-native';
 import { Colors, UI } from '@/constants/theme';
@@ -21,9 +23,32 @@ export function MiniStat({
         borderColor: colors.border,
       }}
     >
-      {icon && <Text style={{ fontSize: 18, marginBottom: 6 }}>{icon}</Text>}
-      <Text style={{ color: colors.mutedText, fontWeight: '700', fontSize: 13 }}>{label}</Text>
-      <Text style={{ fontSize: 22, fontWeight: '900', marginTop: 4, color: colors.text }}>
+      {icon && (
+        <WellnessIconText
+          style={{ fontFamily: Typography.family.body, fontSize: 18, marginBottom: 6 }}
+        >
+          {icon}
+        </WellnessIconText>
+      )}
+      <Text
+        style={{
+          fontFamily: Typography.family.body,
+          color: colors.mutedText,
+          fontWeight: Typography.weight.semibold,
+          fontSize: 13,
+        }}
+      >
+        {label}
+      </Text>
+      <Text
+        style={{
+          fontFamily: Typography.family.body,
+          fontSize: 22,
+          fontWeight: Typography.weight.semibold,
+          marginTop: 4,
+          color: colors.text,
+        }}
+      >
         {value}
       </Text>
     </View>

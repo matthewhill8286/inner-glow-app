@@ -1,3 +1,5 @@
+import { Typography } from '@/constants/typography';
+import { backTo } from '@/lib/navigation';
 import React, { useMemo } from 'react';
 import { View, Text, Pressable, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -5,7 +7,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useMindfulness } from '@/hooks/useMindfulness';
 import { Colors, UI } from '@/constants/theme';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialIcons from '@/components/AppIcon';
 import ScreenHeader from '@/components/ScreenHeader';
 
 const SESSION_ICONS: Record<string, { icon: string; color: string; label: string }> = {
@@ -67,11 +69,20 @@ export default function SessionDetail() {
 
   if (!entry) {
     return (
-      <View style={{ flex: 1, backgroundColor: colors.background, paddingHorizontal: UI.spacing.xl }}>
+      <View
+        style={{ flex: 1, backgroundColor: colors.background, paddingHorizontal: UI.spacing.xl }}
+      >
         <ScreenHeader title="Session Detail" showBack />
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', opacity: 0.5 }}>
           <MaterialIcons name="error-outline" size={48} color={colors.icon} />
-          <Text style={{ marginTop: 12, color: colors.mutedText, fontSize: 15 }}>
+          <Text
+            style={{
+              fontFamily: Typography.family.body,
+              marginTop: 12,
+              color: colors.mutedText,
+              fontSize: 15,
+            }}
+          >
             Session not found
           </Text>
         </View>
@@ -126,8 +137,7 @@ export default function SessionDetail() {
 
           <Text
             style={{
-              fontSize: 22,
-              fontWeight: '900',
+              ...Typography.section,
               color: colors.text,
               textAlign: 'center',
               marginBottom: 4,
@@ -144,7 +154,14 @@ export default function SessionDetail() {
               marginTop: 6,
             }}
           >
-            <Text style={{ fontSize: 13, fontWeight: '700', color: iconInfo.color }}>
+            <Text
+              style={{
+                fontFamily: Typography.family.body,
+                fontSize: 13,
+                fontWeight: Typography.weight.semibold,
+                color: iconInfo.color,
+              }}
+            >
               {iconInfo.label}
             </Text>
           </View>
@@ -165,8 +182,9 @@ export default function SessionDetail() {
           <MaterialIcons name="timer" size={28} color={colors.primary} />
           <Text
             style={{
+              fontFamily: Typography.family.body,
               fontSize: 42,
-              fontWeight: '900',
+              fontWeight: Typography.weight.semibold,
               color: colors.primary,
               marginTop: 8,
               letterSpacing: -1,
@@ -174,7 +192,15 @@ export default function SessionDetail() {
           >
             {duration.value}
           </Text>
-          <Text style={{ color: colors.mutedText, fontWeight: '600', marginTop: 2, fontSize: 15 }}>
+          <Text
+            style={{
+              fontFamily: Typography.family.body,
+              color: colors.mutedText,
+              fontWeight: Typography.weight.semibold,
+              marginTop: 2,
+              fontSize: 15,
+            }}
+          >
             {duration.unit}
           </Text>
         </View>
@@ -207,8 +233,9 @@ export default function SessionDetail() {
             </View>
             <Text
               style={{
+                fontFamily: Typography.family.body,
                 fontSize: 14,
-                fontWeight: '700',
+                fontWeight: Typography.weight.semibold,
                 color: colors.text,
                 textAlign: 'center',
               }}
@@ -217,9 +244,10 @@ export default function SessionDetail() {
             </Text>
             <Text
               style={{
+                fontFamily: Typography.family.body,
                 fontSize: 12,
                 color: colors.mutedText,
-                fontWeight: '600',
+                fontWeight: Typography.weight.semibold,
                 marginTop: 4,
               }}
             >
@@ -253,8 +281,9 @@ export default function SessionDetail() {
             </View>
             <Text
               style={{
+                fontFamily: Typography.family.body,
                 fontSize: 14,
-                fontWeight: '700',
+                fontWeight: Typography.weight.semibold,
                 color: colors.text,
                 textAlign: 'center',
               }}
@@ -263,9 +292,10 @@ export default function SessionDetail() {
             </Text>
             <Text
               style={{
+                fontFamily: Typography.family.body,
                 fontSize: 12,
                 color: colors.mutedText,
-                fontWeight: '600',
+                fontWeight: Typography.weight.semibold,
                 marginTop: 4,
               }}
             >
@@ -289,13 +319,15 @@ export default function SessionDetail() {
           <MaterialIcons name="lightbulb" size={22} color={colors.primary} />
           <Text
             style={{
+              fontFamily: Typography.family.body,
               flex: 1,
               fontSize: 13,
               color: colors.text,
               lineHeight: 20,
             }}
           >
-            Consistency is key. Every session builds on the last, strengthening your mindfulness practice.
+            Consistency is key. Every session builds on the last, strengthening your mindfulness
+            practice.
           </Text>
         </View>
 
@@ -316,13 +348,20 @@ export default function SessionDetail() {
             marginBottom: 12,
           })}
         >
-          <Text style={{ color: colors.onPrimary, fontWeight: '800', fontSize: 16 }}>
+          <Text
+            style={{
+              fontFamily: Typography.family.body,
+              color: colors.onPrimary,
+              fontWeight: Typography.weight.semibold,
+              fontSize: 16,
+            }}
+          >
             Start Another Session
           </Text>
         </Pressable>
 
         <Pressable
-          onPress={() => router.back()}
+          onPress={() => backTo(undefined, '/(tabs)/mindful')}
           style={({ pressed }) => ({
             backgroundColor: colors.card,
             paddingVertical: 18,
@@ -334,7 +373,14 @@ export default function SessionDetail() {
             borderColor: colors.border,
           })}
         >
-          <Text style={{ color: colors.text, fontWeight: '700', fontSize: 16 }}>
+          <Text
+            style={{
+              fontFamily: Typography.family.body,
+              color: colors.text,
+              fontWeight: Typography.weight.semibold,
+              fontSize: 16,
+            }}
+          >
             Back to Sessions
           </Text>
         </Pressable>

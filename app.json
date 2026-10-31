@@ -1,18 +1,20 @@
 {
   "expo": {
-    "name": "innerglow",
+    "name": "Inner Glow",
     "slug": "innerglow",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "innerglow",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.innerglowai.app",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSMicrophoneUsageDescription": "Inner Glow uses your microphone when you choose to record a voice journal, such as a reflection about your day, or a sleep sound recording. With your separate AI permission, voice journals can be sent to OpenAI for transcription.",
+        "NSAlarmKitUsageDescription": "Inner Glow schedules the wake-up alarms you enable in your sleep schedule. These alarms ring even when Silent Mode or Focus is on."
       }
     },
     "android": {
@@ -48,8 +50,55 @@
           }
         }
       ],
-      "expo-audio",
-      "expo-localization"
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Inner Glow uses your microphone when you choose to record a voice journal, such as a reflection about your day, or a sleep sound recording. With your separate AI permission, voice journals can be sent to OpenAI for transcription."
+        }
+      ],
+      "expo-localization",
+      "@react-native-community/datetimepicker",
+      [
+        "expo-font",
+        {
+          "ios": {
+            "fonts": [
+              "node_modules/@expo-google-fonts/urbanist/400Regular/Urbanist_400Regular.ttf",
+              "node_modules/@expo-google-fonts/urbanist/500Medium/Urbanist_500Medium.ttf",
+              "node_modules/@expo-google-fonts/urbanist/600SemiBold/Urbanist_600SemiBold.ttf",
+              "node_modules/@expo-google-fonts/urbanist/700Bold/Urbanist_700Bold.ttf"
+            ]
+          },
+          "android": {
+            "fonts": [
+              {
+                "fontFamily": "Urbanist",
+                "fontDefinitions": [
+                  {
+                    "path": "node_modules/@expo-google-fonts/urbanist/400Regular/Urbanist_400Regular.ttf",
+                    "weight": 400
+                  },
+                  {
+                    "path": "node_modules/@expo-google-fonts/urbanist/500Medium/Urbanist_500Medium.ttf",
+                    "weight": 500
+                  },
+                  {
+                    "path": "node_modules/@expo-google-fonts/urbanist/600SemiBold/Urbanist_600SemiBold.ttf",
+                    "weight": 600
+                  },
+                  {
+                    "path": "node_modules/@expo-google-fonts/urbanist/700Bold/Urbanist_700Bold.ttf",
+                    "weight": 700
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "expo-web-browser",
+      "expo-asset",
+      "expo-notifications"
     ],
     "experiments": {
       "typedRoutes": true,
@@ -65,7 +114,7 @@
       "policy": "appVersion"
     },
     "updates": {
-      "url": "https://u.expo.dev/c52caf0b-ebc2-4144-ac13-baea2e325cab"
+      "url": "https://u.expo.dev/976af0c9-628b-4305-af26-76acbb4d1654"
     },
     "owner": "matthill8286"
   }

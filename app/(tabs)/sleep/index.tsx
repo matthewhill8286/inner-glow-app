@@ -1,10 +1,13 @@
+import { Typography } from '@/constants/typography';
+import { backTo } from '@/lib/navigation';
+import { WellnessIconText } from '@/components/WellnessIconText';
 import React, { useMemo } from 'react';
 import { View, Text, Pressable, ScrollView, Platform, StyleSheet, Dimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, UI } from '@/constants/theme';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialIcons from '@/components/AppIcon';
 import { useSleep } from '@/hooks/useSleep';
 import { SleepEntry } from '@/lib/types';
 import { useTranslation } from 'react-i18next';
@@ -23,8 +26,7 @@ const SLEEP_COLORS = {
 
 /* ── helpers ──────────────────────────────────────── */
 function goBack(from?: string) {
-  if (from) router.replace(from as any);
-  else router.back();
+  backTo(from, '/(tabs)/home');
 }
 
 function computeSleepStats(entries: SleepEntry[]) {
@@ -161,7 +163,14 @@ function SleepBreakdownRing({
         {segments.map((seg, i) => (
           <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
             <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: seg.color }} />
-            <Text style={{ color: 'rgba(255,255,255,0.80)', fontSize: 11, fontWeight: '700' }}>
+            <Text
+              style={{
+                fontFamily: Typography.family.body,
+                color: 'rgba(255,255,255,0.80)',
+                fontSize: 11,
+                fontWeight: Typography.weight.semibold,
+              }}
+            >
               {seg.label} {seg.pct}%
             </Text>
           </View>
@@ -217,12 +226,37 @@ function CircleProgress({
             opacity: pct > 0 ? 1 : 0,
           }}
         />
-        <Text style={{ fontSize: size * 0.22, fontWeight: '900', color }}>{value.toFixed(1)}</Text>
-        <Text style={{ fontSize: size * 0.13, fontWeight: '600', color: 'rgba(0,0,0,0.45)' }}>
+        <Text
+          style={{
+            fontFamily: Typography.family.body,
+            fontSize: size * 0.22,
+            fontWeight: Typography.weight.semibold,
+            color,
+          }}
+        >
+          {value.toFixed(1)}
+        </Text>
+        <Text
+          style={{
+            fontFamily: Typography.family.body,
+            fontSize: size * 0.13,
+            fontWeight: Typography.weight.semibold,
+            color: 'rgba(0,0,0,0.45)',
+          }}
+        >
           {unit}
         </Text>
       </View>
-      <Text style={{ fontSize: 12, fontWeight: '700', color: 'rgba(0,0,0,0.55)' }}>{label}</Text>
+      <Text
+        style={{
+          fontFamily: Typography.family.body,
+          fontSize: 12,
+          fontWeight: Typography.weight.semibold,
+          color: 'rgba(0,0,0,0.55)',
+        }}
+      >
+        {label}
+      </Text>
     </View>
   );
 }
@@ -259,7 +293,7 @@ export default function SleepScreen() {
       {/* ── Header ──────────────────────────────────── */}
       <View style={s.header}>
         <Pressable
-          onPress={() => router.back()}
+          onPress={() => backTo(undefined, '/(tabs)/home')}
           style={({ pressed }) => [
             s.iconBtn,
             {
@@ -277,7 +311,9 @@ export default function SleepScreen() {
         </Pressable>
         <View style={{ flex: 1 }}>
           <View style={s.titleRow}>
-            <Text style={{ fontSize: 28 }}>🌙</Text>
+            <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 28 }}>
+              🌙
+            </WellnessIconText>
             <Text style={[s.headerTitle, { color: colors.text }]}>{t('sleepHome.title')}</Text>
           </View>
           <Text style={[s.headerSub, { color: colors.mutedText }]}>{t('sleepHome.subtitle')}</Text>
@@ -468,7 +504,9 @@ export default function SleepScreen() {
             >
               <View style={s.aiCardLeft}>
                 <View style={[s.aiBadge, { backgroundColor: '#7B6DC915' }]}>
-                  <Text style={{ fontSize: 18 }}>🤖</Text>
+                  <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 18 }}>
+                    🤖
+                  </WellnessIconText>
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={[s.aiCardTitle, { color: colors.text }]}>
@@ -480,7 +518,14 @@ export default function SleepScreen() {
                 </View>
               </View>
               <View style={[s.aiCount, { backgroundColor: '#7B6DC920' }]}>
-                <Text style={{ fontSize: 16, fontWeight: '900', color: '#7B6DC9' }}>
+                <Text
+                  style={{
+                    fontFamily: Typography.family.body,
+                    fontSize: 16,
+                    fontWeight: Typography.weight.semibold,
+                    color: '#7B6DC9',
+                  }}
+                >
                   {entries.length > 0 ? Math.min(89, entries.length * 12) + '+' : '3+'}
                 </Text>
               </View>
@@ -494,7 +539,14 @@ export default function SleepScreen() {
                     {t('sleepHome.recentSleep')}
                   </Text>
                   <Pressable onPress={() => router.push('/(tabs)/sleep/history')}>
-                    <Text style={{ fontSize: 13, fontWeight: '700', color: colors.primary }}>
+                    <Text
+                      style={{
+                        fontFamily: Typography.family.body,
+                        fontSize: 13,
+                        fontWeight: Typography.weight.semibold,
+                        color: colors.primary,
+                      }}
+                    >
                       {t('sleepHome.viewAll')}
                     </Text>
                   </Pressable>
@@ -566,7 +618,14 @@ export default function SleepScreen() {
             >
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 <MaterialIcons name="self-improvement" size={22} color={SLEEP_COLORS.core} />
-                <Text style={{ fontWeight: '800', fontSize: 14, color: colors.text }}>
+                <Text
+                  style={{
+                    fontFamily: Typography.family.body,
+                    fontWeight: Typography.weight.semibold,
+                    fontSize: 14,
+                    color: colors.text,
+                  }}
+                >
                   {t('sleepHome.viewMindfulHours')}
                 </Text>
               </View>
@@ -594,8 +653,8 @@ const s = StyleSheet.create({
     marginBottom: 4,
   } as any,
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  headerTitle: { fontSize: 24, fontWeight: '900' },
-  headerSub: { fontSize: 14, marginTop: 2 },
+  headerTitle: { ...Typography.heading },
+  headerSub: { fontFamily: Typography.family.body, fontSize: 14, marginTop: 2 },
   iconBtn: {
     width: 40,
     height: 40,
@@ -651,25 +710,29 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
   heroScoreNum: {
+    fontFamily: Typography.family.body,
     color: '#FFF',
     fontSize: 32,
-    fontWeight: '900',
+    fontWeight: Typography.weight.bold,
   },
   heroScoreLabel: {
+    fontFamily: Typography.family.body,
     color: 'rgba(255,255,255,0.60)',
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: Typography.weight.bold,
     marginTop: -4,
   },
   heroStatusLabel: {
+    fontFamily: Typography.family.body,
     color: 'rgba(255,255,255,0.60)',
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: Typography.weight.bold,
   },
   heroStatusValue: {
+    fontFamily: Typography.family.body,
     color: '#FFF',
     fontSize: 20,
-    fontWeight: '900',
+    fontWeight: Typography.weight.bold,
     marginTop: 2,
   },
   improvementBadge: {
@@ -683,9 +746,10 @@ const s = StyleSheet.create({
     marginTop: 14,
   },
   improvementText: {
+    fontFamily: Typography.family.body,
     color: '#FFF',
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: Typography.weight.semibold,
   },
 
   /* cards */
@@ -696,8 +760,9 @@ const s = StyleSheet.create({
     ...UI.shadow.sm,
   },
   cardLabel: {
+    fontFamily: Typography.family.body,
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: Typography.weight.medium,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 14,
@@ -729,8 +794,9 @@ const s = StyleSheet.create({
     borderRadius: 5,
   },
   legendText: {
+    fontFamily: Typography.family.body,
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: Typography.weight.semibold,
   },
 
   /* actions grid */
@@ -747,15 +813,17 @@ const s = StyleSheet.create({
     ...UI.shadow.md,
   },
   actionCardTitle: {
+    fontFamily: Typography.family.body,
     color: '#FFF',
     fontSize: 15,
-    fontWeight: '900',
+    fontWeight: Typography.weight.semibold,
     marginTop: 4,
   },
   actionCardSub: {
+    fontFamily: Typography.family.body,
     color: 'rgba(255,255,255,0.70)',
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: Typography.weight.semibold,
   },
 
   /* AI card */
@@ -781,8 +849,12 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  aiCardTitle: { fontSize: 14, fontWeight: '800' },
-  aiCardSub: { fontSize: 12, marginTop: 2 },
+  aiCardTitle: {
+    fontFamily: Typography.family.body,
+    fontSize: 14,
+    fontWeight: Typography.weight.semibold,
+  },
+  aiCardSub: { fontFamily: Typography.family.body, fontSize: 12, marginTop: 2 },
   aiCount: {
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -802,21 +874,20 @@ const s = StyleSheet.create({
     borderRadius: 4,
   },
   entryDate: {
+    fontFamily: Typography.family.body,
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: Typography.weight.semibold,
   },
-  entryDuration: {
-    fontSize: 12,
-    marginTop: 2,
-  },
+  entryDuration: { fontFamily: Typography.family.body, fontSize: 12, marginTop: 2 },
   typeBadge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 8,
   },
   typeBadgeText: {
+    fontFamily: Typography.family.body,
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: Typography.weight.medium,
   },
 
   /* link card */

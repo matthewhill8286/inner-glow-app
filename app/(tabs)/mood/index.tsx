@@ -1,3 +1,6 @@
+import { screenBottomPadding } from '@/lib/screen-layout';
+import { Typography } from '@/constants/typography';
+import { WellnessIconText, AnimatedWellnessIconText } from '@/components/WellnessIconText';
 import React, { useCallback, useMemo, useState, useRef, useEffect } from 'react';
 import { View, Text, Pressable, ScrollView, Animated, Dimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,14 +11,14 @@ import { useMoodInsights, MoodInsight } from '@/hooks/useMoodInsights';
 import { MoodCheckIn } from '@/lib/types';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, UI } from '@/constants/theme';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialIcons from '@/components/AppIcon';
 import { SkeletonRect } from '@/components/Skeleton';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
 /* ── Mood config ── */
 const MOOD_META: Record<string, { emoji: string; face: string; color: string; bg: string }> = {
-  Great: { emoji: '😊', face: '😄', color: '#5B8A5A', bg: '#E8F5E3' },
+  Great: { emoji: '😄', face: '😄', color: '#5B8A5A', bg: '#E8F5E3' },
   Good: { emoji: '🙂', face: '😊', color: '#7EAD7E', bg: '#EDF7ED' },
   Okay: { emoji: '😐', face: '😐', color: '#E8985A', bg: '#FFF3E8' },
   Low: { emoji: '😔', face: '😞', color: '#C47A5A', bg: '#FBEEE6' },
@@ -40,9 +43,11 @@ export default function MoodIndex() {
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
 
-  useFocusEffect(useCallback(() => {
-    scrollRef.current?.scrollTo({ y: 0, animated: false });
-  }, []));
+  useFocusEffect(
+    useCallback(() => {
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+    }, []),
+  );
 
   /* ── Bounce animation on hero emoji ── */
   const bounce = useRef(new Animated.Value(1)).current;
@@ -137,30 +142,17 @@ export default function MoodIndex() {
           style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <Pressable
-              onPress={() => router.back()}
-              style={({ pressed }) => ({
-                width: 40,
-                height: 40,
-                borderRadius: 12,
-                backgroundColor: colors.card,
-                borderWidth: 1,
-                borderColor: colors.border,
-                alignItems: 'center',
-                justifyContent: 'center',
-                opacity: pressed ? 0.7 : 1,
-              })}
-            >
-              <MaterialIcons
-                name="arrow-back-ios-new"
-                size={18}
-                color={colors.text}
-              />
-            </Pressable>
             <View>
-              <Text style={{ fontSize: 28, fontWeight: '900', color: colors.text }}>Mood</Text>
-              <Text style={{ fontSize: 14, color: colors.mutedText, marginTop: 2 }}>
-                Track how you're feeling
+              <Text style={{ ...Typography.heading, color: colors.text }}>Mood</Text>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  fontSize: 14,
+                  color: colors.mutedText,
+                  marginTop: 2,
+                }}
+              >
+                Track how you&#39;re feeling
               </Text>
             </View>
           </View>
@@ -205,7 +197,11 @@ export default function MoodIndex() {
 
       <ScrollView
         ref={scrollRef}
-        contentContainerStyle={{ paddingHorizontal: UI.spacing.xl, paddingBottom: 120, gap: 16 }}
+        contentContainerStyle={{
+          paddingHorizontal: UI.spacing.xl,
+          paddingBottom: screenBottomPadding(insets.bottom),
+          gap: 16,
+        }}
         showsVerticalScrollIndicator={false}
       >
         {loading ? (
@@ -229,30 +225,40 @@ export default function MoodIndex() {
               style={{
                 backgroundColor: theme === 'dark' ? latestMeta.color + '15' : latestMeta.bg,
                 borderRadius: UI.radius.xxl,
-                padding: 28,
+                padding: 24,
                 alignItems: 'center',
                 ...UI.shadow.md,
               }}
             >
-              <Animated.Text
+              <AnimatedWellnessIconText
                 style={{
-                  fontSize: 72,
+                  fontFamily: Typography.family.body,
+                  fontSize: 52,
+                  color: latestMeta.color,
                   transform: [{ scale: bounce }],
                 }}
               >
                 {latest ? latestMeta.face : '😊'}
-              </Animated.Text>
+              </AnimatedWellnessIconText>
               <Text
                 style={{
+                  fontFamily: Typography.family.body,
                   fontSize: 28,
-                  fontWeight: '900',
+                  fontWeight: Typography.weight.semibold,
                   color: latestMeta.color,
                   marginTop: 12,
                 }}
               >
                 {latest ? latest.mood : 'No Check-in Yet'}
               </Text>
-              <Text style={{ fontSize: 14, color: colors.mutedText, marginTop: 4 }}>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  fontSize: 14,
+                  color: colors.mutedText,
+                  marginTop: 4,
+                }}
+              >
                 {latest
                   ? `Last check-in ${new Date(latest.createdAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
                   : 'How are you feeling today?'}
@@ -268,14 +274,23 @@ export default function MoodIndex() {
                   backgroundColor: latestMeta.color,
                   paddingHorizontal: 28,
                   paddingVertical: 14,
-                  borderRadius: UI.radius.pill,
+                  borderRadius: UI.radius.sm,
                   marginTop: 20,
                   opacity: pressed ? 0.9 : 1,
                   ...UI.shadow.md,
                 })}
               >
                 <MaterialIcons name="add" size={20} color="#fff" />
-                <Text style={{ fontSize: 16, fontWeight: '800', color: '#fff' }}>Set Mood</Text>
+                <Text
+                  style={{
+                    fontFamily: Typography.family.body,
+                    fontSize: 16,
+                    fontWeight: Typography.weight.semibold,
+                    color: '#fff',
+                  }}
+                >
+                  Set Mood
+                </Text>
               </Pressable>
             </View>
 
@@ -298,10 +313,15 @@ export default function MoodIndex() {
                   marginBottom: 16,
                 }}
               >
-                <Text style={{ fontSize: 16, fontWeight: '800', color: colors.text }}>
-                  Mood Timeline
-                </Text>
-                <Text style={{ fontSize: 12, fontWeight: '600', color: colors.mutedText }}>
+                <Text style={{ ...Typography.section, color: colors.text }}>Mood Timeline</Text>
+                <Text
+                  style={{
+                    fontFamily: Typography.family.body,
+                    fontSize: 12,
+                    fontWeight: Typography.weight.semibold,
+                    color: colors.mutedText,
+                  }}
+                >
                   Last 7 days
                 </Text>
               </View>
@@ -323,9 +343,15 @@ export default function MoodIndex() {
                     <View key={day.key} style={{ alignItems: 'center', flex: 1 }}>
                       {/* Emoji on top if has data */}
                       {day.mood && (
-                        <Text style={{ fontSize: 14, marginBottom: 4 }}>
+                        <WellnessIconText
+                          style={{
+                            fontFamily: Typography.family.body,
+                            fontSize: 14,
+                            marginBottom: 4,
+                          }}
+                        >
                           {MOOD_META[day.mood]?.emoji ?? '😐'}
-                        </Text>
+                        </WellnessIconText>
                       )}
                       <View
                         style={{
@@ -338,8 +364,9 @@ export default function MoodIndex() {
                       />
                       <Text
                         style={{
+                          fontFamily: Typography.family.body,
                           fontSize: 10,
-                          fontWeight: day.isToday ? '800' : '600',
+                          fontWeight: day.isToday ? Typography.weight.bold : '600',
                           color: day.isToday ? '#8B6B47' : colors.mutedText,
                           marginTop: 6,
                         }}
@@ -377,9 +404,7 @@ export default function MoodIndex() {
                 ...UI.shadow.sm,
               }}
             >
-              <Text
-                style={{ fontSize: 16, fontWeight: '800', color: colors.text, marginBottom: 16 }}
-              >
+              <Text style={{ ...Typography.section, color: colors.text, marginBottom: 16 }}>
                 Mood Distribution
               </Text>
               <View style={{ gap: 10 }}>
@@ -388,9 +413,19 @@ export default function MoodIndex() {
                     key={d.mood}
                     style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}
                   >
-                    <Text style={{ fontSize: 20 }}>{d.emoji}</Text>
+                    <WellnessIconText
+                      style={{ fontFamily: Typography.family.body, fontSize: 20, color: d.color }}
+                    >
+                      {d.emoji}
+                    </WellnessIconText>
                     <Text
-                      style={{ width: 48, fontSize: 13, fontWeight: '700', color: colors.text }}
+                      style={{
+                        fontFamily: Typography.family.body,
+                        width: 48,
+                        fontSize: 13,
+                        fontWeight: Typography.weight.semibold,
+                        color: colors.text,
+                      }}
                     >
                       {d.mood}
                     </Text>
@@ -413,9 +448,10 @@ export default function MoodIndex() {
                     </View>
                     <Text
                       style={{
+                        fontFamily: Typography.family.body,
                         width: 36,
                         fontSize: 12,
-                        fontWeight: '700',
+                        fontWeight: Typography.weight.semibold,
                         color: colors.mutedText,
                         textAlign: 'right',
                       }}
@@ -447,9 +483,7 @@ export default function MoodIndex() {
                     marginBottom: 16,
                   }}
                 >
-                  <Text style={{ fontSize: 16, fontWeight: '800', color: colors.text }}>
-                    Quick Stats
-                  </Text>
+                  <Text style={{ ...Typography.section, color: colors.text }}>Quick Stats</Text>
                   <Pressable
                     onPress={() => router.push('/(tabs)/mood/stats')}
                     style={({ pressed }) => ({
@@ -459,7 +493,14 @@ export default function MoodIndex() {
                       opacity: pressed ? 0.7 : 1,
                     })}
                   >
-                    <Text style={{ fontSize: 13, fontWeight: '700', color: '#8B6B47' }}>
+                    <Text
+                      style={{
+                        fontFamily: Typography.family.body,
+                        fontSize: 13,
+                        fontWeight: Typography.weight.semibold,
+                        color: '#8B6B47',
+                      }}
+                    >
                       See all
                     </Text>
                     <MaterialIcons name="chevron-right" size={16} color="#8B6B47" />
@@ -501,14 +542,21 @@ export default function MoodIndex() {
                     >
                       <MaterialIcons name={stat.icon} size={20} color={stat.color} />
                       <Text
-                        style={{ fontSize: 20, fontWeight: '900', color: stat.color, marginTop: 6 }}
+                        style={{
+                          fontFamily: Typography.family.body,
+                          fontSize: 20,
+                          fontWeight: Typography.weight.semibold,
+                          color: stat.color,
+                          marginTop: 6,
+                        }}
                       >
                         {stat.value}
                       </Text>
                       <Text
                         style={{
+                          fontFamily: Typography.family.body,
                           fontSize: 10,
-                          fontWeight: '600',
+                          fontWeight: Typography.weight.semibold,
                           color: colors.mutedText,
                           marginTop: 2,
                         }}
@@ -548,9 +596,7 @@ export default function MoodIndex() {
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                     <MaterialIcons name="auto-awesome" size={18} color="#8B6B47" />
-                    <Text style={{ fontSize: 16, fontWeight: '800', color: colors.text }}>
-                      AI Insights
-                    </Text>
+                    <Text style={{ ...Typography.section, color: colors.text }}>AI Insights</Text>
                     <View
                       style={{
                         backgroundColor: '#8B6B47',
@@ -559,7 +605,14 @@ export default function MoodIndex() {
                         paddingVertical: 2,
                       }}
                     >
-                      <Text style={{ fontSize: 11, fontWeight: '800', color: '#fff' }}>
+                      <Text
+                        style={{
+                          fontFamily: Typography.family.body,
+                          fontSize: 11,
+                          fontWeight: Typography.weight.semibold,
+                          color: '#fff',
+                        }}
+                      >
                         {insights.length}
                       </Text>
                     </View>
@@ -573,7 +626,14 @@ export default function MoodIndex() {
                       opacity: pressed ? 0.7 : 1,
                     })}
                   >
-                    <Text style={{ fontSize: 13, fontWeight: '700', color: '#8B6B47' }}>
+                    <Text
+                      style={{
+                        fontFamily: Typography.family.body,
+                        fontSize: 13,
+                        fontWeight: Typography.weight.semibold,
+                        color: '#8B6B47',
+                      }}
+                    >
                       See all
                     </Text>
                     <MaterialIcons name="chevron-right" size={16} color="#8B6B47" />
@@ -614,13 +674,23 @@ export default function MoodIndex() {
                       </View>
                       <View style={{ flex: 1 }}>
                         <Text
-                          style={{ fontSize: 14, fontWeight: '700', color: colors.text }}
+                          style={{
+                            fontFamily: Typography.family.body,
+                            fontSize: 14,
+                            fontWeight: Typography.weight.semibold,
+                            color: colors.text,
+                          }}
                           numberOfLines={1}
                         >
                           {insight.title}
                         </Text>
                         <Text
-                          style={{ fontSize: 12, color: colors.mutedText, marginTop: 2 }}
+                          style={{
+                            fontFamily: Typography.family.body,
+                            fontSize: 12,
+                            color: colors.mutedText,
+                            marginTop: 2,
+                          }}
                           numberOfLines={1}
                         >
                           {insight.description}
@@ -644,7 +714,7 @@ export default function MoodIndex() {
                     marginBottom: 12,
                   }}
                 >
-                  <Text style={{ fontSize: 16, fontWeight: '800', color: colors.text }}>
+                  <Text style={{ ...Typography.section, color: colors.text }}>
                     Recent Check-ins
                   </Text>
                   <Pressable
@@ -656,7 +726,14 @@ export default function MoodIndex() {
                       opacity: pressed ? 0.7 : 1,
                     })}
                   >
-                    <Text style={{ fontSize: 13, fontWeight: '700', color: '#8B6B47' }}>
+                    <Text
+                      style={{
+                        fontFamily: Typography.family.body,
+                        fontSize: 13,
+                        fontWeight: Typography.weight.semibold,
+                        color: '#8B6B47',
+                      }}
+                    >
                       View all
                     </Text>
                     <MaterialIcons name="chevron-right" size={16} color="#8B6B47" />
@@ -692,13 +769,35 @@ export default function MoodIndex() {
                             justifyContent: 'center',
                           }}
                         >
-                          <Text style={{ fontSize: 24 }}>{meta.emoji}</Text>
+                          <WellnessIconText
+                            style={{
+                              fontFamily: Typography.family.body,
+                              fontSize: 24,
+                              color: meta.color,
+                            }}
+                          >
+                            {meta.emoji}
+                          </WellnessIconText>
                         </View>
                         <View style={{ flex: 1 }}>
-                          <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text }}>
+                          <Text
+                            style={{
+                              fontFamily: Typography.family.body,
+                              fontSize: 15,
+                              fontWeight: Typography.weight.semibold,
+                              color: colors.text,
+                            }}
+                          >
                             {item.mood}
                           </Text>
-                          <Text style={{ fontSize: 12, color: colors.mutedText, marginTop: 2 }}>
+                          <Text
+                            style={{
+                              fontFamily: Typography.family.body,
+                              fontSize: 12,
+                              color: colors.mutedText,
+                              marginTop: 2,
+                            }}
+                          >
                             {new Date(item.createdAt).toLocaleDateString('en-US', {
                               month: 'short',
                               day: 'numeric',
@@ -724,9 +823,16 @@ export default function MoodIndex() {
                               backgroundColor: '#5B8A5A15',
                             }}
                           >
-                            <Text style={{ fontSize: 11, fontWeight: '700', color: '#5B8A5A' }}>
+                            <WellnessIconText
+                              style={{
+                                fontFamily: Typography.family.body,
+                                fontSize: 11,
+                                fontWeight: Typography.weight.semibold,
+                                color: '#5B8A5A',
+                              }}
+                            >
                               ⚡{item.energy}
-                            </Text>
+                            </WellnessIconText>
                           </View>
                           <View
                             style={{
@@ -736,9 +842,16 @@ export default function MoodIndex() {
                               backgroundColor: '#C45B5B15',
                             }}
                           >
-                            <Text style={{ fontSize: 11, fontWeight: '700', color: '#C45B5B' }}>
+                            <WellnessIconText
+                              style={{
+                                fontFamily: Typography.family.body,
+                                fontSize: 11,
+                                fontWeight: Typography.weight.semibold,
+                                color: '#C45B5B',
+                              }}
+                            >
                               🔥{item.stress}
-                            </Text>
+                            </WellnessIconText>
                           </View>
                         </View>
                         <View

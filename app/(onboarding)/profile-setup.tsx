@@ -1,3 +1,8 @@
+import { profileChoiceLabel } from '@/lib/profile-choices';
+import { Typography } from '@/constants/typography';
+import { UI } from '@/constants/theme';
+import { backTo } from '@/lib/navigation';
+import { WellnessIconText } from '@/components/WellnessIconText';
 import React, { useMemo, useState } from 'react';
 import { View, Text, Pressable, TextInput, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -45,7 +50,7 @@ export default function ProfileSetup() {
 
   function back() {
     if (step === 0) {
-      router.back();
+      backTo(undefined, '/(tabs)/home');
       return;
     }
     setStep((s) => Math.max(s - 1, 0));
@@ -75,11 +80,11 @@ export default function ProfileSetup() {
               backgroundColor: 'rgba(255,255,255,0.1)',
             }}
           >
-            <Text style={{ color: 'white', fontSize: 24 }}>←</Text>
+            <Text style={{ fontFamily: Typography.family.body, color: 'white', fontSize: 24 }}>
+              ←
+            </Text>
           </Pressable>
-          <Text style={{ color: 'white', fontSize: 18, fontWeight: '700' }}>
-            {t('profileSetup.title')}
-          </Text>
+          <Text style={{ ...Typography.section, color: 'white' }}>{t('profileSetup.title')}</Text>
         </View>
         <ProfileProgressRing progress={progress} />
       </View>
@@ -100,10 +105,20 @@ export default function ProfileSetup() {
         >
           {stepKey === 'intro' && (
             <>
-              <Text style={{ fontSize: 26, fontWeight: '900', marginTop: 18, color: '#6a5e55' }}>
+              <Text
+                style={{ ...Typography.heading, fontSize: 24, marginTop: 18, color: '#6a5e55' }}
+              >
                 {t('profileSetup.heading')}
               </Text>
-              <Text style={{ opacity: 0.7, marginTop: 10, color: '#6a5e55', fontSize: 16 }}>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  opacity: 0.7,
+                  marginTop: 10,
+                  color: '#6a5e55',
+                  fontSize: 16,
+                }}
+              >
                 {t('profileSetup.subtitle')}
               </Text>
             </>
@@ -111,7 +126,7 @@ export default function ProfileSetup() {
 
           {stepKey === 'language' && (
             <>
-              <Text style={{ fontSize: 22, fontWeight: '900', marginTop: 18, color: '#6a5e55' }}>
+              <Text style={{ ...Typography.heading, marginTop: 18, color: '#6a5e55' }}>
                 {t('profileSetup.languageQuestion')}
               </Text>
               <Text style={{ opacity: 0.7, marginTop: 8, color: '#6a5e55' }}>
@@ -136,12 +151,17 @@ export default function ProfileSetup() {
                         borderColor: isSelected ? '#a07b55' : 'transparent',
                       }}
                     >
-                      <Text style={{ fontSize: 26 }}>{lang.flag}</Text>
+                      <WellnessIconText
+                        style={{ fontFamily: Typography.family.body, fontSize: 26 }}
+                      >
+                        {lang.flag}
+                      </WellnessIconText>
                       <Text
                         style={{
+                          fontFamily: Typography.family.body,
                           flex: 1,
                           fontSize: 17,
-                          fontWeight: isSelected ? '800' : '600',
+                          fontWeight: isSelected ? Typography.weight.bold : '600',
                           color: '#6a5e55',
                         }}
                       >
@@ -158,7 +178,16 @@ export default function ProfileSetup() {
                             justifyContent: 'center',
                           }}
                         >
-                          <Text style={{ color: 'white', fontSize: 14, fontWeight: '700' }}>✓</Text>
+                          <Text
+                            style={{
+                              fontFamily: Typography.family.body,
+                              color: 'white',
+                              fontSize: 14,
+                              fontWeight: Typography.weight.semibold,
+                            }}
+                          >
+                            ✓
+                          </Text>
                         </View>
                       )}
                     </Pressable>
@@ -170,7 +199,7 @@ export default function ProfileSetup() {
 
           {stepKey === 'name' && (
             <>
-              <Text style={{ fontSize: 22, fontWeight: '900', marginTop: 18, color: '#6a5e55' }}>
+              <Text style={{ ...Typography.heading, marginTop: 18, color: '#6a5e55' }}>
                 {t('profileSetup.nameQuestion')}
               </Text>
               <Text style={{ opacity: 0.7, marginTop: 8, color: '#6a5e55' }}>
@@ -181,6 +210,7 @@ export default function ProfileSetup() {
                 onChangeText={setName}
                 placeholder={t('profileSetup.namePlaceholder')}
                 style={{
+                  fontFamily: Typography.family.body,
                   marginTop: 16,
                   paddingVertical: 14,
                   paddingHorizontal: 16,
@@ -194,7 +224,7 @@ export default function ProfileSetup() {
 
           {stepKey === 'intention' && (
             <>
-              <Text style={{ fontSize: 22, fontWeight: '900', marginTop: 18, color: '#6a5e55' }}>
+              <Text style={{ ...Typography.heading, marginTop: 18, color: '#6a5e55' }}>
                 {t('profileSetup.intentionQuestion')}
               </Text>
               <Text style={{ opacity: 0.7, marginTop: 8, color: '#6a5e55' }}>
@@ -209,7 +239,7 @@ export default function ProfileSetup() {
                   t('profileSetup.goalConfidence'),
                   t('profileSetup.goalBalance'),
                 ]}
-                value={intention}
+                value={profileChoiceLabel(intention, 'goal', t) ?? undefined}
                 onChange={(v) => setIntention(v as string)}
               />
             </>
@@ -217,7 +247,7 @@ export default function ProfileSetup() {
 
           {stepKey === 'routine' && (
             <>
-              <Text style={{ fontSize: 22, fontWeight: '900', marginTop: 18, color: '#6a5e55' }}>
+              <Text style={{ ...Typography.heading, marginTop: 18, color: '#6a5e55' }}>
                 {t('profileSetup.routineQuestion')}
               </Text>
               <Text style={{ opacity: 0.7, marginTop: 8, color: '#6a5e55' }}>
@@ -229,7 +259,7 @@ export default function ProfileSetup() {
                   t('profileSetup.routineEvening'),
                   t('profileSetup.routineAnytime'),
                 ]}
-                value={routine}
+                value={profileChoiceLabel(routine, 'routine', t) ?? undefined}
                 onChange={(v) => setRoutine(v as string)}
               />
             </>
@@ -237,7 +267,7 @@ export default function ProfileSetup() {
 
           {stepKey === 'finish' && (
             <>
-              <Text style={{ fontSize: 26, fontWeight: '900', marginTop: 18, color: '#6a5e55' }}>
+              <Text style={{ ...Typography.heading, marginTop: 18, color: '#6a5e55' }}>
                 {t('profileSetup.allSet')}
               </Text>
               <Text style={{ opacity: 0.7, marginTop: 10, color: '#6a5e55' }}>
@@ -252,7 +282,13 @@ export default function ProfileSetup() {
                   borderRadius: 20,
                 }}
               >
-                <Text style={{ fontWeight: '900', color: '#6a5e55' }}>
+                <Text
+                  style={{
+                    fontFamily: Typography.family.body,
+                    fontWeight: Typography.weight.semibold,
+                    color: '#6a5e55',
+                  }}
+                >
                   {t('profileSetup.language')}
                 </Text>
                 <Text style={{ opacity: 0.7, color: '#6a5e55' }}>
@@ -260,25 +296,46 @@ export default function ProfileSetup() {
                     selectedLanguage}
                 </Text>
 
-                <Text style={{ fontWeight: '900', marginTop: 12, color: '#6a5e55' }}>
+                <Text
+                  style={{
+                    fontFamily: Typography.family.body,
+                    fontWeight: Typography.weight.semibold,
+                    marginTop: 12,
+                    color: '#6a5e55',
+                  }}
+                >
                   {t('profileSetup.name')}
                 </Text>
                 <Text style={{ opacity: 0.7, color: '#6a5e55' }}>
                   {name.trim() || t('common.notSet')}
                 </Text>
 
-                <Text style={{ fontWeight: '900', marginTop: 12, color: '#6a5e55' }}>
+                <Text
+                  style={{
+                    fontFamily: Typography.family.body,
+                    fontWeight: Typography.weight.semibold,
+                    marginTop: 12,
+                    color: '#6a5e55',
+                  }}
+                >
                   {t('profileSetup.goal')}
                 </Text>
                 <Text style={{ opacity: 0.7, color: '#6a5e55' }}>
-                  {intention ?? t('common.notSet')}
+                  {profileChoiceLabel(intention, 'goal', t) ?? t('common.notSet')}
                 </Text>
 
-                <Text style={{ fontWeight: '900', marginTop: 12, color: '#6a5e55' }}>
+                <Text
+                  style={{
+                    fontFamily: Typography.family.body,
+                    fontWeight: Typography.weight.semibold,
+                    marginTop: 12,
+                    color: '#6a5e55',
+                  }}
+                >
                   {t('profileSetup.routine')}
                 </Text>
                 <Text style={{ opacity: 0.7, color: '#6a5e55' }}>
-                  {routine ?? t('common.notSet')}
+                  {profileChoiceLabel(routine, 'routine', t) ?? t('common.notSet')}
                 </Text>
               </View>
             </>
@@ -305,14 +362,25 @@ export default function ProfileSetup() {
               elevation: 4,
             }}
           >
-            <Text style={{ color: 'white', fontWeight: '800', fontSize: 18 }}>
+            <Text
+              style={{
+                fontFamily: Typography.family.body,
+                color: 'white',
+                fontWeight: Typography.weight.semibold,
+                fontSize: 18,
+              }}
+            >
               {saving
                 ? t('profileSetup.saving')
                 : stepKey === 'finish'
                   ? t('common.complete')
                   : t('common.next')}
             </Text>
-            {!saving && <Text style={{ color: 'white', fontSize: 20 }}>→</Text>}
+            {!saving && (
+              <Text style={{ fontFamily: Typography.family.body, color: 'white', fontSize: 20 }}>
+                →
+              </Text>
+            )}
           </Pressable>
         </View>
 
@@ -320,7 +388,15 @@ export default function ProfileSetup() {
           onPress={() => router.replace('/(onboarding)/suggested-categories')}
           style={{ marginTop: 20 }}
         >
-          <Text style={{ color: 'white', opacity: 0.65, textAlign: 'center', fontWeight: '700' }}>
+          <Text
+            style={{
+              fontFamily: Typography.family.body,
+              color: 'white',
+              opacity: 0.65,
+              textAlign: 'center',
+              fontWeight: Typography.weight.semibold,
+            }}
+          >
             {t('profileSetup.skipSetup')}
           </Text>
         </Pressable>

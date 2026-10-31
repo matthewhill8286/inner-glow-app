@@ -17,7 +17,8 @@ export type NotificationType =
   | 'streak_milestone'
   | 'weekly_summary'
   | 'new_suggestions'
-  | 'welcome';
+  | 'welcome'
+  | 'reminder';
 
 export interface AppNotification {
   id: string;
@@ -40,6 +41,7 @@ export const NOTIF_TYPE_META: Record<
   NotificationType,
   { emoji: string; color: string; label: string }
 > = {
+  reminder: { emoji: '🔔', color: '#5B8A5A', label: 'Reminder' },
   mood_logged: { emoji: '😊', color: '#5AAF8B', label: 'Mood' },
   sleep_logged: { emoji: '🌙', color: '#7E57C2', label: 'Sleep' },
   journal_entry: { emoji: '📝', color: '#E8985A', label: 'Journal' },
@@ -99,6 +101,7 @@ interface NotificationStore {
     title: string,
     body: string,
     meta?: Record<string, string | number>,
+    deliveryId?: string,
   ) => void;
 
   /** Mark a single notification as read */
@@ -127,7 +130,12 @@ export const useNotificationStore = create<NotificationStore>()((set, get) => ({
       if (raw) {
         const parsed: AppNotification[] = JSON.parse(raw);
         // Keep only last 50 notifications
-        set({ notifications: parsed.slice(0, 50), isLoaded: true });
+        const current = get().notifications;
+        const ids = new Set(current.map((item) => item.id));
+        set({
+          notifications: [...current, ...parsed.filter((item) => !ids.has(item.id))].slice(0, 50),
+          isLoaded: true,
+        });
       } else {
         set({ isLoaded: true });
       }
@@ -136,10 +144,11 @@ export const useNotificationStore = create<NotificationStore>()((set, get) => ({
     }
   },
 
-  push: (type, title, body, meta) => {
+  push: (type, title, body, meta, deliveryId) => {
+    if (deliveryId && get().notifications.some((item) => item.id === deliveryId)) return;
     const typeMeta = NOTIF_TYPE_META[type];
     const notification: AppNotification = {
-      id: generateId(),
+      id: deliveryId ?? generateId(),
       type,
       title,
       body,
@@ -160,9 +169,7 @@ export const useNotificationStore = create<NotificationStore>()((set, get) => ({
 
   markRead: (id) => {
     set((state) => {
-      const updated = state.notifications.map((n) =>
-        n.id === id ? { ...n, read: true } : n,
-      );
+      const updated = state.notifications.map((n) => (n.id === id ? { ...n, read: true } : n));
       AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated)).catch(() => {});
       return { notifications: updated };
     });
@@ -201,20 +208,14 @@ export const useNotificationStore = create<NotificationStore>()((set, get) => ({
 
 /** Call when user logs a mood check-in */
 export function notifyMoodLogged(mood: string) {
-  const moodEmojis: Record<string, string> = {
-    great: '😄',
-    good: '😊',
-    okay: '😐',
-    low: '😟',
-    bad: '😢',
-  };
-  const emoji = moodEmojis[mood.toLowerCase()] ?? '😊';
-  useNotificationStore.getState().push(
-    'mood_logged',
-    `Mood logged: ${mood} ${emoji}`,
-    `Great job checking in! Consistent tracking helps you understand your patterns better.`,
-    { mood },
-  );
+  useNotificationStore
+    .getState()
+    .push(
+      'mood_logged',
+      `Mood logged: ${mood}`,
+      `Great job checking in! Consistent tracking helps you understand your patterns better.`,
+      { mood },
+    );
 }
 
 /** Call when user logs a sleep entry */
@@ -222,32 +223,34 @@ export function notifySleepLogged(durationHours: number, quality: number) {
   const qualityLabels = ['', 'Poor', 'Fair', 'Good', 'Great', 'Excellent'];
   const qualityLabel = qualityLabels[quality] ?? 'Unknown';
   const hrs = durationHours.toFixed(1);
-  useNotificationStore.getState().push(
-    'sleep_logged',
-    `Sleep recorded: ${hrs}h`,
-    `Quality: ${qualityLabel}. ${
-      quality >= 4
-        ? 'Well rested! Keep up the good sleep habits.'
-        : quality >= 3
-          ? 'Decent rest. Small changes can make a big difference.'
-          : 'Getting more sleep could really boost your wellbeing.'
-    }`,
-    { duration: durationHours, quality },
-  );
+  useNotificationStore
+    .getState()
+    .push(
+      'sleep_logged',
+      `Sleep recorded: ${hrs}h`,
+      `Quality: ${qualityLabel}. ${
+        quality >= 4
+          ? 'Well rested! Keep up the good sleep habits.'
+          : quality >= 3
+            ? 'Decent rest. Small changes can make a big difference.'
+            : 'Getting more sleep could really boost your wellbeing.'
+      }`,
+      { duration: durationHours, quality },
+    );
 }
 
 /** Call when user creates a journal entry */
 export function notifyJournalEntry(entryTitle?: string, totalEntries?: number) {
   const title = entryTitle ? `Journal: "${entryTitle}"` : 'Journal entry saved';
-  const countMsg = totalEntries
-    ? ` You've written ${totalEntries} entries total.`
-    : '';
-  useNotificationStore.getState().push(
-    'journal_entry',
-    title,
-    `Writing is a powerful form of self-care.${countMsg} Keep reflecting!`,
-    { totalEntries: totalEntries ?? 0 },
-  );
+  const countMsg = totalEntries ? ` You've written ${totalEntries} entries total.` : '';
+  useNotificationStore
+    .getState()
+    .push(
+      'journal_entry',
+      title,
+      `Writing is a powerful form of self-care.${countMsg} Keep reflecting!`,
+      { totalEntries: totalEntries ?? 0 },
+    );
 }
 
 /** Call when user completes an AI suggestion */
@@ -256,36 +259,42 @@ export function notifySuggestionCompleted(
   points: number,
   category: string,
 ) {
-  useNotificationStore.getState().push(
-    'suggestion_completed',
-    `Activity done: ${suggestionTitle}`,
-    `+${points} points earned! Your ${category} score is improving.`,
-    { points, category },
-  );
+  useNotificationStore
+    .getState()
+    .push(
+      'suggestion_completed',
+      `Activity done: ${suggestionTitle}`,
+      `+${points} points earned! Your ${category} score is improving.`,
+      { points, category },
+    );
 }
 
 /** Call when user completes a stress exercise */
 export function notifyStressExercise(exerciseTitle: string) {
-  useNotificationStore.getState().push(
-    'stress_exercise',
-    `${exerciseTitle} completed`,
-    'Great job managing your stress. Your body and mind will thank you.',
-    { exercise: exerciseTitle },
-  );
+  useNotificationStore
+    .getState()
+    .push(
+      'stress_exercise',
+      `${exerciseTitle} completed`,
+      'Great job managing your stress. Your body and mind will thank you.',
+      { exercise: exerciseTitle },
+    );
 }
 
 /** Call when user completes a mindfulness session */
 export function notifyMindfulnessSession(minutes: number) {
-  useNotificationStore.getState().push(
-    'mindfulness_session',
-    `${minutes} minutes of mindfulness`,
-    `${
-      minutes >= 10
-        ? 'Wonderful session! Regular practice builds lasting calm.'
-        : 'Every minute counts. Consistency matters more than duration.'
-    }`,
-    { minutes },
-  );
+  useNotificationStore
+    .getState()
+    .push(
+      'mindfulness_session',
+      `${minutes} minutes of mindfulness`,
+      `${
+        minutes >= 10
+          ? 'Wonderful session! Regular practice builds lasting calm.'
+          : 'Every minute counts. Consistency matters more than duration.'
+      }`,
+      { minutes },
+    );
 }
 
 /** Call when Freud Score changes significantly */
@@ -294,38 +303,46 @@ export function notifyScoreChange(newScore: number, previousScore: number) {
   if (Math.abs(diff) < 3) return; // Don't notify for tiny changes
 
   if (diff > 0) {
-    useNotificationStore.getState().push(
-      'score_improved',
-      `Freud Score: ${previousScore} → ${newScore}`,
-      `Up ${diff} points! Your mental wellbeing is trending in the right direction.`,
-      { newScore, previousScore },
-    );
+    useNotificationStore
+      .getState()
+      .push(
+        'score_improved',
+        `Freud Score: ${previousScore} → ${newScore}`,
+        `Up ${diff} points! Your mental wellbeing is trending in the right direction.`,
+        { newScore, previousScore },
+      );
   } else {
-    useNotificationStore.getState().push(
-      'score_declined',
-      `Freud Score: ${previousScore} → ${newScore}`,
-      `Down ${Math.abs(diff)} points. Remember, fluctuations are normal. Try an AI suggestion to help.`,
-      { newScore, previousScore },
-    );
+    useNotificationStore
+      .getState()
+      .push(
+        'score_declined',
+        `Freud Score: ${previousScore} → ${newScore}`,
+        `Down ${Math.abs(diff)} points. Remember, fluctuations are normal. Try an AI suggestion to help.`,
+        { newScore, previousScore },
+      );
   }
 }
 
 /** Call when user hits a streak milestone */
 export function notifyStreakMilestone(days: number) {
-  useNotificationStore.getState().push(
-    'streak_milestone',
-    `${days}-day streak!`,
-    `You've been consistent for ${days} days in a row. That's dedication!`,
-    { days },
-  );
+  useNotificationStore
+    .getState()
+    .push(
+      'streak_milestone',
+      `${days}-day streak!`,
+      `You've been consistent for ${days} days in a row. That's dedication!`,
+      { days },
+    );
 }
 
 /** Call when new AI suggestions are generated */
 export function notifyNewSuggestions(count: number) {
-  useNotificationStore.getState().push(
-    'new_suggestions',
-    `${count} new suggestions ready`,
-    'Fresh AI-powered activities tailored to your current mental health state.',
-    { count },
-  );
+  useNotificationStore
+    .getState()
+    .push(
+      'new_suggestions',
+      `${count} new suggestions ready`,
+      'Fresh AI-powered activities tailored to your current mental health state.',
+      { count },
+    );
 }

@@ -1,3 +1,6 @@
+import { Typography } from '@/constants/typography';
+import { backTo } from '@/lib/navigation';
+import { WellnessIconText } from '@/components/WellnessIconText';
 import React, { useMemo, useState } from 'react';
 import { View, Text, Pressable, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,7 +10,7 @@ import { useMood } from '@/hooks/useMood';
 import { MoodCheckIn } from '@/lib/types';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, UI } from '@/constants/theme';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialIcons from '@/components/AppIcon';
 
 /* ── Mood config ── */
 const MOOD_META: Record<string, { emoji: string; color: string; label: string }> = {
@@ -161,7 +164,7 @@ export default function MoodStats() {
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           <Pressable
-            onPress={() => router.back()}
+            onPress={() => backTo(undefined, '/(tabs)/mood')}
             style={({ pressed }) => ({
               width: 36,
               height: 36,
@@ -183,10 +186,14 @@ export default function MoodStats() {
             />
           </Pressable>
           <View>
-            <Text style={{ fontSize: 22, fontWeight: '800', color: colors.text }}>
+            <Text style={{ ...Typography.heading, fontSize: 24, color: colors.text }}>
               {t('moodStats.title')}
             </Text>
-            <Text style={{ fontSize: 13, color: colors.mutedText }}>{t('moodStats.subtitle')}</Text>
+            <Text
+              style={{ fontFamily: Typography.family.body, fontSize: 13, color: colors.mutedText }}
+            >
+              {t('moodStats.subtitle')}
+            </Text>
           </View>
         </View>
       </View>
@@ -224,8 +231,9 @@ export default function MoodStats() {
               >
                 <Text
                   style={{
+                    fontFamily: Typography.family.body,
                     fontSize: 14,
-                    fontWeight: '800',
+                    fontWeight: Typography.weight.semibold,
                     color: active ? '#fff' : colors.mutedText,
                   }}
                 >
@@ -259,10 +267,17 @@ export default function MoodStats() {
               marginBottom: 20,
             }}
           >
-            <Text style={{ fontSize: 16, fontWeight: '800', color: colors.text }}>
+            <Text style={{ ...Typography.section, color: colors.text }}>
               {t('moodStats.moodChart')}
             </Text>
-            <Text style={{ fontSize: 12, fontWeight: '600', color: colors.mutedText }}>
+            <Text
+              style={{
+                fontFamily: Typography.family.body,
+                fontSize: 12,
+                fontWeight: Typography.weight.semibold,
+                color: colors.mutedText,
+              }}
+            >
               {filtered.length} {t('moodStats.checkIn', { count: filtered.length })}
             </Text>
           </View>
@@ -278,9 +293,33 @@ export default function MoodStats() {
                 paddingBottom: 2,
               }}
             >
-              <Text style={{ fontSize: 10, color: colors.mutedText }}>5</Text>
-              <Text style={{ fontSize: 10, color: colors.mutedText }}>3</Text>
-              <Text style={{ fontSize: 10, color: colors.mutedText }}>1</Text>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  fontSize: 10,
+                  color: colors.mutedText,
+                }}
+              >
+                5
+              </Text>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  fontSize: 10,
+                  color: colors.mutedText,
+                }}
+              >
+                3
+              </Text>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  fontSize: 10,
+                  color: colors.mutedText,
+                }}
+              >
+                1
+              </Text>
             </View>
 
             {/* Bars */}
@@ -310,8 +349,9 @@ export default function MoodStats() {
                     />
                     <Text
                       style={{
+                        fontFamily: Typography.family.body,
                         fontSize: 9,
-                        fontWeight: '600',
+                        fontWeight: Typography.weight.semibold,
                         color: colors.mutedText,
                         marginTop: 8,
                       }}
@@ -357,11 +397,24 @@ export default function MoodStats() {
                   ...UI.shadow.sm,
                 }}
               >
-                <Text style={{ fontSize: 28, fontWeight: '900', color: '#5B8A5A' }}>
+                <Text
+                  style={{
+                    fontFamily: Typography.family.body,
+                    fontSize: 28,
+                    fontWeight: Typography.weight.semibold,
+                    color: '#5B8A5A',
+                  }}
+                >
                   {summary.avgMood.toFixed(1)}
                 </Text>
                 <Text
-                  style={{ fontSize: 12, fontWeight: '700', color: colors.mutedText, marginTop: 4 }}
+                  style={{
+                    fontFamily: Typography.family.body,
+                    fontSize: 12,
+                    fontWeight: Typography.weight.semibold,
+                    color: colors.mutedText,
+                    marginTop: 4,
+                  }}
                 >
                   {t('moodStats.avgMood')}
                 </Text>
@@ -378,11 +431,24 @@ export default function MoodStats() {
                   ...UI.shadow.sm,
                 }}
               >
-                <Text style={{ fontSize: 28, fontWeight: '900', color: '#E8985A' }}>
+                <Text
+                  style={{
+                    fontFamily: Typography.family.body,
+                    fontSize: 28,
+                    fontWeight: Typography.weight.semibold,
+                    color: '#E8985A',
+                  }}
+                >
                   {summary.avgEnergy.toFixed(1)}
                 </Text>
                 <Text
-                  style={{ fontSize: 12, fontWeight: '700', color: colors.mutedText, marginTop: 4 }}
+                  style={{
+                    fontFamily: Typography.family.body,
+                    fontSize: 12,
+                    fontWeight: Typography.weight.semibold,
+                    color: colors.mutedText,
+                    marginTop: 4,
+                  }}
                 >
                   {t('moodStats.avgEnergy')}
                 </Text>
@@ -402,11 +468,24 @@ export default function MoodStats() {
                   ...UI.shadow.sm,
                 }}
               >
-                <Text style={{ fontSize: 28, fontWeight: '900', color: '#7B6DC9' }}>
+                <Text
+                  style={{
+                    fontFamily: Typography.family.body,
+                    fontSize: 28,
+                    fontWeight: Typography.weight.semibold,
+                    color: '#7B6DC9',
+                  }}
+                >
                   {summary.avgStress.toFixed(1)}
                 </Text>
                 <Text
-                  style={{ fontSize: 12, fontWeight: '700', color: colors.mutedText, marginTop: 4 }}
+                  style={{
+                    fontFamily: Typography.family.body,
+                    fontSize: 12,
+                    fontWeight: Typography.weight.semibold,
+                    color: colors.mutedText,
+                    marginTop: 4,
+                  }}
                 >
                   {t('moodStats.avgStress')}
                 </Text>
@@ -423,9 +502,17 @@ export default function MoodStats() {
                   ...UI.shadow.sm,
                 }}
               >
-                <Text style={{ fontSize: 28 }}>{MOOD_META[summary.topMood]?.emoji ?? '😐'}</Text>
+                <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 28 }}>
+                  {MOOD_META[summary.topMood]?.emoji ?? '😐'}
+                </WellnessIconText>
                 <Text
-                  style={{ fontSize: 12, fontWeight: '700', color: colors.mutedText, marginTop: 4 }}
+                  style={{
+                    fontFamily: Typography.family.body,
+                    fontSize: 12,
+                    fontWeight: Typography.weight.semibold,
+                    color: colors.mutedText,
+                    marginTop: 4,
+                  }}
                 >
                   {t('moodStats.mostCommon')}
                 </Text>
@@ -437,7 +524,7 @@ export default function MoodStats() {
         {/* ── Mood Entries List ── */}
         {filtered.length > 0 && (
           <View>
-            <Text style={{ fontSize: 16, fontWeight: '800', color: colors.text, marginBottom: 12 }}>
+            <Text style={{ ...Typography.section, color: colors.text, marginBottom: 12 }}>
               {t('moodStats.checkIns')} ({filtered.length})
             </Text>
             <View style={{ gap: 8 }}>
@@ -469,13 +556,35 @@ export default function MoodStats() {
                         justifyContent: 'center',
                       }}
                     >
-                      <Text style={{ fontSize: 20 }}>{meta.emoji}</Text>
+                      <WellnessIconText
+                        style={{
+                          fontFamily: Typography.family.body,
+                          fontSize: 20,
+                          color: meta.color,
+                        }}
+                      >
+                        {meta.emoji}
+                      </WellnessIconText>
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 14, fontWeight: '700', color: colors.text }}>
+                      <Text
+                        style={{
+                          fontFamily: Typography.family.body,
+                          fontSize: 14,
+                          fontWeight: Typography.weight.semibold,
+                          color: colors.text,
+                        }}
+                      >
                         {meta.label}
                       </Text>
-                      <Text style={{ fontSize: 11, color: colors.mutedText, marginTop: 2 }}>
+                      <Text
+                        style={{
+                          fontFamily: Typography.family.body,
+                          fontSize: 11,
+                          color: colors.mutedText,
+                          marginTop: 2,
+                        }}
+                      >
                         {new Date(item.createdAt).toLocaleDateString('en-US', {
                           month: 'short',
                           day: 'numeric',

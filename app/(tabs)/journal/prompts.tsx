@@ -1,3 +1,4 @@
+import { Typography } from '@/constants/typography';
 import React, { useMemo, useState } from 'react';
 import { View, Text, Pressable, TextInput, FlatList } from 'react-native';
 import { router } from 'expo-router';
@@ -62,11 +63,25 @@ export default function JournalPrompts() {
             }
             style={{ padding: 14, borderRadius: UI.radius.lg, backgroundColor: colors.card }}
           >
-            <Text style={{ fontSize: 16, fontWeight: '900', color: colors.text }}>
+            <Text
+              style={{
+                fontFamily: Typography.family.body,
+                fontSize: 16,
+                fontWeight: Typography.weight.semibold,
+                color: colors.text,
+              }}
+            >
               {item.title}
             </Text>
             <Text style={{ color: colors.mutedText, marginTop: 4 }}>{item.prompt}</Text>
-            <Text style={{ color: colors.primary, marginTop: 8, fontWeight: '800' }}>
+            <Text
+              style={{
+                fontFamily: Typography.family.body,
+                color: colors.primary,
+                marginTop: 8,
+                fontWeight: Typography.weight.semibold,
+              }}
+            >
               {item.category.toUpperCase()}
             </Text>
           </Pressable>

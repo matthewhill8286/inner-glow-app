@@ -1,3 +1,4 @@
+import { Typography } from '@/constants/typography';
 import React, { useState } from 'react';
 import {
   View,
@@ -13,7 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { router } from 'expo-router';
 import { supabase } from '@/supabase/supabase';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialIcons from '@/components/AppIcon';
 
 /* ── Design tokens ── */
 const C = {
@@ -92,8 +93,9 @@ export default function ResetPassword() {
         </View>
         <Text
           style={{
+            fontFamily: Typography.family.body,
             fontSize: 26,
-            fontWeight: '900',
+            fontWeight: Typography.weight.semibold,
             color: C.brownLight,
             textAlign: 'center',
             marginBottom: 12,
@@ -103,6 +105,7 @@ export default function ResetPassword() {
         </Text>
         <Text
           style={{
+            fontFamily: Typography.family.body,
             fontSize: 15,
             color: C.brownLight,
             opacity: 0.6,
@@ -133,7 +136,14 @@ export default function ResetPassword() {
             elevation: 4,
           })}
         >
-          <Text style={{ color: 'white', fontWeight: '800', fontSize: 17 }}>
+          <Text
+            style={{
+              fontFamily: Typography.family.body,
+              color: 'white',
+              fontWeight: Typography.weight.semibold,
+              fontSize: 17,
+            }}
+          >
             {t('auth.signIn')}
           </Text>
           <MaterialIcons name="login" size={18} color="#fff" />
@@ -175,8 +185,9 @@ export default function ResetPassword() {
             </View>
             <Text
               style={{
+                fontFamily: Typography.family.body,
                 fontSize: 28,
-                fontWeight: '900',
+                fontWeight: Typography.weight.semibold,
                 color: C.brownLight,
                 textAlign: 'center',
               }}
@@ -185,6 +196,7 @@ export default function ResetPassword() {
             </Text>
             <Text
               style={{
+                fontFamily: Typography.family.body,
                 fontSize: 15,
                 color: C.brownLight,
                 opacity: 0.65,
@@ -211,8 +223,9 @@ export default function ResetPassword() {
             <View>
               <Text
                 style={{
+                  fontFamily: Typography.family.body,
                   fontSize: 12,
-                  fontWeight: '700',
+                  fontWeight: Typography.weight.semibold,
                   color: C.brownLight,
                   textTransform: 'uppercase',
                   letterSpacing: 0.5,
@@ -230,13 +243,14 @@ export default function ResetPassword() {
                   secureTextEntry={!showPassword}
                   autoFocus
                   style={{
+                    fontFamily: Typography.family.body,
                     backgroundColor: C.inputBg,
                     borderRadius: 16,
                     paddingHorizontal: 20,
                     paddingVertical: Platform.OS === 'ios' ? 18 : 14,
                     paddingRight: 52,
                     fontSize: 16,
-                    fontWeight: '700',
+                    fontWeight: Typography.weight.semibold,
                     color: C.brownLight,
                   }}
                 />
@@ -259,6 +273,7 @@ export default function ResetPassword() {
               </View>
               <Text
                 style={{
+                  fontFamily: Typography.family.body,
                   fontSize: 12,
                   color: C.brownText,
                   opacity: 0.5,
@@ -274,8 +289,9 @@ export default function ResetPassword() {
             <View>
               <Text
                 style={{
+                  fontFamily: Typography.family.body,
                   fontSize: 12,
-                  fontWeight: '700',
+                  fontWeight: Typography.weight.semibold,
                   color: C.brownLight,
                   textTransform: 'uppercase',
                   letterSpacing: 0.5,
@@ -292,13 +308,14 @@ export default function ResetPassword() {
                   placeholderTextColor="rgba(0,0,0,0.15)"
                   secureTextEntry={!showConfirm}
                   style={{
+                    fontFamily: Typography.family.body,
                     backgroundColor: C.inputBg,
                     borderRadius: 16,
                     paddingHorizontal: 20,
                     paddingVertical: Platform.OS === 'ios' ? 18 : 14,
                     paddingRight: 52,
                     fontSize: 16,
-                    fontWeight: '700',
+                    fontWeight: Typography.weight.semibold,
                     color: C.brownLight,
                   }}
                 />
@@ -338,8 +355,9 @@ export default function ResetPassword() {
                 />
                 <Text
                   style={{
+                    fontFamily: Typography.family.body,
                     fontSize: 13,
-                    fontWeight: '600',
+                    fontWeight: Typography.weight.semibold,
                     color: newPassword === confirmPassword ? C.green : C.red,
                   }}
                 >
@@ -365,7 +383,15 @@ export default function ResetPassword() {
               }}
             >
               <MaterialIcons name="error-outline" size={18} color={C.red} />
-              <Text style={{ flex: 1, fontSize: 13, fontWeight: '600', color: C.red }}>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  flex: 1,
+                  fontSize: 13,
+                  fontWeight: Typography.weight.semibold,
+                  color: C.red,
+                }}
+              >
                 {error}
               </Text>
             </View>
@@ -402,12 +428,18 @@ export default function ResetPassword() {
             shadowOpacity:
               loading || newPassword.length < 6 || newPassword !== confirmPassword ? 0 : 0.15,
             shadowRadius: 10,
-            elevation:
-              loading || newPassword.length < 6 || newPassword !== confirmPassword ? 0 : 4,
+            elevation: loading || newPassword.length < 6 || newPassword !== confirmPassword ? 0 : 4,
           })}
         >
           {loading ? <ActivityIndicator size="small" color="#fff" /> : null}
-          <Text style={{ color: 'white', fontWeight: '800', fontSize: 17 }}>
+          <Text
+            style={{
+              fontFamily: Typography.family.body,
+              color: 'white',
+              fontWeight: Typography.weight.semibold,
+              fontSize: 17,
+            }}
+          >
             {t('auth.updatePassword')}
           </Text>
           <MaterialIcons name="lock" size={18} color="#fff" />

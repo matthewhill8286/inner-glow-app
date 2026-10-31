@@ -1,3 +1,4 @@
+import { notifySleepLogged } from '@/lib/notificationStore';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/supabase/supabase';
 import { SleepEntry } from '@/lib/types';
@@ -94,12 +95,8 @@ export const useSleep = () => {
 
   const saveSchedule = async (updates: Partial<SleepScheduleState>) => {
     const nextSchedule = { ...schedule, ...updates, savedAt: new Date().toISOString() };
+    await AsyncStorage.setItem(SLEEP_SCHEDULE_STORAGE_KEY, JSON.stringify(nextSchedule));
     setScheduleState(nextSchedule);
-    try {
-      await AsyncStorage.setItem(SLEEP_SCHEDULE_STORAGE_KEY, JSON.stringify(nextSchedule));
-    } catch (e) {
-      console.error('Failed to save sleep schedule', e);
-    }
   };
 
   const sleepQuery = useQuery({
@@ -169,6 +166,12 @@ export const useSleep = () => {
 
       return item;
     },
+    onSuccess: (item) =>
+      notifySleepLogged(
+        item.duration ??
+          Math.max(0, (Date.parse(item.endISO) - Date.parse(item.startISO)) / 3600000),
+        item.quality ?? 0,
+      ),
     onMutate: async (input) => {
       await queryClient.cancelQueries({ queryKey: key });
       const previous = queryClient.getQueryData<SleepEntry[]>(key);
@@ -204,9 +207,7 @@ export const useSleep = () => {
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: key });
       const previous = queryClient.getQueryData<SleepEntry[]>(key);
-      queryClient.setQueryData<SleepEntry[]>(key, (old) =>
-        (old || []).filter((s) => s.id !== id),
-      );
+      queryClient.setQueryData<SleepEntry[]>(key, (old) => (old || []).filter((s) => s.id !== id));
       return { previous };
     },
     onError: (_err, _id, context) => {

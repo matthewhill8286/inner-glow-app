@@ -1,3 +1,6 @@
+import { finishTo } from '@/lib/navigation';
+import { Typography } from '@/constants/typography';
+import { WellnessIconText } from '@/components/WellnessIconText';
 import React, { useEffect, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -6,14 +9,14 @@ import { router } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, UI } from '@/constants/theme';
 import { useSubscription } from '@/hooks/useSubscription';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialIcons from '@/components/AppIcon';
 
 export default function PaymentSuccess() {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const theme = useColorScheme() ?? 'light';
   const colors = Colors[theme];
-  const { subscription, isPending, refresh } = useSubscription();
+  const { subscription, isPending, hasFullAccess, refresh } = useSubscription();
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
@@ -43,35 +46,47 @@ export default function PaymentSuccess() {
   }, [refresh]);
 
   useEffect(() => {
-    if (subscription && !isPending && subscription.status === 'active') {
+    if (subscription && !isPending && hasFullAccess) {
       setChecking(false);
     }
-  }, [subscription, isPending]);
+  }, [subscription, isPending, hasFullAccess]);
 
   const planLabelKey =
     subscription?.type === 'lifetime'
       ? 'paymentSuccess.lifetime'
-      : subscription?.type === 'monthly'
-        ? 'paymentSuccess.monthly'
-        : subscription?.type === 'trial'
-          ? 'paymentSuccess.trial'
-          : 'paymentSuccess.premium';
+      : subscription?.type === 'yearly'
+        ? 'paymentSuccess.yearly'
+        : subscription?.type === 'monthly'
+          ? 'paymentSuccess.monthly'
+          : subscription?.type === 'trial'
+            ? 'paymentSuccess.trial'
+            : 'paymentSuccess.premium';
 
   const planLabel = t(planLabelKey);
 
   const handleContinue = () => {
-    router.replace('/');
+    finishTo('/(tabs)/home');
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
+    <View
+      style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}
+    >
       <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <View style={styles.iconCircle}>
-          <MaterialIcons name="check" size={44} color="#FFF" />
+          <MaterialIcons
+            name={hasFullAccess ? 'check' : 'hourglass-empty'}
+            size={44}
+            color="#FFF"
+          />
         </View>
 
         <Text style={[styles.title, { color: colors.text }]}>
-          {checking ? t('paymentSuccess.processing') : t('paymentSuccess.title')}
+          {checking
+            ? t('paymentSuccess.processing')
+            : hasFullAccess
+              ? t('paymentSuccess.title')
+              : 'Payment not confirmed yet'}
         </Text>
 
         {checking ? (
@@ -81,6 +96,11 @@ export default function PaymentSuccess() {
               {t('paymentSuccess.confirming')}
             </Text>
           </View>
+        ) : !hasFullAccess ? (
+          <Text style={[styles.message, { color: colors.mutedText }]}>
+            We have not confirmed premium access yet. Check your purchase status or use Restore
+            Purchases on the premium screen.
+          </Text>
         ) : (
           <>
             <Text style={[styles.message, { color: colors.mutedText }]}>
@@ -88,7 +108,9 @@ export default function PaymentSuccess() {
             </Text>
 
             <View style={[styles.planBadge, { backgroundColor: '#5B8A5A' + '15' }]}>
-              <Text style={{ fontSize: 16 }}>✨</Text>
+              <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 16 }}>
+                ✨
+              </WellnessIconText>
               <Text style={[styles.planBadgeText, { color: '#5B8A5A' }]}>
                 {t('paymentSuccess.planActive', { plan: planLabel })}
               </Text>
@@ -108,7 +130,11 @@ export default function PaymentSuccess() {
           ]}
         >
           <Text style={styles.buttonText}>
-            {checking ? t('paymentSuccess.pleaseWait') : t('paymentSuccess.getStarted')}
+            {checking
+              ? t('paymentSuccess.pleaseWait')
+              : hasFullAccess
+                ? t('paymentSuccess.getStarted')
+                : 'Return to app'}
           </Text>
           {!checking && <MaterialIcons name="arrow-forward" size={18} color="#FFF" />}
         </Pressable>
@@ -140,13 +166,9 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     ...UI.shadow.sm,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: '900',
-    textAlign: 'center',
-    marginBottom: 12,
-  },
+  title: { ...Typography.heading, fontSize: 24, textAlign: 'center', marginBottom: 12 },
   message: {
+    fontFamily: Typography.family.body,
     fontSize: 15,
     textAlign: 'center',
     marginBottom: 20,
@@ -168,8 +190,9 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   planBadgeText: {
+    fontFamily: Typography.family.body,
     fontSize: 15,
-    fontWeight: '800',
+    fontWeight: Typography.weight.medium,
   },
   button: {
     flexDirection: 'row',
@@ -183,8 +206,9 @@ const styles = StyleSheet.create({
     ...UI.shadow.sm,
   },
   buttonText: {
+    fontFamily: Typography.family.body,
     color: 'white',
-    fontWeight: '900',
+    fontWeight: Typography.weight.semibold,
     fontSize: 16,
   },
 });

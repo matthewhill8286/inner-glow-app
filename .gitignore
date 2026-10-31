@@ -43,3 +43,6 @@ app-example
 /android
 
 /.idea/
+
+# Supabase CLI cache
+supabase/.temp/

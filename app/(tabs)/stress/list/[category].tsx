@@ -1,3 +1,4 @@
+import { Typography } from '@/constants/typography';
 import React from 'react';
 import { View, Text, Pressable, FlatList, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -6,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, UI } from '@/constants/theme';
 import { STRESS_VIDEOS, StressVideo } from '@/data/stressVideos';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialIcons from '@/components/AppIcon';
 
 import ScreenHeader from '@/components/ScreenHeader';
 
@@ -64,7 +65,7 @@ function VideoCard({ category, video }: { category: string; video: StressVideo }
       }}
     >
       <View style={{ padding: 20 }}>
-        <Text style={{ fontSize: 18, fontWeight: '900', color: colors.text }}>{video.title}</Text>
+        <Text style={{ ...Typography.cardHeading, color: colors.text }}>{video.title}</Text>
         <Text style={{ color: colors.mutedText, marginTop: 4 }}>{video.subtitle}</Text>
 
         <Pressable
@@ -84,7 +85,13 @@ function VideoCard({ category, video }: { category: string; video: StressVideo }
           }}
         >
           <MaterialIcons name="play-arrow" size={20} color={colors.onPrimary} />
-          <Text style={{ color: colors.onPrimary, fontWeight: '900' }}>
+          <Text
+            style={{
+              fontFamily: Typography.family.body,
+              color: colors.onPrimary,
+              fontWeight: Typography.weight.semibold,
+            }}
+          >
             {t('stressList.watchExercise')}
           </Text>
         </Pressable>

@@ -1,10 +1,13 @@
+import { Typography } from '@/constants/typography';
+import { backTo } from '@/lib/navigation';
+import { WellnessIconText } from '@/components/WellnessIconText';
 import React, { useState, useMemo } from 'react';
 import { View, Text, Pressable, ScrollView, Platform, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, UI } from '@/constants/theme';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialIcons from '@/components/AppIcon';
 import { useSleep } from '@/hooks/useSleep';
 import { SleepEntry } from '@/lib/types';
 import { useTranslation } from 'react-i18next';
@@ -20,8 +23,7 @@ const SLEEP_COLORS = {
 
 /* ── safe back ───────────────────────────────────── */
 function goBack(from?: string) {
-  if (from) router.replace(from as any);
-  else router.back();
+  backTo(from, '/(tabs)/sleep');
 }
 
 /* ── helpers ──────────────────────────────────────── */
@@ -167,7 +169,10 @@ function SleepCalendar({
                 style={[
                   cal.dayNum,
                   { color: type ? type.color : colors.text },
-                  isToday && { fontWeight: '900' },
+                  isToday && {
+                    fontFamily: Typography.family.body,
+                    fontWeight: Typography.weight.semibold,
+                  },
                 ]}
               >
                 {day}
@@ -253,7 +258,9 @@ export default function SleepHistoryScreen() {
               ]}
             >
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
-                <Text style={{ fontSize: 18 }}>🤖</Text>
+                <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 18 }}>
+                  🤖
+                </WellnessIconText>
                 <View style={{ flex: 1 }}>
                   <Text style={[s.aiTitle, { color: colors.text }]}>Sleep AI Suggestions</Text>
                   <Text style={[s.aiSub, { color: colors.mutedText }]}>
@@ -262,7 +269,14 @@ export default function SleepHistoryScreen() {
                 </View>
               </View>
               <View style={[s.aiBadge, { backgroundColor: '#7B6DC920' }]}>
-                <Text style={{ fontSize: 14, fontWeight: '900', color: '#7B6DC9' }}>
+                <Text
+                  style={{
+                    fontFamily: Typography.family.body,
+                    fontSize: 14,
+                    fontWeight: Typography.weight.semibold,
+                    color: '#7B6DC9',
+                  }}
+                >
                   {Math.min(89, entries.length * 12)}+
                 </Text>
               </View>
@@ -340,9 +354,11 @@ export default function SleepHistoryScreen() {
                     </View>
                     {entry.quality && (
                       <View style={[s.qualBadge, { backgroundColor: '#E8985A18' }]}>
-                        <Text style={{ fontSize: 12 }}>
+                        <WellnessIconText
+                          style={{ fontFamily: Typography.family.body, fontSize: 12 }}
+                        >
                           {entry.quality >= 4 ? '😊' : entry.quality >= 3 ? '😐' : '😟'}
-                        </Text>
+                        </WellnessIconText>
                       </View>
                     )}
                     <MaterialIcons name="chevron-right" size={18} color={colors.subtleText} />
@@ -374,16 +390,21 @@ const cal = StyleSheet.create({
     marginBottom: 12,
   },
   navBtn: { padding: 4 },
-  monthLabel: { fontSize: 16, fontWeight: '800' },
+  monthLabel: {
+    fontFamily: Typography.family.body,
+    fontSize: 16,
+    fontWeight: Typography.weight.medium,
+  },
   weekRow: {
     flexDirection: 'row',
     marginBottom: 4,
   },
   weekday: {
+    fontFamily: Typography.family.body,
     flex: 1,
     textAlign: 'center',
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: Typography.weight.semibold,
   },
   grid: {
     flexDirection: 'row',
@@ -397,8 +418,9 @@ const cal = StyleSheet.create({
     borderRadius: 10,
   },
   dayNum: {
+    fontFamily: Typography.family.body,
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: Typography.weight.semibold,
   },
   dayDot: {
     width: 4,
@@ -430,8 +452,8 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
   },
-  headerTitle: { fontSize: 22, fontWeight: '900' },
-  headerSub: { fontSize: 14, marginTop: 2 },
+  headerTitle: { ...Typography.heading },
+  headerSub: { fontFamily: Typography.family.body, fontSize: 14, marginTop: 2 },
 
   scrollContent: {
     paddingTop: 16,
@@ -456,8 +478,12 @@ const s = StyleSheet.create({
     borderWidth: 1,
     ...UI.shadow.sm,
   },
-  aiTitle: { fontSize: 14, fontWeight: '800' },
-  aiSub: { fontSize: 12, marginTop: 1 },
+  aiTitle: {
+    fontFamily: Typography.family.body,
+    fontSize: 14,
+    fontWeight: Typography.weight.semibold,
+  },
+  aiSub: { fontFamily: Typography.family.body, fontSize: 12, marginTop: 1 },
   aiBadge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -471,8 +497,12 @@ const s = StyleSheet.create({
     alignItems: 'center',
     marginTop: 4,
   },
-  sectionTitle: { fontSize: 16, fontWeight: '900' },
-  sectionCount: { fontSize: 13, fontWeight: '600' },
+  sectionTitle: { ...Typography.section, fontSize: 20 },
+  sectionCount: {
+    fontFamily: Typography.family.body,
+    fontSize: 13,
+    fontWeight: Typography.weight.bold,
+  },
 
   /* empty state */
   emptyState: {
@@ -480,8 +510,8 @@ const s = StyleSheet.create({
     paddingVertical: 40,
     gap: 8,
   },
-  emptyTitle: { fontSize: 16, fontWeight: '800', marginTop: 8 },
-  emptySub: { fontSize: 13, textAlign: 'center' },
+  emptyTitle: { ...Typography.cardHeading,  marginTop: 8 },
+  emptySub: { fontFamily: Typography.family.body, fontSize: 13, textAlign: 'center' },
   emptyBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -491,7 +521,12 @@ const s = StyleSheet.create({
     borderRadius: UI.radius.lg,
     marginTop: 8,
   },
-  emptyBtnText: { color: '#FFF', fontWeight: '800', fontSize: 14 },
+  emptyBtnText: {
+    fontFamily: Typography.family.body,
+    color: '#FFF',
+    fontWeight: Typography.weight.semibold,
+    fontSize: 14,
+  },
 
   /* entry cards */
   entryCard: {
@@ -508,14 +543,22 @@ const s = StyleSheet.create({
     height: 8,
     borderRadius: 4,
   },
-  entryDate: { fontSize: 14, fontWeight: '800' },
-  entryDurText: { fontSize: 12, marginTop: 2 },
+  entryDate: {
+    fontFamily: Typography.family.body,
+    fontSize: 14,
+    fontWeight: Typography.weight.semibold,
+  },
+  entryDurText: { fontFamily: Typography.family.body, fontSize: 12, marginTop: 2 },
   typeBadge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 8,
   },
-  typeBadgeText: { fontSize: 11, fontWeight: '700' },
+  typeBadgeText: {
+    fontFamily: Typography.family.body,
+    fontSize: 11,
+    fontWeight: Typography.weight.medium,
+  },
   qualBadge: {
     width: 28,
     height: 28,

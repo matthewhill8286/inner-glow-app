@@ -1,3 +1,7 @@
+import { Typography } from '@/constants/typography';
+import { UI } from '@/constants/theme';
+import { backTo } from '@/lib/navigation';
+import { WellnessIconText } from '@/components/WellnessIconText';
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, Pressable, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,7 +14,7 @@ import { supabase } from '@/supabase/supabase';
 import { calculateInitialFreudScore, getFreudColor } from '@/lib/freudScore';
 import type { FreudBreakdown, FreudScoreResult } from '@/lib/freudScore';
 import { useFreudScore } from '@/hooks/useFreudScore';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialIcons from '@/components/AppIcon';
 
 /* ── Design tokens ── */
 const BG = '#6f6660';
@@ -77,7 +81,15 @@ function ScoreRing({ score, color }: { score: number; color: string }) {
         </Svg>
         {/* Center number */}
         <View style={{ position: 'absolute', alignItems: 'center' }}>
-          <Text style={{ fontSize: 48, fontWeight: '900', color, letterSpacing: -1 }}>
+          <Text
+            style={{
+              fontFamily: Typography.family.body,
+              fontSize: 48,
+              fontWeight: Typography.weight.semibold,
+              color,
+              letterSpacing: -1,
+            }}
+          >
             {score}
           </Text>
         </View>
@@ -101,9 +113,32 @@ function BreakdownRow({
   return (
     <View style={{ marginBottom: 16 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
-        <Text style={{ fontSize: 16, marginRight: 8 }}>{emoji}</Text>
-        <Text style={{ flex: 1, fontSize: 15, fontWeight: '700', color: BROWN_TEXT }}>{label}</Text>
-        <Text style={{ fontSize: 15, fontWeight: '800', color }}>{value}</Text>
+        <WellnessIconText
+          style={{ fontFamily: Typography.family.body, fontSize: 16, marginRight: 8 }}
+        >
+          {emoji}
+        </WellnessIconText>
+        <Text
+          style={{
+            fontFamily: Typography.family.body,
+            flex: 1,
+            fontSize: 15,
+            fontWeight: Typography.weight.semibold,
+            color: BROWN_TEXT,
+          }}
+        >
+          {label}
+        </Text>
+        <Text
+          style={{
+            fontFamily: Typography.family.body,
+            fontSize: 15,
+            fontWeight: Typography.weight.semibold,
+            color,
+          }}
+        >
+          {value}
+        </Text>
       </View>
       <View
         style={{
@@ -167,7 +202,8 @@ export default function AssessmentSummary() {
   }, [initialScore, scoreSaved, saveScore]);
 
   /* Derive a display name from the assessment or session */
-  const userName = assessment?.name || t('assessmentSummary.defaultName', { defaultValue: 'there' });
+  const userName =
+    assessment?.name || t('assessmentSummary.defaultName', { defaultValue: 'there' });
 
   return (
     <View style={{ flex: 1, backgroundColor: BG, paddingTop: insets.top + 16 }}>
@@ -182,7 +218,7 @@ export default function AssessmentSummary() {
         }}
       >
         <Pressable
-          onPress={() => router.back()}
+          onPress={() => backTo(undefined, '/(tabs)/home')}
           style={{
             width: 44,
             height: 44,
@@ -196,7 +232,7 @@ export default function AssessmentSummary() {
         >
           <MaterialIcons name="arrow-back" size={20} color="white" />
         </Pressable>
-        <Text style={{ color: 'white', fontSize: 18, fontWeight: '700' }}>
+        <Text style={{ ...Typography.section, color: 'white' }}>
           {t('assessmentSummary.title')}
         </Text>
       </View>
@@ -215,13 +251,22 @@ export default function AssessmentSummary() {
             minHeight: 400,
           }}
         >
-          <Text style={{ fontSize: 26, fontWeight: '900', color: BROWN_TEXT }}>
+          <Text style={{ ...Typography.heading, fontSize: 24, color: BROWN_TEXT }}>
             {t('assessmentSummary.heading', { defaultValue: 'Nice to meet you, {{name}}' }).replace(
               '{{name}}',
               userName,
             )}
           </Text>
-          <Text style={{ opacity: 0.6, marginTop: 8, color: BROWN_TEXT, fontSize: 15, lineHeight: 22 }}>
+          <Text
+            style={{
+              fontFamily: Typography.family.body,
+              opacity: 0.6,
+              marginTop: 8,
+              color: BROWN_TEXT,
+              fontSize: 15,
+              lineHeight: 22,
+            }}
+          >
             {t('assessmentSummary.subtitle', {
               defaultValue: "Here's your initial Freud Score based on your assessment.",
             })}
@@ -233,10 +278,19 @@ export default function AssessmentSummary() {
               <ScoreRing score={initialScore.score} color={scoreColor} />
 
               <View style={{ alignItems: 'center', marginBottom: 24, marginTop: -8 }}>
-                <Text style={{ fontSize: 16, fontWeight: '800', color: scoreColor }}>
+                <Text
+                  style={{
+                    fontFamily: Typography.family.body,
+                    fontSize: 16,
+                    fontWeight: Typography.weight.semibold,
+                    color: scoreColor,
+                  }}
+                >
                   {initialScore.label}
                 </Text>
-                <Text style={{ fontSize: 13, color: BROWN_TEXT, opacity: 0.5, marginTop: 2 }}>
+                <Text
+                  style={{ ...Typography.section, color: BROWN_TEXT, opacity: 0.5, marginTop: 2 }}
+                >
                   {t('freudScore.title', { defaultValue: 'Freud Score' })}
                 </Text>
               </View>
@@ -266,10 +320,25 @@ export default function AssessmentSummary() {
                 marginTop: 8,
               }}
             >
-              <Text style={{ fontWeight: '800', color: BROWN_TEXT, fontSize: 13 }}>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  fontWeight: Typography.weight.semibold,
+                  color: BROWN_TEXT,
+                  fontSize: 13,
+                }}
+              >
                 {t('assessmentSummary.goal', { defaultValue: 'Your Goal' })}
               </Text>
-              <Text style={{ color: BROWN_TEXT, opacity: 0.7, marginTop: 4, fontSize: 15 }}>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  color: BROWN_TEXT,
+                  opacity: 0.7,
+                  marginTop: 4,
+                  fontSize: 15,
+                }}
+              >
                 {assessment.goal}
               </Text>
             </View>
@@ -284,10 +353,25 @@ export default function AssessmentSummary() {
                 marginTop: 10,
               }}
             >
-              <Text style={{ fontWeight: '800', color: BROWN_TEXT, fontSize: 13 }}>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  fontWeight: Typography.weight.semibold,
+                  color: BROWN_TEXT,
+                  fontSize: 13,
+                }}
+              >
                 {t('assessmentSummary.currentMood', { defaultValue: 'Current Mood' })}
               </Text>
-              <Text style={{ color: BROWN_TEXT, opacity: 0.7, marginTop: 4, fontSize: 15 }}>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  color: BROWN_TEXT,
+                  opacity: 0.7,
+                  marginTop: 4,
+                  fontSize: 15,
+                }}
+              >
                 {assessment.mood}
               </Text>
             </View>
@@ -314,7 +398,14 @@ export default function AssessmentSummary() {
             elevation: 4,
           })}
         >
-          <Text style={{ color: 'white', fontWeight: '800', fontSize: 18 }}>
+          <Text
+            style={{
+              fontFamily: Typography.family.body,
+              color: 'white',
+              fontWeight: Typography.weight.semibold,
+              fontSize: 18,
+            }}
+          >
             {t('common.continue', { defaultValue: 'Continue' })}
           </Text>
           <MaterialIcons name="arrow-forward" size={20} color="white" />

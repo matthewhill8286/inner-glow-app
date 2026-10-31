@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -42,7 +41,6 @@ function buildTitleSegments(
 export default function Welcome() {
   const { t } = useTranslation();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const [slideIndex, setSlideIndex] = useState(0);
 
   const SLIDES: Slide[] = Array.from({ length: 6 }, (_, i) => {
@@ -55,15 +53,6 @@ export default function Welcome() {
       text: t(`welcome.slides.${i}.text`),
     };
   });
-
-  const ILLUSTRATIONS = [
-    require('@/assets/images/1.png'),
-    require('@/assets/images/2.png'),
-    require('@/assets/images/3.png'),
-    require('@/assets/images/4.png'),
-    require('@/assets/images/5.png'),
-    require('@/assets/images/6.png'),
-  ];
 
   const handleNext = async () => {
     if (slideIndex < SLIDES.length - 1) {
@@ -88,7 +77,6 @@ export default function Welcome() {
     <WelcomeComp
       slideIndex={slideIndex}
       slides={SLIDES}
-      illustration={ILLUSTRATIONS[slideIndex]}
       onNext={handleNext}
       onBack={slideIndex > 0 ? handleBack : undefined}
       onSignIn={handleSignIn}

@@ -1,3 +1,6 @@
+import { backTo, finishTo } from '@/lib/navigation';
+import { Typography } from '@/constants/typography';
+import { invokeAI } from '@/lib/ai-privacy';
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
@@ -20,7 +23,7 @@ import { supabase } from '@/supabase/supabase';
 import * as FileSystem from 'expo-file-system';
 import SoundPulse from '@/components/SoundPulse';
 import { toast } from '@/components/Toast';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialIcons from '@/components/AppIcon';
 
 /* ── Design-system colors (matches assessment / Figma) ── */
 const BRAND = {
@@ -208,7 +211,7 @@ export default function VoiceJournal() {
       };
       const mimeType = mimeMap[ext] || 'audio/m4a';
 
-      const { data, error } = await supabase.functions.invoke('transcribe-audio', {
+      const { data, error } = await invokeAI('transcribe-audio', {
         body: { audioBase64: base64Audio, mimeType },
       });
 
@@ -253,7 +256,7 @@ export default function VoiceJournal() {
         recordingDurationMs,
       });
       toast.success(t('toasts.voiceJournalSaved'));
-      router.replace('/(tabs)/journal');
+      finishTo('/(tabs)/journal');
     } catch (err) {
       console.error('[VoiceJournal] Failed to save entry:', err);
       toast.error(t('toasts.voiceJournalSaveError'));
@@ -278,7 +281,7 @@ export default function VoiceJournal() {
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <Pressable
-            onPress={() => router.back()}
+            onPress={() => backTo(undefined, '/(tabs)/journal')}
             style={({ pressed }) => ({
               width: 44,
               height: 44,
@@ -291,9 +294,13 @@ export default function VoiceJournal() {
               opacity: pressed ? 0.7 : 1,
             })}
           >
-            <Text style={{ color: BRAND.brownText, fontSize: 22 }}>{'←'}</Text>
+            <Text
+              style={{ fontFamily: Typography.family.body, color: BRAND.brownText, fontSize: 22 }}
+            >
+              {'←'}
+            </Text>
           </Pressable>
-          <Text style={{ color: BRAND.brownText, fontSize: 18, fontWeight: '700' }}>
+          <Text style={{ ...Typography.heading, color: BRAND.brownText }}>
             {t('journalVoice.title')}
           </Text>
         </View>
@@ -307,7 +314,7 @@ export default function VoiceJournal() {
             borderRadius: 12,
           }}
         >
-          <Text style={{ color: BRAND.brownText, fontSize: 13, fontWeight: '700' }}>
+          <Text style={{ ...Typography.heading, color: BRAND.brownText }}>
             {state === 'idle'
               ? t('journalVoice.readyToRecord')
               : state === 'recording'
@@ -343,9 +350,7 @@ export default function VoiceJournal() {
             }}
           >
             {/* SoundPulse orb (same as assessment) */}
-            <Pressable
-              onPress={state === 'idle' ? startRecording : stopRecording}
-            >
+            <Pressable onPress={state === 'idle' ? startRecording : stopRecording}>
               <SoundPulse active={state === 'recording'} />
               {state === 'idle' && (
                 <View
@@ -382,8 +387,9 @@ export default function VoiceJournal() {
             {/* Timer */}
             <Text
               style={{
+                fontFamily: Typography.family.body,
                 fontSize: 44,
-                fontWeight: '900',
+                fontWeight: Typography.weight.semibold,
                 color: BRAND.brownLight,
                 marginTop: 8,
                 fontVariant: ['tabular-nums'],
@@ -395,6 +401,7 @@ export default function VoiceJournal() {
             {/* Subtitle text */}
             <Text
               style={{
+                fontFamily: Typography.family.body,
                 fontSize: 15,
                 color: BRAND.brownLight,
                 opacity: 0.7,
@@ -408,9 +415,7 @@ export default function VoiceJournal() {
             </Text>
 
             {/* Waveform bars (visible when recording) */}
-            {state === 'recording' && (
-              <WaveformBars isRecording color={BRAND.oliveLight} />
-            )}
+            {state === 'recording' && <WaveformBars isRecording color={BRAND.oliveLight} />}
 
             {/* Cancel while recording */}
             {state === 'recording' && (
@@ -428,7 +433,14 @@ export default function VoiceJournal() {
                   opacity: pressed ? 0.7 : 1,
                 })}
               >
-                <Text style={{ fontSize: 14, fontWeight: '700', color: BRAND.red }}>
+                <Text
+                  style={{
+                    fontFamily: Typography.family.body,
+                    fontSize: 14,
+                    fontWeight: Typography.weight.semibold,
+                    color: BRAND.red,
+                  }}
+                >
                   {t('journalVoice.cancel')}
                 </Text>
               </Pressable>
@@ -439,11 +451,12 @@ export default function VoiceJournal() {
           {state === 'idle' && (
             <Text
               style={{
+                fontFamily: Typography.family.body,
                 textAlign: 'center',
                 color: BRAND.brownLight,
                 opacity: 0.5,
                 fontSize: 13,
-                fontWeight: '600',
+                fontWeight: Typography.weight.semibold,
                 marginTop: 16,
               }}
             >
@@ -469,15 +482,10 @@ export default function VoiceJournal() {
             }}
           >
             <SoundPulse active />
-            <ActivityIndicator
-              size="large"
-              color={BRAND.olive}
-              style={{ marginTop: 24 }}
-            />
+            <ActivityIndicator size="large" color={BRAND.olive} style={{ marginTop: 24 }} />
             <Text
               style={{
-                fontSize: 22,
-                fontWeight: '800',
+                ...Typography.heading,
                 color: BRAND.brownLight,
                 marginTop: 20,
                 textAlign: 'center',
@@ -487,7 +495,7 @@ export default function VoiceJournal() {
             </Text>
             <Text
               style={{
-                fontSize: 14,
+                ...Typography.heading,
                 color: BRAND.brownLight,
                 opacity: 0.7,
                 marginTop: 8,
@@ -531,8 +539,7 @@ export default function VoiceJournal() {
             </View>
             <Text
               style={{
-                fontSize: 18,
-                fontWeight: '800',
+                ...Typography.heading,
                 color: BRAND.brownLight,
                 textAlign: 'center',
                 marginBottom: 8,
@@ -542,6 +549,7 @@ export default function VoiceJournal() {
             </Text>
             <Text
               style={{
+                fontFamily: Typography.family.body,
                 fontSize: 14,
                 color: BRAND.brownLight,
                 opacity: 0.7,
@@ -575,7 +583,14 @@ export default function VoiceJournal() {
             })}
           >
             <MaterialIcons name="replay" size={20} color="#fff" />
-            <Text style={{ color: 'white', fontWeight: '800', fontSize: 18 }}>
+            <Text
+              style={{
+                fontFamily: Typography.family.body,
+                color: 'white',
+                fontWeight: Typography.weight.semibold,
+                fontSize: 18,
+              }}
+            >
               {t('journalVoice.tryAgain')}
             </Text>
           </Pressable>
@@ -618,7 +633,14 @@ export default function VoiceJournal() {
                 }}
               >
                 <MaterialIcons name="mic" size={14} color={BRAND.brownText} />
-                <Text style={{ fontSize: 12, fontWeight: '700', color: BRAND.brownText }}>
+                <Text
+                  style={{
+                    fontFamily: Typography.family.body,
+                    fontSize: 12,
+                    fontWeight: Typography.weight.semibold,
+                    color: BRAND.brownText,
+                  }}
+                >
                   {formatTime(seconds)}
                 </Text>
               </View>
@@ -642,7 +664,14 @@ export default function VoiceJournal() {
                   size={14}
                   color={BRAND.brownText}
                 />
-                <Text style={{ fontSize: 12, fontWeight: '700', color: BRAND.brownText }}>
+                <Text
+                  style={{
+                    fontFamily: Typography.family.body,
+                    fontSize: 12,
+                    fontWeight: Typography.weight.semibold,
+                    color: BRAND.brownText,
+                  }}
+                >
                   {isEditing ? t('journalVoice.done') : t('journalVoice.edit')}
                 </Text>
               </Pressable>
@@ -651,7 +680,14 @@ export default function VoiceJournal() {
             {/* Section label */}
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
               <MaterialIcons name="text-fields" size={18} color={BRAND.brownLight} />
-              <Text style={{ fontSize: 14, fontWeight: '700', color: BRAND.brownLight }}>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  fontSize: 14,
+                  fontWeight: Typography.weight.semibold,
+                  color: BRAND.brownLight,
+                }}
+              >
                 {t('journalVoice.transcription')}
               </Text>
             </View>
@@ -672,6 +708,7 @@ export default function VoiceJournal() {
                   multiline
                   textAlignVertical="top"
                   style={{
+                    fontFamily: Typography.family.body,
                     fontSize: 15,
                     lineHeight: 26,
                     color: BRAND.brownLight,
@@ -682,6 +719,7 @@ export default function VoiceJournal() {
               ) : (
                 <Text
                   style={{
+                    fontFamily: Typography.family.body,
                     fontSize: 15,
                     lineHeight: 26,
                     color: BRAND.brownLight,
@@ -695,6 +733,7 @@ export default function VoiceJournal() {
             {/* Word count */}
             <Text
               style={{
+                fontFamily: Typography.family.body,
                 fontSize: 12,
                 color: BRAND.brownLight,
                 opacity: 0.5,
@@ -720,9 +759,7 @@ export default function VoiceJournal() {
                 paddingVertical: 20,
                 borderRadius: 35,
                 backgroundColor:
-                  isCreating || !displayText.trim()
-                    ? 'rgba(160,123,85,0.5)'
-                    : BRAND.brown,
+                  isCreating || !displayText.trim() ? 'rgba(160,123,85,0.5)' : BRAND.brown,
                 opacity: pressed ? 0.9 : 1,
                 shadowColor: '#000',
                 shadowOffset: { width: 0, height: 4 },
@@ -736,7 +773,14 @@ export default function VoiceJournal() {
               ) : (
                 <MaterialIcons name="check-circle" size={20} color="#fff" />
               )}
-              <Text style={{ color: 'white', fontWeight: '800', fontSize: 18 }}>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  color: 'white',
+                  fontWeight: Typography.weight.semibold,
+                  fontSize: 18,
+                }}
+              >
                 {t('journalVoice.saveEntry')}
               </Text>
             </Pressable>
@@ -758,7 +802,14 @@ export default function VoiceJournal() {
               })}
             >
               <MaterialIcons name="replay" size={20} color={BRAND.brownText} />
-              <Text style={{ color: BRAND.brownText, fontWeight: '700', fontSize: 16 }}>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  color: BRAND.brownText,
+                  fontWeight: Typography.weight.semibold,
+                  fontSize: 16,
+                }}
+              >
                 {t('journalVoice.recordAgain')}
               </Text>
             </Pressable>

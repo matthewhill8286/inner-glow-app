@@ -1,6 +1,7 @@
+import { Typography } from '@/constants/typography';
 import React from 'react';
 import { View, Text, Pressable, StyleSheet, useColorScheme } from 'react-native';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialIcons from '@/components/AppIcon';
 import { Colors, UI } from '@/constants/theme';
 
 interface GridCardProps {
@@ -20,7 +21,11 @@ export function GridCard({ title, icon, color, onPress, isLocked = false }: Grid
       onPress={onPress}
       style={({ pressed }) => [
         styles.gridItem,
-        { backgroundColor: colors.card, opacity: pressed || isLocked ? 0.7 : 1 },
+        {
+          backgroundColor: colors.card,
+          borderColor: colors.border,
+          opacity: pressed || isLocked ? 0.7 : 1,
+        },
       ]}
     >
       <View
@@ -52,6 +57,7 @@ const styles = StyleSheet.create({
     minWidth: '45%',
     padding: 20,
     borderRadius: UI.radius.xl,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -61,7 +67,8 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   gridLabel: {
-    fontWeight: '800',
+    fontFamily: Typography.family.body,
+    fontWeight: Typography.weight.medium,
     fontSize: 14,
   },
 });

@@ -1,14 +1,16 @@
+import { Typography } from '@/constants/typography';
+import { backTo } from '@/lib/navigation';
+import { WellnessIconText } from '@/components/WellnessIconText';
 import React, { useMemo } from 'react';
 import { View, Text, Pressable, ScrollView, Platform, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useSubscription } from '@/hooks/useSubscription';
 import { Colors, UI } from '@/constants/theme';
 import { useStress } from '@/hooks/useStress';
 import { showAlert } from '@/lib/state';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialIcons from '@/components/AppIcon';
 import { SkeletonRect } from '@/components/Skeleton';
 import { STRESS_VIDEOS } from '@/data/stressVideos';
 
@@ -26,7 +28,6 @@ const TOOLS: {
     label: 'Grounding',
     tint: '#E8985A',
     route: '/(tabs)/stress/grounding',
-    locked: true,
   },
   {
     key: 'breathing',
@@ -43,7 +44,6 @@ export default function StressHub() {
   const { t } = useTranslation();
   const router = useRouter();
   const theme = useColorScheme() ?? 'light';
-  const { hasFullAccess } = useSubscription();
   const colors = Colors[theme];
   const insets = useSafeAreaInsets();
 
@@ -62,13 +62,6 @@ export default function StressHub() {
 
   function handleToolPress(tool: (typeof TOOLS)[number]) {
     if (tool.key === 'grounding') {
-      if (!hasFullAccess) {
-        showAlert(t('common.premiumFeature'), t('stress.upgradeToUnlockGrounding'), [
-          { text: t('common.cancel'), style: 'cancel' },
-          { text: t('common.upgrade'), onPress: () => router.push('/(utils)/trial-upgrade') },
-        ]);
-        return;
-      }
       router.push('/(tabs)/stress/grounding');
     } else if (tool.key === 'breathing') {
       router.push('/(tabs)/stress/breathing');
@@ -97,11 +90,13 @@ export default function StressHub() {
     kit && (kit.triggers.length > 0 || kit.helpfulActions.length > 0 || kit.people.length > 0);
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top + 8 }]}>
+    <View
+      style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top + 8 }]}
+    >
       {/* Custom header */}
       <View style={styles.header}>
         <Pressable
-          onPress={() => router.back()}
+          onPress={() => backTo(undefined, '/(tabs)/home')}
           style={({ pressed }) => [
             styles.backButton,
             {
@@ -141,14 +136,16 @@ export default function StressHub() {
             <View style={[styles.heroCard, { backgroundColor: '#5B8A5A', borderColor: '#5B8A5A' }]}>
               <View style={styles.heroTop}>
                 <View style={styles.heroIconWrap}>
-                  <Text style={{ fontSize: 22 }}>🧘</Text>
+                  <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 22 }}>
+                    🧘
+                  </WellnessIconText>
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.heroLabel}>
                     {hasKit ? 'Your Stress Kit' : 'Quick Phrase'}
                   </Text>
                   <Text style={styles.heroPhrase} numberOfLines={2}>
-                    "{kit?.quickPhrase || 'Take a deep breath. This too shall pass.'}"
+                    &quot;{kit?.quickPhrase || 'Take a deep breath. This too shall pass.'}&quot;
                   </Text>
                 </View>
               </View>
@@ -165,16 +162,6 @@ export default function StressHub() {
 
               <Pressable
                 onPress={() => {
-                  if (!hasFullAccess) {
-                    showAlert(t('common.premiumFeature'), t('stress.upgradeToUnlockPlan'), [
-                      { text: t('common.cancel'), style: 'cancel' },
-                      {
-                        text: t('common.upgrade'),
-                        onPress: () => router.push('/(utils)/trial-upgrade'),
-                      },
-                    ]);
-                    return;
-                  }
                   router.push('/(tabs)/stress/plan');
                 }}
                 style={({ pressed }) => [styles.heroCta, { opacity: pressed ? 0.85 : 1 }]}
@@ -190,7 +177,6 @@ export default function StressHub() {
             {[TOOLS.slice(0, 2), TOOLS.slice(2, 4)].map((row, rowIdx) => (
               <View key={rowIdx} style={styles.toolsRow}>
                 {row.map((tool) => {
-                  const isLocked = tool.locked && !hasFullAccess;
                   return (
                     <Pressable
                       key={tool.key}
@@ -201,16 +187,18 @@ export default function StressHub() {
                           backgroundColor: colors.card,
                           borderColor: colors.border,
                           transform: [{ scale: pressed ? 0.96 : 1 }],
-                          opacity: isLocked ? 0.7 : 1,
                         },
                       ]}
                     >
                       <View style={[styles.toolIconWrap, { backgroundColor: tool.tint + '12' }]}>
-                        <Text style={{ fontSize: 22 }}>{tool.emoji}</Text>
+                        <WellnessIconText
+                          style={{ fontFamily: Typography.family.body, fontSize: 22 }}
+                        >
+                          {tool.emoji}
+                        </WellnessIconText>
                       </View>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                         <Text style={[styles.toolLabel, { color: colors.text }]}>{tool.label}</Text>
-                        {isLocked && <MaterialIcons name="lock" size={11} color={colors.mutedText} />}
                       </View>
                     </Pressable>
                   );
@@ -223,7 +211,9 @@ export default function StressHub() {
               <View style={styles.videoSectionHeader}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                   <View style={[styles.sectionIconWrap, { backgroundColor: '#6BBF8E' + '15' }]}>
-                    <Text style={{ fontSize: 14 }}>💪</Text>
+                    <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 14 }}>
+                      💪
+                    </WellnessIconText>
                   </View>
                   <Text style={[styles.sectionTitle, { color: colors.text }]}>Body Relaxation</Text>
                 </View>
@@ -283,7 +273,9 @@ export default function StressHub() {
               <View style={styles.videoSectionHeader}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                   <View style={[styles.sectionIconWrap, { backgroundColor: '#9B8DF1' + '15' }]}>
-                    <Text style={{ fontSize: 14 }}>🧠</Text>
+                    <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 14 }}>
+                      🧠
+                    </WellnessIconText>
                   </View>
                   <Text style={[styles.sectionTitle, { color: colors.text }]}>Mind Relaxation</Text>
                 </View>
@@ -358,7 +350,9 @@ export default function StressHub() {
                 ]}
               >
                 <View style={[styles.recentIconWrap, { backgroundColor: '#E8985A' + '12' }]}>
-                  <Text style={{ fontSize: 16 }}>🔄</Text>
+                  <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 16 }}>
+                    🔄
+                  </WellnessIconText>
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.recentTitle, { color: colors.text }]}>
@@ -390,7 +384,9 @@ export default function StressHub() {
             >
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 <View style={[styles.mindfulIconWrap, { backgroundColor: '#6BBF8E' + '12' }]}>
-                  <Text style={{ fontSize: 18 }}>🕐</Text>
+                  <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 18 }}>
+                    🕐
+                  </WellnessIconText>
                 </View>
                 <View>
                   <Text style={[styles.mindfulTitle, { color: colors.text }]}>Mindful Hours</Text>
@@ -431,13 +427,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   headerTitle: {
-    fontSize: 22,
-    fontWeight: '900',
+    ...Typography.heading,
   },
-  headerSubtitle: {
-    fontSize: 14,
-    marginTop: 2,
-  },
+  headerSubtitle: { fontFamily: Typography.family.body, fontSize: 14, marginTop: 2 },
 
   scrollContent: {
     paddingTop: 16,
@@ -467,17 +459,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   heroLabel: {
+    fontFamily: Typography.family.body,
     color: 'rgba(255,255,255,0.75)',
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: Typography.weight.medium,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 4,
   },
   heroPhrase: {
+    fontFamily: Typography.family.body,
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: Typography.weight.semibold,
     lineHeight: 22,
     fontStyle: 'italic',
   },
@@ -494,9 +488,10 @@ const styles = StyleSheet.create({
     borderRadius: UI.radius.pill,
   },
   heroActionText: {
+    fontFamily: Typography.family.body,
     color: '#FFFFFF',
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: Typography.weight.semibold,
   },
   heroCta: {
     flexDirection: 'row',
@@ -508,9 +503,10 @@ const styles = StyleSheet.create({
     borderRadius: UI.radius.lg,
   },
   heroCtaText: {
+    fontFamily: Typography.family.body,
     color: '#5B8A5A',
     fontSize: 15,
-    fontWeight: '900',
+    fontWeight: Typography.weight.semibold,
   },
 
   // Quick tools
@@ -537,8 +533,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   toolLabel: {
+    fontFamily: Typography.family.body,
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: Typography.weight.medium,
   },
 
   // Video sections
@@ -558,13 +555,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '900',
-  },
+  sectionTitle: { ...Typography.section, fontSize: 20 },
   seeAll: {
+    fontFamily: Typography.family.body,
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: Typography.weight.semibold,
   },
   videoCard: {
     width: 190,
@@ -582,14 +577,12 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   videoTitle: {
+    fontFamily: Typography.family.body,
     fontSize: 15,
-    fontWeight: '800',
+    fontWeight: Typography.weight.semibold,
     marginBottom: 4,
   },
-  videoSubtitle: {
-    fontSize: 12,
-    lineHeight: 17,
-  },
+  videoSubtitle: { fontFamily: Typography.family.body, fontSize: 12, lineHeight: 17 },
 
   // Recent activity
   recentCard: {
@@ -609,13 +602,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   recentTitle: {
+    fontFamily: Typography.family.body,
     fontSize: 15,
-    fontWeight: '800',
+    fontWeight: Typography.weight.semibold,
     marginBottom: 2,
   },
   recentDate: {
+    fontFamily: Typography.family.body,
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: Typography.weight.semibold,
   },
 
   // Mindful hours
@@ -636,12 +631,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   mindfulTitle: {
+    fontFamily: Typography.family.body,
     fontSize: 15,
-    fontWeight: '800',
+    fontWeight: Typography.weight.semibold,
   },
   mindfulSub: {
+    fontFamily: Typography.family.body,
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: Typography.weight.semibold,
     marginTop: 1,
   },
 });

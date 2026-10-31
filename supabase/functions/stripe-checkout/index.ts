@@ -14,7 +14,7 @@ const corsHeaders = {
  * Creates a Stripe Checkout Session for subscription or one-time payment.
  *
  * Expects JSON body:
- *   { plan: 'monthly' | 'lifetime', userId: string }
+ *   { plan: 'yearly' | 'monthly', userId: string }
  *
  * Returns:
  *   { url: string, sessionId: string }
@@ -28,10 +28,10 @@ serve(async (req: Request) => {
     // @ts-ignore
     const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY');
     if (!stripeSecretKey) {
-      return new Response(
-        JSON.stringify({ error: 'STRIPE_SECRET_KEY not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      );
+      return new Response(JSON.stringify({ error: 'STRIPE_SECRET_KEY not configured' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     // @ts-ignore
@@ -39,59 +39,103 @@ serve(async (req: Request) => {
     // @ts-ignore
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 
-    const body = await req.json();
-    const { plan, userId, successUrl, cancelUrl } = body;
-
-    if (!plan || !userId) {
-      return new Response(
-        JSON.stringify({ error: 'Missing required fields: plan, userId' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    if (req.method !== 'POST') {
+      return Response.json({ error: 'Method not allowed' }, { status: 405, headers: corsHeaders });
+    }
+    const sb = createClient(supabaseUrl, supabaseServiceKey);
+    const token = req.headers.get('authorization')?.replace(/^Bearer /i, '');
+    if (!token)
+      return Response.json(
+        { error: 'Please sign in first' },
+        { status: 401, headers: corsHeaders },
+      );
+    const {
+      data: { user },
+      error: authError,
+    } = await sb.auth.getUser(token);
+    if (authError || !user)
+      return Response.json(
+        { error: 'Please sign in again' },
+        { status: 401, headers: corsHeaders },
+      );
+    const { plan, successUrl, cancelUrl } = await req.json();
+    const userId = user.id;
+    const validRedirect = (value: unknown): value is string => {
+      if (typeof value !== 'string') return false;
+      try {
+        const url = new URL(value);
+        return (
+          url.protocol === 'https:' ||
+          (url.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(url.hostname))
+        );
+      } catch {
+        return false;
+      }
+    };
+    if (!validRedirect(successUrl) || !validRedirect(cancelUrl)) {
+      return Response.json(
+        { error: 'Invalid checkout return URL' },
+        { status: 400, headers: corsHeaders },
       );
     }
 
     // ── Plan configuration ──────────────────────────
-    const PLANS: Record<string, {
-      mode: 'subscription' | 'payment';
-      amount: number;
-      currency: string;
-      name: string;
-      interval?: string;
-    }> = {
+    const PLANS: Record<
+      string,
+      {
+        mode: 'subscription' | 'payment';
+        amount: number;
+        currency: string;
+        name: string;
+        interval?: string;
+        trialDays?: number;
+      }
+    > = {
+      // Prices and trial from the paywall design (Figma 6600:2039).
+      yearly: {
+        mode: 'subscription',
+        amount: 5999, // €59.99
+        currency: 'eur',
+        name: 'Inner Glow Premium — Yearly',
+        interval: 'year',
+        trialDays: 7,
+      },
       monthly: {
         mode: 'subscription',
-        amount: 1000, // €10.00
+        amount: 999, // €9.99
         currency: 'eur',
-        name: 'Freud Premium — Monthly',
+        name: 'Inner Glow Premium — Monthly',
         interval: 'month',
-      },
-      lifetime: {
-        mode: 'payment',
-        amount: 7200, // €72.00
-        currency: 'eur',
-        name: 'Freud Premium — Lifetime',
       },
     };
 
     const planConfig = PLANS[plan];
     if (!planConfig) {
       return new Response(
-        JSON.stringify({ error: `Invalid plan: ${plan}. Must be "monthly" or "lifetime".` }),
+        JSON.stringify({ error: `Invalid plan: ${plan}. Must be "yearly" or "monthly".` }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
 
-    // ── Build Stripe line item ──────────────────────
-    const lineItem: Record<string, any> = {
-      price_data: {
-        currency: planConfig.currency,
-        product_data: { name: planConfig.name },
-        unit_amount: planConfig.amount,
-        ...(planConfig.mode === 'subscription' && planConfig.interval
-          ? { recurring: { interval: planConfig.interval } }
-          : {}),
-      },
-      quantity: 1,
-    };
+    // Reject an accidental second checkout for access already owned by this account.
+    const { data: existing, error: existingError } = await sb
+      .from('subscriptions')
+      .select('plan,status,current_period_end')
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (existingError) throw existingError;
+    const alreadyPaid =
+      existing &&
+      ['active', 'canceling'].includes(existing.status) &&
+      (existing.plan === 'lifetime' ||
+        (existing.current_period_end && Date.parse(existing.current_period_end) > Date.now()));
+    // Yearly and monthly are both subscriptions; switching between them happens in Manage Subscription.
+    if (alreadyPaid && existing.plan !== 'trial') {
+      return Response.json(
+        { error: 'You already have access to this plan. Use Manage Subscription in Profile.' },
+        { status: 409, headers: corsHeaders },
+      );
+    }
 
     // ── Create Stripe Checkout Session via REST API ─
     const stripeBody = new URLSearchParams();
@@ -100,14 +144,15 @@ serve(async (req: Request) => {
     stripeBody.append('line_items[0][price_data][product_data][name]', planConfig.name);
     stripeBody.append('line_items[0][price_data][unit_amount]', String(planConfig.amount));
     if (planConfig.mode === 'subscription' && planConfig.interval) {
-      stripeBody.append(
-        'line_items[0][price_data][recurring][interval]',
-        planConfig.interval,
-      );
+      stripeBody.append('line_items[0][price_data][recurring][interval]', planConfig.interval);
+    }
+    // Only accounts that have never paid get the free week.
+    if (planConfig.trialDays && (!existing || existing.plan === 'trial')) {
+      stripeBody.append('subscription_data[trial_period_days]', String(planConfig.trialDays));
     }
     stripeBody.append('line_items[0][quantity]', '1');
-    stripeBody.append('success_url', successUrl || 'https://example.com/success?session_id={CHECKOUT_SESSION_ID}');
-    stripeBody.append('cancel_url', cancelUrl || 'https://example.com/cancel');
+    stripeBody.append('success_url', successUrl);
+    stripeBody.append('cancel_url', cancelUrl);
     stripeBody.append('client_reference_id', userId);
     stripeBody.append('metadata[plan]', plan);
     stripeBody.append('metadata[user_id]', userId);
@@ -118,7 +163,7 @@ serve(async (req: Request) => {
     const stripeRes = await fetch('https://api.stripe.com/v1/checkout/sessions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${stripeSecretKey}`,
+        Authorization: `Bearer ${stripeSecretKey}`,
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body: stripeBody.toString(),
@@ -128,36 +173,21 @@ serve(async (req: Request) => {
 
     if (!stripeRes.ok) {
       console.error('Stripe error:', session);
-      return new Response(
-        JSON.stringify({ error: session.error?.message || 'Stripe API error' }),
-        { status: stripeRes.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      );
+      return new Response(JSON.stringify({ error: session.error?.message || 'Stripe API error' }), {
+        status: stripeRes.status,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    // ── Record pending checkout in Supabase ─────────
-    if (supabaseUrl && supabaseServiceKey) {
-      const sb = createClient(supabaseUrl, supabaseServiceKey);
-      await sb.from('subscriptions').upsert(
-        {
-          user_id: userId,
-          stripe_session_id: session.id,
-          plan,
-          status: 'pending',
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'user_id' },
-      ).catch((err: any) => console.warn('Failed to record pending checkout:', err));
-    }
-
-    return new Response(
-      JSON.stringify({ url: session.url, sessionId: session.id }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-    );
+    return new Response(JSON.stringify({ url: session.url, sessionId: session.id }), {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   } catch (err: any) {
     console.error('stripe-checkout error:', err);
-    return new Response(
-      JSON.stringify({ error: err.message || 'Internal server error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-    );
+    return new Response(JSON.stringify({ error: err.message || 'Internal server error' }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   }
 });

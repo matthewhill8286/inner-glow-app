@@ -1,3 +1,4 @@
+import { Typography } from '@/constants/typography';
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import type { MoodCheckIn } from '@/lib/types';
@@ -131,8 +132,9 @@ export default function MoodChart({ items }: Readonly<{ items: MoodCheckIn[] }>)
                 style={[
                   styles.dayLabel,
                   {
+                    fontFamily: Typography.family.body,
                     color: d.isToday ? colors.primary : colors.subtleText,
-                    fontWeight: d.isToday ? '800' : '600',
+                    fontWeight: d.isToday ? Typography.weight.bold : '600',
                   },
                 ]}
               >
@@ -159,10 +161,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
   },
-  title: {
-    fontSize: 16,
-    fontWeight: '900',
-  },
+  title: { ...Typography.label, fontSize: 14 },
   legend: {
     flexDirection: 'row',
     gap: 12,
@@ -183,8 +182,9 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   legendText: {
+    fontFamily: Typography.family.body,
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: Typography.weight.semibold,
   },
   chartRow: {
     flexDirection: 'row',
@@ -212,8 +212,5 @@ const styles = StyleSheet.create({
     width: 18,
     borderRadius: 9,
   },
-  dayLabel: {
-    fontSize: 11,
-    marginTop: 8,
-  },
+  dayLabel: { fontFamily: Typography.family.body, fontSize: 11, marginTop: 8 },
 });

@@ -1,3 +1,6 @@
+import { Typography } from '@/constants/typography';
+import { backTo } from '@/lib/navigation';
+import { WellnessIconText } from '@/components/WellnessIconText';
 import React, { useEffect, useState, useMemo } from 'react';
 import { View, Text, Pressable, TextInput, ScrollView, Linking } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,7 +12,7 @@ import { useJournal } from '@/hooks/useJournal';
 import { JournalEntry } from '@/lib/types';
 import { showAlert } from '@/lib/state';
 import { toast } from '@/components/Toast';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialIcons from '@/components/AppIcon';
 
 /* ── Mood config ── */
 const MOOD_MAP: Record<string, { emoji: string; color: string }> = {
@@ -170,7 +173,7 @@ export default function JournalDetail() {
           try {
             await deleteJournalEntry(String(id));
             toast.success(t('toasts.journalDeleted'));
-            router.back();
+            backTo(undefined, '/(tabs)/journal');
           } catch (err) {
             console.error('Failed to delete journal entry:', err);
             toast.error(t('toasts.journalDeleteError'));
@@ -209,7 +212,7 @@ export default function JournalDetail() {
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
             <Pressable
-              onPress={() => router.back()}
+              onPress={() => backTo(undefined, '/(tabs)/journal')}
               style={({ pressed }) => ({
                 width: 36,
                 height: 36,
@@ -230,7 +233,7 @@ export default function JournalDetail() {
                 style={{ marginLeft: 4 }}
               />
             </Pressable>
-            <Text style={{ fontSize: 22, fontWeight: '800', color: colors.text }}>
+            <Text style={{ ...Typography.heading, color: colors.text }}>
               {loading ? t('journalDetail.loading') : t('journalDetail.entryNotFound')}
             </Text>
           </View>
@@ -280,7 +283,7 @@ export default function JournalDetail() {
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
             <Pressable
-              onPress={() => router.back()}
+              onPress={() => backTo(undefined, '/(tabs)/journal')}
               style={({ pressed }) => ({
                 width: 36,
                 height: 36,
@@ -301,7 +304,7 @@ export default function JournalDetail() {
                 style={{ marginLeft: 4 }}
               />
             </Pressable>
-            <Text style={{ fontSize: 22, fontWeight: '800', color: colors.text }}>
+            <Text style={{ ...Typography.heading, color: colors.text }}>
               {editing ? t('journalDetail.editEntry') : t('journalDetail.journalEntry')}
             </Text>
           </View>
@@ -319,8 +322,19 @@ export default function JournalDetail() {
                 backgroundColor: moodInfo.color + '15',
               }}
             >
-              <Text style={{ fontSize: 14 }}>{moodInfo.emoji}</Text>
-              <Text style={{ fontSize: 12, fontWeight: '700', color: moodInfo.color }}>
+              <WellnessIconText
+                style={{ fontFamily: Typography.family.body, fontSize: 14, color: moodInfo.color }}
+              >
+                {moodInfo.emoji}
+              </WellnessIconText>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  fontSize: 12,
+                  fontWeight: Typography.weight.semibold,
+                  color: moodInfo.color,
+                }}
+              >
                 {entry.mood}
               </Text>
             </View>
@@ -344,12 +358,21 @@ export default function JournalDetail() {
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 }}>
               <MaterialIcons name="warning" size={24} color="#fff" />
-              <Text style={{ fontSize: 16, fontWeight: '900', color: '#fff', flex: 1 }}>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  fontSize: 16,
+                  fontWeight: Typography.weight.semibold,
+                  color: '#fff',
+                  flex: 1,
+                }}
+              >
                 {t('journalDetail.crisisTitle')}
               </Text>
             </View>
             <Text
               style={{
+                fontFamily: Typography.family.body,
                 fontSize: 13,
                 color: 'rgba(255,255,255,0.9)',
                 lineHeight: 20,
@@ -372,7 +395,14 @@ export default function JournalDetail() {
               })}
             >
               <MaterialIcons name="phone" size={20} color="#C45B5B" />
-              <Text style={{ fontSize: 16, fontWeight: '900', color: '#C45B5B' }}>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  fontSize: 16,
+                  fontWeight: Typography.weight.semibold,
+                  color: '#C45B5B',
+                }}
+              >
                 {t('journalDetail.callForHelp')}
               </Text>
             </Pressable>
@@ -404,10 +434,24 @@ export default function JournalDetail() {
                 <MaterialIcons name="sentiment-dissatisfied" size={20} color="#E8985A" />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 14, fontWeight: '700', color: '#E8985A' }}>
+                <Text
+                  style={{
+                    fontFamily: Typography.family.body,
+                    fontSize: 14,
+                    fontWeight: Typography.weight.semibold,
+                    color: '#E8985A',
+                  }}
+                >
                   {t('journalDetail.strugglingTitle')}
                 </Text>
-                <Text style={{ fontSize: 12, color: colors.mutedText, marginTop: 2 }}>
+                <Text
+                  style={{
+                    fontFamily: Typography.family.body,
+                    fontSize: 12,
+                    color: colors.mutedText,
+                    marginTop: 2,
+                  }}
+                >
                   {t('journalDetail.strugglingMessage')}
                 </Text>
               </View>
@@ -442,8 +486,24 @@ export default function JournalDetail() {
             <MaterialIcons name="today" size={22} color="#8B6B47" />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text }}>{dateStr}</Text>
-            <Text style={{ fontSize: 12, color: colors.mutedText, marginTop: 2 }}>
+            <Text
+              style={{
+                fontFamily: Typography.family.body,
+                fontSize: 15,
+                fontWeight: Typography.weight.semibold,
+                color: colors.text,
+              }}
+            >
+              {dateStr}
+            </Text>
+            <Text
+              style={{
+                fontFamily: Typography.family.body,
+                fontSize: 12,
+                color: colors.mutedText,
+                marginTop: 2,
+              }}
+            >
               {timeStr} · {wordCount} words
             </Text>
           </View>
@@ -464,8 +524,23 @@ export default function JournalDetail() {
                   backgroundColor: moodInfo.color + '12',
                 }}
               >
-                <Text style={{ fontSize: 14 }}>{moodInfo.emoji}</Text>
-                <Text style={{ fontSize: 12, fontWeight: '700', color: moodInfo.color }}>
+                <WellnessIconText
+                  style={{
+                    fontFamily: Typography.family.body,
+                    fontSize: 14,
+                    color: moodInfo.color,
+                  }}
+                >
+                  {moodInfo.emoji}
+                </WellnessIconText>
+                <Text
+                  style={{
+                    fontFamily: Typography.family.body,
+                    fontSize: 12,
+                    fontWeight: Typography.weight.semibold,
+                    color: moodInfo.color,
+                  }}
+                >
                   {entry.mood}
                 </Text>
               </View>
@@ -480,7 +555,16 @@ export default function JournalDetail() {
                   backgroundColor: '#8B6B47' + '10',
                 }}
               >
-                <Text style={{ fontSize: 12, fontWeight: '700', color: '#8B6B47' }}>{tag}</Text>
+                <Text
+                  style={{
+                    fontFamily: Typography.family.body,
+                    fontSize: 12,
+                    fontWeight: Typography.weight.semibold,
+                    color: '#8B6B47',
+                  }}
+                >
+                  {tag}
+                </Text>
               </View>
             ))}
           </View>
@@ -502,8 +586,9 @@ export default function JournalDetail() {
             >
               <Text
                 style={{
+                  fontFamily: Typography.family.body,
                   fontSize: 12,
-                  fontWeight: '700',
+                  fontWeight: Typography.weight.semibold,
                   color: colors.mutedText,
                   textTransform: 'uppercase',
                   letterSpacing: 0.5,
@@ -517,7 +602,13 @@ export default function JournalDetail() {
                 onChangeText={setEditTitle}
                 placeholder={t('journalDetail.titlePlaceholder')}
                 placeholderTextColor={colors.placeholder}
-                style={{ fontSize: 18, fontWeight: '700', color: colors.text, paddingVertical: 4 }}
+                style={{
+                  fontFamily: Typography.family.body,
+                  fontSize: 18,
+                  fontWeight: Typography.weight.semibold,
+                  color: colors.text,
+                  paddingVertical: 4,
+                }}
               />
             </View>
 
@@ -534,8 +625,9 @@ export default function JournalDetail() {
             >
               <Text
                 style={{
+                  fontFamily: Typography.family.body,
                   fontSize: 12,
-                  fontWeight: '700',
+                  fontWeight: Typography.weight.semibold,
                   color: colors.mutedText,
                   textTransform: 'uppercase',
                   letterSpacing: 0.5,
@@ -552,6 +644,7 @@ export default function JournalDetail() {
                 multiline
                 textAlignVertical="top"
                 style={{
+                  fontFamily: Typography.family.body,
                   fontSize: 15,
                   lineHeight: 24,
                   color: colors.text,
@@ -574,8 +667,9 @@ export default function JournalDetail() {
             >
               <Text
                 style={{
+                  fontFamily: Typography.family.body,
                   fontSize: 12,
-                  fontWeight: '700',
+                  fontWeight: Typography.weight.semibold,
                   color: colors.mutedText,
                   textTransform: 'uppercase',
                   letterSpacing: 0.5,
@@ -605,11 +699,20 @@ export default function JournalDetail() {
                         transform: [{ scale: pressed ? 0.95 : 1 }],
                       })}
                     >
-                      <Text style={{ fontSize: 16 }}>{mi.emoji}</Text>
+                      <WellnessIconText
+                        style={{
+                          fontFamily: Typography.family.body,
+                          fontSize: 16,
+                          color: mi.color,
+                        }}
+                      >
+                        {mi.emoji}
+                      </WellnessIconText>
                       <Text
                         style={{
+                          fontFamily: Typography.family.body,
                           fontSize: 13,
-                          fontWeight: '700',
+                          fontWeight: Typography.weight.semibold,
                           color: active ? mi.color : colors.mutedText,
                         }}
                       >
@@ -638,7 +741,14 @@ export default function JournalDetail() {
                 })}
               >
                 <MaterialIcons name="check-circle" size={20} color="#fff" />
-                <Text style={{ fontSize: 16, fontWeight: '800', color: '#fff' }}>
+                <Text
+                  style={{
+                    fontFamily: Typography.family.body,
+                    fontSize: 16,
+                    fontWeight: Typography.weight.semibold,
+                    color: '#fff',
+                  }}
+                >
                   {t('journalDetail.saveChanges')}
                 </Text>
               </Pressable>
@@ -659,7 +769,14 @@ export default function JournalDetail() {
                 })}
               >
                 <MaterialIcons name="close" size={20} color={colors.text} />
-                <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text }}>
+                <Text
+                  style={{
+                    fontFamily: Typography.family.body,
+                    fontSize: 15,
+                    fontWeight: Typography.weight.semibold,
+                    color: colors.text,
+                  }}
+                >
                   {t('journalDetail.cancel')}
                 </Text>
               </Pressable>
@@ -668,7 +785,7 @@ export default function JournalDetail() {
         ) : (
           <>
             {/* Title */}
-            <Text style={{ fontSize: 24, fontWeight: '900', color: colors.text }}>
+            <Text style={{ ...Typography.heading, fontSize: 24, color: colors.text }}>
               {entry.title || t('journalDetail.untitledEntry')}
             </Text>
 
@@ -683,7 +800,14 @@ export default function JournalDetail() {
                 ...UI.shadow.sm,
               }}
             >
-              <Text style={{ fontSize: 15, lineHeight: 26, color: colors.text }}>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  fontSize: 15,
+                  lineHeight: 26,
+                  color: colors.text,
+                }}
+              >
                 {entry.content || t('journalDetail.noContent')}
               </Text>
             </View>
@@ -703,7 +827,14 @@ export default function JournalDetail() {
                   style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}
                 >
                   <MaterialIcons name="auto-awesome" size={18} color="#7B6DC9" />
-                  <Text style={{ fontSize: 14, fontWeight: '800', color: '#7B6DC9' }}>
+                  <Text
+                    style={{
+                      fontFamily: Typography.family.body,
+                      fontSize: 14,
+                      fontWeight: Typography.weight.semibold,
+                      color: '#7B6DC9',
+                    }}
+                  >
                     {t('journalDetail.aiInsights')}
                   </Text>
                 </View>
@@ -727,11 +858,26 @@ export default function JournalDetail() {
                         marginTop: 1,
                       }}
                     >
-                      <Text style={{ fontSize: 11, fontWeight: '800', color: '#7B6DC9' }}>
+                      <Text
+                        style={{
+                          fontFamily: Typography.family.body,
+                          fontSize: 11,
+                          fontWeight: Typography.weight.semibold,
+                          color: '#7B6DC9',
+                        }}
+                      >
                         {i + 1}
                       </Text>
                     </View>
-                    <Text style={{ flex: 1, fontSize: 14, lineHeight: 22, color: colors.text }}>
+                    <Text
+                      style={{
+                        fontFamily: Typography.family.body,
+                        flex: 1,
+                        fontSize: 14,
+                        lineHeight: 22,
+                        color: colors.text,
+                      }}
+                    >
                       {insight}
                     </Text>
                   </View>
@@ -756,7 +902,7 @@ export default function JournalDetail() {
                 })}
               >
                 <MaterialIcons name="edit" size={20} color="#fff" />
-                <Text style={{ fontSize: 16, fontWeight: '800', color: '#fff' }}>
+                <Text style={{ ...Typography.heading, color: '#fff' }}>
                   {t('journalDetail.editEntry')}
                 </Text>
               </Pressable>
@@ -777,7 +923,14 @@ export default function JournalDetail() {
                 })}
               >
                 <MaterialIcons name="delete-outline" size={20} color="#C45B5B" />
-                <Text style={{ fontSize: 15, fontWeight: '700', color: '#C45B5B' }}>
+                <Text
+                  style={{
+                    fontFamily: Typography.family.body,
+                    fontSize: 15,
+                    fontWeight: Typography.weight.semibold,
+                    color: '#C45B5B',
+                  }}
+                >
                   {t('journalDetail.deleteEntry')}
                 </Text>
               </Pressable>

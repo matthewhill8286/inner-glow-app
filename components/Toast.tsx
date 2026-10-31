@@ -1,7 +1,8 @@
+import { Typography } from '@/constants/typography';
 import React, { useEffect, useRef } from 'react';
 import { Animated, Text, StyleSheet, Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialIcons from '@/components/AppIcon';
 import { create } from 'zustand';
 
 /* ── Types ───────────────────────────────────────── */
@@ -207,9 +208,10 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
   message: {
+    fontFamily: Typography.family.body,
     flex: 1,
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: Typography.weight.semibold,
     lineHeight: 19,
   },
 });

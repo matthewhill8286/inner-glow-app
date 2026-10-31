@@ -1,3 +1,5 @@
+import { screenBottomPadding } from '@/lib/screen-layout';
+import { Typography } from '@/constants/typography';
 import React from 'react';
 import { View, Text, ScrollView, Platform, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -6,7 +8,7 @@ import ScreenHeader from '@/components/ScreenHeader';
 import { useMindfulness } from '@/hooks/useMindfulness';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, UI } from '@/constants/theme';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialIcons from '@/components/AppIcon';
 import Svg, { Circle, G } from 'react-native-svg';
 
 interface CategoryStat {
@@ -109,15 +111,23 @@ function DonutChart({
       >
         <Text
           style={{
+            fontFamily: Typography.family.body,
             fontSize: 32,
-            fontWeight: '900',
+            fontWeight: Typography.weight.semibold,
             color: colors.text,
             letterSpacing: -1,
           }}
         >
           {totalHours}
         </Text>
-        <Text style={{ fontSize: 13, color: colors.mutedText, fontWeight: '600' }}>
+        <Text
+          style={{
+            fontFamily: Typography.family.body,
+            fontSize: 13,
+            color: colors.mutedText,
+            fontWeight: Typography.weight.semibold,
+          }}
+        >
           {t('mindfulStats.totalHours')}
         </Text>
       </View>
@@ -193,7 +203,7 @@ export default function MindfulStats() {
       ) : (
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 100 }}
+          contentContainerStyle={{ paddingBottom: screenBottomPadding(insets.bottom) }}
         >
           {/* Donut chart */}
           <View style={{ alignItems: 'center', marginTop: 24, marginBottom: 28 }}>
@@ -229,10 +239,24 @@ export default function MindfulStats() {
                   <MaterialIcons name={cat.icon as any} size={20} color={cat.color} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontWeight: '700', color: colors.text, fontSize: 15 }}>
+                  <Text
+                    style={{
+                      fontFamily: Typography.family.body,
+                      fontWeight: Typography.weight.semibold,
+                      color: colors.text,
+                      fontSize: 15,
+                    }}
+                  >
                     {cat.label}
                   </Text>
-                  <Text style={{ color: colors.mutedText, fontSize: 12, marginTop: 2 }}>
+                  <Text
+                    style={{
+                      fontFamily: Typography.family.body,
+                      color: colors.mutedText,
+                      fontSize: 12,
+                      marginTop: 2,
+                    }}
+                  >
                     {t('mindfulStats.minutesTotal', { minutes: Math.round(cat.seconds / 60) })}
                   </Text>
                 </View>
@@ -244,7 +268,14 @@ export default function MindfulStats() {
                     borderRadius: UI.radius.pill,
                   }}
                 >
-                  <Text style={{ fontWeight: '800', color: cat.color, fontSize: 14 }}>
+                  <Text
+                    style={{
+                      fontFamily: Typography.family.body,
+                      fontWeight: Typography.weight.semibold,
+                      color: cat.color,
+                      fontSize: 14,
+                    }}
+                  >
                     {cat.percentage}%
                   </Text>
                 </View>
@@ -253,14 +284,7 @@ export default function MindfulStats() {
           </View>
 
           {/* Quick stats cards */}
-          <Text
-            style={{
-              fontSize: 18,
-              fontWeight: '800',
-              color: colors.text,
-              marginBottom: 12,
-            }}
-          >
+          <Text style={{ ...Typography.section, color: colors.text, marginBottom: 12 }}>
             {t('mindfulStats.thisWeek')}
           </Text>
           <View
@@ -284,15 +308,23 @@ export default function MindfulStats() {
               <MaterialIcons name="timer" size={24} color="#5B8A5A" />
               <Text
                 style={{
+                  fontFamily: Typography.family.body,
                   fontSize: 22,
-                  fontWeight: '900',
+                  fontWeight: Typography.weight.semibold,
                   color: colors.text,
                   marginTop: 8,
                 }}
               >
                 {weekMins}
               </Text>
-              <Text style={{ fontSize: 12, color: colors.mutedText, marginTop: 2 }}>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  fontSize: 12,
+                  color: colors.mutedText,
+                  marginTop: 2,
+                }}
+              >
                 {t('mindfulStats.minutesLabel')}
               </Text>
             </View>
@@ -310,15 +342,23 @@ export default function MindfulStats() {
               <MaterialIcons name="trending-up" size={24} color="#E8985A" />
               <Text
                 style={{
+                  fontFamily: Typography.family.body,
                   fontSize: 22,
-                  fontWeight: '900',
+                  fontWeight: Typography.weight.semibold,
                   color: colors.text,
                   marginTop: 8,
                 }}
               >
                 {avgPerDay}
               </Text>
-              <Text style={{ fontSize: 12, color: colors.mutedText, marginTop: 2 }}>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  fontSize: 12,
+                  color: colors.mutedText,
+                  marginTop: 2,
+                }}
+              >
                 {t('mindfulStats.avgMinPerDay')}
               </Text>
             </View>
@@ -336,15 +376,23 @@ export default function MindfulStats() {
               <MaterialIcons name="local-fire-department" size={24} color="#C45B5B" />
               <Text
                 style={{
+                  fontFamily: Typography.family.body,
                   fontSize: 22,
-                  fontWeight: '900',
+                  fontWeight: Typography.weight.semibold,
                   color: colors.text,
                   marginTop: 8,
                 }}
               >
                 {streak}
               </Text>
-              <Text style={{ fontSize: 12, color: colors.mutedText, marginTop: 2 }}>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  fontSize: 12,
+                  color: colors.mutedText,
+                  marginTop: 2,
+                }}
+              >
                 {t('mindfulStats.dayStreak')}
               </Text>
             </View>
@@ -376,17 +424,32 @@ export default function MindfulStats() {
               <MaterialIcons name="format-list-numbered" size={22} color="#7B6DC9" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontWeight: '700', color: colors.text, fontSize: 15 }}>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  fontWeight: Typography.weight.semibold,
+                  color: colors.text,
+                  fontSize: 15,
+                }}
+              >
                 {t('mindfulStats.totalSessions')}
               </Text>
-              <Text style={{ color: colors.mutedText, fontSize: 13, marginTop: 2 }}>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  color: colors.mutedText,
+                  fontSize: 13,
+                  marginTop: 2,
+                }}
+              >
                 {t('mindfulStats.motivationalMessage')}
               </Text>
             </View>
             <Text
               style={{
+                fontFamily: Typography.family.body,
                 fontSize: 24,
-                fontWeight: '900',
+                fontWeight: Typography.weight.semibold,
                 color: colors.primary,
               }}
             >

@@ -1,3 +1,6 @@
+import { screenBottomPadding } from '@/lib/screen-layout';
+import { Typography } from '@/constants/typography';
+import { WellnessIconText } from '@/components/WellnessIconText';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
@@ -5,7 +8,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Dimensions,
   Modal,
   Switch,
   ActivityIndicator,
@@ -22,10 +24,16 @@ import { useFreudScore } from '@/hooks/useFreudScore';
 import { getFreudColor } from '@/lib/freudScore';
 import type { FreudScoreRecord } from '@/lib/freudScore';
 import ScreenHeader from '@/components/ScreenHeader';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import Svg, { Circle, Defs, LinearGradient, Stop, Line, Polyline, Text as SvgText } from 'react-native-svg';
-
-const { width: SCREEN_W } = Dimensions.get('window');
+import MaterialIcons from '@/components/AppIcon';
+import Svg, {
+  Circle,
+  Defs,
+  LinearGradient,
+  Stop,
+  Line,
+  Polyline,
+  Text as SvgText,
+} from 'react-native-svg';
 
 /* ── Design tokens ── */
 const BROWN = '#8B6B47';
@@ -81,7 +89,14 @@ function BigScoreRing({
 
   return (
     <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-      <View style={{ width: size + 24, height: size + 24, alignItems: 'center', justifyContent: 'center' }}>
+      <View
+        style={{
+          width: size + 24,
+          height: size + 24,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
         <Svg width={size + 24} height={size + 24}>
           <Defs>
             <LinearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -133,11 +148,22 @@ function BigScoreRing({
 
         {/* Center content */}
         <View style={{ position: 'absolute', alignItems: 'center' }}>
-          <Text style={{ fontSize: 52, fontWeight: '900', color, letterSpacing: -2 }}>{score}</Text>
           <Text
             style={{
+              fontFamily: Typography.family.body,
+              fontSize: 52,
+              fontWeight: Typography.weight.semibold,
+              color,
+              letterSpacing: -2,
+            }}
+          >
+            {score}
+          </Text>
+          <Text
+            style={{
+              fontFamily: Typography.family.body,
               fontSize: 12,
-              fontWeight: '700',
+              fontWeight: Typography.weight.semibold,
               color: colors.mutedText,
               marginTop: -2,
               letterSpacing: 1.5,
@@ -169,60 +195,53 @@ function MetricCard({
   color: string;
   colors: (typeof Colors)['light'] | (typeof Colors)['dark'];
 }) {
+  const normalized = Math.max(0, Math.min(100, Number.isFinite(value) ? value : 0));
   return (
     <View
-      style={[
-        metricStyles.card,
-        { backgroundColor: colors.card, borderColor: colors.border },
-      ]}
+      style={{
+        paddingVertical: 14,
+        gap: 10,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.border,
+      }}
     >
-      <View style={[metricStyles.iconWrap, { backgroundColor: color + '14' }]}>
-        <Text style={{ fontSize: 18 }}>{emoji}</Text>
-      </View>
-      <Text style={[metricStyles.label, { color: colors.mutedText }]}>{label}</Text>
-      <View style={metricStyles.valueRow}>
-        <Text style={[metricStyles.value, { color }]}>{value}</Text>
-        <View style={metricStyles.barOuter}>
-          <View
-            style={[
-              metricStyles.barInner,
-              { width: `${Math.min(100, value)}%`, backgroundColor: color },
-            ]}
-          />
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <View
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: 10,
+            backgroundColor: color + '12',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <WellnessIconText style={{ fontSize: 18 }}>{emoji}</WellnessIconText>
         </View>
+        <Text style={[Typography.body, { flex: 1, color: colors.text }]}>{label}</Text>
+        <Text style={[Typography.cardHeading, { color: colors.text }]}>
+          {normalized}
+          <Text style={[Typography.caption, { color: colors.mutedText }]}> / 100</Text>
+        </Text>
+      </View>
+      <View
+        accessibilityRole="progressbar"
+        accessibilityLabel={label}
+        accessibilityValue={{ min: 0, max: 100, now: normalized }}
+        style={{ height: 5, borderRadius: 3, backgroundColor: colors.divider, overflow: 'hidden' }}
+      >
+        <View
+          style={{
+            height: '100%',
+            width: `${normalized}%`,
+            backgroundColor: color,
+            borderRadius: 3,
+          }}
+        />
       </View>
     </View>
   );
 }
-
-const metricStyles = StyleSheet.create({
-  card: {
-    width: (SCREEN_W - 40 - 12) / 2,
-    borderRadius: 18,
-    padding: 14,
-    borderWidth: 1,
-    ...UI.shadow.sm,
-  },
-  iconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 11,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 10,
-  },
-  label: { fontSize: 12, fontWeight: '600', marginBottom: 6 },
-  valueRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  value: { fontSize: 22, fontWeight: '900' },
-  barOuter: {
-    flex: 1,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: 'rgba(128,128,128,0.1)',
-    overflow: 'hidden',
-  },
-  barInner: { height: '100%', borderRadius: 3 },
-});
 
 /* ------------------------------------------------------------------ */
 /*  Score Chart — polished with area fill                              */
@@ -243,8 +262,8 @@ function ScoreChart({
   textColor: string;
   mutedColor: string;
 }) {
-  const chartW = SCREEN_W - 40 - 40;
-  const plotW = chartW - CHART_PAD_L - CHART_PAD_R;
+  const [chartW, setChartW] = useState(280);
+  const plotW = Math.max(1, chartW - CHART_PAD_L - CHART_PAD_R);
   const plotH = CHART_H - CHART_PAD_T - CHART_PAD_B;
 
   const sorted = useMemo(
@@ -267,71 +286,82 @@ function ScoreChart({
   const areaStr = `${points[0].x},${CHART_PAD_T + plotH} ${polylineStr} ${points[points.length - 1].x},${CHART_PAD_T + plotH}`;
 
   return (
-    <Svg width={chartW} height={CHART_H}>
-      <Defs>
-        <LinearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0%" stopColor={lastColor} stopOpacity="0.2" />
-          <Stop offset="100%" stopColor={lastColor} stopOpacity="0.02" />
-        </LinearGradient>
-      </Defs>
+    <View
+      onLayout={(event) => setChartW(Math.max(1, event.nativeEvent.layout.width))}
+      style={{ width: '100%' }}
+    >
+      <Svg width={chartW} height={CHART_H}>
+        <Defs>
+          <LinearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0%" stopColor={lastColor} stopOpacity="0.2" />
+            <Stop offset="100%" stopColor={lastColor} stopOpacity="0.02" />
+          </LinearGradient>
+        </Defs>
 
-      {yTicks.map((tick) => {
-        const y = CHART_PAD_T + plotH - (tick / 100) * plotH;
-        return (
-          <React.Fragment key={tick}>
-            <Line
-              x1={CHART_PAD_L}
-              y1={y}
-              x2={CHART_PAD_L + plotW}
-              y2={y}
-              stroke={mutedColor}
-              strokeWidth={0.5}
-              opacity={0.2}
-            />
-            <SvgText x={CHART_PAD_L - 6} y={y + 4} fontSize={10} fill={mutedColor} textAnchor="end">
-              {tick}
-            </SvgText>
+        {yTicks.map((tick) => {
+          const y = CHART_PAD_T + plotH - (tick / 100) * plotH;
+          return (
+            <React.Fragment key={tick}>
+              <Line
+                x1={CHART_PAD_L}
+                y1={y}
+                x2={CHART_PAD_L + plotW}
+                y2={y}
+                stroke={mutedColor}
+                strokeWidth={0.5}
+                opacity={0.2}
+              />
+              <SvgText
+                x={CHART_PAD_L - 6}
+                y={y + 4}
+                fontSize={10}
+                fill={mutedColor}
+                textAnchor="end"
+              >
+                {tick}
+              </SvgText>
+            </React.Fragment>
+          );
+        })}
+
+        <Polyline points={areaStr} fill="url(#chartFill)" />
+        <Polyline
+          points={polylineStr}
+          fill="none"
+          stroke={lastColor}
+          strokeWidth={2.5}
+          strokeLinejoin="round"
+          strokeLinecap="round"
+        />
+
+        {points.map((p, i) => (
+          <React.Fragment key={i}>
+            {/* Glow behind dot */}
+            <Circle cx={p.x} cy={p.y} r={6} fill={getFreudColor(p.score)} opacity={0.15} />
+            <Circle cx={p.x} cy={p.y} r={3.5} fill={getFreudColor(p.score)} />
           </React.Fragment>
-        );
-      })}
+        ))}
 
-      <Polyline points={areaStr} fill="url(#chartFill)" />
-      <Polyline
-        points={polylineStr}
-        fill="none"
-        stroke={lastColor}
-        strokeWidth={2.5}
-        strokeLinejoin="round"
-        strokeLinecap="round"
-      />
-
-      {points.map((p, i) => (
-        <React.Fragment key={i}>
-          {/* Glow behind dot */}
-          <Circle cx={p.x} cy={p.y} r={6} fill={getFreudColor(p.score)} opacity={0.15} />
-          <Circle cx={p.x} cy={p.y} r={3.5} fill={getFreudColor(p.score)} />
-        </React.Fragment>
-      ))}
-
-      <SvgText x={points[0].x} y={CHART_H - 4} fontSize={9} fill={mutedColor} textAnchor="start">
-        {new Date(sorted[0].createdAt).toLocaleDateString(undefined, {
-          month: 'short',
-          day: 'numeric',
-        })}
-      </SvgText>
-      <SvgText
-        x={points[points.length - 1].x}
-        y={CHART_H - 4}
-        fontSize={9}
-        fill={mutedColor}
-        textAnchor="end"
-      >
-        {new Date(sorted[sorted.length - 1].createdAt).toLocaleDateString(undefined, {
-          month: 'short',
-          day: 'numeric',
-        })}
-      </SvgText>
-    </Svg>
+        <SvgText x={points[0].x} y={CHART_H - 4} fontSize={9} fill={mutedColor} textAnchor="start">
+          {new Date(sorted[0].createdAt).toLocaleDateString(undefined, {
+            month: 'short',
+            day: 'numeric',
+          })}
+        </SvgText>
+        <SvgText
+          x={points[points.length - 1].x}
+          y={CHART_H - 4}
+          fontSize={9}
+          fill={mutedColor}
+          textAnchor="end"
+        >
+          {new Date(sorted[sorted.length - 1].createdAt).toLocaleDateString(undefined, {
+            month: 'short',
+            day: 'numeric',
+          })}
+        </SvgText>
+      </Svg>
+    </View>
   );
 }
 
@@ -395,8 +425,9 @@ function FilterModal({
               >
                 <Text
                   style={{
+                    fontFamily: Typography.family.body,
                     color: period === p.key ? '#fff' : colors.mutedText,
-                    fontWeight: '700',
+                    fontWeight: Typography.weight.semibold,
                     fontSize: 13,
                   }}
                 >
@@ -426,8 +457,9 @@ function FilterModal({
                 >
                   <Text
                     style={{
+                      fontFamily: Typography.family.body,
                       color: active ? '#fff' : colors.mutedText,
-                      fontWeight: '700',
+                      fontWeight: Typography.weight.semibold,
                       fontSize: 13,
                     }}
                   >
@@ -439,7 +471,14 @@ function FilterModal({
           </View>
 
           <View style={[filterStyles.toggleRow, { borderColor: colors.border }]}>
-            <Text style={{ color: colors.text, fontWeight: '600', fontSize: 14 }}>
+            <Text
+              style={{
+                fontFamily: Typography.family.body,
+                color: colors.text,
+                fontWeight: Typography.weight.semibold,
+                fontSize: 14,
+              }}
+            >
               {t('freudScore.includeAI')}
             </Text>
             <Switch value={includeAI} onValueChange={setIncludeAI} trackColor={{ true: SAGE }} />
@@ -456,7 +495,14 @@ function FilterModal({
           </Pressable>
 
           <Pressable onPress={onClose} style={{ alignSelf: 'center', marginTop: 14 }}>
-            <Text style={{ color: colors.mutedText, fontSize: 14, fontWeight: '600' }}>
+            <Text
+              style={{
+                fontFamily: Typography.family.body,
+                color: colors.mutedText,
+                fontSize: 14,
+                fontWeight: Typography.weight.semibold,
+              }}
+            >
               {t('common.close')}
             </Text>
           </Pressable>
@@ -483,7 +529,8 @@ export default function FreudScoreScreen() {
   const colors = Colors[theme];
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
-  const { currentScore, scoreHistory, isLoadingHistory, isDataLoading, saveScore } = useFreudScore();
+  const { currentScore, scoreHistory, isLoadingHistory, isDataLoading, saveScore } =
+    useFreudScore();
   const hasSavedRef = useRef(false);
   const [showFilter, setShowFilter] = useState(false);
 
@@ -551,7 +598,13 @@ export default function FreudScoreScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={[
+          styles.scroll,
+          { paddingBottom: screenBottomPadding(insets.bottom) },
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
         <ScreenHeader
           title={t('freudScore.title')}
           subtitle={t('freudScore.subtitle')}
@@ -561,7 +614,11 @@ export default function FreudScoreScreen() {
                 onPress={() => setShowFilter(true)}
                 style={({ pressed }) => [
                   styles.headerBtn,
-                  { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.7 : 1 },
+                  {
+                    backgroundColor: colors.card,
+                    borderColor: colors.border,
+                    opacity: pressed ? 0.7 : 1,
+                  },
                 ]}
               >
                 <MaterialIcons name="tune" size={18} color={colors.mutedText} />
@@ -570,7 +627,11 @@ export default function FreudScoreScreen() {
                 onPress={() => router.push('/(tabs)/freud-score/ai-suggestions' as any)}
                 style={({ pressed }) => [
                   styles.headerBtn,
-                  { backgroundColor: SAGE + '15', borderColor: SAGE + '30', opacity: pressed ? 0.7 : 1 },
+                  {
+                    backgroundColor: SAGE + '15',
+                    borderColor: SAGE + '30',
+                    opacity: pressed ? 0.7 : 1,
+                  },
                 ]}
               >
                 <MaterialIcons name="auto-awesome" size={18} color={SAGE} />
@@ -592,7 +653,14 @@ export default function FreudScoreScreen() {
           {isDataLoading ? (
             <View style={{ alignItems: 'center', paddingVertical: 40 }}>
               <ActivityIndicator size="large" color={colors.primary} />
-              <Text style={{ color: colors.mutedText, marginTop: 12, fontSize: 14 }}>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  color: colors.mutedText,
+                  marginTop: 12,
+                  fontSize: 14,
+                }}
+              >
                 {t('freudScore.calculatingScore') || 'Calculating your score...'}
               </Text>
             </View>
@@ -619,8 +687,16 @@ export default function FreudScoreScreen() {
                 ]}
               >
                 <MaterialIcons name="auto-awesome" size={16} color={SAGE} />
-                <Text style={{ fontSize: 13, color: SAGE, fontWeight: '700', flex: 1 }}>
-                  {t('freudScore.swipeForSuggestions')}
+                <Text
+                  style={{
+                    fontFamily: Typography.family.body,
+                    fontSize: 13,
+                    color: SAGE,
+                    fontWeight: Typography.weight.semibold,
+                    flex: 1,
+                  }}
+                >
+                  View AI suggestions
                 </Text>
                 <MaterialIcons name="chevron-right" size={18} color={SAGE} />
               </Pressable>
@@ -639,7 +715,16 @@ export default function FreudScoreScreen() {
               <ActivityIndicator size="small" color={colors.mutedText} />
             </View>
           ) : (
-            <View style={styles.metricsGrid}>
+            <View
+              style={{
+                paddingHorizontal: 16,
+                paddingVertical: 2,
+                borderWidth: 1,
+                borderColor: colors.border,
+                borderRadius: UI.radius.lg,
+                backgroundColor: colors.card,
+              }}
+            >
               {BREAKDOWN_METRICS.map((m) => (
                 <MetricCard
                   key={m.key}
@@ -700,8 +785,18 @@ export default function FreudScoreScreen() {
 
           {filteredHistory.length === 0 ? (
             <View style={styles.emptyHistory}>
-              <Text style={{ fontSize: 32 }}>📊</Text>
-              <Text style={{ color: colors.mutedText, fontSize: 14, marginTop: 8, textAlign: 'center' }}>
+              <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 32 }}>
+                📊
+              </WellnessIconText>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  color: colors.mutedText,
+                  fontSize: 14,
+                  marginTop: 8,
+                  textAlign: 'center',
+                }}
+              >
                 {t('freudScore.noHistory')}
               </Text>
             </View>
@@ -735,7 +830,13 @@ export default function FreudScoreScreen() {
                     <Text style={[styles.historyLabel, { color: colors.text }]}>
                       {record.label}
                     </Text>
-                    <Text style={{ fontSize: 12, color: colors.mutedText }}>
+                    <Text
+                      style={{
+                        fontFamily: Typography.family.body,
+                        fontSize: 12,
+                        color: colors.mutedText,
+                      }}
+                    >
                       {date.toLocaleDateString(undefined, {
                         weekday: 'short',
                         month: 'short',
@@ -807,7 +908,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
 
-  sectionTitle: { fontSize: 17, fontWeight: '800', marginBottom: 14 },
+  sectionTitle: { ...Typography.section, fontSize: 20, marginBottom: 14 },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -861,8 +962,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  historyScoreNum: { fontSize: 18, fontWeight: '900' },
-  historyLabel: { fontSize: 15, fontWeight: '700' },
+  historyScoreNum: {
+    fontFamily: Typography.family.body,
+    fontSize: 18,
+    fontWeight: Typography.weight.bold,
+  },
+  historyLabel: {
+    fontFamily: Typography.family.body,
+    fontSize: 15,
+    fontWeight: Typography.weight.medium,
+  },
   historyTrend: {
     width: 32,
     height: 32,
@@ -897,8 +1006,13 @@ const filterStyles = StyleSheet.create({
     alignSelf: 'center',
     marginBottom: 20,
   },
-  title: { fontSize: 20, fontWeight: '900', marginBottom: 20 },
-  label: { fontSize: 13, fontWeight: '600', marginBottom: 10 },
+  title: { ...Typography.heading, fontSize: 20, marginBottom: 20 },
+  label: {
+    fontFamily: Typography.family.body,
+    fontSize: 13,
+    fontWeight: Typography.weight.medium,
+    marginBottom: 10,
+  },
   chipRow: { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
   chip: {
     paddingHorizontal: 18,
@@ -921,5 +1035,10 @@ const filterStyles = StyleSheet.create({
     borderRadius: 16,
     alignItems: 'center',
   },
-  applyBtnText: { color: '#fff', fontSize: 16, fontWeight: '800' },
+  applyBtnText: {
+    fontFamily: Typography.family.body,
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: Typography.weight.semibold,
+  },
 });

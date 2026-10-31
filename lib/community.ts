@@ -23,6 +23,8 @@ export type CommunityPost = {
   createdAt: string;
   likes: number;
   comments: CommunityComment[];
+  commentCount?: number;
+  isHidden?: boolean;
   isLiked: boolean;
   isBookmarked: boolean;
 };
@@ -44,11 +46,15 @@ export type CommunityComment = {
   content: string;
   createdAt: string;
   likes: number;
+  isLiked?: boolean;
 };
 
 export type CommunityNotification = {
   id: string;
   type: 'follow' | 'message' | 'comment' | 'video' | 'mention';
+  createdAt?: string;
+  postId?: string;
+  actorId?: string;
   user: string;
   description: string;
   time: string;

@@ -1,3 +1,4 @@
+import { notifyMoodLogged } from '@/lib/notificationStore';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/supabase/supabase';
 import { MoodCheckIn } from '@/lib/types';
@@ -48,7 +49,12 @@ export const useMood = () => {
     },
   });
 
-  const addMoodMutation = useMutation({
+  const addMoodMutation = useMutation<
+    MoodCheckIn,
+    Error,
+    Omit<MoodCheckIn, 'id' | 'createdAt'> & Partial<Pick<MoodCheckIn, 'id' | 'createdAt'>>,
+    { previous: MoodCheckIn[] | undefined; optimisticId: string }
+  >({
     mutationFn: async (
       input: Omit<MoodCheckIn, 'id' | 'createdAt'> & Partial<Pick<MoodCheckIn, 'id' | 'createdAt'>>,
     ) => {
@@ -92,6 +98,13 @@ export const useMood = () => {
 
       return item;
     },
+    onSuccess: (item, _input, context) => {
+      queryClient.setQueryData<MoodCheckIn[]>(key, (old) => [
+        item,
+        ...(old || []).filter((row) => row.id !== context?.optimisticId && row.id !== item.id),
+      ]);
+      notifyMoodLogged(item.mood);
+    },
     onMutate: async (input) => {
       await queryClient.cancelQueries({ queryKey: key });
       const previous = queryClient.getQueryData<MoodCheckIn[]>(key);
@@ -109,10 +122,10 @@ export const useMood = () => {
       };
       queryClient.setQueryData<MoodCheckIn[]>(key, (old) => [optimistic, ...(old || [])]);
 
-      return { previous };
+      return { previous, optimisticId: optimistic.id };
     },
     onError: (_err, _input, context) => {
-      if (context?.previous) queryClient.setQueryData(key, context.previous);
+      queryClient.setQueryData(key, context?.previous ?? []);
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: key });
@@ -128,9 +141,7 @@ export const useMood = () => {
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: key });
       const previous = queryClient.getQueryData<MoodCheckIn[]>(key);
-      queryClient.setQueryData<MoodCheckIn[]>(key, (old) =>
-        (old || []).filter((m) => m.id !== id),
-      );
+      queryClient.setQueryData<MoodCheckIn[]>(key, (old) => (old || []).filter((m) => m.id !== id));
       return { previous };
     },
     onError: (_err, _id, context) => {

@@ -1,3 +1,6 @@
+import { Typography } from '@/constants/typography';
+import { backTo } from '@/lib/navigation';
+import { WellnessIconText } from '@/components/WellnessIconText';
 import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
@@ -18,7 +21,7 @@ import { showAlert } from '@/lib/state';
 import { toast } from '@/components/Toast';
 import { useStress } from '@/hooks/useStress';
 import { DEFAULT_KIT, StressKit } from '@/lib/types';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialIcons from '@/components/AppIcon';
 
 /* ── section config ─────────────────────────────── */
 const SECTIONS = [
@@ -103,7 +106,7 @@ export default function StressPlan() {
     };
     await saveStressKit(next);
     toast.success('Your Stress Kit was updated.');
-    router.back();
+    backTo(undefined, '/(tabs)/stress');
   }
 
   /* ── counts for progress ─────────────────────── */
@@ -124,7 +127,7 @@ export default function StressPlan() {
       {/* ── Header ─────────────────────────────── */}
       <View style={s.header}>
         <Pressable
-          onPress={() => router.back()}
+          onPress={() => backTo(undefined, '/(tabs)/stress')}
           style={({ pressed }) => [
             s.backBtn,
             {
@@ -157,7 +160,9 @@ export default function StressPlan() {
         <View style={[s.heroCard, { backgroundColor: '#8B6B47' }]}>
           <View style={s.heroTop}>
             <View style={s.heroIconWrap}>
-              <Text style={{ fontSize: 26 }}>🧰</Text>
+              <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 26 }}>
+                🧰
+              </WellnessIconText>
             </View>
             <View style={{ flex: 1 }}>
               <Text style={s.heroTitle}>Personal Stress Kit</Text>
@@ -192,7 +197,9 @@ export default function StressPlan() {
         <View style={[s.sectionCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={s.sectionHeader}>
             <View style={[s.sectionIconWrap, { backgroundColor: '#5A8FB520' }]}>
-              <Text style={{ fontSize: 18 }}>💬</Text>
+              <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 18 }}>
+                💬
+              </WellnessIconText>
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[s.sectionTitle, { color: colors.text }]}>Quick Phrase</Text>
@@ -229,7 +236,9 @@ export default function StressPlan() {
             >
               <View style={s.sectionHeader}>
                 <View style={[s.sectionIconWrap, { backgroundColor: sec.tint + '18' }]}>
-                  <Text style={{ fontSize: 18 }}>{sec.emoji}</Text>
+                  <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 18 }}>
+                    {sec.emoji}
+                  </WellnessIconText>
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={[s.sectionTitle, { color: colors.text }]}>{sec.title}</Text>
@@ -296,7 +305,9 @@ export default function StressPlan() {
         <View style={[s.sectionCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={s.sectionHeader}>
             <View style={[s.sectionIconWrap, { backgroundColor: '#C45B5B18' }]}>
-              <Text style={{ fontSize: 18 }}>📝</Text>
+              <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 18 }}>
+                📝
+              </WellnessIconText>
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[s.sectionTitle, { color: colors.text }]}>Notes</Text>
@@ -355,13 +366,13 @@ export default function StressPlan() {
         </View>
 
         {/* encouragement footer */}
-        <Text style={[s.footerText, { color: colors.mutedText }]}>
+        <WellnessIconText style={[s.footerText, { color: colors.mutedText }]}>
           {filledSections === 4
             ? 'Your plan is ready — you\u2019ve got this. 💪'
             : filledSections >= 2
               ? 'Great start — keep building your toolkit.'
               : 'Even one item here is a powerful first step.'}
-        </Text>
+        </WellnessIconText>
       </ScrollView>
     </View>
   );
@@ -449,8 +460,8 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
   },
-  headerTitle: { fontSize: 22, fontWeight: '900' },
-  headerSub: { fontSize: 14, marginTop: 2 },
+  headerTitle: { ...Typography.heading },
+  headerSub: { fontFamily: Typography.family.body, fontSize: 14, marginTop: 2 },
 
   scrollContent: {
     paddingTop: 16,
@@ -473,8 +484,14 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  heroTitle: { color: '#FFF', fontSize: 18, fontWeight: '900' },
-  heroSub: { color: 'rgba(255,255,255,0.70)', fontSize: 13, fontWeight: '500', marginTop: 2 },
+  heroTitle: { ...Typography.heading, color: '#FFF', fontSize: 20 },
+  heroSub: {
+    fontFamily: Typography.family.body,
+    color: 'rgba(255,255,255,0.70)',
+    fontSize: 13,
+    fontWeight: Typography.weight.medium,
+    marginTop: 2,
+  },
   heroDivider: {
     height: 1,
     backgroundColor: 'rgba(255,255,255,0.18)',
@@ -488,9 +505,10 @@ const s = StyleSheet.create({
   progressDots: { flexDirection: 'row', gap: 6 },
   progressDot: { width: 10, height: 10, borderRadius: 5 },
   progressText: {
+    fontFamily: Typography.family.body,
     color: 'rgba(255,255,255,0.70)',
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: Typography.weight.semibold,
   },
 
   /* section card */
@@ -513,19 +531,24 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  sectionTitle: { fontSize: 16, fontWeight: '800' },
-  sectionSub: { fontSize: 13, marginTop: 1 },
+  sectionTitle: { ...Typography.section, fontSize: 20 },
+  sectionSub: { fontFamily: Typography.family.body, fontSize: 13, marginTop: 1 },
 
   countBadge: {
     paddingHorizontal: 9,
     paddingVertical: 3,
     borderRadius: 10,
   },
-  countText: { fontSize: 13, fontWeight: '800' },
+  countText: {
+    fontFamily: Typography.family.body,
+    fontSize: 13,
+    fontWeight: Typography.weight.bold,
+  },
 
   /* add row */
   addRow: { flexDirection: 'row', gap: 10, marginBottom: 4 },
   addInput: {
+    fontFamily: Typography.family.body,
     flex: 1,
     padding: 12,
     borderRadius: UI.radius.md,
@@ -540,17 +563,19 @@ const s = StyleSheet.create({
 
   /* phrase input */
   phraseInput: {
+    fontFamily: Typography.family.body,
     padding: 14,
     borderRadius: UI.radius.md,
     fontSize: 15,
     fontStyle: 'italic',
-    fontWeight: '600',
+    fontWeight: Typography.weight.semibold,
     minHeight: 54,
     borderWidth: 1,
   },
 
   /* notes input */
   notesInput: {
+    fontFamily: Typography.family.body,
     padding: 14,
     borderRadius: UI.radius.md,
     fontSize: 14,
@@ -560,6 +585,7 @@ const s = StyleSheet.create({
 
   /* empty hint */
   emptyHint: {
+    fontFamily: Typography.family.body,
     fontSize: 13,
     fontStyle: 'italic',
     marginTop: 4,
@@ -575,7 +601,12 @@ const s = StyleSheet.create({
     paddingVertical: 11,
   },
   itemDot: { width: 7, height: 7, borderRadius: 4 },
-  itemText: { flex: 1, fontSize: 15, fontWeight: '600' },
+  itemText: {
+    fontFamily: Typography.family.body,
+    flex: 1,
+    fontSize: 15,
+    fontWeight: Typography.weight.semibold,
+  },
   removeBtn: {
     width: 28,
     height: 28,
@@ -596,7 +627,12 @@ const s = StyleSheet.create({
     borderRadius: UI.radius.lg,
     ...UI.shadow.sm,
   },
-  saveBtnText: { color: '#FFF', fontSize: 16, fontWeight: '800' },
+  saveBtnText: {
+    fontFamily: Typography.family.body,
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: Typography.weight.semibold,
+  },
   resetBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -606,14 +642,19 @@ const s = StyleSheet.create({
     borderRadius: UI.radius.lg,
     borderWidth: 1,
   },
-  resetBtnText: { fontSize: 14, fontWeight: '700' },
+  resetBtnText: {
+    fontFamily: Typography.family.body,
+    fontSize: 14,
+    fontWeight: Typography.weight.semibold,
+  },
 
   /* footer */
   footerText: {
+    fontFamily: Typography.family.body,
     textAlign: 'center',
     fontSize: 13,
     fontStyle: 'italic',
     marginTop: 4,
-    fontWeight: '500',
+    fontWeight: Typography.weight.medium,
   },
 });
