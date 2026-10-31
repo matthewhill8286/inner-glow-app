@@ -28,6 +28,9 @@ export const palette = {
   border: '#E8E0D5',
   borderLilac: '#E6E0EA',
   toggleOffAlt: '#E1DAE6',
+  // New library primitives ("🧩 Design System" colour frame `6750:4131`).
+  borderStrong: '#CFC6D6', // plum/200: nav back button stroke, radio and checkbox off, sheet grabber
+  dangerSoft: '#FBEDEE', // danger/50: surface/danger
   mustard: '#E2CC40',
   gold: '#F2D96A',
   cream: '#FFF6D6',

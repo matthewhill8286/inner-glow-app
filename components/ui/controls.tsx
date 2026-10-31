@@ -5,7 +5,10 @@ import { palette, shadow } from '@/constants/theme';
 import { Type } from '@/constants/typography';
 import { Icon } from '@/components/icons/Icon';
 
-/** Toggle 46×28 (00-foundations §4.10). On plum, off border colour; knob 22 white. */
+/**
+ * Toggle 46×28, library `6746:4340` (00-foundations §11.6). On plum, off `#E1DAE6` (control/off); knob 22 white.
+ * The Set up option rows draw off as `#E6E0EA` and some List Rows use a `#FFF6D6` knob; the component values win.
+ */
 export function Toggle({ value, onValueChange, accessibilityLabel }: { value: boolean; onValueChange: (v: boolean) => void; accessibilityLabel?: string }) {
   return (
     <Pressable
@@ -14,7 +17,7 @@ export function Toggle({ value, onValueChange, accessibilityLabel }: { value: bo
       accessibilityState={{ checked: value }}
       onPress={() => onValueChange(!value)}
       hitSlop={8}
-      style={{ width: 46, height: 28, borderRadius: 14, backgroundColor: value ? palette.plum : palette.border, justifyContent: 'center' }}
+      style={{ width: 46, height: 28, borderRadius: 14, backgroundColor: value ? palette.plum : palette.toggleOffAlt, justifyContent: 'center' }}
     >
       <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: palette.white, marginLeft: value ? 21 : 3 }} />
     </Pressable>
@@ -22,18 +25,29 @@ export function Toggle({ value, onValueChange, accessibilityLabel }: { value: bo
 }
 
 /**
- * Drawn radio (§4.11): 22 ring, 1.5 stroke, 12 plum dot when selected.
- * Figma has no unselected colour that reads on the background, so the empty ring uses lavender.
+ * Radio, library `6746:4346` (§11.6): 22 circle with a 1.5 stroke. On is a filled plum disc with an 8 white dot;
+ * off is an empty `#CFC6D6` ring. (The plan cards in 08 draw a 2px ring with a 12 plum dot; the library wins.)
  */
 export function Radio({ selected }: { selected: boolean }) {
   return (
-    <View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: selected ? palette.plum : palette.lavender, alignItems: 'center', justifyContent: 'center' }}>
-      {selected && <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: palette.plum }} />}
+    <View
+      style={{
+        width: 22,
+        height: 22,
+        borderRadius: 11,
+        borderWidth: 1.5,
+        borderColor: selected ? palette.plum : palette.borderStrong,
+        backgroundColor: selected ? palette.plum : 'transparent',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      {selected && <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: palette.white }} />}
     </View>
   );
 }
 
-/** Checkbox 22×22 radius 6 (§4.11), white check when ticked. */
+/** Checkbox 22×22 radius 7, library `6746:4351` (§11.6): on plum with a white 1.8 check, off white with a 1.5 `#CFC6D6` stroke. */
 export function Checkbox({ checked, onChange, accessibilityLabel }: { checked: boolean; onChange: (v: boolean) => void; accessibilityLabel?: string }) {
   return (
     <Pressable
@@ -42,9 +56,9 @@ export function Checkbox({ checked, onChange, accessibilityLabel }: { checked: b
       accessibilityState={{ checked }}
       onPress={() => onChange(!checked)}
       hitSlop={10}
-      style={{ width: 22, height: 22, borderRadius: 6, backgroundColor: checked ? palette.plum : palette.surface, borderWidth: checked ? 0 : 1.5, borderColor: palette.lavender, alignItems: 'center', justifyContent: 'center' }}
+      style={{ width: 22, height: 22, borderRadius: 7, backgroundColor: checked ? palette.plum : palette.surface, borderWidth: 1.5, borderColor: checked ? palette.plum : palette.borderStrong, alignItems: 'center', justifyContent: 'center' }}
     >
-      {checked && <Icon name="line/check" size={14} color={palette.white} strokeWidth={2.6} />}
+      {checked && <Icon name="line/check" size={14} color={palette.white} strokeWidth={3.1} />}
     </Pressable>
   );
 }
@@ -93,18 +107,45 @@ export function SelectableCard({
   );
 }
 
-/** Segmented control (Tab Group Text, §4.13): h56 white track, h48 segments. */
+/**
+ * Segmented control.
+ * - `large` (default): Tab Group Text (§4.13), h56 white track, h48 segments, SemiBold 16.
+ * - `compact`: library Segmented `6746:4380` (§11.6), h44 white track with a 1px `#E6E0EA` stroke, padding 4,
+ *   gap 4, h36 segments; selected `#F1ECF5` + 1.5 plum, SemiBold 14 plum; unselected Medium 14 muted.
+ */
 export function SegmentedControl<T extends string>({
   options,
   value,
   onChange,
+  variant = 'large',
   style,
 }: {
   options: { value: T; label: string }[];
   value: T;
   onChange: (v: T) => void;
+  variant?: 'large' | 'compact';
   style?: StyleProp<ViewStyle>;
 }) {
+  if (variant === 'compact') {
+    return (
+      <View accessibilityRole="tablist" style={[{ height: 44, borderRadius: 999, padding: 4, gap: 4, backgroundColor: palette.surface, borderWidth: 1, borderColor: palette.borderLilac, flexDirection: 'row' }, style]}>
+        {options.map((o) => {
+          const active = o.value === value;
+          return (
+            <Pressable
+              key={o.value}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: active }}
+              onPress={() => onChange(o.value)}
+              style={{ flex: 1, borderRadius: 999, alignItems: 'center', justifyContent: 'center', backgroundColor: active ? palette.selected : 'transparent', borderWidth: active ? 1.5 : 0, borderColor: palette.plum }}
+            >
+              <Text style={[active ? Type.buttonS : Type.bodySMedium, { color: active ? palette.plum : palette.textMuted }]}>{o.label}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    );
+  }
   return (
     <View accessibilityRole="tablist" style={[{ height: 56, borderRadius: 32, padding: 4, backgroundColor: palette.surface, flexDirection: 'row' }, style]}>
       {options.map((o) => {
@@ -159,16 +200,16 @@ export function ProgressBar({ value, width, height = 8, gradient = false, style 
   );
 }
 
-/** Legal / Note row (`6674:2966`, §4.8): 14pt info icon and Regular 11/140% text. */
+/** Legal / Note row (`6674:2966`, §4.8 and §11.6): 14pt info icon and Regular 11 text, both lavender. */
 export function LegalNote({ text, style }: { text: string; style?: StyleProp<ViewStyle> }) {
   return (
     <View style={[{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }, style]}>
-      <Svg width={14} height={14} viewBox="0 0 14 14" style={{ marginTop: 1 }}>
+      <Svg width={14} height={14} viewBox="0 0 14 14">
         <Circle cx={7} cy={7} r={5.54} stroke={palette.lavender} strokeWidth={1.05} fill="none" />
         <Line x1={7} y1={6.42} x2={7} y2={9.92} stroke={palette.lavender} strokeWidth={1.05} strokeLinecap="round" />
         <Circle cx={7} cy={4.43} r={0.7} fill={palette.lavender} />
       </Svg>
-      <Text style={[Type.legal, { color: palette.textLegal, flex: 1 }]}>{text}</Text>
+      <Text style={[Type.note, { color: palette.lavender, flex: 1 }]}>{text}</Text>
     </View>
   );
 }
