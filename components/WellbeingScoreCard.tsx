@@ -23,7 +23,7 @@ export function WellbeingScoreCard({
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={
-          loading ? 'Freud Score is loading' : `Freud Score ${score} out of 100. View breakdown`
+          loading ? 'Glow score is loading' : `Glow score ${score} out of 100. View breakdown`
         }
         onPress={() => router.push('/(tabs)/freud-score')}
         style={{ flexDirection: 'row', gap: 18, alignItems: 'center', minHeight: 96 }}
@@ -61,7 +61,7 @@ export function WellbeingScoreCard({
         </View>
         <View style={{ flex: 1, gap: 5 }}>
           <Text accessibilityRole="header" style={[Typography.section, { color: colors.text }]}>
-            Your Freud Score
+            Your Glow score
           </Text>
           <Text style={[Typography.body, { color: colors.mutedText }]}>
             {loading

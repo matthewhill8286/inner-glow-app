@@ -268,7 +268,7 @@ export default function AssessmentSummary() {
             }}
           >
             {t('assessmentSummary.subtitle', {
-              defaultValue: "Here's your initial Freud Score based on your assessment.",
+              defaultValue: "Here's your initial Glow score based on your assessment.",
             })}
           </Text>
 

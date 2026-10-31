@@ -153,7 +153,7 @@ export default function ProfileCompletion() {
                 }}
               >
                 {t('profileCompletion.freudScoreIntro', {
-                  defaultValue: "Here's your initial Freud Score based on your assessment.",
+                  defaultValue: "Here's your initial Glow score based on your assessment.",
                 })}
               </Text>
 

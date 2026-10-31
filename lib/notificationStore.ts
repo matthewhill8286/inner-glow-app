@@ -307,7 +307,7 @@ export function notifyScoreChange(newScore: number, previousScore: number) {
       .getState()
       .push(
         'score_improved',
-        `Freud Score: ${previousScore} → ${newScore}`,
+        `Glow score: ${previousScore} → ${newScore}`,
         `Up ${diff} points! Your mental wellbeing is trending in the right direction.`,
         { newScore, previousScore },
       );
@@ -316,7 +316,7 @@ export function notifyScoreChange(newScore: number, previousScore: number) {
       .getState()
       .push(
         'score_declined',
-        `Freud Score: ${previousScore} → ${newScore}`,
+        `Glow score: ${previousScore} → ${newScore}`,
         `Down ${Math.abs(diff)} points. Remember, fluctuations are normal. Try an AI suggestion to help.`,
         { newScore, previousScore },
       );

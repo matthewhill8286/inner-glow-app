@@ -89,6 +89,22 @@ export function PremiumAccessCard() {
           }}
         />
       )}
+      {hasFullAccess && isRenewing && (
+        <AppButton
+          title={subscription?.type === 'monthly' ? 'Change to yearly' : 'Change to monthly'}
+          variant="secondary"
+          disabled={isLoading}
+          onPress={() => {
+            // Upgrades happen in the app; Apple and Stripe apply a downgrade at the end of the paid year.
+            if (subscription?.type === 'monthly')
+              router.push({ pathname: '/(utils)/trial-upgrade', params: { plan: 'yearly' } });
+            else
+              void openSubscriptionManagement().catch(() =>
+                setMessage('Unable to open subscription settings. Please try again.'),
+              );
+          }}
+        />
+      )}
       {Platform.OS === 'ios' && (
         <AppButton
           title="Restore Purchases"
