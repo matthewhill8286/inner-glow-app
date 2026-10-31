@@ -71,14 +71,14 @@ const DETAIL_CONFIGS: Record<NotificationType, NotifDetailConfig> = {
   score_improved: {
     heroEmoji: '📈',
     heroColor: '#5AAF8B',
-    ctaLabel: 'See Freud Score',
+    ctaLabel: 'See Glow score',
     ctaRoute: '/(tabs)/freud-score',
     reactions: ['🎉', '🌟', '💚'],
   },
   score_declined: {
     heroEmoji: '📉',
     heroColor: '#E8985A',
-    ctaLabel: 'See Freud Score',
+    ctaLabel: 'See Glow score',
     ctaRoute: '/(tabs)/freud-score',
   },
   streak_milestone: {

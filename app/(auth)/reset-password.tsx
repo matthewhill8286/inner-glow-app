@@ -15,6 +15,7 @@ import { useTranslation } from 'react-i18next';
 import { router } from 'expo-router';
 import { supabase } from '@/supabase/supabase';
 import MaterialIcons from '@/components/AppIcon';
+import { passwordMeetsPolicy } from '@/lib/password-policy';
 
 /* ── Design tokens ── */
 const C = {
@@ -42,7 +43,7 @@ export default function ResetPassword() {
   const [showConfirm, setShowConfirm] = useState(false);
 
   async function onUpdatePassword() {
-    if (newPassword.length < 6) {
+    if (!passwordMeetsPolicy(newPassword)) {
       setError(t('auth.passwordMinLength'));
       return;
     }
@@ -410,7 +411,7 @@ export default function ResetPassword() {
       >
         <Pressable
           onPress={onUpdatePassword}
-          disabled={loading || newPassword.length < 6 || newPassword !== confirmPassword}
+          disabled={loading || !passwordMeetsPolicy(newPassword) || newPassword !== confirmPassword}
           style={({ pressed }) => ({
             flexDirection: 'row',
             alignItems: 'center',
@@ -419,16 +420,21 @@ export default function ResetPassword() {
             paddingVertical: 20,
             borderRadius: 35,
             backgroundColor:
-              loading || newPassword.length < 6 || newPassword !== confirmPassword
+              loading || !passwordMeetsPolicy(newPassword) || newPassword !== confirmPassword
                 ? 'rgba(62,39,35,0.35)'
                 : C.brownDark,
             opacity: pressed ? 0.9 : 1,
             shadowColor: '#000',
             shadowOffset: { width: 0, height: 4 },
             shadowOpacity:
-              loading || newPassword.length < 6 || newPassword !== confirmPassword ? 0 : 0.15,
+              loading || !passwordMeetsPolicy(newPassword) || newPassword !== confirmPassword
+                ? 0
+                : 0.15,
             shadowRadius: 10,
-            elevation: loading || newPassword.length < 6 || newPassword !== confirmPassword ? 0 : 4,
+            elevation:
+              loading || !passwordMeetsPolicy(newPassword) || newPassword !== confirmPassword
+                ? 0
+                : 4,
           })}
         >
           {loading ? <ActivityIndicator size="small" color="#fff" /> : null}

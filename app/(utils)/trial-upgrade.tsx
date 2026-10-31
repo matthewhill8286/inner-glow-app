@@ -24,7 +24,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { toast } from '@/components/Toast';
 import * as WebBrowser from 'expo-web-browser';
@@ -77,9 +77,20 @@ export default function TrialUpgrade() {
 
   const [isNewUser, setIsNewUser] = useState(true);
   const [loading, setLoading] = useState<string | null>(null); // null | 'yearly' | 'monthly' | 'restore'
-  const [selectedPlan, setSelectedPlan] = useState<PurchasablePlan>('yearly');
-  // Stripe adds the trial server-side for accounts that never paid; Apple decides on iOS.
-  const [trialEligible, setTrialEligible] = useState(Platform.OS !== 'ios');
+  const { plan: planParam } = useLocalSearchParams<{ plan?: string }>();
+  const [selectedPlan, setSelectedPlan] = useState<PurchasablePlan>(
+    planParam === 'monthly' ? 'monthly' : 'yearly',
+  );
+  const [appleTrialEligible, setAppleTrialEligible] = useState(false);
+  // Apple decides on iOS. Stripe checkout gives the trial only to accounts that never paid,
+  // so the same rule is read from the subscription row.
+  const trialEligible =
+    Platform.OS === 'ios' ? appleTrialEligible : !subscription || subscription.type === 'trial';
+  // Yearly and monthly sit in one subscription; choosing the other plan is a change, not a second purchase.
+  const currentRenewingPlan =
+    hasFullAccess && (subscription?.type === 'yearly' || subscription?.type === 'monthly')
+      ? subscription.type
+      : null;
 
   // RevenueCat: localized prices fetched from the App Store / Play Store
   const [iapOffering, setIapOffering] = useState<PurchasesOffering | null>(null);
@@ -108,7 +119,7 @@ export default function TrialUpgrade() {
       } = await supabase.auth.getSession();
       await configureRevenueCat(session?.user?.id);
       setIapOffering(await getDefaultOffering());
-      setTrialEligible(await isYearlyTrialEligible());
+      setAppleTrialEligible(await isYearlyTrialEligible());
     } catch {
       setIapOffering(null);
     } finally {
@@ -142,6 +153,16 @@ export default function TrialUpgrade() {
         } catch {
           toast.error('Unable to open subscription settings. Please try again.');
         }
+      }
+      return;
+    }
+    // Stripe can't hold two subscriptions here, so a plan change goes through the billing portal.
+    // On iOS, buying the other plan in the same group is Apple's own upgrade or crossgrade.
+    if (!useNativeIAP && currentRenewingPlan && currentRenewingPlan !== plan) {
+      try {
+        await openSubscriptionManagement();
+      } catch {
+        toast.error('Unable to open subscription settings. Please try again.');
       }
       return;
     }
@@ -396,11 +417,13 @@ export default function TrialUpgrade() {
                 : 'Manage Subscription'
               : offeringLoading
                 ? 'Loading prices…'
-                : selectedPlan === 'yearly' && trialEligible
-                  ? 'Start my free week'
-                  : useNativeIAP
-                    ? 'Subscribe with Apple'
-                    : t('auth.payWithCard')
+                : currentRenewingPlan
+                  ? `Switch to ${selectedPlan === 'yearly' ? 'Yearly' : 'Monthly'}`
+                  : selectedPlan === 'yearly' && trialEligible
+                    ? 'Start my free week'
+                    : useNativeIAP
+                      ? 'Subscribe with Apple'
+                      : t('auth.payWithCard')
           }
           busy={isLoading || offeringLoading || accessLoading}
           disabled={

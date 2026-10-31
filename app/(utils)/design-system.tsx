@@ -81,7 +81,7 @@ export default function DesignSystemScreen() {
             <IconButton size={48} accessibilityLabel="Back 48" />
             <IconButton size={50} accessibilityLabel="Back 50" />
             <IconButton size={40} variant="glass" icon="arrow/close" accessibilityLabel="Close 40" />
-            <TitlePill label="Freud Score" />
+            <TitlePill label="Glow score" />
           </View>
         </Section>
 

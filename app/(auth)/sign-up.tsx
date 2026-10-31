@@ -17,6 +17,7 @@ import { router } from 'expo-router';
 import { supabase } from '@/supabase/supabase';
 import { authTokenVar } from '@/lib/state';
 import MaterialIcons from '@/components/AppIcon';
+import { passwordMeetsPolicy } from '@/lib/password-policy';
 
 /* ── Design tokens (matches Figma assessment palette) ── */
 const C = {
@@ -44,6 +45,10 @@ export default function SignUp() {
   async function onCreate() {
     if (!email || !pass) {
       setError(t('auth.emailPasswordRequired'));
+      return;
+    }
+    if (!passwordMeetsPolicy(pass)) {
+      setError(t('auth.passwordMinLength'));
       return;
     }
     setLoading(true);

@@ -61,7 +61,7 @@ Rules:
 - Return valid JSON only — no markdown, no explanation.`;
 
     const userPrompt = `User's mental health profile:
-- Overall Freud Score: ${score}/100
+- Overall Glow score: ${score}/100
 - Breakdown: ${JSON.stringify(breakdown)}
 - Weak areas (below 60): ${JSON.stringify(weakAreas)}
 - Suggested categories to focus on: ${JSON.stringify(categories)}

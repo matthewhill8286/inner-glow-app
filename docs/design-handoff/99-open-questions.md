@@ -2,6 +2,56 @@
 
 Collected from the handoff docs 00–07 (audit of 31 Oct 2026). Each item names the doc where the detail and node ids live. Items marked **Product** need a decision from us rather than from design.
 
+## 0. Update after the new screens (31 Oct 2026, afternoon)
+
+Design added 35 screens, now placed in their area sections, and a new component library on the "🧩 Design System" page (ids `6746:*`, `6753:*`). Docs 08, 09 and 10 spec them. The sections below are kept as they were. This list says which of their items are now answered, and adds the new questions.
+
+**Resolved by the new screens:**
+- Forgot-password code entry, new password and password updated (08 §2.1–2.3).
+- Paywall Monthly-selected CTA ("Subscribe · €9.99/month") and the trial-ineligible state ("Welcome back to Pro") (08 §2.4–2.5).
+- Appearance is replaced by Settings · Accessibility `6795:6236` (08 §2.7). Active sessions, reminder-time editing and Android biometric wording ("Fingerprint or face unlock") are designed (08 §2.8–2.10).
+- Conversation history, Month and Year sleep charts, and empty states for Home, Journal, Mood history, Sleep, Glow score history and Glow AI talks (09).
+- Medication search and not found, Morning (08:30) and Afternoon (14:00) check-in times, the sound picker (sleep only), the favourite saved state, the favourites list, daily goal, the pause glyph and the video end-early sheet (10).
+- The breathing Hold phase, with copy "Hold" / "Stay soft and still." The out orb is 0.8 of the in orb (10 §3.9–3.10).
+- The journal entry now has a `more` button with edit and delete (10 §3.11).
+- Player placeholders are fixed ("4 of 15 breaths", "2:15 · Body", "Beginner · No equipment"), and the player times use Urbanist (10).
+- Radio off is `#CFC6D6` with a 2px ring. Divider is `#EFEAF2`. Header title is SemiBold 15. The new Tag uses a `#F1ECF5` fill. Buttons now have Pressed and Disabled states in the library (08, 09, 10).
+- There is no Mood tab: mood screens show Home active (09).
+- Figma now has most of the missing icons (`search`, `mic-off`, `pause`, `edit`, `calendar`, `download`, `more`, `trash`, `settings`, `globe`, `logout`, `email`, `shield`, `send`, `play`). `sliders` is still missing.
+
+**Still open from the earlier list:** inputs have no error state; checkbox off is not drawn; the Okay mood colour now has four values (`#EFE6DA`, `#E8DFD2`, `#E6E0EA`, `#DDD3E8`); toggle on is still `#6B5279` or `#8E7FA6`, and toggle off is now `#E1DAE6` or `#E6E0EA`; the score label taxonomy; Pro versions of Profile and Settings; a loading state when opening a conversation; a voice error state; search "no matches", mindful history empty; the Glow AI "€4.99/mo" card; and every **Product** item in section 4 except the Mood tab.
+
+**New design questions:**
+- Confirm the new library values as canonical: 44 white back button with a 1px `#CFC6D6` stroke, 52-high radius-16 field with a Bold 12 lavender label, `#F1ECF5` secondary button, transparent 56 ghost button, and Legal note text `#8E7FA6`. The players still use 48 back buttons (08 §1.1, 10 §2).
+- There are two bottom sheet styles. Which is canonical? (10 §7)
+- The toggle knob is `#FFF6D6` on Notifications and Security but `#FFFFFF` on Accessibility (08).
+- The breathing progress track and fill are the same colour, so the bar always looks full. Every breathing player frame still has a "13 of 14" tag. The pause glyph sits off-centre (10 §7).
+- Box breathing duration is now 4 min on the chip, 3 min on the selected pill and 04:00 in the player (10 §7).
+- The medication list uses radios for a multi-select (10 §7).
+- The hub says "5h daily goal" while the goal screen works in 5–20 minutes (10 §7).
+- Favourites shows "Rain at night" where the practice is "Sleep sounds". The Entry options meta pill uses a heart instead of the mood face (10 §7).
+- Mood · This week explained: the "Log my mood" button sits under the tab bar. "Taller bars mean you felt it more strongly" is wrong, because height is the mood score (09).
+- Day details: the calendar card has a 2px plum stroke that Mood history lacks, and the tapped day has no selected marker (09).
+- Voice: the controls move up 22pt between Thinking and Paused, the ripple rings are at full opacity, and the mini orb outer layer is at 1.0 rather than 0.5 (09).
+- Sleep Month and Year placeholder data: the Year bars copy the Month bars and include future months, Month has 30 bars for October, and "What helps" is the same for every period (09).
+- Home · First day has no avatar, search, bell, Glow AI input or Free plan card. Is that intended? (09)
+- Journal · Empty mentions speaking but only offers Write (09).
+- "Talking to Anna" has a different summary in history and on Glow AI home (09).
+- Security says "2 devices" while Active sessions lists three. The reminder sheet shows M–F while the row says "Every day". Plan card heights vary from 67 to 72 (08).
+- Active sessions uses the `activity` icon for devices. Phone, tablet and desktop icons are needed (08).
+- Wind down has no offset picker in the reminder sheet (08).
+- Wrong or expired code and unmet password rule states are not drawn (08).
+- Breathe out `6105:1350` was deleted and `6160:1577` now carries the Complete modal with new values, so 07 §2.7 and §2.9 need re-extracting (10).
+
+**Product decisions (31 Oct 2026):**
+- "Freud score" is renamed "Glow score" in all user-facing copy. Code names such as `useFreudScore` and the `freud-score` route are unchanged. The "Dr. Freud AI" companion persona is a separate question and is not renamed.
+- Passwords need at least 8 characters with a number or symbol (`lib/password-policy.ts`, used by sign-up and reset). Supabase must also enforce a minimum of 8 and have leaked password protection on.
+- Changing plan: monthly to yearly is an upgrade bought in the app. Yearly to monthly goes through the store (Apple's subscription screen, or the Stripe portal) and takes effect when the paid year ends. Yearly and Monthly must be on the same level in the App Store group. Stripe needs real Prices before its portal can switch plans.
+- Build Apple Health and Health Connect sleep import. Health Connect still needs wording.
+- Stripe trial eligibility uses the same rule as checkout: an account gets the free week only if it has never paid.
+
+**Still open product questions:** Do we show per-device detail, revoke and IP-based city names in Active sessions? What exactly do Larger text and Reduce motion change? (08)
+
 ## 1. Library and palette
 
 - The main components (Button `4002:11881`, Input Text, Tag Master, Top Nav, FAB, Progress Bar, status bar, Monotone/Solid icons) are still in the old brown/olive palette with Urbanist ExtraBold. Screens only look right because of per-instance overrides; resetting overrides would revert them. Please recolour the main components. (00 §1.4)
