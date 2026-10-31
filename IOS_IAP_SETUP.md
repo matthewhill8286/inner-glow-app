@@ -2,6 +2,17 @@
 
 The redesigned paywall (Figma `6600:2039`) sells two plans in the existing Premium subscription group: **Yearly** at €59.99 with a 7-day free trial, and **Monthly** at €9.99 with no trial. Lifetime is no longer sold. The code from this date expects the setup below. Build 23, which is in review, still uses Monthly and Lifetime.
 
+Done on 31 October 2026:
+- App Store Connect: Premium Yearly created (Apple ID `6829214753`, product `innerglow_premium_yearly`, 1 year) in the Premium group. It's available in all 175 regions at a €59.99 Cyprus base price, with Apple's calculated prices elsewhere. It has a free first-week introductory offer from 31 October 2026 with no end date. The English display name is "Premium Yearly", with the description "Yearly access to Inner Glow premium wellness tools." Status: Prepare for Submission.
+- RevenueCat: `innerglow_premium_yearly` added to the Inner Glow App Store app, attached to the `premium` entitlement, and set as the App Store product of the `$rc_annual` package in the `default` offering.
+- Supabase: the `subscriptions_plan_check` constraint on the live database now allows `yearly`. The SQL from `20261031_yearly_plan.sql` was run directly, because the remote migration history uses different timestamps from the local files.
+
+Still to do, after Build 23's review finishes:
+- In the Premium group, put Yearly on the same level as Monthly. App Store Connect blocks level changes while Monthly is in review.
+- Attach a review screenshot of the new paywall to Premium Yearly, then submit it with the build that contains the yearly code.
+- Remove `$rc_lifetime` from the `default` offering, and remove Premium Lifetime from sale. Build 23 still offers Lifetime, so doing this earlier would break its paywall during review.
+- Deploy the Supabase functions with that build. Deploying now would also push other function changes on this branch to production.
+
 What the code expects:
 - Product `innerglow_premium_yearly`: auto-renewable, 1 year, in subscription group `22474771`, with an introductory offer of a 7-day free trial for new subscribers.
 - Product `innerglow_premium_monthly`: unchanged, 1 month, no introductory offer.
