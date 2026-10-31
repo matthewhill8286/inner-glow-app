@@ -1,4 +1,5 @@
 export const PRODUCTS = {
+  innerglow_premium_yearly: 'yearly',
   innerglow_premium_monthly: 'monthly',
   innerglow_premium_lifetime: 'lifetime',
 } as const;

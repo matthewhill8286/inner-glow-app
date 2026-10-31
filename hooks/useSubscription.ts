@@ -172,6 +172,7 @@ export function useSubscription() {
       hasFullAccess,
       isExpired,
       isLifetime: subscription?.type === 'lifetime' && hasFullAccess,
+      isYearlyActive: subscription?.type === 'yearly' && hasFullAccess,
       isMonthlyActive: subscription?.type === 'monthly' && hasFullAccess,
       isTrialActive,
       isCanceling: subscription?.status === 'canceling',

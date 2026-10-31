@@ -54,11 +54,13 @@ export default function PaymentSuccess() {
   const planLabelKey =
     subscription?.type === 'lifetime'
       ? 'paymentSuccess.lifetime'
-      : subscription?.type === 'monthly'
-        ? 'paymentSuccess.monthly'
-        : subscription?.type === 'trial'
-          ? 'paymentSuccess.trial'
-          : 'paymentSuccess.premium';
+      : subscription?.type === 'yearly'
+        ? 'paymentSuccess.yearly'
+        : subscription?.type === 'monthly'
+          ? 'paymentSuccess.monthly'
+          : subscription?.type === 'trial'
+            ? 'paymentSuccess.trial'
+            : 'paymentSuccess.premium';
 
   const planLabel = t(planLabelKey);
 

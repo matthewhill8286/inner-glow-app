@@ -35,12 +35,12 @@ const policies = {
       'Inner Glow provides general wellness tools and AI generated support. Its AI companions are not doctors or therapists. The app does not provide diagnosis, medical treatment or emergency care. AI responses may be inaccurate.',
     ],
     [
-      'Monthly premium',
-      'Monthly premium is an auto-renewable subscription. The price and one-month duration are shown before purchase. Payment is charged to your Apple Account at confirmation. It renews unless canceled at least 24 hours before the current period ends. Manage or cancel your subscription in Apple Settings. Access continues until the paid period expires.',
+      'Yearly and monthly premium',
+      'Yearly and monthly premium are auto-renewable subscriptions. The price and duration are shown before purchase. Yearly premium starts with a seven-day free trial for eligible new subscribers. If you do not cancel at least 24 hours before the trial ends, the yearly price is charged to your Apple Account when the trial ends. Otherwise payment is charged at confirmation. Payment is charged to your Apple Account at confirmation. It renews unless canceled at least 24 hours before the current period ends. Manage or cancel your subscription in Apple Settings. Access continues until the paid period expires.',
     ],
     [
-      'Lifetime premium and free trial',
-      'Lifetime premium is a one-time non-consumable purchase, with no recurring charge. The seven-day app trial does not require payment and does not automatically become a paid subscription. Restore Purchases restores eligible Apple purchases. Apple handles refunds for Apple purchases.',
+      'Earlier lifetime purchases',
+      'Lifetime premium is no longer sold. If you bought it before, it stays a one-time purchase with no recurring charge. Restore Purchases restores eligible Apple purchases. Apple handles refunds for Apple purchases.',
     ],
     [
       'Community conduct',

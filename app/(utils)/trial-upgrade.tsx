@@ -7,7 +7,11 @@ import { Typography } from '@/constants/typography';
 import { functionError } from '@/lib/function-errors';
 import { backTo } from '@/lib/navigation';
 import { WellnessIconText } from '@/components/WellnessIconText';
-import { productMatchesPlan } from '@/lib/purchase-products';
+import {
+  productMatchesPlan,
+  PURCHASABLE_PLANS,
+  type PurchasablePlan,
+} from '@/lib/purchase-products';
 import React, { useEffect, useState } from 'react';
 import {
   View,
@@ -33,6 +37,7 @@ import MaterialIcons from '@/components/AppIcon';
 import configureRevenueCat, {
   getDefaultOffering,
   hasPremiumEntitlement,
+  isYearlyTrialEligible,
   purchasePlan,
   restorePurchases,
   PLAN_TO_PACKAGE,
@@ -41,11 +46,13 @@ import type { PurchasesOffering } from 'react-native-purchases';
 import { useSubscription } from '@/hooks/useSubscription';
 import { LegalLinks } from '@/components/LegalLinks';
 
-/* ── Plan definitions ──────────────────────────────── */
+/* ── Plan definitions (paywall `6600:2039`) ─────────── */
+// Web and Android prices; iOS shows the localized App Store price instead.
 const PLANS = {
-  monthly: { price: '€10', period: '/mo', badge: 'Most Popular' },
-  lifetime: { price: '€72', period: 'one-time', badge: 'Best Value' },
+  yearly: { price: '€59.99', period: '/year', badge: '7 days free' },
+  monthly: { price: '€9.99', period: '/mo', badge: null },
 } as const;
+const TRIAL_DAYS = 7;
 
 /* ── Features list ─────────────────────────────────── */
 const FEATURES = [
@@ -69,8 +76,10 @@ export default function TrialUpgrade() {
   } = useSubscription();
 
   const [isNewUser, setIsNewUser] = useState(true);
-  const [loading, setLoading] = useState<string | null>(null); // null | 'trial' | 'monthly' | 'lifetime' | 'restore'
-  const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'lifetime'>('monthly');
+  const [loading, setLoading] = useState<string | null>(null); // null | 'yearly' | 'monthly' | 'restore'
+  const [selectedPlan, setSelectedPlan] = useState<PurchasablePlan>('yearly');
+  // Stripe adds the trial server-side for accounts that never paid; Apple decides on iOS.
+  const [trialEligible, setTrialEligible] = useState(Platform.OS !== 'ios');
 
   // RevenueCat: localized prices fetched from the App Store / Play Store
   const [iapOffering, setIapOffering] = useState<PurchasesOffering | null>(null);
@@ -99,6 +108,7 @@ export default function TrialUpgrade() {
       } = await supabase.auth.getSession();
       await configureRevenueCat(session?.user?.id);
       setIapOffering(await getDefaultOffering());
+      setTrialEligible(await isYearlyTrialEligible());
     } catch {
       setIapOffering(null);
     } finally {
@@ -106,52 +116,33 @@ export default function TrialUpgrade() {
     }
   }
 
-  function packageFor(plan: 'monthly' | 'lifetime') {
+  function packageFor(plan: PurchasablePlan) {
     return iapOffering?.availablePackages.find(
       (pkg) => pkg.identifier === PLAN_TO_PACKAGE[plan] && productMatchesPlan(plan, pkg.product),
     );
   }
 
-  function priceFor(plan: 'monthly' | 'lifetime'): string {
+  function priceFor(plan: PurchasablePlan): string {
     return useNativeIAP
       ? (packageFor(plan)?.product.priceString ?? 'Unavailable')
       : PLANS[plan].price;
-  }
-
-  /* ── Start 7-day trial ────────────────────────────── */
-  async function selectTrial() {
-    setLoading('trial');
-    try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session?.user) throw new Error('Please sign in first');
-      const { error } = await supabase.rpc('start_free_trial');
-      if (error) throw error;
-      await refreshSubscription();
-      router.push('/(utils)/payment-success');
-    } catch (e) {
-      toast.error('Unable to start your trial. Please try again.');
-      console.error(e);
-    } finally {
-      setLoading(null);
-    }
   }
 
   /* ── Buy a plan ─────────────────────────────────────
    * iOS  → RevenueCat / Apple In-App Purchase (Guideline 3.1.1)
    * Android / Web → Stripe Checkout via Supabase Edge Function
    */
-  async function buyPlan(plan: 'monthly' | 'lifetime') {
+  async function buyPlan(plan: PurchasablePlan) {
     if (accessLoading) return;
     if (alreadyOwnsPlan(subscription, plan)) {
-      if (subscription?.type === 'monthly') {
+      if (subscription?.type === 'lifetime') toast.info('Lifetime Premium is already active.');
+      else {
         try {
           await openSubscriptionManagement();
         } catch {
           toast.error('Unable to open subscription settings. Please try again.');
         }
-      } else toast.info('Lifetime Premium is already active.');
+      }
       return;
     }
     setLoading(plan);
@@ -243,6 +234,18 @@ export default function TrialUpgrade() {
     }
   }
 
+  function termsFor(plan: PurchasablePlan): string {
+    const name = plan === 'yearly' ? 'Yearly Premium' : 'Monthly Premium';
+    const period = plan === 'yearly' ? 'year' : 'month';
+    const start =
+      plan === 'yearly' && trialEligible
+        ? `${name}: ${TRIAL_DAYS} days free, then ${priceFor(plan)} per ${period}. You are charged when the trial ends unless you cancel at least 24 hours before.`
+        : `${name}: ${priceFor(plan)} per ${period}. Payment is charged at confirmation.`;
+    return useNativeIAP
+      ? `${start} Renews automatically unless canceled at least 24 hours before the current period ends. Manage or cancel in Apple Settings.`
+      : `${start} Billed through Stripe. Renews until canceled.`;
+  }
+
   const isLoading = loading !== null;
   const alreadyOwnsSelectedPlan = alreadyOwnsPlan(subscription, selectedPlan);
 
@@ -256,13 +259,11 @@ export default function TrialUpgrade() {
           <View style={styles.overlayCard}>
             <ActivityIndicator size="large" color="#8B6B47" />
             <Text style={styles.overlayText}>
-              {loading === 'trial'
-                ? 'Starting trial…'
-                : loading === 'restore'
-                  ? 'Restoring purchases…'
-                  : useNativeIAP
-                    ? 'Connecting to Apple…'
-                    : 'Opening checkout…'}
+              {loading === 'restore'
+                ? 'Restoring purchases…'
+                : useNativeIAP
+                  ? 'Connecting to Apple…'
+                  : 'Opening checkout…'}
             </Text>
           </View>
         </View>
@@ -331,39 +332,14 @@ export default function TrialUpgrade() {
           ))}
         </View>
 
-        {/* ── Free trial card ── */}
-        {!subscription && !hasFullAccess && (
-          <Pressable
-            onPress={selectTrial}
-            disabled={isLoading}
-            style={({ pressed }) => [
-              styles.trialCard,
-              {
-                backgroundColor: '#5B8A5A',
-                opacity: isLoading ? 0.7 : pressed ? 0.9 : 1,
-                transform: [{ scale: pressed ? 0.98 : 1 }],
-              },
-            ]}
-          >
-            <View style={styles.trialContent}>
-              <View>
-                <Text style={styles.trialTitle}>{t('auth.start7DayTrial')}</Text>
-                <Text style={styles.trialSub}>{t('auth.sevenDayTrialDesc')}</Text>
-              </View>
-              <View style={styles.trialArrow}>
-                <MaterialIcons name="arrow-forward" size={20} color="#5B8A5A" />
-              </View>
-            </View>
-          </Pressable>
-        )}
         <Text style={[styles.terms, { color: colors.mutedText }]}>
           Mood and sleep tracking, text journaling, breathing, grounding, alarms and reminders stay
-          free. The seven-day AI trial does not automatically renew or charge you.
+          free.
         </Text>
 
         {/* ── Plan selector ── */}
         <View style={styles.planSelector}>
-          {(['monthly', 'lifetime'] as const).map((plan) => (
+          {PURCHASABLE_PLANS.map((plan) => (
             <Pressable
               key={plan}
               onPress={() => setSelectedPlan(plan)}
@@ -375,7 +351,7 @@ export default function TrialUpgrade() {
                 },
               ]}
             >
-              {PLANS[plan].badge && selectedPlan === plan && (
+              {PLANS[plan].badge && trialEligible && selectedPlan === plan && (
                 <View style={styles.planBadge}>
                   <Text style={styles.planBadgeText}>{PLANS[plan].badge}</Text>
                 </View>
@@ -386,7 +362,7 @@ export default function TrialUpgrade() {
                   { color: selectedPlan === plan ? '#FFF' : colors.text },
                 ]}
               >
-                {plan === 'monthly' ? t('auth.monthlyPlan') : t('auth.lifetimePlan')}
+                {plan === 'yearly' ? t('auth.yearlyPlan') : t('auth.monthlyPlan')}
               </Text>
               <Text
                 style={[
@@ -415,16 +391,16 @@ export default function TrialUpgrade() {
         <AppButton
           title={
             alreadyOwnsSelectedPlan
-              ? subscription?.type === 'monthly'
-                ? 'Manage Subscription'
-                : 'Lifetime Premium active'
+              ? subscription?.type === 'lifetime'
+                ? 'Lifetime Premium active'
+                : 'Manage Subscription'
               : offeringLoading
                 ? 'Loading prices…'
-                : useNativeIAP
-                  ? selectedPlan === 'monthly'
+                : selectedPlan === 'yearly' && trialEligible
+                  ? 'Start my free week'
+                  : useNativeIAP
                     ? 'Subscribe with Apple'
-                    : 'Buy Lifetime with Apple'
-                  : t('auth.payWithCard')
+                    : t('auth.payWithCard')
           }
           busy={isLoading || offeringLoading || accessLoading}
           disabled={
@@ -458,9 +434,7 @@ export default function TrialUpgrade() {
           <MaterialIcons name="lock" size={14} color={colors.mutedText} />
           <Text style={[styles.secureText, { color: colors.mutedText }]}>
             {useNativeIAP
-              ? selectedPlan === 'monthly'
-                ? 'Billed through your Apple Account. Cancel in Settings.'
-                : 'One-time purchase through your Apple Account.'
+              ? 'Billed through your Apple Account. Cancel in Settings.'
               : 'Secured by Stripe. Cancel anytime.'}
           </Text>
         </View>
@@ -475,13 +449,7 @@ export default function TrialUpgrade() {
             </Pressable>
           </View>
         )}
-        <Text style={[styles.terms, { color: colors.mutedText }]}>
-          {selectedPlan === 'monthly'
-            ? useNativeIAP
-              ? `Monthly Premium: ${priceFor('monthly')} per month. Payment is charged at confirmation. Renews automatically unless canceled at least 24 hours before the current period ends. Manage or cancel in Apple Settings. Your free app trial does not start a paid subscription.`
-              : `Monthly Premium: ${priceFor('monthly')} per month, billed through Stripe. Renews until canceled. Your free app trial does not start a paid subscription.`
-            : `Lifetime Premium: ${priceFor('lifetime')} paid once. No automatic renewal.${useNativeIAP ? ' Buying lifetime does not cancel an existing monthly subscription. Manage that subscription in Apple Settings.' : ''}`}
-        </Text>
+        <Text style={[styles.terms, { color: colors.mutedText }]}>{termsFor(selectedPlan)}</Text>
         {useNativeIAP && (
           <Pressable
             onPress={() => Linking.openURL('https://apps.apple.com/account/subscriptions')}
@@ -583,39 +551,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     fontWeight: Typography.weight.semibold,
-  },
-
-  /* Trial card */
-  trialCard: {
-    borderRadius: 20,
-    padding: 20,
-    marginBottom: 20,
-    ...UI.shadow.md,
-  },
-  trialContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  trialTitle: {
-    ...Typography.section,
-    color: '#FFF',
-    fontSize: 20,
-    fontWeight: Typography.weight.regular,
-  },
-  trialSub: {
-    fontFamily: Typography.family.body,
-    color: 'rgba(255,255,255,0.8)',
-    fontSize: 13,
-    marginTop: 4,
-  },
-  trialArrow: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    backgroundColor: '#FFF',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 
   /* Plan selector */

@@ -14,7 +14,7 @@ const corsHeaders = {
  * Creates a Stripe Checkout Session for subscription or one-time payment.
  *
  * Expects JSON body:
- *   { plan: 'monthly' | 'lifetime', userId: string }
+ *   { plan: 'yearly' | 'monthly', userId: string }
  *
  * Returns:
  *   { url: string, sessionId: string }
@@ -88,27 +88,31 @@ serve(async (req: Request) => {
         currency: string;
         name: string;
         interval?: string;
+        trialDays?: number;
       }
     > = {
+      // Prices and trial from the paywall design (Figma 6600:2039).
+      yearly: {
+        mode: 'subscription',
+        amount: 5999, // €59.99
+        currency: 'eur',
+        name: 'Inner Glow Premium — Yearly',
+        interval: 'year',
+        trialDays: 7,
+      },
       monthly: {
         mode: 'subscription',
-        amount: 1000, // €10.00
+        amount: 999, // €9.99
         currency: 'eur',
-        name: 'Freud Premium — Monthly',
+        name: 'Inner Glow Premium — Monthly',
         interval: 'month',
-      },
-      lifetime: {
-        mode: 'payment',
-        amount: 7200, // €72.00
-        currency: 'eur',
-        name: 'Freud Premium — Lifetime',
       },
     };
 
     const planConfig = PLANS[plan];
     if (!planConfig) {
       return new Response(
-        JSON.stringify({ error: `Invalid plan: ${plan}. Must be "monthly" or "lifetime".` }),
+        JSON.stringify({ error: `Invalid plan: ${plan}. Must be "yearly" or "monthly".` }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
@@ -125,7 +129,8 @@ serve(async (req: Request) => {
       ['active', 'canceling'].includes(existing.status) &&
       (existing.plan === 'lifetime' ||
         (existing.current_period_end && Date.parse(existing.current_period_end) > Date.now()));
-    if (alreadyPaid && (existing.plan === 'lifetime' || existing.plan === plan)) {
+    // Yearly and monthly are both subscriptions; switching between them happens in Manage Subscription.
+    if (alreadyPaid && existing.plan !== 'trial') {
       return Response.json(
         { error: 'You already have access to this plan. Use Manage Subscription in Profile.' },
         { status: 409, headers: corsHeaders },
@@ -140,6 +145,10 @@ serve(async (req: Request) => {
     stripeBody.append('line_items[0][price_data][unit_amount]', String(planConfig.amount));
     if (planConfig.mode === 'subscription' && planConfig.interval) {
       stripeBody.append('line_items[0][price_data][recurring][interval]', planConfig.interval);
+    }
+    // Only accounts that have never paid get the free week.
+    if (planConfig.trialDays && (!existing || existing.plan === 'trial')) {
+      stripeBody.append('subscription_data[trial_period_days]', String(planConfig.trialDays));
     }
     stripeBody.append('line_items[0][quantity]', '1');
     stripeBody.append('success_url', successUrl);

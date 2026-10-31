@@ -1,4 +1,4 @@
-export type SubscriptionPlan = 'trial' | 'monthly' | 'lifetime';
+export type SubscriptionPlan = 'trial' | 'yearly' | 'monthly' | 'lifetime';
 export type SubscriptionStatus =
   | 'pending'
   | 'active'
@@ -42,9 +42,15 @@ export function subscriptionFromEntitlement(
   if (entitlement.productIdentifier === 'innerglow_premium_lifetime') {
     return { type: 'lifetime', status: 'active', expiryDate: null };
   }
-  if (entitlement.productIdentifier !== 'innerglow_premium_monthly') return null;
+  const type =
+    entitlement.productIdentifier === 'innerglow_premium_yearly'
+      ? 'yearly'
+      : entitlement.productIdentifier === 'innerglow_premium_monthly'
+        ? 'monthly'
+        : null;
+  if (!type) return null;
   return {
-    type: 'monthly',
+    type,
     status: entitlement.willRenew ? 'active' : 'canceling',
     expiryDate: entitlement.expirationDate,
     storeVerifiedUntil:
@@ -61,7 +67,7 @@ export function parseSubscriptionCache(raw: string | null): Subscription | null 
     const value = JSON.parse(raw);
     if (
       !value ||
-      !['trial', 'monthly', 'lifetime'].includes(value.type) ||
+      !['trial', 'yearly', 'monthly', 'lifetime'].includes(value.type) ||
       !['pending', 'active', 'past_due', 'canceling', 'canceled', 'expired'].includes(value.status)
     )
       return null;
@@ -82,10 +88,10 @@ export function parseSubscriptionCache(raw: string | null): Subscription | null 
   }
 }
 
-/** Trials do not own products; lifetime covers every plan, monthly only itself. */
+/** Trials do not own products; lifetime covers every plan, yearly and monthly only themselves. */
 export function alreadyOwnsPlan(
   subscription: Subscription | null,
-  plan: 'monthly' | 'lifetime',
+  plan: 'yearly' | 'monthly' | 'lifetime',
 ): boolean {
   return (
     subscriptionHasAccess(subscription) &&

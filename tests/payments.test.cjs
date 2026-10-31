@@ -363,6 +363,36 @@ test('monthly package cannot silently charge a yearly or unrelated product', () 
     products.productMatchesPlan('monthly', { identifier: 'monthly', subscriptionPeriod: 'P1M' }),
     false,
   );
+  assert.equal(
+    products.productMatchesPlan('yearly', {
+      identifier: 'innerglow_premium_yearly',
+      subscriptionPeriod: 'P1Y',
+    }),
+    true,
+  );
+  assert.equal(
+    products.productMatchesPlan('yearly', {
+      identifier: 'innerglow_premium_yearly',
+      subscriptionPeriod: 'P1M',
+    }),
+    false,
+  );
+});
+test('receipt mapping recognises the yearly subscription', () => {
+  const yearly = states.subscriptionFromEntitlement({
+    isActive: true,
+    productIdentifier: 'innerglow_premium_yearly',
+    expirationDate: future,
+    willRenew: true,
+  });
+  assert.equal(yearly.type, 'yearly');
+  assert.equal(states.subscriptionHasAccess(yearly, now), true);
+  assert.equal(
+    states.parseSubscriptionCache(
+      JSON.stringify({ type: 'yearly', status: 'active', expiryDate: future }),
+    ).type,
+    'yearly',
+  );
 });
 test('RevenueCat identity changes finish before fetching products for the next account', async () => {
   let sdkUser,
@@ -938,6 +968,16 @@ test('native purchase preflight reuses active receipts and reconciles Apple alre
       },
     },
   };
+  const yearly = {
+    entitlements: {
+      active: {
+        premium: {
+          ...monthly.entitlements.active.premium,
+          productIdentifier: products.PRODUCT_IDS.yearly,
+        },
+      },
+    },
+  };
   let info = monthly,
     purchased = 0,
     restores = 0,
@@ -958,7 +998,10 @@ test('native purchase preflight reuses active receipts and reconciles Apple alre
               identifier: '$rc_monthly',
               product: { identifier: products.PRODUCT_IDS.monthly, subscriptionPeriod: 'P1M' },
             },
-            { identifier: '$rc_lifetime', product: { identifier: products.PRODUCT_IDS.lifetime } },
+            {
+              identifier: '$rc_annual',
+              product: { identifier: products.PRODUCT_IDS.yearly, subscriptionPeriod: 'P1Y' },
+            },
           ],
         },
       },
@@ -966,7 +1009,7 @@ test('native purchase preflight reuses active receipts and reconciles Apple alre
     purchasePackage: async () => {
       purchased++;
       if (failure) throw failure;
-      return { customerInfo: lifetime };
+      return { customerInfo: yearly };
     },
     restorePurchases: async () => {
       restores++;
@@ -993,12 +1036,13 @@ test('native purchase preflight reuses active receipts and reconciles Apple alre
   await rc.default('account-a');
   assert.equal(await rc.purchasePlan('monthly'), monthly);
   assert.equal(purchased, 0);
+  // Earlier lifetime buyers are never charged for a subscription.
   info = lifetime;
   assert.equal(await rc.purchasePlan('monthly'), lifetime);
-  assert.equal(await rc.purchasePlan('lifetime'), lifetime);
+  assert.equal(await rc.purchasePlan('yearly'), lifetime);
   assert.equal(purchased, 0);
   info = monthly;
-  assert.equal(await rc.purchasePlan('lifetime'), lifetime);
+  assert.equal(await rc.purchasePlan('yearly'), yearly);
   assert.equal(purchased, 1);
   info = { entitlements: { active: {} } };
   failure = { code: '6' };

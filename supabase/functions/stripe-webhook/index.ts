@@ -68,7 +68,11 @@ serve(async (req: Request) => {
         const session = event.data.object;
         const userId = session.client_reference_id || session.metadata?.user_id;
         const plan = session.metadata?.plan;
-        if (!['monthly', 'lifetime'].includes(plan) || session.payment_status !== 'paid') break;
+        // A yearly checkout with the free trial completes without a payment.
+        const settled =
+          session.payment_status === 'paid' ||
+          (plan === 'yearly' && session.payment_status === 'no_payment_required');
+        if (!['yearly', 'monthly'].includes(plan) || !settled) break;
 
         if (!userId) {
           console.warn('No user_id in checkout session metadata');
@@ -76,13 +80,11 @@ serve(async (req: Request) => {
         }
 
         // Calculate expiry
-        let expiryDate: string | null = null;
-        if (plan === 'monthly') {
-          const expiry = new Date();
-          expiry.setMonth(expiry.getMonth() + 1);
-          expiryDate = expiry.toISOString();
-        }
-        // lifetime has no expiry
+        // Provisional end until customer.subscription.updated reports the real period.
+        const expiry = new Date();
+        if (plan === 'yearly') expiry.setDate(expiry.getDate() + 7);
+        else expiry.setMonth(expiry.getMonth() + 1);
+        const expiryDate = expiry.toISOString();
 
         // Update subscriptions table
         await requireWrite(sb.from('subscriptions').upsert(

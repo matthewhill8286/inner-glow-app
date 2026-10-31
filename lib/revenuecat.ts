@@ -1,4 +1,4 @@
-import { PRODUCT_IDS, productMatchesPlan } from '@/lib/purchase-products';
+import { PRODUCT_IDS, productMatchesPlan, type PurchasablePlan } from '@/lib/purchase-products';
 /**
  * RevenueCat integration for Apple In-App Purchase (and Google Play Billing).
  *
@@ -18,7 +18,7 @@ import { PRODUCT_IDS, productMatchesPlan } from '@/lib/purchase-products';
  * Configure the products + entitlement in the RevenueCat dashboard:
  *   - Entitlement key:    "premium"
  *   - Offering identifier: "default"
- *   - Packages:           "$rc_monthly", "$rc_lifetime"
+ *   - Packages:           "$rc_annual" (7-day free intro offer), "$rc_monthly"
  * and link them to the App Store Connect / Play Console SKUs.
  */
 import { Platform } from 'react-native';
@@ -28,15 +28,16 @@ import Purchases, {
   PurchasesPackage,
   LOG_LEVEL,
   PURCHASES_ERROR_CODE,
+  INTRO_ELIGIBILITY_STATUS,
 } from 'react-native-purchases';
 
 export const PREMIUM_ENTITLEMENT_ID = 'premium';
 export const DEFAULT_OFFERING_ID = 'default';
 
 /** Map our internal plan id ↔ RevenueCat package identifier. */
-export const PLAN_TO_PACKAGE: Record<'monthly' | 'lifetime', string> = {
+export const PLAN_TO_PACKAGE: Record<PurchasablePlan, string> = {
+  yearly: '$rc_annual',
   monthly: '$rc_monthly',
-  lifetime: '$rc_lifetime',
 };
 
 let configured = false;
@@ -86,11 +87,30 @@ export async function getDefaultOffering(): Promise<PurchasesOffering | null> {
 }
 
 /**
- * Purchase a package by our internal plan id ('monthly' | 'lifetime').
+ * True when Apple says this account can still take the yearly free trial.
+ * Unknown counts as not eligible, so the paywall never promises a trial Apple won't give.
+ */
+export async function isYearlyTrialEligible(): Promise<boolean> {
+  if (Platform.OS !== 'ios') return false;
+  try {
+    await requireReady();
+    const result = await Purchases.checkTrialOrIntroductoryPriceEligibility([PRODUCT_IDS.yearly]);
+    return (
+      result[PRODUCT_IDS.yearly]?.status ===
+      INTRO_ELIGIBILITY_STATUS.INTRO_ELIGIBILITY_STATUS_ELIGIBLE
+    );
+  } catch (err) {
+    console.warn('[RevenueCat] intro eligibility check failed', err);
+    return false;
+  }
+}
+
+/**
+ * Purchase a package by our internal plan id ('yearly' | 'monthly').
  * Returns the resulting CustomerInfo on success, or null if the user
  * cancelled. Throws on real errors.
  */
-export async function purchasePlan(plan: 'monthly' | 'lifetime'): Promise<CustomerInfo | null> {
+export async function purchasePlan(plan: PurchasablePlan): Promise<CustomerInfo | null> {
   await requireReady();
 
   // Check the current receipt before opening StoreKit, including direct purchase callers.

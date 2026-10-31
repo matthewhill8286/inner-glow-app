@@ -14,6 +14,7 @@ import { AppButton } from './ui/AppButton';
 export function PremiumAccessCard() {
   const { subscription, hasFullAccess, isLoading, error, refresh, isLifetime, isCanceling } =
     useSubscription();
+  const isRenewing = subscription?.type === 'yearly' || subscription?.type === 'monthly';
   const colors = Colors[useColorScheme() ?? 'light'];
   const [busy, setBusy] = useState(false),
     [message, setMessage] = useState<string | null>(null);
@@ -53,7 +54,9 @@ export function PremiumAccessCard() {
               ? 'Lifetime Premium'
               : subscription?.type === 'trial'
                 ? 'Your free trial'
-                : 'Monthly Premium'
+                : subscription?.type === 'yearly'
+                  ? 'Yearly Premium'
+                  : 'Monthly Premium'
             : 'Inner Glow Premium'}
       </Text>
       <Text style={[Typography.body, { color: colors.mutedText }]}>
@@ -75,14 +78,10 @@ export function PremiumAccessCard() {
       )}
       {!isLifetime && (
         <AppButton
-          title={
-            hasFullAccess && subscription?.type === 'monthly'
-              ? 'Manage Subscription'
-              : 'View Premium plans'
-          }
+          title={hasFullAccess && isRenewing ? 'Manage Subscription' : 'View Premium plans'}
           disabled={isLoading}
           onPress={() => {
-            if (hasFullAccess && subscription?.type === 'monthly') {
+            if (hasFullAccess && isRenewing) {
               void openSubscriptionManagement().catch(() =>
                 setMessage('Unable to open subscription settings. Please try again.'),
               );

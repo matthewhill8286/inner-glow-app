@@ -1,3 +1,32 @@
+## Plan change to match the paywall — 31 October 2026
+
+The redesigned paywall (Figma `6600:2039`) sells two plans in the existing Premium subscription group: **Yearly** at €59.99 with a 7-day free trial, and **Monthly** at €9.99 with no trial. Lifetime is no longer sold. The code from this date expects the setup below. Build 23, which is in review, still uses Monthly and Lifetime.
+
+What the code expects:
+- Product `innerglow_premium_yearly`: auto-renewable, 1 year, in subscription group `22474771`, with an introductory offer of a 7-day free trial for new subscribers.
+- Product `innerglow_premium_monthly`: unchanged, 1 month, no introductory offer.
+- RevenueCat offering `default` with packages `$rc_annual` → `innerglow_premium_yearly` and `$rc_monthly` → `innerglow_premium_monthly`. Remove `$rc_lifetime` from the offering.
+- Both products attached to the `premium` entitlement. Keep `innerglow_premium_lifetime` attached to `premium` so earlier buyers keep access.
+
+Steps in App Store Connect:
+1. In Subscriptions → Inner Glow Premium, create **Premium Yearly** with product ID `innerglow_premium_yearly` and duration 1 year.
+2. Set the base price to €59.99 in Cyprus and let Apple calculate the other territories.
+3. Add an introductory offer: Free, 1 week, for new subscribers, in all territories.
+4. Add the English display name "Premium Yearly", a description, and a review screenshot of the new paywall.
+5. Rank Yearly above Monthly in the group so that switching from Monthly to Yearly counts as an upgrade.
+6. Remove Premium Lifetime from sale in all territories. Do not delete it, because existing buyers restore against it.
+
+Steps in RevenueCat:
+1. Import `innerglow_premium_yearly` and attach it to the `premium` entitlement.
+2. In the `default` offering, add the `$rc_annual` package with the yearly product and remove the `$rc_lifetime` package.
+
+Steps in Supabase and Stripe (web and Android):
+1. Apply migration `20261031_yearly_plan.sql`, which allows the `yearly` plan.
+2. Deploy `stripe-checkout` and `stripe-webhook`. Checkout now sells Yearly at €59.99 with a 7-day trial for accounts that have never paid, and Monthly at €9.99.
+3. Deploy every function, because `revenuecat-webhook` and the shared access check in `_shared/auth.ts` both map receipts through `_shared/revenuecat.ts`.
+
+The App Store review notes and `APP_REVIEW_REPLY.md` still describe Monthly and Lifetime. Update them when a build with this code is submitted.
+
 ## Submitted — 17 October 2026
 
 App Store version 1.1, Build 23, Premium Monthly, Premium subscription group and Premium Lifetime are Waiting for Review. Submission ID: 6cfc2ec2-57ef-43e6-a878-6852619ff802. Both purchase review screenshots and the physical iPhone deletion recording are attached. The review login was verified and remains active through 15 November 2026. The preparation notes below are historical.
