@@ -3,28 +3,63 @@ import {
   ActivityIndicator,
   Pressable,
   Text,
+  View,
   type PressableProps,
   type StyleProp,
+  type TextStyle,
   type ViewStyle,
 } from 'react-native';
-import { Colors, UI } from '@/constants/theme';
-import { Typography } from '@/constants/typography';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { palette } from '@/constants/theme';
+import { Type } from '@/constants/typography';
+import { Icon, type IconName } from '@/components/icons/Icon';
+
+/**
+ * Shared button (00-foundations §4.1). Height 56, full pill radius.
+ * `size="lg"` is the 18pt label used by in-flow component buttons;
+ * `md` is the 16pt label used by full-width bottom CTAs.
+ */
+export type ButtonVariant = 'primary' | 'secondary' | 'soft' | 'outline' | 'selected' | 'ghost' | 'text' | 'danger';
+
+type VariantStyle = { bg: string; border?: string; borderWidth?: number; fg: string };
+
+const VARIANTS: Record<ButtonVariant, VariantStyle> = {
+  primary: { bg: palette.plum, fg: palette.white },
+  // `secondary` is the pre-redesign name; it now renders as the outline button.
+  secondary: { bg: 'transparent', border: palette.plum, borderWidth: 1.5, fg: palette.plum },
+  outline: { bg: 'transparent', border: palette.plum, borderWidth: 1.5, fg: palette.plum },
+  soft: { bg: palette.softButton, fg: palette.ink },
+  selected: { bg: palette.selected, border: palette.plum, borderWidth: 1.5, fg: palette.ink },
+  ghost: { bg: palette.selected, fg: palette.plum },
+  text: { bg: 'transparent', fg: palette.plum },
+  danger: { bg: palette.danger, fg: palette.white },
+};
+
 export function AppButton({
   title,
   busy = false,
   variant = 'primary',
+  size = 'md',
+  icon,
+  iconPosition = 'right',
   style,
+  textStyle,
   disabled,
   ...props
 }: Omit<PressableProps, 'style' | 'children'> & {
   title: string;
   busy?: boolean;
-  variant?: 'primary' | 'secondary';
+  variant?: ButtonVariant;
+  size?: 'md' | 'lg';
+  /** Icon next to the label; primary buttons usually use `arrow/forward`. */
+  icon?: IconName;
+  iconPosition?: 'left' | 'right';
   style?: StyleProp<ViewStyle>;
+  textStyle?: StyleProp<TextStyle>;
 }) {
-  const colors = Colors[useColorScheme() ?? 'light'];
-  const primary = variant === 'primary';
+  const v = VARIANTS[variant];
+  const isText = variant === 'text';
+  const label = size === 'lg' ? { fontSize: 18, letterSpacing: -0.07 } : { fontSize: 16, letterSpacing: 0 };
+  const iconNode = icon ? <Icon name={icon} size={24} color={v.fg} /> : null;
   return (
     <Pressable
       {...props}
@@ -33,35 +68,70 @@ export function AppButton({
       disabled={disabled || busy}
       style={({ pressed }) => [
         {
-          minHeight: 48,
-          paddingVertical: 13,
-          paddingHorizontal: 18,
-          borderRadius: UI.radius.lg,
+          height: isText ? 48 : 56,
+          paddingHorizontal: isText ? 12 : 24,
+          borderRadius: 999,
           flexDirection: 'row',
-          gap: 10,
+          gap: 12,
           justifyContent: 'center',
           alignItems: 'center',
-          borderWidth: 1,
-          borderColor: primary ? colors.tint : colors.border,
-          backgroundColor: primary ? colors.tint : colors.card,
-          opacity: disabled || busy ? 0.55 : pressed ? 0.8 : 1,
+          backgroundColor: v.bg,
+          borderWidth: v.borderWidth ?? 0,
+          borderColor: v.border,
+          // No disabled or pressed state is designed (00 §10); keep the previous opacity cues.
+          opacity: disabled || busy ? 0.55 : pressed ? 0.85 : 1,
         },
         style,
       ]}
     >
-      {busy && <ActivityIndicator color={primary ? '#FFF' : colors.text} />}
+      {busy && <ActivityIndicator color={v.fg} />}
+      {iconPosition === 'left' && iconNode}
       <Text
-        style={{
-          fontFamily: Typography.family.body,
-          fontSize: 16,
-          fontWeight: Typography.weight.semibold,
-          color: primary ? '#FFF' : colors.text,
-          flexShrink: 1,
-          textAlign: 'center',
-        }}
+        numberOfLines={1}
+        style={[Type.bodyStrong, label, { color: v.fg, flexShrink: 1, textAlign: 'center' }, isText && { fontSize: 15 }, textStyle]}
       >
         {title}
       </Text>
+      {iconPosition === 'right' && iconNode}
+    </Pressable>
+  );
+}
+
+/**
+ * Round icon button from the Button Icon FAB set `4002:12313`:
+ * xl 80 plum with a forward arrow, lg 64 white with the card shadow, sm 48 well.
+ */
+export function IconFab({
+  icon = 'arrow/forward',
+  size = 80,
+  style,
+  accessibilityLabel,
+  ...props
+}: Omit<PressableProps, 'style' | 'children'> & {
+  icon?: IconName;
+  size?: 80 | 64 | 48;
+  style?: StyleProp<ViewStyle>;
+  accessibilityLabel: string;
+}) {
+  const look =
+    size === 80
+      ? { bg: palette.plum, fg: palette.white, shadow: undefined }
+      : size === 64
+        ? { bg: palette.white, fg: palette.plum, shadow: '0px 8px 16px 0px rgba(36,26,46,0.05)' }
+        : { bg: palette.bg, fg: palette.plum, shadow: undefined };
+  return (
+    <Pressable
+      {...props}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      style={({ pressed }) => [
+        { width: size, height: size, borderRadius: size / 2, backgroundColor: look.bg, boxShadow: look.shadow, opacity: pressed ? 0.85 : 1 },
+        style,
+      ]}
+    >
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <Icon name={icon} size={24} color={look.fg} />
+      </View>
     </Pressable>
   );
 }

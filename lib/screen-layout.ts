@@ -1,6 +1,9 @@
-export const TAB_BAR_HEIGHT = 72;
+// Full-width bar from the Nav/Tab Bar set (00-foundations §4.5): 70pt designed on a
+// 34pt home-indicator device; taller insets extend it, and the Glow AI button rises 28pt above it.
+export const TAB_BAR_HEIGHT = 70;
+export const TAB_BAR_RAISE = 28;
 export function tabBarOffset(bottomInset: number): number {
-  return Math.max(8, bottomInset - 6);
+  return Math.max(0, bottomInset - 34);
 }
 export function screenBottomPadding(bottomInset: number, tabBarVisible = true): number {
   return tabBarVisible

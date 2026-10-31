@@ -1,136 +1,145 @@
+import { Typography } from './typography';
+
 /**
- * InnerGlow theme tokens (warm, earthy, soft UI)
- * Matches the design board: cream background, brown primary, sage accents.
+ * InnerGlow theme tokens — "Dusk Plum" palette from the Figma file
+ * (docs/design-handoff/00-foundations.md §1.3, §3.1).
+ *
+ * `palette` holds the raw design colours. `Colors.light` keeps the keys the
+ * existing screens already use and points them at the new palette, so screens
+ * pick up the redesign before they are migrated one by one.
  */
 
-// Brand / primary from designs (warm brown)
-const brandBrown = '#8B6B47';
-const brandBrownDark = '#C4A882';
+export const palette = {
+  ink: '#241A2E',
+  plumDeep: '#4E3A5E',
+  plum: '#6B5279',
+  lavender: '#8E7FA6',
+  lavenderSoft: '#D8B4D8',
+  textMuted: '#736B66',
+  textSubtle: '#A6A09B',
+  textLegal: '#8A8296',
+  bg: '#F7F4F2',
+  surface: '#FFFFFF',
+  surfaceSand: '#F0EBE5',
+  surfaceLilac: '#EFEAF2',
+  surfaceLilacSoft: '#F5F1F7',
+  selected: '#F1ECF5',
+  softButton: '#F3E9F3',
+  border: '#E8E0D5',
+  borderLilac: '#E6E0EA',
+  toggleOffAlt: '#E1DAE6',
+  mustard: '#E2CC40',
+  gold: '#F2D96A',
+  cream: '#FFF6D6',
+  sky: '#7FC6F1',
+  rose: '#FFB3BE',
+  sand: '#E8DFD2',
+  danger: '#B4505A',
+  white: '#FFFFFF',
+} as const;
 
-// Warm neutrals
-const cream = '#FAF8F5';
-const cream2 = '#F2ECE6';
-const ink = '#1B1A18';
+/** Glow colours used with `components/glow` (Figma LAYER_BLUR ellipses). */
+export const glowColors = {
+  mustard: palette.mustard,
+  lilac: palette.lavenderSoft,
+  sky: palette.sky,
+  rose: palette.rose,
+  cream: palette.cream,
+  gold: palette.gold,
+  sand: palette.sand,
+  lavender: palette.lavender,
+} as const;
 
-// Accents seen across modules (sage / orange / lavender)
-const sage = '#5B8A5A';
-const sageDark = '#7EAD7E';
-const amber = '#E8985A';
-const lavender = '#7B6DC9';
+/** Gradient stops for react-native-svg / Skia gradients (00 §1.2). */
+export const gradients = {
+  glowButton: [palette.lavender, palette.plum],
+  progress: [palette.mustard, palette.lavender],
+  avatar: [palette.lavenderSoft, palette.plum],
+  moodSpectrum: [palette.rose, palette.lavenderSoft, '#EFE6DA', palette.mustard, palette.sky],
+} as const;
 
-// Score card colors
-const scoreGreen = '#4AAD7A';
-const scoreOrange = '#E8985A';
-const scorePurple = '#8B7FE8';
+const light = {
+  // core
+  text: palette.ink,
+  heading: palette.plumDeep,
+  background: palette.bg,
+  surface: palette.surface,
+  card: palette.surface,
+  mutedText: palette.textMuted,
+  subtleText: palette.textSubtle,
+  legalText: palette.textLegal,
+  link: palette.lavender,
 
-// UI neutrals
-const borderLight = 'rgba(0,0,0,0.06)';
-const borderDark = 'rgba(255,255,255,0.10)';
-const iconLight = 'rgba(0,0,0,0.50)';
-const iconDark = 'rgba(255,255,255,0.65)';
+  // brand
+  tint: palette.plum,
+  primary: palette.plum,
+  onPrimary: palette.white,
+  selected: palette.selected,
+
+  // accents
+  accent: palette.lavender,
+  onAccent: palette.white,
+  success: palette.plum,
+  warning: '#B39A1E',
+  danger: palette.danger,
+  info: palette.lavender,
+
+  // scores (kept for existing score screens until they are rebuilt)
+  scoreGreen: palette.plum,
+  scoreOrange: palette.mustard,
+  scorePurple: palette.lavender,
+
+  // UI
+  border: palette.border,
+  divider: palette.surfaceSand,
+  icon: palette.plum,
+
+  // inputs
+  inputBg: palette.surface,
+  inputText: palette.textMuted,
+  placeholder: palette.textMuted,
+
+  // tabs
+  tabBarBg: palette.surface,
+  tabIconDefault: palette.textSubtle,
+  tabIconSelected: palette.plum,
+
+  // overlays
+  shadow: 'rgba(36,26,46,0.05)',
+  overlay: 'rgba(36,26,46,0.45)',
+} as const;
 
 export const Colors = {
-  light: {
-    // core
-    text: ink,
-    background: cream,
-    surface: '#FFFFFF',
-    card: '#FFFFFF',
-    mutedText: 'rgba(0,0,0,0.55)',
-    subtleText: 'rgba(0,0,0,0.40)',
+  light,
+  // No dark designs exist yet (00 §1.3); app.json forces the light interface style.
+  dark: light,
+} as const;
 
-    // brand
-    tint: brandBrown,
-    primary: brandBrown,
-    onPrimary: '#FFFFFF',
-
-    // accents
-    accent: sage,
-    onAccent: '#FFFFFF',
-    success: sage,
-    warning: amber,
-    info: lavender,
-
-    // scores
-    scoreGreen,
-    scoreOrange,
-    scorePurple,
-
-    // UI
-    border: borderLight,
-    divider: 'rgba(0,0,0,0.04)',
-    icon: iconLight,
-
-    // inputs
-    inputBg: cream2,
-    inputText: ink,
-    placeholder: 'rgba(0,0,0,0.30)',
-
-    // tabs
-    tabBarBg: '#FFFFFF',
-    tabIconDefault: 'rgba(0,0,0,0.35)',
-    tabIconSelected: brandBrown,
-
-    // overlays
-    shadow: 'rgba(0,0,0,0.08)',
-    overlay: 'rgba(0,0,0,0.35)',
-  },
-
-  dark: {
-    // core
-    text: '#F4F2EE',
-    background: '#131210',
-    surface: '#1D1A17',
-    card: '#1D1A17',
-    mutedText: 'rgba(255,255,255,0.65)',
-    subtleText: 'rgba(255,255,255,0.50)',
-
-    // brand
-    tint: brandBrownDark,
-    primary: brandBrownDark,
-    onPrimary: '#1B1A18',
-
-    // accents
-    accent: sageDark,
-    onAccent: '#1B1A18',
-    success: sageDark,
-    warning: '#F0B36A',
-    info: '#9A98E6',
-
-    // scores
-    scoreGreen: '#5CBE8A',
-    scoreOrange: '#F0A86A',
-    scorePurple: '#9D91F0',
-
-    // UI
-    border: borderDark,
-    divider: 'rgba(255,255,255,0.06)',
-    icon: iconDark,
-
-    // inputs
-    inputBg: 'rgba(255,255,255,0.07)',
-    inputText: '#F4F2EE',
-    placeholder: 'rgba(255,255,255,0.35)',
-
-    // tabs
-    tabBarBg: '#1D1A17',
-    tabIconDefault: 'rgba(255,255,255,0.45)',
-    tabIconSelected: brandBrownDark,
-
-    // overlays
-    shadow: 'rgba(0,0,0,0.50)',
-    overlay: 'rgba(0,0,0,0.55)',
-  },
+/** Box shadows as RN `boxShadow` strings (new architecture), 00 §3.1. */
+export const shadow = {
+  card: '0px 8px 16px 0px rgba(36,26,46,0.05)',
+  tabBar: '0px -4px 24px 0px rgba(107,82,121,0.10)',
+  glowButton: '0px 0px 18px 2px rgba(226,204,64,0.55), 0px 6px 14px 0px rgba(107,82,121,0.30)',
+  soft: '0px 6px 18px 0px rgba(107,82,121,0.08)',
+  focusRing: '0px 0px 0px 4px rgba(107,82,121,0.18)',
+  haloSm: '0px 0px 14px 3px rgba(226,204,64,0.80)',
+  dark: '0px 4px 14px 0px rgba(0,0,0,0.18)',
 } as const;
 
 // Component sizing tokens
 export const UI = {
+  typography: Typography,
   radius: {
     sm: 12,
     md: 16,
-    lg: 20,
-    xl: 24,
-    xxl: 28,
+    lg: 16,
+    xl: 18,
+    xxl: 20,
+    card: 22,
+    tallCard: 32,
+    tag: 32,
+    toggle: 14,
+    checkbox: 6,
     pill: 999,
   },
   spacing: {
@@ -141,31 +150,18 @@ export const UI = {
     xl: 24,
     xxl: 32,
   },
+  gutter: 24,
   card: {
     padding: 16,
-    borderWidth: 1,
+    borderWidth: 0,
   },
   shadow: {
-    sm: {
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.06,
-      shadowRadius: 3,
-      elevation: 1,
-    },
-    md: {
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.08,
-      shadowRadius: 8,
-      elevation: 3,
-    },
-    lg: {
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.1,
-      shadowRadius: 16,
-      elevation: 6,
-    },
+    sm: { boxShadow: shadow.card },
+    md: { boxShadow: shadow.card },
+    lg: { boxShadow: shadow.soft },
+    card: { boxShadow: shadow.card },
+    tabBar: { boxShadow: shadow.tabBar },
+    glowButton: { boxShadow: shadow.glowButton },
+    focusRing: { boxShadow: shadow.focusRing },
   },
 } as const;

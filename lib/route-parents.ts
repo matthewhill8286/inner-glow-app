@@ -1,6 +1,7 @@
 import { canonicalRoute } from './legacy-routes';
 
-const PRIMARY_TABS = ['home', 'chat', 'journal', 'mood', 'profile'];
+// Tab bar order from the design: Home, Practices (mindful), Glow AI (chat), Journal, Profile.
+const PRIMARY_TABS = ['home', 'mindful', 'chat', 'journal', 'profile'];
 const FEATURES = [
   'chat',
   'journal',
@@ -49,4 +50,11 @@ export function parentRouteForPath(path: string): string {
     return '/(tabs)/profile';
   if (['/forgot-password', '/reset-password'].includes(route)) return '/(auth)/sign-in';
   return '/(tabs)/home';
+}
+
+export type PrimaryTab = 'home' | 'mindful' | 'chat' | 'journal' | 'profile';
+/** Every feature has a visible tab owner, even when its own route is hidden. */
+export function primaryTabForPath(path: string): PrimaryTab {
+  const root = normalizedRoute(path).split('/')[1];
+  return PRIMARY_TABS.includes(root) ? (root as PrimaryTab) : 'home';
 }

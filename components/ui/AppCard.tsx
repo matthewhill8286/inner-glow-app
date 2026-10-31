@@ -10,12 +10,10 @@ export function AppCard({ style, ...props }: ViewProps) {
       style={[
         {
           backgroundColor: colors.card,
-          borderColor: colors.border,
-          borderWidth: 1,
-          borderRadius: UI.radius.xl,
-          padding: 18,
+          borderRadius: UI.radius.card,
+          padding: 16,
           gap: 12,
-          ...UI.shadow.sm,
+          ...UI.shadow.card,
         },
         style,
       ]}

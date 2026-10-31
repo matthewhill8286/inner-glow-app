@@ -19,7 +19,7 @@ export function StatusState({
   const colors = Colors[useColorScheme() ?? 'light'];
   return (
     <AppCard accessibilityLiveRegion="polite">
-      <Text accessibilityRole="header" style={[Typography.cardHeading, { color: colors.text }]}>
+      <Text accessibilityRole="header" style={[Typography.cardHeading, { color: colors.heading }]}>
         {title}
       </Text>
       <Text style={[Typography.body, { color: colors.mutedText }]}>{message}</Text>

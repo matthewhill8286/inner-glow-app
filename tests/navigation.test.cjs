@@ -212,3 +212,24 @@ test('legacy redirects live outside tabs and feature stacks seed their index par
     assert.match(layout, /initialRouteName:\s*['"]index['"]/);
   }
 });
+
+test('secondary features retain a visible parent tab and primary feature children retain their own tab', () => {
+  for (const [route, owner] of Object.entries({
+    '/home': 'home',
+    '/chat': 'chat',
+    '/chat/history': 'chat',
+    '/journal/new': 'journal',
+    '/mood/stats': 'home',
+    '/mindful': 'mindful',
+    '/mindful/stats': 'mindful',
+    '/profile': 'profile',
+    '/profile/edit': 'profile',
+    '/profile-edit': 'profile',
+    '/stress': 'home',
+    '/sleep/insights': 'home',
+    '/community/post': 'home',
+    '/notifications/detail': 'home',
+    '/freud-score': 'home',
+  }))
+    assert.equal(parents.primaryTabForPath(route), owner, route);
+});
