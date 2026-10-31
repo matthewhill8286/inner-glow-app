@@ -1,7 +1,8 @@
 /**
  * Icon set exported from Figma (docs/design-handoff/00-foundations.md §5).
  * Sets: Icon/Arrow `6589:1685` (stroke 1.8), Icon/Line `6598:1860` and
- * Icon/Mood `6598:1778` (stroke 1.6). All drawn on a 24×24 grid.
+ * Icon/Mood `6598:1778` (stroke 1.6). All drawn on a 24×24 grid. The Icon/Line
+ * variants added with the new library (settings … more) use stroke 1.5.
  *
  * Paint roles: `stroke` uses the icon colour, `fill` fills with the icon colour,
  * `accent` is the mustard "glow dot", `tear` is the sky-blue tear on crying.
@@ -19,6 +20,9 @@ const solid = (cx: number, cy: number, r: number): IconShape => ({ kind: 'circle
 
 const arrow = (...shapes: IconShape[]): IconDef => ({ strokeWidth: 1.8, shapes });
 const line = (...shapes: IconShape[]): IconDef => ({ strokeWidth: 1.6, shapes });
+// The Icon/Line variants added with the new library (`6753:*`, `6764:*`) are drawn at 1.5.
+const line15 = (...shapes: IconShape[]): IconDef => ({ strokeWidth: 1.5, shapes });
+const fillPath = (d: string): IconShape => ({ kind: 'path', d, paint: 'fill' });
 
 const REPLAY_ARC =
   'M6 11.9986C5.99878 13.3868 6.47896 14.7325 7.35871 15.8063C8.23846 16.8802 9.46335 17.6157 10.8247 17.8877C12.186 18.1596 13.5994 17.9511 14.8242 17.2977C16.049 16.6442 17.0093 15.5863 17.5415 14.3042C18.0738 13.0221 18.1449 11.5951 17.7429 10.2663C17.3409 8.93763 16.4906 7.78942 15.3368 7.01739C14.1831 6.24536 12.7974 5.89726 11.4158 6.03242C10.0342 6.16759 8.74222 6.77764 7.76 7.75863';
@@ -31,6 +35,9 @@ const EYES = [solid(9, 10, 1.1), solid(15, 10, 1.1)];
 const SAD_MOUTH = s('M8.8 16.2C9.7 15 10.8 14.4 12 14.4C13.2 14.4 14.3 15 15.2 16.2');
 const OPEN_SMILE = s('M8 13.2H16C16 14.26 15.58 15.28 14.83 16.03C14.08 16.78 13.06 17.2 12 17.2C10.94 17.2 9.92 16.78 9.17 16.03C8.42 15.28 8 14.26 8 13.2Z');
 const mood = (...shapes: IconShape[]): IconDef => line(FACE, ...shapes);
+
+const HEART =
+  'M19 14C20.5 12.5 22 10.8 22 8.5C22 7.04 21.42 5.64 20.39 4.61C19.36 3.58 17.96 3 16.5 3C14.7 3 13.5 3.5 12 5C10.5 3.5 9.3 3 7.5 3C6.04 3 4.64 3.58 3.61 4.61C2.58 5.64 2 7.04 2 8.5C2 10.8 3.5 12.5 5 14L12 21L19 14Z';
 
 export const ICONS = {
   // Icon/Arrow
@@ -47,7 +54,9 @@ export const ICONS = {
   'arrow/forward-10': arrow(s(FORWARD_ARC), s('M16.4 3.8V7.8H12.4'), dot(12, 12, 1.8)),
 
   // Icon/Line
-  'line/heart': line(s('M19 14C20.5 12.5 22 10.8 22 8.5C22 7.04 21.42 5.64 20.39 4.61C19.36 3.58 17.96 3 16.5 3C14.7 3 13.5 3.5 12 5C10.5 3.5 9.3 3 7.5 3C6.04 3 4.64 3.58 3.61 4.61C2.58 5.64 2 7.04 2 8.5C2 10.8 3.5 12.5 5 14L12 21L19 14Z')),
+  'line/heart': line(s(HEART)),
+  // Favourited state (Practices `6787:6413`): the heart instance with its fill switched on.
+  'line/heart-filled': line(fillPath(HEART), s(HEART)),
   'line/leaf': line(
     s('M11 20C9.24 20.01 7.55 19.35 6.25 18.17C4.96 16.98 4.16 15.35 4 13.6C3.85 11.85 4.37 10.11 5.44 8.72C6.51 7.33 8.07 6.4 9.8 6.1C15.5 5 17 4.5 19 2C20 4 21 6.2 21 10C21 15.5 16.2 20 11 20Z'),
     s('M2 21C2 18 3.9 15.6 7.1 15C9.5 14.5 12 13 13 12')
@@ -101,6 +110,32 @@ export const ICONS = {
     s('M14 3H6C5.47 3 4.96 3.21 4.58 3.59C4.21 3.96 4 4.47 4 5V19C4 19.53 4.21 20.04 4.58 20.41C4.96 20.79 5.47 21 6 21H18C18.53 21 19.04 20.79 19.41 20.41C19.79 20.04 20 19.53 20 19V9L14 3Z'),
     s('M14 3V9H20M8 13H16M8 17H13')
   ),
+  'line/settings': line15(
+    s('M5 7H19M5 12H19M5 17H19'),
+    ring(9, 7, 2),
+    ring(15, 12, 2),
+    ring(10, 17, 2)
+  ),
+  'line/globe': line15(
+    ring(12, 12, 7.5),
+    s('M4.5 12H19.5M12 4.5C13.1 5.65 13.65 8.825 13.65 12C13.65 15.175 13.1 18.35 12 19.5M12 4.5C10.9 5.65 10.35 8.825 10.35 12C10.35 15.175 10.9 18.35 12 19.5')
+  ),
+  'line/logout': line15(s('M10 5H6.5C6.1 5 5.72 5.16 5.44 5.44C5.16 5.72 5 6.1 5 6.5V17.5C5 17.9 5.16 18.28 5.44 18.56C5.72 18.84 6.1 19 6.5 19H10M15 16L19 12L15 8M19 12H10')),
+  'line/trash': line15(s('M6 8H18M7.5 8L8.3 18H15.7L16.5 8M10 8V6H14V8')),
+  'line/email': line15(s('M5 7.5L12 12.5L19 7.5M6.5 6.5H17.5C18.6 6.5 19.5 7.4 19.5 8.5V15.5C19.5 16.6 18.6 17.5 17.5 17.5H6.5C5.4 17.5 4.5 16.6 4.5 15.5V8.5C4.5 7.4 5.4 6.5 6.5 6.5Z')),
+  'line/search': line15(ring(10.75, 10.75, 5.5), s('M14.75 14.75L18.75 18.75')),
+  'line/shield': line15(s('M12 4.5L18 7V12C18 16 15.3 18.6 12 19.5C8.7 18.6 6 16 6 12V7L12 4.5Z')),
+  'line/mic-off': line15(
+    s('M10 10V12C10.01 12.39 10.13 12.77 10.35 13.1C10.57 13.42 10.88 13.67 11.24 13.82C11.6 13.97 12 14.01 12.38 13.94C12.77 13.86 13.12 13.67 13.4 13.4M14 9.5V6C14 5.47 13.79 4.96 13.41 4.59C13.04 4.21 12.53 4 12 4C11.47 4 10.96 4.21 10.59 4.59C10.21 4.96 10 5.47 10 6'),
+    s('M7 12C6.99 13 7.29 13.98 7.84 14.81C8.4 15.64 9.19 16.28 10.12 16.66C10.72 16.91 11.36 17.03 12 17.03C12.35 17.03 12.69 16.99 13.04 16.92C13.99 16.72 14.86 16.24 15.55 15.55M12 17.03V20M5 5L19 19M17 12C17 12.6 16.9 13.1 16.7 13.6')
+  ),
+  'line/send': line15(s('M11.5 13.5L14 19L19 5L5 12L11.5 13.5ZM19 5L11.5 13.5')),
+  'line/play': line15(s('M7 6L17 12L7 18V6Z')),
+  'line/pause': line15(s('M9 6V18M15 6V18')),
+  'line/edit': line15(s('M14.75 6.25L17.75 9.25L9.25 17.75H6.25V14.75L14.75 6.25ZM13.25 7.75L16.25 10.75')),
+  'line/calendar': line15(s('M17 6.5H7C5.9 6.5 5 7.4 5 8.5V17C5 18.1 5.9 19 7 19H17C18.1 19 19 18.1 19 17V8.5C19 7.4 18.1 6.5 17 6.5Z'), s('M5 10.5H19M9 5V8M15 5V8')),
+  'line/download': line15(s('M12 5.5V15.5M12 15.5L8 11.5M12 15.5L16 11.5M6 18.5H18')),
+  'line/more': line15(ring(7, 12, 0.9), ring(12, 12, 0.9), ring(17, 12, 0.9)),
 
   // Icon/Mood
   'mood/happy': mood(...EYES, s('M8.5 14C9.5 15.6 10.7 16.3 12 16.3C13.3 16.3 14.5 15.6 15.5 14')),

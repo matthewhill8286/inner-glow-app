@@ -47,6 +47,20 @@ export const Type = {
   microBold: style(weight.bold, 11, 13),
   eyebrow: style(weight.bold, 11, 14, 1.3),
   legal: style(weight.regular, 11, 15.4),
+
+  // New library styles ("🧩 Design System" typography frame `6750:4349`). Figma uses auto line height (≈1.2×).
+  bodyM: style(weight.regular, 15, 18), // Body/M Regular: field value
+  bodyMMedium: style(weight.medium, 15, 18), // Body/M Medium: list row label
+  bodyMSemi: style(weight.semibold, 15, 18), // Body/M SemiBold: nav bar title
+  bodyS: style(weight.regular, 14, 17), // Body/S Regular: search text
+  bodySMedium: style(weight.medium, 14, 17), // Body/S Medium: toast, segmented
+  buttonL: style(weight.semibold, 16, 19), // Button/L
+  buttonS: style(weight.semibold, 14, 17), // Button/S, segmented selected
+  captionM: style(weight.regular, 13, 16), // Caption/Regular: list row value
+  captionS: style(weight.regular, 12, 14), // Caption/S Regular: list row supporting text
+  labelM: style(weight.bold, 12, 14), // Label/M: field and section labels
+  tag: style(weight.semibold, 12, 14), // Caption/S SemiBold: Tag
+  note: style(weight.regular, 11, 13), // Micro/Regular: Legal/Note
 } as const;
 
 export type TypeToken = keyof typeof Type;

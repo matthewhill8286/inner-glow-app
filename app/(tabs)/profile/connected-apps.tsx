@@ -9,7 +9,7 @@ import { Glow, GlowField } from '@/components/glow/Glow';
 import { Icon } from '@/components/icons/Icon';
 import { IconButton } from '@/components/ui/IconButton';
 import { ListGroup, ListRow } from '@/components/ui/ListRow';
-import { LegalNote, Toggle } from '@/components/ui/controls';
+import { LegalNote } from '@/components/ui/controls';
 import { toast } from '@/components/Toast';
 import { useHealthSleep } from '@/hooks/useHealthSleep';
 
@@ -115,17 +115,17 @@ export default function ConnectedAppsScreen() {
             <ListRow
               icon="line/moon"
               label={t('connectedApps.importSleep')}
-              supporting={lastSync}
-              trailing={
-                <Toggle
-                  value={connected}
-                  accessibilityLabel={t('connectedApps.importSleep')}
-                  onValueChange={(on) => (on ? void onConnect() : void health.disconnect())}
-                />
-              }
-              chevron={false}
+              supportingText={lastSync}
+              trailing="toggle"
+              toggled={connected}
+              onToggle={(on) => (on ? void onConnect() : void health.disconnect())}
             />
-            <ListRow icon="arrow/replay" label={t('connectedApps.syncNow')} busy={health.syncing} onPress={onSyncNow} />
+            <ListRow
+              icon="arrow/replay"
+              label={t('connectedApps.syncNow')}
+              supportingText={health.syncing ? t('connectedApps.syncing') : undefined}
+              onPress={health.syncing ? undefined : onSyncNow}
+            />
           </ListGroup>
         ) : null}
 

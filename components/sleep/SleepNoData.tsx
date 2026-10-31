@@ -46,15 +46,14 @@ export function SleepNoData() {
             <ListRow
               icon="line/health"
               label={t(ios ? 'sleepEmpty.connectApple' : 'sleepEmpty.connectAndroid')}
-              supporting={health.syncing ? t('sleepEmpty.importing') : t('sleepEmpty.connectDetail')}
-              busy={health.syncing}
-              onPress={onConnect}
+              supportingText={health.syncing ? t('sleepEmpty.importing') : t('sleepEmpty.connectDetail')}
+              onPress={health.syncing ? undefined : onConnect}
             />
           ) : null}
           <ListRow
             icon="line/moon"
             label={t('sleepEmpty.logManually')}
-            supporting={t('sleepEmpty.logManuallyDetail')}
+            supportingText={t('sleepEmpty.logManuallyDetail')}
             onPress={() => router.push('/(tabs)/sleep/log')}
           />
         </ListGroup>
