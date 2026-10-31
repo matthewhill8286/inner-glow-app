@@ -1,3 +1,6 @@
+import { Typography } from '@/constants/typography';
+import { backTo } from '@/lib/navigation';
+import { WellnessIconText } from '@/components/WellnessIconText';
 import React, { useMemo, useState } from 'react';
 import { View, Text, Pressable, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,7 +10,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, UI } from '@/constants/theme';
 import { useJournal } from '@/hooks/useJournal';
 import { JournalEntry } from '@/lib/types';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialIcons from '@/components/AppIcon';
 
 /* ── Mood helpers ── */
 const MOOD_MAP: Record<string, { emoji: string; color: string }> = {
@@ -95,7 +98,7 @@ export default function JournalHistory() {
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
             <Pressable
-              onPress={() => router.back()}
+              onPress={() => backTo(undefined, '/(tabs)/journal')}
               style={({ pressed }) => ({
                 width: 36,
                 height: 36,
@@ -117,10 +120,17 @@ export default function JournalHistory() {
               />
             </Pressable>
             <View>
-              <Text style={{ fontSize: 22, fontWeight: '800', color: colors.text }}>
+              <Text style={{ ...Typography.heading, fontSize: 24, color: colors.text }}>
                 My Journals
               </Text>
-              <Text style={{ fontSize: 12, color: colors.mutedText, marginTop: 2 }}>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  fontSize: 12,
+                  color: colors.mutedText,
+                  marginTop: 2,
+                }}
+              >
                 {entries.length} entries total
               </Text>
             </View>
@@ -136,7 +146,16 @@ export default function JournalHistory() {
                 opacity: pressed ? 0.85 : 1,
               })}
             >
-              <Text style={{ color: '#fff', fontSize: 12, fontWeight: '800' }}>Today</Text>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  color: '#fff',
+                  fontSize: 12,
+                  fontWeight: Typography.weight.semibold,
+                }}
+              >
+                Today
+              </Text>
             </Pressable>
           )}
         </View>
@@ -166,7 +185,16 @@ export default function JournalHistory() {
           <Pressable onPress={() => shiftWeek(-1)} hitSlop={10}>
             <MaterialIcons name="chevron-left" size={22} color={colors.mutedText} />
           </Pressable>
-          <Text style={{ fontSize: 14, fontWeight: '700', color: colors.text }}>{monthYear}</Text>
+          <Text
+            style={{
+              fontFamily: Typography.family.body,
+              fontSize: 14,
+              fontWeight: Typography.weight.semibold,
+              color: colors.text,
+            }}
+          >
+            {monthYear}
+          </Text>
           <Pressable onPress={() => shiftWeek(1)} hitSlop={10}>
             <MaterialIcons name="chevron-right" size={22} color={colors.mutedText} />
           </Pressable>
@@ -197,8 +225,9 @@ export default function JournalHistory() {
               >
                 <Text
                   style={{
+                    fontFamily: Typography.family.body,
                     fontSize: 10,
-                    fontWeight: '600',
+                    fontWeight: Typography.weight.semibold,
                     color: isSelected ? 'rgba(255,255,255,0.8)' : colors.subtleText,
                   }}
                 >
@@ -206,8 +235,9 @@ export default function JournalHistory() {
                 </Text>
                 <Text
                   style={{
+                    fontFamily: Typography.family.body,
                     fontSize: 18,
-                    fontWeight: '800',
+                    fontWeight: Typography.weight.semibold,
                     color: isSelected ? '#fff' : isTodayDate ? '#8B6B47' : colors.text,
                   }}
                 >
@@ -238,7 +268,14 @@ export default function JournalHistory() {
           marginBottom: 8,
         }}
       >
-        <Text style={{ fontSize: 16, fontWeight: '800', color: colors.text }}>
+        <Text
+          style={{
+            fontFamily: Typography.family.body,
+            fontSize: 16,
+            fontWeight: Typography.weight.semibold,
+            color: colors.text,
+          }}
+        >
           {isToday
             ? 'Today'
             : selectedDate.toLocaleDateString('en-US', {
@@ -246,7 +283,13 @@ export default function JournalHistory() {
                 month: 'short',
                 day: 'numeric',
               })}
-          <Text style={{ fontWeight: '500', color: colors.mutedText }}>
+          <Text
+            style={{
+              fontFamily: Typography.family.body,
+              fontWeight: Typography.weight.medium,
+              color: colors.mutedText,
+            }}
+          >
             {' '}
             {'\u00B7'} {dayEntries.length} {dayEntries.length === 1 ? 'entry' : 'entries'}
           </Text>
@@ -270,7 +313,16 @@ export default function JournalHistory() {
           })}
         >
           <MaterialIcons name="add" size={14} color="#fff" />
-          <Text style={{ fontSize: 12, fontWeight: '800', color: '#fff' }}>New</Text>
+          <Text
+            style={{
+              fontFamily: Typography.family.body,
+              fontSize: 12,
+              fontWeight: Typography.weight.semibold,
+              color: '#fff',
+            }}
+          >
+            New
+          </Text>
         </Pressable>
       </View>
 
@@ -307,12 +359,24 @@ export default function JournalHistory() {
           >
             <MaterialIcons name="menu-book" size={40} color={colors.mutedText} />
             <Text
-              style={{ fontSize: 16, fontWeight: '700', color: colors.mutedText, marginTop: 10 }}
+              style={{
+                fontFamily: Typography.family.body,
+                fontSize: 16,
+                fontWeight: Typography.weight.semibold,
+                color: colors.mutedText,
+                marginTop: 10,
+              }}
             >
               No entries {isToday ? 'yet today' : 'this day'}
             </Text>
             <Text
-              style={{ fontSize: 13, color: colors.subtleText, marginTop: 4, textAlign: 'center' }}
+              style={{
+                fontFamily: Typography.family.body,
+                fontSize: 13,
+                color: colors.subtleText,
+                marginTop: 4,
+                textAlign: 'center',
+              }}
             >
               {isToday
                 ? 'Start writing to track your mental health journey.'
@@ -357,18 +421,36 @@ export default function JournalHistory() {
                         justifyContent: 'center',
                       }}
                     >
-                      <Text style={{ fontSize: 22 }}>{moodInfo.emoji}</Text>
+                      <WellnessIconText
+                        style={{
+                          fontFamily: Typography.family.body,
+                          fontSize: 22,
+                          color: moodInfo.color,
+                        }}
+                      >
+                        {moodInfo.emoji}
+                      </WellnessIconText>
                     </View>
 
                     <View style={{ flex: 1 }}>
                       <Text
-                        style={{ fontSize: 16, fontWeight: '700', color: colors.text }}
+                        style={{
+                          fontFamily: Typography.family.body,
+                          fontSize: 16,
+                          fontWeight: Typography.weight.semibold,
+                          color: colors.text,
+                        }}
                         numberOfLines={1}
                       >
                         {entry.title || 'Untitled Entry'}
                       </Text>
                       <Text
-                        style={{ fontSize: 13, color: colors.mutedText, marginTop: 2 }}
+                        style={{
+                          fontFamily: Typography.family.body,
+                          fontSize: 13,
+                          color: colors.mutedText,
+                          marginTop: 2,
+                        }}
                         numberOfLines={1}
                       >
                         {entry.content}
@@ -376,7 +458,15 @@ export default function JournalHistory() {
                     </View>
 
                     <View style={{ alignItems: 'flex-end', gap: 4 }}>
-                      <Text style={{ fontSize: 11, color: colors.subtleText }}>{time}</Text>
+                      <Text
+                        style={{
+                          fontFamily: Typography.family.body,
+                          fontSize: 11,
+                          color: colors.subtleText,
+                        }}
+                      >
+                        {time}
+                      </Text>
                       {aiSuggestions > 0 && (
                         <View
                           style={{
@@ -390,7 +480,14 @@ export default function JournalHistory() {
                           }}
                         >
                           <MaterialIcons name="auto-awesome" size={10} color="#7B6DC9" />
-                          <Text style={{ fontSize: 10, fontWeight: '700', color: '#7B6DC9' }}>
+                          <Text
+                            style={{
+                              fontFamily: Typography.family.body,
+                              fontSize: 10,
+                              fontWeight: Typography.weight.semibold,
+                              color: '#7B6DC9',
+                            }}
+                          >
                             {aiSuggestions} AI
                           </Text>
                         </View>
@@ -417,7 +514,14 @@ export default function JournalHistory() {
                             backgroundColor: moodInfo.color + '12',
                           }}
                         >
-                          <Text style={{ fontSize: 11, fontWeight: '700', color: moodInfo.color }}>
+                          <Text
+                            style={{
+                              fontFamily: Typography.family.body,
+                              fontSize: 11,
+                              fontWeight: Typography.weight.semibold,
+                              color: moodInfo.color,
+                            }}
+                          >
                             {entry.mood}
                           </Text>
                         </View>
@@ -432,7 +536,14 @@ export default function JournalHistory() {
                             backgroundColor: '#8B6B47' + '10',
                           }}
                         >
-                          <Text style={{ fontSize: 11, fontWeight: '700', color: '#8B6B47' }}>
+                          <Text
+                            style={{
+                              fontFamily: Typography.family.body,
+                              fontSize: 11,
+                              fontWeight: Typography.weight.semibold,
+                              color: '#8B6B47',
+                            }}
+                          >
                             {tag}
                           </Text>
                         </View>

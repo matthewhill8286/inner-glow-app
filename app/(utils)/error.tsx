@@ -1,3 +1,5 @@
+import { Typography } from '@/constants/typography';
+import { backTo } from '@/lib/navigation';
 import React from 'react';
 import { View, Text, Pressable, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -5,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { router } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, UI } from '@/constants/theme';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialIcons from '@/components/AppIcon';
 
 export default function NotFoundScreen() {
   const { t } = useTranslation();
@@ -24,7 +26,7 @@ export default function NotFoundScreen() {
         }}
       >
         <Pressable
-          onPress={() => router.back()}
+          onPress={() => backTo(undefined, '/(tabs)/home')}
           style={({ pressed }) => ({
             width: 40,
             height: 40,
@@ -73,8 +75,8 @@ export default function NotFoundScreen() {
 
         <Text
           style={{
-            fontSize: 26,
-            fontWeight: '900',
+            ...Typography.heading,
+            fontSize: 24,
             color: colors.text,
             textAlign: 'center',
             marginBottom: 10,
@@ -85,6 +87,7 @@ export default function NotFoundScreen() {
 
         <Text
           style={{
+            fontFamily: Typography.family.body,
             fontSize: 14,
             color: colors.mutedText,
             textAlign: 'center',
@@ -108,8 +111,15 @@ export default function NotFoundScreen() {
             borderColor: theme === 'light' ? '#FFE0B2' : 'rgba(232,152,90,0.25)',
           }}
         >
-          <Text style={{ fontSize: 14 }}>{'\u26A0\uFE0F'}</Text>
-          <Text style={{ fontSize: 13, fontWeight: '700', color: '#E8985A' }}>
+          <Text style={{ fontFamily: Typography.family.body, fontSize: 14 }}>{'\u26A0\uFE0F'}</Text>
+          <Text
+            style={{
+              fontFamily: Typography.family.body,
+              fontSize: 13,
+              fontWeight: Typography.weight.semibold,
+              color: '#E8985A',
+            }}
+          >
             {t('errorScreen.statusCode404')}
           </Text>
         </View>
@@ -133,7 +143,16 @@ export default function NotFoundScreen() {
             ...UI.shadow.md,
           })}
         >
-          <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{t('errorScreen.takeMeHome')}</Text>
+          <Text
+            style={{
+              fontFamily: Typography.family.body,
+              fontSize: 16,
+              fontWeight: Typography.weight.semibold,
+              color: '#fff',
+            }}
+          >
+            {t('errorScreen.takeMeHome')}
+          </Text>
           <MaterialIcons name="home" size={20} color="#fff" />
         </Pressable>
       </View>

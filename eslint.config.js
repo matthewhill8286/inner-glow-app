@@ -5,6 +5,11 @@ const expoConfig = require('eslint-config-expo/flat');
 module.exports = defineConfig([
   expoConfig,
   {
-    ignores: ['dist/*', 'app-example/*', 'supabase/functions/**/index.ts'],
+    files: ['scripts/**/*.cjs', 'tests/**/*.cjs'],
+    languageOptions: { globals: require('globals').node },
+    rules: { 'expo/no-dynamic-env-var': 'off' },
+  },
+  {
+    ignores: ['dist/*', 'app-example/*', 'supabase/functions/**'],
   },
 ]);

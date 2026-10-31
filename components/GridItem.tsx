@@ -1,6 +1,8 @@
+import { Typography } from '@/constants/typography';
+import { WellnessIconText } from '@/components/WellnessIconText';
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
+import MaterialIcons from '@/components/AppIcon';
 import { UI, Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
@@ -32,7 +34,9 @@ export const GridItem = ({ title, icon, emoji, subtitle, onPress, style }: GridI
     >
       {emoji ? (
         <View style={[styles.emojiWrap, { backgroundColor: colors.primary + '10' }]}>
-          <Text style={{ fontSize: 24 }}>{emoji}</Text>
+          <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 24 }}>
+            {emoji}
+          </WellnessIconText>
         </View>
       ) : (
         <View style={[styles.emojiWrap, { backgroundColor: colors.primary + '10' }]}>
@@ -66,10 +70,9 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   gridLabel: {
+    fontFamily: Typography.family.body,
     fontSize: 15,
-    fontWeight: '800',
+    fontWeight: Typography.weight.medium,
   },
-  gridSublabel: {
-    fontSize: 12,
-  },
+  gridSublabel: { fontFamily: Typography.family.body, fontSize: 12 },
 });

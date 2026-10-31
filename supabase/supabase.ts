@@ -22,10 +22,12 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
 
 if (Platform.OS !== 'web') {
   AppState.addEventListener('change', async (state) => {
-    if (state === 'active') {
-      await supabase.auth.startAutoRefresh();
-    } else {
-      await supabase.auth.stopAutoRefresh();
+    try {
+      if (state === 'active') await supabase.auth.startAutoRefresh();
+      else await supabase.auth.stopAutoRefresh();
+    } catch {
+      // Network/secure-storage failure is retried on the next active transition.
+      console.warn('[Auth] Session refresh unavailable');
     }
   });
 }

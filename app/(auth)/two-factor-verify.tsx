@@ -1,3 +1,5 @@
+import { Typography } from '@/constants/typography';
+import { UI } from '@/constants/theme';
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -14,7 +16,7 @@ import { useTranslation } from 'react-i18next';
 import { router } from 'expo-router';
 import { supabase } from '@/supabase/supabase';
 import { authTokenVar } from '@/lib/state';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialIcons from '@/components/AppIcon';
 
 /* ── Design tokens ── */
 const C = {
@@ -208,8 +210,8 @@ export default function TwoFactorVerify() {
           </View>
           <Text
             style={{
-              fontSize: 28,
-              fontWeight: '900',
+              ...Typography.heading,
+              fontSize: 24,
               color: C.brownLight,
               textAlign: 'center',
             }}
@@ -218,6 +220,7 @@ export default function TwoFactorVerify() {
           </Text>
           <Text
             style={{
+              fontFamily: Typography.family.body,
               fontSize: 15,
               color: C.brownLight,
               opacity: 0.65,
@@ -245,8 +248,9 @@ export default function TwoFactorVerify() {
             >
               <Text
                 style={{
+                  fontFamily: Typography.family.body,
                   fontSize: 12,
-                  fontWeight: '700',
+                  fontWeight: Typography.weight.semibold,
                   color: C.brownLight,
                   textTransform: 'uppercase',
                   letterSpacing: 0.5,
@@ -265,12 +269,13 @@ export default function TwoFactorVerify() {
                 maxLength={6}
                 autoFocus
                 style={{
+                  fontFamily: Typography.family.body,
                   backgroundColor: C.inputBg,
                   borderRadius: 16,
                   paddingHorizontal: 20,
                   paddingVertical: Platform.OS === 'ios' ? 20 : 16,
                   fontSize: 32,
-                  fontWeight: '900',
+                  fontWeight: Typography.weight.semibold,
                   color: C.brownLight,
                   textAlign: 'center',
                   letterSpacing: 14,
@@ -290,7 +295,15 @@ export default function TwoFactorVerify() {
                   }}
                 >
                   <MaterialIcons name="error-outline" size={16} color={C.red} />
-                  <Text style={{ flex: 1, fontSize: 13, fontWeight: '600', color: C.red }}>
+                  <Text
+                    style={{
+                      fontFamily: Typography.family.body,
+                      flex: 1,
+                      fontSize: 13,
+                      fontWeight: Typography.weight.semibold,
+                      color: C.red,
+                    }}
+                  >
                     {error}
                   </Text>
                 </View>
@@ -319,7 +332,14 @@ export default function TwoFactorVerify() {
               })}
             >
               {loading ? <ActivityIndicator size="small" color="#fff" /> : null}
-              <Text style={{ color: 'white', fontWeight: '800', fontSize: 18 }}>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  color: 'white',
+                  fontWeight: Typography.weight.semibold,
+                  fontSize: 18,
+                }}
+              >
                 {t('twoFactor.verify')}
               </Text>
             </Pressable>
@@ -336,8 +356,9 @@ export default function TwoFactorVerify() {
             >
               <Text
                 style={{
+                  fontFamily: Typography.family.body,
                   fontSize: 12,
-                  fontWeight: '700',
+                  fontWeight: Typography.weight.semibold,
                   color: C.brownLight,
                   textTransform: 'uppercase',
                   letterSpacing: 0.5,
@@ -364,7 +385,7 @@ export default function TwoFactorVerify() {
                   paddingHorizontal: 20,
                   paddingVertical: Platform.OS === 'ios' ? 20 : 16,
                   fontSize: 24,
-                  fontWeight: '900',
+                  fontWeight: Typography.weight.semibold,
                   color: C.brownLight,
                   textAlign: 'center',
                   letterSpacing: 6,
@@ -385,7 +406,15 @@ export default function TwoFactorVerify() {
                   }}
                 >
                   <MaterialIcons name="error-outline" size={16} color={C.red} />
-                  <Text style={{ flex: 1, fontSize: 13, fontWeight: '600', color: C.red }}>
+                  <Text
+                    style={{
+                      fontFamily: Typography.family.body,
+                      flex: 1,
+                      fontSize: 13,
+                      fontWeight: Typography.weight.semibold,
+                      color: C.red,
+                    }}
+                  >
                     {error}
                   </Text>
                 </View>
@@ -417,7 +446,14 @@ export default function TwoFactorVerify() {
               })}
             >
               {loading ? <ActivityIndicator size="small" color="#fff" /> : null}
-              <Text style={{ color: 'white', fontWeight: '800', fontSize: 18 }}>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  color: 'white',
+                  fontWeight: Typography.weight.semibold,
+                  fontSize: 18,
+                }}
+              >
                 {t('twoFactor.verifyRecovery')}
               </Text>
             </Pressable>
@@ -442,7 +478,14 @@ export default function TwoFactorVerify() {
             size={18}
             color={C.brownText}
           />
-          <Text style={{ fontSize: 14, fontWeight: '700', color: C.brownText }}>
+          <Text
+            style={{
+              fontFamily: Typography.family.body,
+              fontSize: 14,
+              fontWeight: Typography.weight.semibold,
+              color: C.brownText,
+            }}
+          >
             {mode === 'totp' ? t('twoFactor.useRecoveryCode') : t('twoFactor.useAuthenticator')}
           </Text>
         </Pressable>
@@ -460,7 +503,14 @@ export default function TwoFactorVerify() {
             opacity: pressed ? 0.5 : 1,
           })}
         >
-          <Text style={{ fontSize: 14, fontWeight: '700', color: C.brownText }}>
+          <Text
+            style={{
+              fontFamily: Typography.family.body,
+              fontSize: 14,
+              fontWeight: Typography.weight.semibold,
+              color: C.brownText,
+            }}
+          >
             {t('twoFactor.useAnotherAccount')}
           </Text>
         </Pressable>

@@ -1,3 +1,6 @@
+import { backTo, finishTo } from '@/lib/navigation';
+import { Typography } from '@/constants/typography';
+import { saveWakeAlarm, ringingAlarmsSupported, testWakeAlarm } from '@/lib/alarms';
 import React, { useState, useEffect } from 'react';
 import { View, Text, Pressable, ScrollView, Platform, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -5,20 +8,14 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, UI } from '@/constants/theme';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialIcons from '@/components/AppIcon';
 import { useSleep } from '@/hooks/useSleep';
 import { toast } from '@/components/Toast';
-import {
-  scheduleBedtimeReminders,
-  cancelBedtimeReminders,
-  scheduleWakeUpAlarms,
-  cancelWakeUpAlarms,
-} from '@/lib/notifications';
+import { scheduleBedtimeReminders, cancelBedtimeReminders } from '@/lib/notifications';
 
 /* ── helpers ──────────────────────────────────────── */
 function goBack(from?: string) {
-  if (from) router.replace(from as any);
-  else router.back();
+  backTo(from, '/(tabs)/sleep');
 }
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -83,7 +80,6 @@ export default function SleepScheduleScreen() {
   const [wakeMin, setWakeMin] = useState(schedule.wakeMin);
 
   // Repeat snooze (1-5)
-  const [snoozeCount, setSnoozeCount] = useState(schedule.snoozeCount);
 
   // Days of week
   const [selectedDays, setSelectedDays] = useState<string[]>(schedule.selectedDays);
@@ -101,7 +97,7 @@ export default function SleepScheduleScreen() {
       setSleepMin(schedule.sleepMin);
       setWakeHour(schedule.wakeHour);
       setWakeMin(schedule.wakeMin);
-      setSnoozeCount(schedule.snoozeCount);
+
       setSelectedDays(schedule.selectedDays);
       setAutoDisplayStats(schedule.autoDisplayStats);
       setAutoSetAlarm(schedule.autoSetAlarm);
@@ -111,6 +107,7 @@ export default function SleepScheduleScreen() {
   }, [schedule.savedAt]);
 
   const [saving, setSaving] = useState(false);
+  const supportsAlarm = ringingAlarmsSupported();
 
   const toggleDay = (day: string) => {
     setSelectedDays((prev) =>
@@ -141,44 +138,32 @@ export default function SleepScheduleScreen() {
       wakeDate.setHours(wakeHour, wakeMin, 0, 0);
       if (wakeDate <= sleepDate) wakeDate.setDate(wakeDate.getDate() + 1);
 
-      // 1. Save sleep mode (wake time + auto-detection)
-      await setSleepMode({
-        suggestedWakeISO: wakeDate.toISOString(),
-        autoDetectionEnabled: autoSetAlarm,
-      });
-
-      // 2. Persist the full schedule so it reloads on next visit
-      await saveSchedule({
-        sleepHour,
-        sleepMin,
-        wakeHour,
-        wakeMin,
-        snoozeCount,
-        selectedDays,
-        autoDisplayStats,
-        autoSetAlarm,
-        bedtimeReminder,
-      });
-
-      // 3. Schedule or cancel bedtime reminder notifications
+      if (autoSetAlarm && !selectedDays.length) throw new Error('Choose at least one repeat day.');
+      // Ask for permissions and schedule before persisting an enabled switch.
+      await saveWakeAlarm({ enabled: autoSetAlarm, wakeHour, wakeMin, selectedDays });
       if (bedtimeReminder && selectedDays.length > 0) {
         await scheduleBedtimeReminders({ sleepHour, sleepMin, selectedDays });
       } else {
         await cancelBedtimeReminders();
       }
-
-      // 4. Schedule or cancel wake-up alarm notifications
-      if (autoSetAlarm && selectedDays.length > 0) {
-        await scheduleWakeUpAlarms({ wakeHour, wakeMin, selectedDays, snoozeCount });
-      } else {
-        await cancelWakeUpAlarms();
-      }
+      await saveSchedule({
+        sleepHour,
+        sleepMin,
+        wakeHour,
+        wakeMin,
+        snoozeCount: 0,
+        selectedDays,
+        autoDisplayStats,
+        autoSetAlarm,
+        bedtimeReminder,
+      });
+      await setSleepMode({ suggestedWakeISO: wakeDate.toISOString(), autoDetectionEnabled: false });
 
       toast.success(t('sleepSchedule.scheduleSaved'));
-      router.replace('/(tabs)/sleep' as any);
+      finishTo('/(tabs)/sleep');
     } catch (err) {
       console.error('Failed to save schedule:', err);
-      toast.error(t('sleepSchedule.scheduleSaveError'));
+      toast.error(err instanceof Error ? err.message : t('sleepSchedule.scheduleSaveError'));
     } finally {
       setSaving(false);
     }
@@ -281,31 +266,38 @@ export default function SleepScheduleScreen() {
           </View>
         </View>
 
-        {/* ── Repeat Snooze ─────────────────────── */}
         <View style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[s.cardTitle, { color: colors.text }]}>
-            {t('sleepSchedule.repeatSnooze')}
+          <Text style={[s.cardTitle, { color: colors.text }]}>Wake-up alarm</Text>
+          <Text style={[s.settingSub, { color: colors.mutedText }]}>
+            {supportsAlarm
+              ? 'Rings even with Silent Mode or Focus on. Stop the alarm from your Lock Screen.'
+              : 'Ringing alarms require the updated iPhone app and iOS 26 or later.'}
           </Text>
-          <View style={s.snoozeRow}>
-            {[1, 2, 3, 4, 5].map((n) => (
-              <Pressable
-                key={n}
-                onPress={() => setSnoozeCount(n)}
-                style={[
-                  s.snoozeBtn,
-                  {
-                    backgroundColor: snoozeCount === n ? '#8B6B47' : colors.inputBg,
-                  },
-                ]}
+          {supportsAlarm && (
+            <Pressable
+              onPress={async () => {
+                try {
+                  await testWakeAlarm();
+                  toast.info('Test alarm set for 15 seconds from now.');
+                } catch (error) {
+                  toast.error(
+                    error instanceof Error ? error.message : 'Unable to set the test alarm.',
+                  );
+                }
+              }}
+              style={{ paddingVertical: 16 }}
+            >
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  color: colors.primary,
+                  fontWeight: Typography.weight.semibold,
+                }}
               >
-                <Text
-                  style={[s.snoozeBtnText, { color: snoozeCount === n ? '#FFF' : colors.text }]}
-                >
-                  {n}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
+                Test ringing alarm
+              </Text>
+            </Pressable>
+          )}
         </View>
 
         {/* ── Auto Repeat Days ──────────────────── */}
@@ -361,16 +353,17 @@ export default function SleepScheduleScreen() {
 
           <View style={s.settingRow}>
             <View style={{ flex: 1 }}>
-              <Text style={[s.settingLabel, { color: colors.text }]}>
-                {t('sleepSchedule.autoSetAlarm')}
-              </Text>
+              <Text style={[s.settingLabel, { color: colors.text }]}>Enable wake-up alarm</Text>
               <Text style={[s.settingSub, { color: colors.mutedText }]}>
-                {t('sleepSchedule.autoSetAlarmDesc')}
+                Ring at your wake-up time on the selected days.
               </Text>
             </View>
             <ToggleSwitch
               value={autoSetAlarm}
-              onToggle={() => setAutoSetAlarm(!autoSetAlarm)}
+              onToggle={() => {
+                if (supportsAlarm || autoSetAlarm) setAutoSetAlarm(!autoSetAlarm);
+                else toast.info('Ringing alarms require iOS 26 or later.');
+              }}
               activeColor="#5B8A5A"
               inactiveColor={colors.divider}
             />
@@ -403,7 +396,7 @@ export default function SleepScheduleScreen() {
           <Text style={s.previewText}>
             Sleep duration: ~
             {(() => {
-              let totalMin = (wakeHour * 60 + wakeMin) - (sleepHour * 60 + sleepMin);
+              let totalMin = wakeHour * 60 + wakeMin - (sleepHour * 60 + sleepMin);
               if (totalMin <= 0) totalMin += 24 * 60;
               const h = Math.floor(totalMin / 60);
               const m = totalMin % 60;
@@ -457,8 +450,8 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
   },
-  headerTitle: { fontSize: 22, fontWeight: '900' },
-  headerSub: { fontSize: 14, marginTop: 2 },
+  headerTitle: { ...Typography.heading },
+  headerSub: { fontFamily: Typography.family.body, fontSize: 14, marginTop: 2 },
 
   scrollContent: {
     paddingTop: 16,
@@ -480,8 +473,9 @@ const s = StyleSheet.create({
     ...UI.shadow.sm,
   },
   timeLabel: {
+    fontFamily: Typography.family.body,
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: Typography.weight.bold,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 10,
@@ -497,13 +491,15 @@ const s = StyleSheet.create({
     gap: 4,
   },
   timeSeparator: {
+    fontFamily: Typography.family.body,
     fontSize: 20,
-    fontWeight: '900',
+    fontWeight: Typography.weight.bold,
     marginTop: 2,
   },
   timeValue: {
+    fontFamily: Typography.family.body,
     fontSize: 18,
-    fontWeight: '900',
+    fontWeight: Typography.weight.bold,
   },
 
   /* cards */
@@ -513,11 +509,7 @@ const s = StyleSheet.create({
     borderWidth: 1,
     ...UI.shadow.sm,
   },
-  cardTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    marginBottom: 14,
-  },
+  cardTitle: { ...Typography.cardHeading,  marginBottom: 14 },
 
   /* snooze */
   snoozeRow: {
@@ -532,8 +524,9 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
   snoozeBtnText: {
+    fontFamily: Typography.family.body,
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: Typography.weight.semibold,
   },
 
   /* days */
@@ -548,8 +541,9 @@ const s = StyleSheet.create({
     borderRadius: 12,
   },
   dayBtnText: {
+    fontFamily: Typography.family.body,
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: Typography.weight.semibold,
   },
 
   /* settings */
@@ -559,8 +553,12 @@ const s = StyleSheet.create({
     gap: 12,
     paddingVertical: 4,
   },
-  settingLabel: { fontSize: 14, fontWeight: '800' },
-  settingSub: { fontSize: 12, marginTop: 2 },
+  settingLabel: {
+    fontFamily: Typography.family.body,
+    fontSize: 14,
+    fontWeight: Typography.weight.medium,
+  },
+  settingSub: { fontFamily: Typography.family.body, fontSize: 12, marginTop: 2 },
   divider: { height: 1, marginVertical: 14 },
 
   /* preview */
@@ -582,9 +580,10 @@ const s = StyleSheet.create({
     right: -20,
   },
   previewText: {
+    fontFamily: Typography.family.body,
     color: '#FFF',
     fontSize: 15,
-    fontWeight: '800',
+    fontWeight: Typography.weight.semibold,
   },
 
   /* save */
@@ -598,8 +597,9 @@ const s = StyleSheet.create({
     ...UI.shadow.md,
   },
   saveBtnText: {
+    fontFamily: Typography.family.body,
     color: '#FFF',
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: Typography.weight.semibold,
   },
 });

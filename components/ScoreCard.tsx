@@ -1,3 +1,4 @@
+import { Typography } from '@/constants/typography';
 import React from 'react';
 import { View, Text } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
@@ -87,18 +88,38 @@ export default function ScoreCard({
         <ProgressRing size={64} strokeWidth={5} progress={numericScore} color={bg} />
         <Text
           style={{
+            fontFamily: Typography.family.body,
             position: 'absolute',
             color: bg,
             fontSize: 20,
-            fontWeight: '900',
+            fontWeight: Typography.weight.semibold,
           }}
         >
           {score}
         </Text>
       </View>
       <View style={{ flex: 1 }}>
-        <Text style={{ color: bg, fontSize: 15, fontWeight: '800' }}>{title}</Text>
-        <Text style={{ color: bg, opacity: 0.6, fontSize: 13, marginTop: 2 }}>{subtitle}</Text>
+        <Text
+          style={{
+            fontFamily: Typography.family.body,
+            color: bg,
+            fontSize: 15,
+            fontWeight: Typography.weight.semibold,
+          }}
+        >
+          {title}
+        </Text>
+        <Text
+          style={{
+            fontFamily: Typography.family.body,
+            color: bg,
+            opacity: 0.6,
+            fontSize: 13,
+            marginTop: 2,
+          }}
+        >
+          {subtitle}
+        </Text>
       </View>
     </View>
   );

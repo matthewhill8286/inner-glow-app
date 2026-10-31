@@ -12,19 +12,13 @@ export function useRecorder(preset = RecordingPresets.HIGH_QUALITY) {
   const recorder = useAudioRecorder(preset);
   const state = useAudioRecorderState(recorder);
 
-  useEffect(() => {
-    (async () => {
-      const perm = await AudioModule.requestRecordingPermissionsAsync();
-      if (!perm.granted) throw new Error('Microphone permission not granted');
-
-      await setAudioModeAsync({
-        allowsRecording: true,
-        playsInSilentMode: true,
-      });
-    })();
-  }, []);
-
   async function startRecording() {
+    const perm = await AudioModule.requestRecordingPermissionsAsync();
+    if (!perm.granted) throw new Error('Microphone permission not granted');
+    await setAudioModeAsync({
+      allowsRecording: true,
+      playsInSilentMode: true,
+    });
     await recorder.prepareToRecordAsync();
     recorder.record();
   }

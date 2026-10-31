@@ -1,3 +1,5 @@
+import { Typography } from '@/constants/typography';
+import { backTo } from '@/lib/navigation';
 import React, { useMemo } from 'react';
 import { View, Text, Pressable, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -6,7 +8,7 @@ import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, UI } from '@/constants/theme';
 import { useJournal } from '@/hooks/useJournal';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialIcons from '@/components/AppIcon';
 
 /* ── Ring progress component ── */
 function StatRing({
@@ -59,12 +61,22 @@ function StatRing({
             transform: [{ rotate: '-90deg' }],
           }}
         />
-        <Text style={{ fontSize: 32, fontWeight: '900', color: colors.text }}>{value}</Text>
+        <Text
+          style={{
+            fontFamily: Typography.family.body,
+            fontSize: 32,
+            fontWeight: Typography.weight.semibold,
+            color: colors.text,
+          }}
+        >
+          {value}
+        </Text>
       </View>
       <Text
         style={{
+          fontFamily: Typography.family.body,
           fontSize: 14,
-          fontWeight: '600',
+          fontWeight: Typography.weight.semibold,
           color,
           marginTop: 10,
         }}
@@ -143,7 +155,7 @@ export default function JournalStats() {
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           <Pressable
-            onPress={() => router.back()}
+            onPress={() => backTo(undefined, '/(tabs)/journal')}
             style={({ pressed }) => ({
               width: 36,
               height: 36,
@@ -164,11 +176,19 @@ export default function JournalStats() {
               style={{ marginLeft: 4 }}
             />
           </Pressable>
-          <Text style={{ fontSize: 22, fontWeight: '800', color: colors.text }}>
+          <Text style={{ ...Typography.heading, fontSize: 24, color: colors.text }}>
             {t('journalStats.title')}
           </Text>
         </View>
-        <Text style={{ fontSize: 13, color: colors.mutedText, marginTop: 4, marginLeft: 46 }}>
+        <Text
+          style={{
+            fontFamily: Typography.family.body,
+            fontSize: 13,
+            color: colors.mutedText,
+            marginTop: 4,
+            marginLeft: 46,
+          }}
+        >
           Your journal trend for Feb {year}
         </Text>
       </View>
@@ -219,7 +239,7 @@ export default function JournalStats() {
             ...UI.shadow.sm,
           }}
         >
-          <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 20 }}>
+          <Text style={{ ...Typography.section, color: colors.text, marginBottom: 20 }}>
             {t('journalStats.monthlyOverview')}
           </Text>
           <View
@@ -247,7 +267,14 @@ export default function JournalStats() {
                           : 'rgba(255,255,255,0.08)',
                   }}
                 />
-                <Text style={{ fontSize: 9, color: colors.subtleText, marginTop: 6 }}>
+                <Text
+                  style={{
+                    fontFamily: Typography.family.body,
+                    fontSize: 9,
+                    color: colors.subtleText,
+                    marginTop: 6,
+                  }}
+                >
                   {MONTHS[i]}
                 </Text>
               </View>
@@ -304,8 +331,23 @@ export default function JournalStats() {
                 <MaterialIcons name={item.icon as any} size={22} color="#fff" />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 13, color: colors.mutedText }}>{item.label}</Text>
-                <Text style={{ fontSize: 20, fontWeight: '800', color: colors.text }}>
+                <Text
+                  style={{
+                    fontFamily: Typography.family.body,
+                    fontSize: 13,
+                    color: colors.mutedText,
+                  }}
+                >
+                  {item.label}
+                </Text>
+                <Text
+                  style={{
+                    fontFamily: Typography.family.body,
+                    fontSize: 20,
+                    fontWeight: Typography.weight.semibold,
+                    color: colors.text,
+                  }}
+                >
                   {item.value}
                 </Text>
               </View>

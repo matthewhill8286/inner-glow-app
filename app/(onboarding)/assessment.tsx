@@ -1,4 +1,13 @@
-import React, { useMemo, useState } from 'react';
+import {
+  readAssessmentAnswer,
+  writeAssessmentAnswer,
+  toggleAssessmentAnswer,
+} from '@/lib/assessment-answers';
+import { getAssessmentSteps } from '@/lib/assessment-flow';
+import { Typography } from '@/constants/typography';
+import { backTo } from '@/lib/navigation';
+import { WellnessIconText } from '@/components/WellnessIconText';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -22,7 +31,7 @@ import { MoodCheckIn } from '@/lib/types';
 import { useProfile } from '@/hooks/useProfile';
 import { useUser } from '@/hooks/useUser';
 import { userScopedKey } from '@/lib/storage';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialIcons from '@/components/AppIcon';
 
 /* ── Design tokens (from Figma) ── */
 const C = {
@@ -104,8 +113,9 @@ function UnitToggle({
         >
           <Text
             style={{
+              fontFamily: Typography.family.body,
               color: value === unit ? 'white' : C.brownLight,
-              fontWeight: '700',
+              fontWeight: Typography.weight.semibold,
               fontSize: 15,
             }}
           >
@@ -209,12 +219,22 @@ function HorizontalRuler({
       onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
     >
       <View style={{ flexDirection: 'row', alignItems: 'baseline', marginBottom: 16 }}>
-        <Text style={{ fontSize: 72, fontWeight: '900', color: C.brownLight }}>{displayValue}</Text>
+        <Text
+          style={{
+            fontFamily: Typography.family.body,
+            fontSize: 72,
+            fontWeight: Typography.weight.semibold,
+            color: C.brownLight,
+          }}
+        >
+          {displayValue}
+        </Text>
         {unit ? (
           <Text
             style={{
+              fontFamily: Typography.family.body,
               fontSize: 22,
-              fontWeight: '700',
+              fontWeight: Typography.weight.semibold,
               color: C.brownLight,
               opacity: 0.5,
               marginLeft: 4,
@@ -248,7 +268,9 @@ function HorizontalRuler({
             showsHorizontalScrollIndicator={false}
             snapToInterval={TICK_SPACING}
             decelerationRate="fast"
-            onScrollBeginDrag={() => { isUserScrolling.current = true; }}
+            onScrollBeginDrag={() => {
+              isUserScrolling.current = true;
+            }}
             onScrollEndDrag={handleScrollEndDrag}
             onMomentumScrollEnd={handleMomentumEnd}
             onScroll={handleScroll}
@@ -297,11 +319,12 @@ function HorizontalRuler({
                   {isMajor && (
                     <Text
                       style={{
+                        fontFamily: Typography.family.body,
                         position: 'absolute',
                         top: 44,
                         fontSize: 11,
                         color: '#6a5e5555',
-                        fontWeight: '600',
+                        fontWeight: Typography.weight.semibold,
                         textAlign: 'center',
                         width: 40,
                       }}
@@ -325,15 +348,21 @@ function RadioOption({
   selected,
   onPress,
   icon,
+  multiple = false,
 }: {
   label: string;
   selected: boolean;
   onPress: () => void;
   icon?: string;
+  multiple?: boolean;
 }) {
   return (
     <Pressable
       onPress={onPress}
+      accessibilityRole={multiple ? 'checkbox' : 'radio'}
+      accessibilityLabel={label}
+      accessibilityState={{ checked: selected }}
+      aria-checked={selected}
       style={({ pressed }) => ({
         flexDirection: 'row',
         alignItems: 'center',
@@ -347,11 +376,18 @@ function RadioOption({
         opacity: pressed ? 0.9 : 1,
       })}
     >
-      {icon ? <Text style={{ fontSize: 18, marginRight: 12 }}>{icon}</Text> : null}
+      {icon ? (
+        <WellnessIconText
+          style={{ fontFamily: Typography.family.body, fontSize: 18, marginRight: 12 }}
+        >
+          {icon}
+        </WellnessIconText>
+      ) : null}
       <Text
         style={{
+          fontFamily: Typography.family.body,
           fontSize: 15,
-          fontWeight: '600',
+          fontWeight: Typography.weight.semibold,
           color: selected ? 'white' : C.brownLight,
           flex: 1,
         }}
@@ -362,23 +398,19 @@ function RadioOption({
         style={{
           width: 22,
           height: 22,
-          borderRadius: 11,
+          borderRadius: multiple ? 5 : 11,
           borderWidth: 2,
           borderColor: selected ? 'rgba(255,255,255,0.7)' : '#D5CEC7',
           alignItems: 'center',
           justifyContent: 'center',
         }}
       >
-        {selected && (
-          <View
-            style={{
-              width: 11,
-              height: 11,
-              borderRadius: 6,
-              backgroundColor: 'white',
-            }}
-          />
-        )}
+        {selected &&
+          (multiple ? (
+            <MaterialIcons name="check" size={16} color="white" />
+          ) : (
+            <View style={{ width: 11, height: 11, borderRadius: 6, backgroundColor: 'white' }} />
+          ))}
       </View>
     </Pressable>
   );
@@ -423,12 +455,15 @@ function SleepOption({
           justifyContent: 'center',
         }}
       >
-        <Text style={{ fontSize: 18 }}>{emoji}</Text>
+        <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 18 }}>
+          {emoji}
+        </WellnessIconText>
       </View>
       <Text
         style={{
+          fontFamily: Typography.family.body,
           fontSize: 15,
-          fontWeight: '600',
+          fontWeight: Typography.weight.semibold,
           color: selected ? 'white' : C.brownLight,
           flex: 1,
         }}
@@ -468,13 +503,22 @@ function StressDots({
 
   return (
     <View style={{ alignItems: 'center' }}>
-      <Text style={{ fontSize: 72, fontWeight: '900', color: C.brownLight, marginBottom: 8 }}>
+      <Text
+        style={{
+          fontFamily: Typography.family.body,
+          fontSize: 72,
+          fontWeight: Typography.weight.semibold,
+          color: C.brownLight,
+          marginBottom: 8,
+        }}
+      >
         {value}
       </Text>
       <Text
         style={{
+          fontFamily: Typography.family.body,
           fontSize: 14,
-          fontWeight: '600',
+          fontWeight: Typography.weight.semibold,
           color: C.olive,
           marginBottom: 24,
           opacity: 0.9,
@@ -510,8 +554,9 @@ function StressDots({
             >
               <Text
                 style={{
+                  fontFamily: Typography.family.body,
                   fontSize: 14,
-                  fontWeight: '700',
+                  fontWeight: Typography.weight.semibold,
                   color: isSelected ? 'white' : C.brownLight,
                 }}
               >
@@ -532,8 +577,26 @@ function StressDots({
           paddingHorizontal: 4,
         }}
       >
-        <Text style={{ fontSize: 11, color: C.brownLight, opacity: 0.5 }}>No stress</Text>
-        <Text style={{ fontSize: 11, color: C.brownLight, opacity: 0.5 }}>Extreme</Text>
+        <Text
+          style={{
+            fontFamily: Typography.family.body,
+            fontSize: 11,
+            color: C.brownLight,
+            opacity: 0.5,
+          }}
+        >
+          No stress
+        </Text>
+        <Text
+          style={{
+            fontFamily: Typography.family.body,
+            fontSize: 11,
+            color: C.brownLight,
+            opacity: 0.5,
+          }}
+        >
+          Extreme
+        </Text>
       </View>
     </View>
   );
@@ -555,7 +618,17 @@ function MedTag({ label, onRemove }: { label: string; onRemove: () => void }) {
       }}
     >
       <MaterialIcons name="medication" size={18} color={C.orange} />
-      <Text style={{ flex: 1, fontSize: 14, fontWeight: '600', color: C.brownLight }}>{label}</Text>
+      <Text
+        style={{
+          fontFamily: Typography.family.body,
+          flex: 1,
+          fontSize: 14,
+          fontWeight: Typography.weight.semibold,
+          color: C.brownLight,
+        }}
+      >
+        {label}
+      </Text>
       <Pressable onPress={onRemove} hitSlop={8}>
         <MaterialIcons name="close" size={18} color={C.brownLight} style={{ opacity: 0.5 }} />
       </Pressable>
@@ -578,10 +651,15 @@ function MoodChip({
   return (
     <Pressable
       onPress={onPress}
+      accessibilityRole="checkbox"
+      accessibilityLabel={label}
+      accessibilityState={{ checked: selected }}
+      aria-checked={selected}
       style={({ pressed }) => ({
         flexDirection: 'column',
         alignItems: 'center',
-        flexFlow: 'column',
+        width: '22%',
+        minWidth: 60,
         backgroundColor: selected ? C.olive : C.cardBg,
         paddingVertical: 12,
         paddingHorizontal: 16,
@@ -592,11 +670,14 @@ function MoodChip({
         opacity: pressed ? 0.9 : 1,
       })}
     >
-      <Text style={{ fontSize: 18 }}>{emoji}</Text>
+      <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 18 }}>
+        {emoji}
+      </WellnessIconText>
       <Text
         style={{
+          fontFamily: Typography.family.body,
           fontSize: 14,
-          fontWeight: '600',
+          fontWeight: Typography.weight.semibold,
           color: selected ? 'white' : C.brownLight,
         }}
       >
@@ -625,7 +706,14 @@ function PlaybackButton({ uri }: { uri: string }) {
       }}
     >
       <MaterialIcons name={isPlaying ? 'pause' : 'play-arrow'} size={20} color="white" />
-      <Text style={{ color: 'white', fontWeight: '700', fontSize: 14 }}>
+      <Text
+        style={{
+          fontFamily: Typography.family.body,
+          color: 'white',
+          fontWeight: Typography.weight.semibold,
+          fontSize: 14,
+        }}
+      >
         {isPlaying ? t('common.pause') : t('common.playRecording')}
       </Text>
     </Pressable>
@@ -666,37 +754,6 @@ type Assessment = {
 
 const EXPRESSION_PHRASE = 'I am here, taking a moment for myself.';
 
-type StepKey =
-  | 'goal'
-  | 'gender'
-  | 'age'
-  | 'weight'
-  | 'mood'
-  | 'help'
-  | 'physical'
-  | 'sleep'
-  | 'meds'
-  | 'medsSpecify'
-  | 'symptoms'
-  | 'stress'
-  | 'sound';
-
-const STEPS: StepKey[] = [
-  'goal',
-  'gender',
-  'age',
-  'weight',
-  'mood',
-  'help',
-  'physical',
-  'sleep',
-  'meds',
-  'medsSpecify',
-  'symptoms',
-  'stress',
-  'sound',
-];
-
 /* ── Mood presets ── */
 const MOOD_OPTIONS = [
   { label: 'Happy', emoji: '😊' },
@@ -729,7 +786,7 @@ const PHYSICAL_OPTIONS = [
  *  MAIN COMPONENT
  * ════════════════════════════════════════════════ */
 export default function AssessmentScreen() {
-  const { saveAssessment } = useProfile();
+  const { saveAssessment, isSavingAssessment } = useProfile();
   const { data: user } = useUser();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -756,13 +813,71 @@ export default function AssessmentScreen() {
     weightUnit: 'kg',
   });
 
+  const [draftOwner, setDraftOwner] = useState<string | null>(null);
+  const draftWrites = useRef(Promise.resolve());
+  const finishing = useRef(false);
+
+  useEffect(() => {
+    let active = true;
+    setDraftOwner(null);
+    if (!user?.id) return;
+    const owner = user.id;
+    setA({ createdAt: new Date().toISOString(), weight: 70, weightUnit: 'kg' });
+    setStep(0);
+    void AsyncStorage.getItem(userScopedKey('assessment:draft:v1', owner))
+      .then((raw) => {
+        if (!active) return;
+        if (raw) {
+          try {
+            const draft = JSON.parse(raw);
+            if (
+              draft.answers &&
+              typeof draft.answers.createdAt === 'string' &&
+              ['goal', 'mood', 'gender', 'age', 'meds', 'takingMeds', 'otherSymptoms'].every(
+                (field) => draft.answers[field] == null || typeof draft.answers[field] === 'string',
+              ) &&
+              ['weight', 'sleepQuality', 'stressLevel'].every(
+                (field) =>
+                  draft.answers[field] == null ||
+                  (typeof draft.answers[field] === 'number' &&
+                    Number.isFinite(draft.answers[field])),
+              )
+            ) {
+              setA(draft.answers);
+              const visible = getAssessmentSteps(draft.answers.takingMeds);
+              setStep(Math.max(0, visible.indexOf(draft.step)));
+            }
+          } catch {
+            /* A malformed local draft must not block onboarding. */
+          }
+        }
+        setDraftOwner(owner);
+      })
+      .catch(() => {
+        if (active) setDraftOwner(owner);
+      });
+    return () => {
+      active = false;
+    };
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!draftOwner || draftOwner !== user?.id || finishing.current) return;
+    const storageKey = userScopedKey('assessment:draft:v1', draftOwner);
+    const value = JSON.stringify({ answers: a, step: getAssessmentSteps(a.takingMeds)[step] });
+    draftWrites.current = draftWrites.current
+      .then(() => AsyncStorage.setItem(storageKey, value))
+      .catch(() => {});
+  }, [a, step, draftOwner, user?.id]);
+
   const { startRecording, stopRecording, isRecording } = useRecorder();
   const [recordingFor, setRecordingFor] = useState<null | 'sound' | 'expression'>(null);
   const [draftTranscript, setDraftTranscript] = useState('');
   const [highlightedWordIndex] = useState(-1);
   const [medInput, setMedInput] = useState('');
 
-  const key = STEPS[step];
+  const steps = useMemo(() => getAssessmentSteps(a.takingMeds), [a.takingMeds]);
+  const key = steps[step];
 
   // Parse meds string into array for tag display
   const medsArray = useMemo(() => {
@@ -785,24 +900,30 @@ export default function AssessmentScreen() {
       toast.warning(t('common.fillStepToContinue'));
       return;
     }
-    if (step === STEPS.length - 1) {
-      // Persist to AsyncStorage so the summary page can read it instantly
-      const storageKey = userScopedKey('assessment:v1', user?.id);
-      await AsyncStorage.setItem(storageKey, JSON.stringify(a));
-      // Also persist to Supabase (async, non-blocking for navigation)
-      saveAssessment(a).catch((err: any) =>
-        console.warn('[Assessment] Supabase save failed:', err),
-      );
-      router.replace('/(onboarding)/assessment-summary');
+    if (step === steps.length - 1) {
+      finishing.current = true;
+      try {
+        await saveAssessment(a);
+        const storageKey = userScopedKey('assessment:v1', user?.id);
+        await AsyncStorage.setItem(storageKey, JSON.stringify(a));
+        await draftWrites.current;
+        await AsyncStorage.removeItem(userScopedKey('assessment:draft:v1', user?.id));
+        router.replace('/(onboarding)/assessment-summary');
+      } catch {
+        finishing.current = false;
+        toast.error(
+          'Your assessment could not be saved. Please try again. Your answers are still here.',
+        );
+      }
       return;
     }
-    setStep((s) => Math.min(s + 1, STEPS.length - 1));
+    setStep((s) => Math.min(s + 1, steps.length - 1));
     setDraftTranscript('');
   }
 
   function back() {
     if (step === 0) {
-      router.back();
+      backTo(undefined, '/(tabs)/home');
       return;
     }
     setStep((s) => Math.max(s - 1, 0));
@@ -882,20 +1003,52 @@ export default function AssessmentScreen() {
         return (
           <>
             <Text style={styles.h2}>{t('assessment.goalTitle')}</Text>
+            <Text style={styles.sub}>
+              {t('assessment.selectAll', { defaultValue: 'Select all that apply.' })}
+            </Text>
             <View style={{ marginTop: 20 }}>
               {goalOpts.map((opt) => (
                 <RadioOption
                   key={opt.label}
                   label={opt.label}
                   icon={opt.icon}
-                  selected={a.goal === opt.label}
-                  onPress={() => setA((p) => ({ ...p, goal: opt.label }))}
+                  multiple
+                  selected={readAssessmentAnswer(
+                    a.goal,
+                    goalOpts.map((o) => o.label),
+                  ).selected.includes(opt.label)}
+                  onPress={() =>
+                    setA((p) => ({
+                      ...p,
+                      goal: toggleAssessmentAnswer(
+                        p.goal,
+                        opt.label,
+                        goalOpts.map((o) => o.label),
+                      ),
+                    }))
+                  }
                 />
               ))}
             </View>
             <TextInput
-              value={goalOpts.some((o) => o.label === a.goal) ? '' : (a.goal ?? '')}
-              onChangeText={(t) => setA((p) => ({ ...p, goal: t }))}
+              value={
+                readAssessmentAnswer(
+                  a.goal,
+                  goalOpts.map((o) => o.label),
+                ).custom
+              }
+              onChangeText={(text) =>
+                setA((p) => ({
+                  ...p,
+                  goal: writeAssessmentAnswer(
+                    readAssessmentAnswer(
+                      p.goal,
+                      goalOpts.map((o) => o.label),
+                    ).selected,
+                    text,
+                  ),
+                }))
+              }
               placeholder={t('assessment.goalPlaceholder')}
               placeholderTextColor="rgba(0,0,0,0.25)"
               style={styles.input}
@@ -961,7 +1114,9 @@ export default function AssessmentScreen() {
         return (
           <>
             <Text style={styles.h2}>{t('assessment.moodTitle')}</Text>
-            <Text style={styles.sub}>{t('assessment.moodSubtitle')}</Text>
+            <Text style={styles.sub}>
+              {t('assessment.selectAll', { defaultValue: 'Select all that apply.' })}
+            </Text>
 
             <View
               style={{
@@ -977,15 +1132,43 @@ export default function AssessmentScreen() {
                   key={opt.label}
                   label={opt.label}
                   emoji={opt.emoji}
-                  selected={a.mood === opt.label}
-                  onPress={() => setA((p) => ({ ...p, mood: opt.label }))}
+                  selected={readAssessmentAnswer(
+                    a.mood,
+                    MOOD_OPTIONS.map((o) => o.label),
+                  ).selected.includes(opt.label)}
+                  onPress={() =>
+                    setA((p) => ({
+                      ...p,
+                      mood: toggleAssessmentAnswer(
+                        p.mood,
+                        opt.label,
+                        MOOD_OPTIONS.map((o) => o.label),
+                      ),
+                    }))
+                  }
                 />
               ))}
             </View>
 
             <TextInput
-              value={MOOD_OPTIONS.some((o) => o.label === a.mood) ? '' : (a.mood ?? '')}
-              onChangeText={(t) => setA((p) => ({ ...p, mood: t }))}
+              value={
+                readAssessmentAnswer(
+                  a.mood,
+                  MOOD_OPTIONS.map((o) => o.label),
+                ).custom
+              }
+              onChangeText={(text) =>
+                setA((p) => ({
+                  ...p,
+                  mood: writeAssessmentAnswer(
+                    readAssessmentAnswer(
+                      p.mood,
+                      MOOD_OPTIONS.map((o) => o.label),
+                    ).selected,
+                    text,
+                  ),
+                }))
+              }
               placeholder={t('assessment.moodPlaceholder')}
               placeholderTextColor="rgba(0,0,0,0.25)"
               style={[styles.input, { marginTop: 16 }]}
@@ -1067,13 +1250,14 @@ export default function AssessmentScreen() {
                   key={opt.value}
                   label={opt.label}
                   selected={a.takingMeds === opt.value}
-                  onPress={() =>
+                  onPress={() => {
                     setA((p) => ({
                       ...p,
                       takingMeds: opt.value,
                       meds: opt.value === 'Yes' ? (p.meds ?? '') : null,
-                    }))
-                  }
+                    }));
+                    if (opt.value !== 'Yes') setMedInput('');
+                  }}
                 />
               ))}
             </View>
@@ -1186,8 +1370,9 @@ export default function AssessmentScreen() {
                   <MaterialIcons name="mic" size={32} color="white" />
                   <Text
                     style={{
+                      fontFamily: Typography.family.body,
                       color: 'white',
-                      fontWeight: '700',
+                      fontWeight: Typography.weight.semibold,
                       fontSize: 11,
                       marginTop: 4,
                       textTransform: 'uppercase',
@@ -1244,8 +1429,9 @@ export default function AssessmentScreen() {
             >
               <Text
                 style={{
+                  fontFamily: Typography.family.body,
                   fontSize: 11,
-                  fontWeight: '700',
+                  fontWeight: Typography.weight.semibold,
                   color: C.brownText,
                   textTransform: 'uppercase',
                   letterSpacing: 1,
@@ -1277,8 +1463,9 @@ export default function AssessmentScreen() {
                     >
                       <Text
                         style={{
+                          fontFamily: Typography.family.body,
                           fontSize: 20,
-                          fontWeight: '700',
+                          fontWeight: Typography.weight.semibold,
                           color: isHighlighted ? 'white' : C.brownLight,
                         }}
                       >
@@ -1332,7 +1519,7 @@ export default function AssessmentScreen() {
           >
             <MaterialIcons name="arrow-back" size={20} color={C.brownText} />
           </Pressable>
-          <Text style={{ color: C.brownText, fontSize: 17, fontWeight: '700' }}>
+          <Text style={{ ...Typography.heading, color: C.brownText }}>
             {t('assessment.assessmentTitle')}
           </Text>
         </View>
@@ -1344,14 +1531,21 @@ export default function AssessmentScreen() {
             borderRadius: 12,
           }}
         >
-          <Text style={{ color: C.brownText, fontSize: 12, fontWeight: '700' }}>
-            {t('assessment.stepCount', { current: step + 1, total: STEPS.length })}
+          <Text
+            style={{
+              fontFamily: Typography.family.body,
+              color: C.brownText,
+              fontSize: 12,
+              fontWeight: Typography.weight.semibold,
+            }}
+          >
+            {t('assessment.stepCount', { current: step + 1, total: steps.length })}
           </Text>
         </View>
       </View>
 
       {/* Progress bar */}
-      <ProgressBar current={step} total={STEPS.length} />
+      <ProgressBar current={step} total={steps.length} />
 
       {/* Scrollable content */}
       <ScrollView
@@ -1381,7 +1575,11 @@ export default function AssessmentScreen() {
         {/* Continue button */}
         <Pressable
           onPress={next}
-          disabled={!canContinue}
+          accessibilityRole="button"
+          accessibilityLabel={
+            step === steps.length - 1 ? t('assessment.complete') : t('assessment.next')
+          }
+          disabled={!canContinue || isSavingAssessment || (!!user?.id && draftOwner !== user.id)}
           style={({ pressed }) => ({
             flexDirection: 'row',
             alignItems: 'center',
@@ -1399,8 +1597,15 @@ export default function AssessmentScreen() {
             elevation: 4,
           })}
         >
-          <Text style={{ color: 'white', fontWeight: '800', fontSize: 17 }}>
-            {step === STEPS.length - 1 ? t('assessment.complete') : t('assessment.next')}
+          <Text
+            style={{
+              fontFamily: Typography.family.body,
+              color: 'white',
+              fontWeight: Typography.weight.semibold,
+              fontSize: 17,
+            }}
+          >
+            {step === steps.length - 1 ? t('assessment.complete') : t('assessment.next')}
           </Text>
           <MaterialIcons name="arrow-forward" size={20} color="white" />
         </Pressable>
@@ -1412,13 +1617,15 @@ export default function AssessmentScreen() {
 /* ── Shared styles ── */
 const styles: any = {
   h2: {
+    fontFamily: Typography.family.body,
     fontSize: 24,
-    fontWeight: '800',
+    fontWeight: Typography.weight.semibold,
     textAlign: 'center',
     color: C.brownLight,
     lineHeight: 32,
   },
   sub: {
+    fontFamily: Typography.family.body,
     opacity: 0.6,
     marginTop: 8,
     textAlign: 'center',
@@ -1427,13 +1634,14 @@ const styles: any = {
     lineHeight: 20,
   },
   input: {
+    fontFamily: Typography.family.body,
     marginTop: 14,
     paddingHorizontal: 16,
     paddingVertical: Platform.OS === 'ios' ? 14 : 10,
     borderRadius: 16,
     backgroundColor: C.inputBg,
     fontSize: 15,
-    fontWeight: '500',
+    fontWeight: Typography.weight.medium,
     color: C.brownLight,
   },
 };

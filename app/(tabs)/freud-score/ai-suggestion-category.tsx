@@ -1,3 +1,7 @@
+import { useSubscription } from '@/hooks/useSubscription';
+import { toast } from '@/components/Toast';
+import { Typography } from '@/constants/typography';
+import { WellnessIconText } from '@/components/WellnessIconText';
 import React, { useState } from 'react';
 import {
   View,
@@ -10,7 +14,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, UI } from '@/constants/theme';
 import { useFreudScore } from '@/hooks/useFreudScore';
@@ -18,7 +22,7 @@ import type { AISuggestion } from '@/lib/freudScore';
 import ScreenHeader from '@/components/ScreenHeader';
 import MoodCheckInModal from '@/components/MoodCheckInModal';
 import type { MoodValue } from '@/components/MoodCheckInModal';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialIcons from '@/components/AppIcon';
 import CitationSection from '@/components/CitationSection';
 import { extractCitations } from '@/lib/citations';
 
@@ -26,7 +30,10 @@ import { extractCitations } from '@/lib/citations';
 /*  Category config                                                    */
 /* ------------------------------------------------------------------ */
 
-const CATEGORY_CONFIG: Record<string, { emoji: string; color: string; icon: string; bgEmoji: string }> = {
+const CATEGORY_CONFIG: Record<
+  string,
+  { emoji: string; color: string; icon: string; bgEmoji: string }
+> = {
   mindfulness: { emoji: '🧘', color: '#5AAF8B', icon: 'self-improvement', bgEmoji: '🌿' },
   physical: { emoji: '🏃', color: '#FF9800', icon: 'directions-run', bgEmoji: '💪' },
   social: { emoji: '💬', color: '#42A5F5', icon: 'forum', bgEmoji: '🤝' },
@@ -58,7 +65,9 @@ function CompletionModal({
       <View style={styles.modalOverlay}>
         <View style={[styles.completionCard, { backgroundColor: colors.card }]}>
           <View style={[styles.completionIconWrap, { backgroundColor: accentColor + '15' }]}>
-            <Text style={{ fontSize: 40 }}>🎉</Text>
+            <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 40 }}>
+              🎉
+            </WellnessIconText>
           </View>
           <Text style={[styles.completionTitle, { color: colors.text }]}>
             {t('aiSuggestions.suggestionCompleted')}
@@ -127,9 +136,9 @@ function SuggestionCard({
       {/* Top row: icon + title + action */}
       <View style={styles.cardHeader}>
         <View style={[styles.cardBadge, { backgroundColor: accentColor + '14' }]}>
-          <Text style={{ fontSize: 22 }}>
+          <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 22 }}>
             {CATEGORY_CONFIG[suggestion.category]?.emoji ?? '✨'}
-          </Text>
+          </WellnessIconText>
         </View>
         <View style={{ flex: 1 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -148,7 +157,15 @@ function SuggestionCard({
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
             {suggestion.duration && (
               <View style={[styles.metaChip, { backgroundColor: colors.background }]}>
-                <Text style={{ color: colors.mutedText, fontSize: 11 }}>⏱ {suggestion.duration}</Text>
+                <WellnessIconText
+                  style={{
+                    fontFamily: Typography.family.body,
+                    color: colors.mutedText,
+                    fontSize: 11,
+                  }}
+                >
+                  ⏱ {suggestion.duration}
+                </WellnessIconText>
               </View>
             )}
             {suggestion.difficulty && (
@@ -167,6 +184,7 @@ function SuggestionCard({
               >
                 <Text
                   style={{
+                    fontFamily: Typography.family.body,
                     color:
                       suggestion.difficulty === 'easy'
                         ? '#5AAF8B'
@@ -174,7 +192,7 @@ function SuggestionCard({
                           ? '#EF4444'
                           : colors.mutedText,
                     fontSize: 11,
-                    fontWeight: '700',
+                    fontWeight: Typography.weight.semibold,
                   }}
                 >
                   {suggestion.difficulty.charAt(0).toUpperCase() + suggestion.difficulty.slice(1)}
@@ -215,7 +233,15 @@ function SuggestionCard({
 
       {/* Description */}
       {suggestion.description ? (
-        <Text style={{ color: colors.mutedText, fontSize: 13, lineHeight: 20, marginTop: 12 }}>
+        <Text
+          style={{
+            fontFamily: Typography.family.body,
+            color: colors.mutedText,
+            fontSize: 13,
+            lineHeight: 20,
+            marginTop: 12,
+          }}
+        >
           {suggestion.description}
         </Text>
       ) : null}
@@ -238,12 +264,21 @@ function SuggestionCard({
       <View style={[styles.cardFooter, { borderTopColor: colors.border }]}>
         <View style={[styles.pointsTag, { backgroundColor: accentColor + '12' }]}>
           <MaterialIcons name="star" size={12} color={accentColor} />
-          <Text style={{ color: accentColor, fontSize: 12, fontWeight: '800' }}>
+          <Text
+            style={{
+              fontFamily: Typography.family.body,
+              color: accentColor,
+              fontSize: 12,
+              fontWeight: Typography.weight.semibold,
+            }}
+          >
             +{suggestion.points} pts
           </Text>
         </View>
         {suggestion.completedAt && (
-          <Text style={{ color: colors.mutedText, fontSize: 11 }}>
+          <Text
+            style={{ fontFamily: Typography.family.body, color: colors.mutedText, fontSize: 11 }}
+          >
             {new Date(suggestion.completedAt).toLocaleDateString(undefined, {
               month: 'short',
               day: 'numeric',
@@ -329,11 +364,13 @@ export default function AISuggestionCategoryScreen() {
     setPendingSuggestion(null);
   };
 
+  const { hasFullAccess } = useSubscription();
   const handleGenerate = async () => {
+    if (!hasFullAccess) { router.push('/trial-upgrade'); return; }
     try {
       await generateSuggestions({ maxSuggestions: 4, category });
-    } catch {
-      // silent
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t('aiAccess.failed'));
     }
   };
 
@@ -350,10 +387,12 @@ export default function AISuggestionCategoryScreen() {
           ]}
         >
           {/* Background decorative emoji */}
-          <Text style={styles.heroBgEmoji}>{config.bgEmoji}</Text>
+          <WellnessIconText style={styles.heroBgEmoji}>{config.bgEmoji}</WellnessIconText>
 
           <View style={[styles.heroIcon, { backgroundColor: config.color + '18' }]}>
-            <Text style={{ fontSize: 40 }}>{config.emoji}</Text>
+            <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 40 }}>
+              {config.emoji}
+            </WellnessIconText>
           </View>
           <Text style={[styles.heroTitle, { color: colors.text }]}>
             {t(`aiSuggestions.${category}`)}
@@ -363,13 +402,27 @@ export default function AISuggestionCategoryScreen() {
           <View style={styles.heroCounts}>
             <View style={[styles.heroCountPill, { backgroundColor: config.color + '18' }]}>
               <View style={[styles.countDot, { backgroundColor: config.color }]} />
-              <Text style={{ color: config.color, fontSize: 13, fontWeight: '700' }}>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  color: config.color,
+                  fontSize: 13,
+                  fontWeight: Typography.weight.semibold,
+                }}
+              >
                 {pending.length} {t('aiSuggestions.pendingLabel')}
               </Text>
             </View>
             <View style={[styles.heroCountPill, { backgroundColor: colors.text + '08' }]}>
               <MaterialIcons name="check-circle" size={13} color={colors.mutedText} />
-              <Text style={{ color: colors.mutedText, fontSize: 13, fontWeight: '700' }}>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  color: colors.mutedText,
+                  fontSize: 13,
+                  fontWeight: Typography.weight.semibold,
+                }}
+              >
                 {completed.length} {t('aiSuggestions.completedLabel')}
               </Text>
             </View>
@@ -377,7 +430,9 @@ export default function AISuggestionCategoryScreen() {
         </View>
 
         {/* ── Stats row ── */}
-        <View style={[styles.statsRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View
+          style={[styles.statsRow, { backgroundColor: colors.card, borderColor: colors.border }]}
+        >
           <View style={styles.statItem}>
             <View style={[styles.statIconWrap, { backgroundColor: config.color + '12' }]}>
               <MaterialIcons name="check-circle-outline" size={18} color={config.color} />
@@ -400,7 +455,9 @@ export default function AISuggestionCategoryScreen() {
           <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
           <View style={styles.statItem}>
             <View style={[styles.statIconWrap, { backgroundColor: '#EC407A12' }]}>
-              <Text style={{ fontSize: 14 }}>🔥</Text>
+              <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 14 }}>
+                🔥
+              </WellnessIconText>
             </View>
             <Text style={[styles.statValue, { color: colors.text }]}>{streak}</Text>
             <Text style={[styles.statLabel, { color: colors.mutedText }]}>
@@ -421,7 +478,14 @@ export default function AISuggestionCategoryScreen() {
                 {t('aiSuggestions.suggestedActivity')}
               </Text>
               <View style={[styles.sectionCount, { backgroundColor: config.color + '14' }]}>
-                <Text style={{ color: config.color, fontSize: 12, fontWeight: '800' }}>
+                <Text
+                  style={{
+                    fontFamily: Typography.family.body,
+                    color: config.color,
+                    fontSize: 12,
+                    fontWeight: Typography.weight.semibold,
+                  }}
+                >
                   {pending.length}
                 </Text>
               </View>
@@ -458,7 +522,15 @@ export default function AISuggestionCategoryScreen() {
             ) : (
               <MaterialIcons name="auto-awesome" size={20} color="#fff" />
             )}
-            <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700', marginLeft: 8 }}>
+            <Text
+              style={{
+                fontFamily: Typography.family.body,
+                color: '#fff',
+                fontSize: 14,
+                fontWeight: Typography.weight.semibold,
+                marginLeft: 8,
+              }}
+            >
               {t('aiSuggestions.generateMore')}
             </Text>
           </Pressable>
@@ -472,7 +544,14 @@ export default function AISuggestionCategoryScreen() {
                 {t('aiSuggestions.completed')}
               </Text>
               <View style={[styles.sectionCount, { backgroundColor: colors.text + '0A' }]}>
-                <Text style={{ color: colors.mutedText, fontSize: 12, fontWeight: '800' }}>
+                <Text
+                  style={{
+                    fontFamily: Typography.family.body,
+                    color: colors.mutedText,
+                    fontSize: 12,
+                    fontWeight: Typography.weight.semibold,
+                  }}
+                >
                   {completed.length}
                 </Text>
               </View>
@@ -494,13 +573,20 @@ export default function AISuggestionCategoryScreen() {
         {!isLoadingSuggestions && categorySuggestions.length === 0 && (
           <View style={styles.emptyState}>
             <View style={[styles.emptyIconWrap, { backgroundColor: config.color + '12' }]}>
-              <Text style={{ fontSize: 48 }}>{config.emoji}</Text>
+              <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 48 }}>
+                {config.emoji}
+              </WellnessIconText>
             </View>
-            <Text style={[styles.emptyTitle, { color: colors.text }]}>
-              No suggestions yet
-            </Text>
+            <Text style={[styles.emptyTitle, { color: colors.text }]}>No suggestions yet</Text>
             <Text
-              style={{ color: colors.mutedText, fontSize: 14, marginTop: 6, textAlign: 'center', lineHeight: 20 }}
+              style={{
+                fontFamily: Typography.family.body,
+                color: colors.mutedText,
+                fontSize: 14,
+                marginTop: 6,
+                textAlign: 'center',
+                lineHeight: 20,
+              }}
             >
               {t('aiSuggestions.noCategorySuggestions')}
             </Text>
@@ -521,8 +607,16 @@ export default function AISuggestionCategoryScreen() {
               ) : (
                 <MaterialIcons name="auto-awesome" size={20} color="#fff" />
               )}
-              <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700', marginLeft: 8 }}>
-                {t('aiSuggestions.generateSuggestions')}
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  color: '#fff',
+                  fontSize: 14,
+                  fontWeight: Typography.weight.semibold,
+                  marginLeft: 8,
+                }}
+              >
+                {t(hasFullAccess ? 'aiSuggestions.generateSuggestions' : 'aiAccess.unlock')}
               </Text>
             </Pressable>
           </View>
@@ -569,6 +663,7 @@ const styles = StyleSheet.create({
     ...UI.shadow.sm,
   },
   heroBgEmoji: {
+    fontFamily: Typography.family.body,
     position: 'absolute',
     top: -10,
     right: -10,
@@ -583,7 +678,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 14,
   },
-  heroTitle: { fontSize: 24, fontWeight: '900' },
+  heroTitle: { ...Typography.heading, fontSize: 24 },
   heroCounts: { flexDirection: 'row', gap: 10, marginTop: 16 },
   heroCountPill: {
     flexDirection: 'row',
@@ -617,18 +712,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 6,
   },
-  statValue: { fontSize: 20, fontWeight: '900' },
+  statValue: {
+    fontFamily: Typography.family.body,
+    fontSize: 20,
+    fontWeight: Typography.weight.bold,
+  },
   statLabel: {
+    fontFamily: Typography.family.body,
     fontSize: 10,
     marginTop: 2,
-    fontWeight: '600',
+    fontWeight: Typography.weight.bold,
     textTransform: 'uppercase',
     letterSpacing: 0.3,
   },
   statDivider: { width: 1, height: '70%', alignSelf: 'center' },
 
   /* Section headers */
-  sectionTitle: { fontSize: 17, fontWeight: '800', marginBottom: 14 },
+  sectionTitle: { ...Typography.section, fontSize: 20, marginBottom: 14 },
   sectionHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -663,7 +763,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  cardTitle: { fontSize: 15, fontWeight: '700', lineHeight: 20 },
+  cardTitle: { ...Typography.cardHeading,  lineHeight: 20 },
   metaChip: {
     paddingHorizontal: 8,
     paddingVertical: 2,
@@ -678,7 +778,12 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     gap: 3,
   },
-  aiBadgeText: { color: '#8B5CF6', fontSize: 10, fontWeight: '800' },
+  aiBadgeText: {
+    fontFamily: Typography.family.body,
+    color: '#8B5CF6',
+    fontSize: 10,
+    fontWeight: Typography.weight.medium,
+  },
   cardFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -737,10 +842,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 16,
   },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-  },
+  emptyTitle: { ...Typography.cardHeading, },
 
   /* Completion modal */
   modalOverlay: {
@@ -765,8 +867,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 16,
   },
-  completionTitle: { fontSize: 22, fontWeight: '900', textAlign: 'center' },
-  completionActivityName: { fontSize: 15, fontWeight: '700', marginTop: 8, textAlign: 'center' },
+  completionTitle: {
+    ...Typography.section,
+    fontSize: 24,
+    fontWeight: Typography.weight.regular,
+    textAlign: 'center',
+  },
+  completionActivityName: {
+    fontFamily: Typography.family.body,
+    fontSize: 15,
+    fontWeight: Typography.weight.semibold,
+    marginTop: 8,
+    textAlign: 'center',
+  },
   pointsEarned: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -776,8 +889,14 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     marginTop: 14,
   },
-  pointsEarnedText: { color: '#F59E0B', fontSize: 16, fontWeight: '800' },
+  pointsEarnedText: {
+    fontFamily: Typography.family.body,
+    color: '#F59E0B',
+    fontSize: 16,
+    fontWeight: Typography.weight.semibold,
+  },
   completionSubtext: {
+    fontFamily: Typography.family.body,
     fontSize: 14,
     marginTop: 12,
     textAlign: 'center',
@@ -793,5 +912,10 @@ const styles = StyleSheet.create({
     gap: 8,
     ...UI.shadow.sm,
   },
-  completionBtnText: { color: '#fff', fontSize: 15, fontWeight: '800' },
+  completionBtnText: {
+    fontFamily: Typography.family.body,
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: Typography.weight.semibold,
+  },
 });

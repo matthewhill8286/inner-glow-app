@@ -1,7 +1,8 @@
+import { Typography } from '@/constants/typography';
 import React from 'react';
 import { View, Text, Pressable, ScrollView, useColorScheme } from 'react-native';
 import { useRouter } from 'expo-router';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialIcons from '@/components/AppIcon';
 import { Colors, UI } from '@/constants/theme';
 import { STRESS_VIDEOS } from '@/data/stressVideos';
 
@@ -35,13 +36,21 @@ export function HorizontalVideoList({
           marginBottom: 12,
         }}
       >
-        <Text style={{ fontSize: 20, fontWeight: '900', color: colors.text }}>{title}</Text>
+        <Text style={{ ...Typography.section, color: colors.text }}>{title}</Text>
         <Pressable
           onPress={() =>
             router.push({ pathname: '/(tabs)/stress/list/[category]', params: { category } })
           }
         >
-          <Text style={{ color: colors.primary, fontWeight: '600' }}>See All</Text>
+          <Text
+            style={{
+              fontFamily: Typography.family.body,
+              color: colors.primary,
+              fontWeight: Typography.weight.semibold,
+            }}
+          >
+            See All
+          </Text>
         </Pressable>
       </View>
       <ScrollView
@@ -85,8 +94,9 @@ export function HorizontalVideoList({
             </View>
             <Text
               style={{
+                fontFamily: Typography.family.body,
                 fontSize: 16,
-                fontWeight: '900',
+                fontWeight: Typography.weight.semibold,
                 color: colors.text,
                 marginBottom: 4,
               }}
@@ -95,7 +105,12 @@ export function HorizontalVideoList({
               {video.title}
             </Text>
             <Text
-              style={{ fontSize: 13, color: colors.mutedText, lineHeight: 18 }}
+              style={{
+                fontFamily: Typography.family.body,
+                fontSize: 13,
+                color: colors.mutedText,
+                lineHeight: 18,
+              }}
               numberOfLines={2}
             >
               {video.subtitle}

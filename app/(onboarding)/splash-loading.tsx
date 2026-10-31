@@ -1,3 +1,5 @@
+import { Typography } from '@/constants/typography';
+import { UI } from '@/constants/theme';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Animated, Easing, Image, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -103,7 +105,7 @@ export default function SplashLoading() {
         if (!seen) {
           router.replace('/(onboarding)/welcome');
         } else {
-          router.replace('/index' as any); // Let index handle the routing gate
+          router.replace('/'); // Let index handle the routing gate
         }
       });
     });
@@ -191,30 +193,33 @@ const styles = StyleSheet.create({
   },
 
   logo: {
+    fontFamily: Typography.family.body,
     fontSize: 14,
-    fontWeight: '900',
+    fontWeight: Typography.weight.semibold,
     letterSpacing: 1.2,
     color: '#141414',
   },
 
   quote: {
+    ...Typography.heading,
     fontSize: 20,
-    fontWeight: '800',
     lineHeight: 28,
     color: 'rgba(255,255,255,0.92)',
     textAlign: 'center',
   },
   quoteAuthor: {
+    fontFamily: Typography.family.body,
     marginTop: 18,
     fontSize: 10,
-    fontWeight: '800',
+    fontWeight: Typography.weight.semibold,
     letterSpacing: 1,
     color: 'rgba(255,255,255,0.7)',
   },
 
   loadingPct: {
+    fontFamily: Typography.family.body,
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: Typography.weight.semibold,
     color: 'rgba(255,255,255,0.9)',
   },
 

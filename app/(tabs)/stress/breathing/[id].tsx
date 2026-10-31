@@ -1,3 +1,4 @@
+import { Typography } from '@/constants/typography';
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { View, Text, Pressable, Animated, Easing } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
@@ -30,7 +31,9 @@ export default function BreathingExerciseDetail() {
 
   // ─── Refs for stable timer callback (avoids stale closures) ───
   const addStressCompletionRef = useRef(addStressCompletion);
-  useEffect(() => { addStressCompletionRef.current = addStressCompletion; }, [addStressCompletion]);
+  useEffect(() => {
+    addStressCompletionRef.current = addStressCompletion;
+  }, [addStressCompletion]);
 
   // ─── Compute next phase ───
   const getNextPhase = useCallback(
@@ -161,7 +164,7 @@ export default function BreathingExerciseDetail() {
       <View style={{ flex: 1, marginTop: 14 }}>
         {/* How it works card */}
         <View style={{ backgroundColor: colors.card, borderRadius: UI.radius.lg, padding: 16 }}>
-          <Text style={{ fontSize: 18, fontWeight: '900', color: colors.text }}>How it works</Text>
+          <Text style={{ ...Typography.section, color: colors.text }}>How it works</Text>
           <Text style={{ color: colors.mutedText, marginTop: 6 }}>{exercise.description}</Text>
         </View>
 
@@ -194,9 +197,10 @@ export default function BreathingExerciseDetail() {
           {/* Phase label */}
           <Text
             style={{
+              fontFamily: Typography.family.body,
               marginTop: 18,
               fontSize: 22,
-              fontWeight: '900',
+              fontWeight: Typography.weight.semibold,
               color: running ? BREATHE_GREEN : colors.text,
             }}
           >
@@ -204,14 +208,20 @@ export default function BreathingExerciseDetail() {
           </Text>
 
           {/* Countdown / Ready */}
-          <Text style={{ color: colors.mutedText, marginTop: 6, fontSize: 16, fontWeight: '600' }}>
+          <Text
+            style={{
+              fontFamily: Typography.family.body,
+              color: colors.mutedText,
+              marginTop: 6,
+              fontSize: 16,
+              fontWeight: Typography.weight.semibold,
+            }}
+          >
             {running ? `${secondsLeft}s` : 'Ready'}
           </Text>
 
           {/* Cycles */}
-          <Text style={{ color: colors.mutedText, marginTop: 6 }}>
-            Cycles completed: {cycles}
-          </Text>
+          <Text style={{ color: colors.mutedText, marginTop: 6 }}>Cycles completed: {cycles}</Text>
         </View>
 
         {/* Controls */}
@@ -228,7 +238,15 @@ export default function BreathingExerciseDetail() {
                 opacity: pressed ? 0.85 : 1,
               })}
             >
-              <Text style={{ color: colors.background, fontWeight: '900' }}>Stop</Text>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  color: colors.background,
+                  fontWeight: Typography.weight.semibold,
+                }}
+              >
+                Stop
+              </Text>
             </Pressable>
           ) : (
             <Pressable
@@ -242,7 +260,15 @@ export default function BreathingExerciseDetail() {
                 opacity: pressed ? 0.85 : 1,
               })}
             >
-              <Text style={{ color: '#1B3A2A', fontWeight: '900' }}>Start</Text>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  color: '#1B3A2A',
+                  fontWeight: Typography.weight.semibold,
+                }}
+              >
+                Start
+              </Text>
             </Pressable>
           )}
 
@@ -260,7 +286,15 @@ export default function BreathingExerciseDetail() {
               opacity: pressed ? 0.85 : 1,
             })}
           >
-            <Text style={{ fontWeight: '900', color: colors.text }}>Reset</Text>
+            <Text
+              style={{
+                fontFamily: Typography.family.body,
+                fontWeight: Typography.weight.semibold,
+                color: colors.text,
+              }}
+            >
+              Reset
+            </Text>
           </Pressable>
         </View>
       </View>

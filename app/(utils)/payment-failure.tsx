@@ -1,3 +1,5 @@
+import { Typography } from '@/constants/typography';
+import { backTo } from '@/lib/navigation';
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -5,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { router } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, UI } from '@/constants/theme';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialIcons from '@/components/AppIcon';
 
 export default function PaymentFailure() {
   const { t } = useTranslation();
@@ -14,7 +16,9 @@ export default function PaymentFailure() {
   const colors = Colors[theme];
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
+    <View
+      style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}
+    >
       <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <View style={styles.iconCircle}>
           <MaterialIcons name="close" size={44} color="#FFF" />
@@ -26,7 +30,7 @@ export default function PaymentFailure() {
         </Text>
 
         <Pressable
-          onPress={() => router.back()}
+          onPress={() => backTo(undefined, '/(tabs)/home')}
           style={({ pressed }) => [
             styles.retryButton,
             { transform: [{ scale: pressed ? 0.97 : 1 }] },
@@ -38,12 +42,11 @@ export default function PaymentFailure() {
 
         <Pressable
           onPress={() => router.replace('/(tabs)/home')}
-          style={({ pressed }) => [
-            styles.cancelButton,
-            { opacity: pressed ? 0.6 : 1 },
-          ]}
+          style={({ pressed }) => [styles.cancelButton, { opacity: pressed ? 0.6 : 1 }]}
         >
-          <Text style={[styles.cancelButtonText, { color: colors.mutedText }]}>{t('paymentFailure.cancel')}</Text>
+          <Text style={[styles.cancelButtonText, { color: colors.mutedText }]}>
+            {t('paymentFailure.cancel')}
+          </Text>
         </Pressable>
       </View>
     </View>
@@ -73,13 +76,9 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     ...UI.shadow.sm,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: '900',
-    textAlign: 'center',
-    marginBottom: 12,
-  },
+  title: { ...Typography.heading, fontSize: 24, textAlign: 'center', marginBottom: 12 },
   message: {
+    fontFamily: Typography.family.body,
     fontSize: 15,
     textAlign: 'center',
     marginBottom: 28,
@@ -98,15 +97,17 @@ const styles = StyleSheet.create({
     ...UI.shadow.sm,
   },
   retryButtonText: {
+    fontFamily: Typography.family.body,
     color: 'white',
-    fontWeight: '900',
+    fontWeight: Typography.weight.semibold,
     fontSize: 16,
   },
   cancelButton: {
     paddingVertical: 14,
   },
   cancelButtonText: {
-    fontWeight: '700',
+    fontFamily: Typography.family.body,
+    fontWeight: Typography.weight.semibold,
     fontSize: 15,
   },
 });

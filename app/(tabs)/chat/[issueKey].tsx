@@ -1,3 +1,13 @@
+import { useSubscription } from '@/hooks/useSubscription';
+import { AppCard } from '@/components/ui/AppCard';
+import { AppButton } from '@/components/ui/AppButton';
+import { prepareChatTurn } from '@/lib/conversation-display';
+import { StatusState } from '@/components/ui/StatusState';
+import { Typography } from '@/constants/typography';
+import { ServiceError } from '@/lib/function-errors';
+import { takeChatDraft } from '@/lib/chat-drafts';
+import { backTo } from '@/lib/navigation';
+import { WellnessIconText } from '@/components/WellnessIconText';
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -18,9 +28,15 @@ import { showAlert } from '@/lib/state';
 import { toast } from '@/components/Toast';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, UI } from '@/constants/theme';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialIcons from '@/components/AppIcon';
 import TypingBubble from '@/components/TypingBubble';
-import { sendChatToAI, getPersona, getTopicKeyPrefix, type PersonaId, type PersonaMeta } from '@/lib/chat';
+import {
+  sendChatToAI,
+  getPersona,
+  getTopicKeyPrefix,
+  type PersonaId,
+  type PersonaMeta,
+} from '@/lib/chat';
 import { useChat } from '@/hooks/useChat';
 import { ChatMessage } from '@/lib/types';
 import { useTopics } from '@/hooks/useTopics';
@@ -30,11 +46,7 @@ import CitationSection from '@/components/CitationSection';
 /* ── Helpers ────────────────────────────────────────── */
 
 function goBack(from?: string) {
-  if (from) {
-    router.replace(from as any);
-  } else {
-    router.back();
-  }
+  backTo(from, '/(tabs)/chat');
 }
 
 /* ── Message Bubble ─────────────────────────────────── */
@@ -57,7 +69,9 @@ function MessageBubble({
     <View style={[s.msgRow, { justifyContent: isUser ? 'flex-end' : 'flex-start' }]}>
       {!isUser && (
         <View style={[s.aiAvatar, { backgroundColor: persona.color + '18' }]}>
-          <Text style={{ fontSize: 16 }}>{persona.emoji}</Text>
+          <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 16 }}>
+            {persona.emoji}
+          </WellnessIconText>
         </View>
       )}
       <View
@@ -79,9 +93,7 @@ function MessageBubble({
           />
         )}
 
-        <Text
-          style={[s.msgTime, { color: isUser ? 'rgba(255,255,255,0.6)' : colors.subtleText }]}
-        >
+        <Text style={[s.msgTime, { color: isUser ? 'rgba(255,255,255,0.6)' : colors.subtleText }]}>
           {new Date(item.createdAt).toLocaleTimeString([], {
             hour: '2-digit',
             minute: '2-digit',
@@ -112,7 +124,9 @@ function EmptyState({
     <View style={s.emptyWrap}>
       <View style={[s.emptyCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <View style={[s.emptyAvatarWrap, { backgroundColor: persona.color + '15' }]}>
-          <Text style={{ fontSize: 36 }}>{persona.emoji}</Text>
+          <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 36 }}>
+            {persona.emoji}
+          </WellnessIconText>
         </View>
         <Text style={[s.emptyTitle, { color: colors.text }]}>{t('chat.startConversation')}</Text>
         <Text style={[s.emptySub, { color: colors.mutedText }]}>
@@ -170,6 +184,8 @@ export default function Chat() {
   const issue = useMemo(() => topics.find((i: any) => i.id === topicId), [topicId, topics]);
   const persona = useMemo(() => getPersona(personaParam), [personaParam]);
 
+  const { hasFullAccess, isLoading: accessLoading } = useSubscription();
+
   /* ── Chat data ── */
   const { history, saveMessages, clearHistory, isLoading: loading } = useChat();
 
@@ -177,8 +193,20 @@ export default function Chat() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isAiTyping, setIsAiTyping] = useState(false);
   const [inputText, setInputText] = useState('');
+  const [failedMessage, setFailedMessage] = useState<{
+    text: string;
+    message: string;
+    saved: boolean;
+  } | null>(null);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const flatListRef = useRef<FlatList>(null);
+  const requestRef = useRef<{ key: string; token: symbol } | null>(null);
+  useEffect(
+    () => () => {
+      lastLoadedKey.current = null;
+    },
+    [],
+  );
 
   /* ── Track keyboard visibility ── */
   useEffect(() => {
@@ -186,7 +214,10 @@ export default function Chat() {
     const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
     const showSub = Keyboard.addListener(showEvent, () => setKeyboardVisible(true));
     const hideSub = Keyboard.addListener(hideEvent, () => setKeyboardVisible(false));
-    return () => { showSub.remove(); hideSub.remove(); };
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
   }, []);
 
   /* Track which key we've loaded to handle screen reuse correctly */
@@ -198,16 +229,22 @@ export default function Chat() {
       lastLoadedKey.current = issueKey;
       setMessages(history[issueKey] || []);
       setInputText('');
+      setFailedMessage(null);
+      setIsAiTyping(false);
     }
   }, [loading, issueKey, history]);
 
-  /* Handle initial message from new-conversation flow */
   useEffect(() => {
-    if (initialMessage && issueKey && lastInitialKey.current !== issueKey && !loading) {
-      lastInitialKey.current = issueKey;
-      setTimeout(() => sendMessage(initialMessage), 300);
-    }
-  }, [initialMessage, issueKey, loading]);
+    const saved = history[issueKey || ''];
+    if (
+      saved &&
+      lastLoadedKey.current === issueKey &&
+      !requestRef.current &&
+      !failedMessage &&
+      saved.length > messages.length
+    )
+      setMessages(saved);
+  }, [history, issueKey, messages.length, failedMessage]);
 
   const historyReady = !loading;
   const isTyping = isAiTyping;
@@ -236,9 +273,24 @@ export default function Chat() {
 
   /* ── Send ── */
   const sendMessage = useCallback(
-    async (text?: string) => {
+    async (text?: string, retry = false, openingHistory?: ChatMessage[]) => {
       const msgText = (text || inputText).trim();
-      if (!msgText || !issueKey || !historyReady) return;
+      if (!msgText || !issueKey || !historyReady || requestRef.current?.key === issueKey) return;
+      if (!hasFullAccess) {
+        if (!accessLoading)
+          showAlert(
+            'Continue with Premium',
+            'Your saved conversations remain available to read. Start a trial or choose Premium to send AI messages.',
+            [
+              { text: 'Close', style: 'cancel' },
+              { text: 'View plans', onPress: () => router.push('/(utils)/trial-upgrade') },
+            ],
+          );
+        return;
+      }
+      const request = { key: issueKey, token: Symbol() };
+      requestRef.current = request;
+      setFailedMessage(null);
 
       if (!text) setInputText('');
 
@@ -249,11 +301,14 @@ export default function Chat() {
         createdAt: new Date().toISOString(),
       };
 
-      const withUserMsg = [...messages, userMsg];
+      const withUserMsg = prepareChatTurn(openingHistory ?? messages, userMsg, retry);
       setMessages(withUserMsg);
       setIsAiTyping(true);
 
+      let saved = false;
       try {
+        await saveMessages(issueKey, withUserMsg);
+        saved = true;
         const aiResponse = await sendChatToAI(
           topicName,
           issue?.context_tags ?? [],
@@ -270,18 +325,42 @@ export default function Chat() {
         };
 
         const withAiMsg = [...withUserMsg, aiMsg];
-        setMessages(withAiMsg);
         await saveMessages(issueKey, withAiMsg);
+        if (lastLoadedKey.current === issueKey && requestRef.current === request)
+          setMessages(withAiMsg);
       } catch (err) {
-        console.error('Chat error:', err);
-        toast.error(t('chat.errorMessage'));
-        await saveMessages(issueKey, withUserMsg);
+        if (lastLoadedKey.current !== issueKey) return;
+        const message = err instanceof Error ? err.message : t('chat.errorMessage');
+        setFailedMessage({
+          text: msgText,
+          saved,
+          message: err instanceof ServiceError ? `${message} Reference: ${err.reference}` : message,
+        });
+        if (err instanceof ServiceError && err.status === 403) {
+          showAlert('Trial or premium access required', message, [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'View access options', onPress: () => router.push('/(utils)/trial-upgrade') },
+          ]);
+        }
       } finally {
-        setIsAiTyping(false);
+        if (requestRef.current === request) {
+          requestRef.current = null;
+          if (lastLoadedKey.current === issueKey) setIsAiTyping(false);
+        }
       }
     },
     [inputText, issueKey, messages, topicName, issue, persona, saveMessages, t, historyReady],
   );
+
+  // Start prompt-based conversations in the same update as history hydration.
+  // Passing the hydrated history avoids a stale render dropping saved messages.
+  useEffect(() => {
+    if (!issueKey || loading || accessLoading || lastInitialKey.current === issueKey) return;
+    const openingMessage = takeChatDraft(issueKey) || initialMessage;
+    if (!openingMessage) return;
+    lastInitialKey.current = issueKey;
+    void sendMessage(openingMessage, false, history[issueKey] || []);
+  }, [initialMessage, issueKey, loading, accessLoading, history, sendMessage]);
 
   /* ── Clear ── */
   function handleClear() {
@@ -302,15 +381,31 @@ export default function Chat() {
   /* ── Render ── */
 
   /* Show a loading screen while chat histories are being fetched */
-  if (!historyReady) {
+  if (!historyReady || lastLoadedKey.current !== issueKey) {
     return (
-      <View style={[s.container, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center', paddingTop: insets.top + 6 }]}>
+      <View
+        style={[
+          s.container,
+          {
+            backgroundColor: colors.background,
+            justifyContent: 'center',
+            alignItems: 'center',
+            paddingTop: insets.top + 8,
+          },
+        ]}
+      >
         <View style={s.header}>
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Back to conversations"
             onPress={() => goBack(from)}
             style={({ pressed }) => [
               s.backBtn,
-              { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.7 : 1 },
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+                opacity: pressed ? 0.7 : 1,
+              },
             ]}
           >
             <MaterialIcons
@@ -320,10 +415,12 @@ export default function Chat() {
             />
           </Pressable>
           <View style={[s.headerAvatarWrap, { backgroundColor: persona.color + '15' }]}>
-            <Text style={{ fontSize: 20 }}>{persona.emoji}</Text>
+            <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 20 }}>
+              {persona.emoji}
+            </WellnessIconText>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={[s.headerTitle, { color: colors.text }]} numberOfLines={1}>
+            <Text style={[s.headerTitle, { color: colors.text }]} numberOfLines={2}>
               {topicName}
             </Text>
             <Text style={[s.headerSub, { color: colors.mutedText }]}>{persona.name}</Text>
@@ -331,7 +428,14 @@ export default function Chat() {
         </View>
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <ActivityIndicator size="large" color={persona.color} />
-          <Text style={{ color: colors.mutedText, marginTop: 12, fontSize: 14 }}>
+          <Text
+            style={{
+              fontFamily: Typography.family.body,
+              color: colors.mutedText,
+              marginTop: 12,
+              fontSize: 14,
+            }}
+          >
             {t('chat.loadingHistory') || 'Loading conversation...'}
           </Text>
         </View>
@@ -344,14 +448,22 @@ export default function Chat() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={{ flex: 1, backgroundColor: colors.background }}
     >
-      <View style={[s.container, { backgroundColor: colors.background, paddingTop: insets.top + 6 }]}>
+      <View
+        style={[s.container, { backgroundColor: colors.background, paddingTop: insets.top + 8 }]}
+      >
         {/* ── Header ── */}
         <View style={s.header}>
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Back to conversations"
             onPress={() => goBack(from)}
             style={({ pressed }) => [
               s.backBtn,
-              { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.7 : 1 },
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+                opacity: pressed ? 0.7 : 1,
+              },
             ]}
           >
             <MaterialIcons
@@ -362,10 +474,12 @@ export default function Chat() {
           </Pressable>
 
           <View style={[s.headerAvatarWrap, { backgroundColor: persona.color + '15' }]}>
-            <Text style={{ fontSize: 20 }}>{persona.emoji}</Text>
+            <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 20 }}>
+              {persona.emoji}
+            </WellnessIconText>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={[s.headerTitle, { color: colors.text }]} numberOfLines={1}>
+            <Text style={[s.headerTitle, { color: colors.text }]} numberOfLines={2}>
               {topicName}
             </Text>
             <Text style={[s.headerSub, { color: colors.mutedText }]}>{persona.name}</Text>
@@ -373,6 +487,9 @@ export default function Chat() {
 
           {messages.length > 0 && (
             <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Clear conversation"
+              disabled={isAiTyping}
               onPress={handleClear}
               style={({ pressed }) => [
                 s.headerActionBtn,
@@ -395,7 +512,10 @@ export default function Chat() {
         <FlatList
           ref={flatListRef}
           data={messages}
-          keyExtractor={(_, idx) => String(idx)}
+          keyExtractor={(item) => item.id}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          style={{ flex: 1 }}
           contentContainerStyle={s.messagesList}
           showsVerticalScrollIndicator={false}
           onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
@@ -408,16 +528,28 @@ export default function Chat() {
               onSuggestion={sendMessage}
             />
           }
-          renderItem={({ item }) => (
-            <MessageBubble item={item} persona={persona} colors={colors} />
-          )}
+          renderItem={({ item }) => <MessageBubble item={item} persona={persona} colors={colors} />}
         />
 
+        {failedMessage && (
+          <StatusState
+            title={
+              failedMessage.saved ? 'Your message is saved' : 'Your message could not be saved'
+            }
+            message={failedMessage.message}
+            onRetry={() => {
+              void sendMessage(failedMessage.text, true);
+            }}
+            busy={isAiTyping}
+          />
+        )}
         {/* ── Typing indicator ── */}
         {isTyping && (
           <View style={s.typingRow}>
             <View style={[s.aiAvatar, { backgroundColor: persona.color + '18' }]}>
-              <Text style={{ fontSize: 14 }}>{persona.emoji}</Text>
+              <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 14 }}>
+                {persona.emoji}
+              </WellnessIconText>
             </View>
             <View
               style={[s.typingBubble, { backgroundColor: colors.card, borderColor: colors.border }]}
@@ -427,9 +559,31 @@ export default function Chat() {
           </View>
         )}
 
+        {!accessLoading && !hasFullAccess && (
+          <AppCard>
+            <Text style={[Typography.caption, { color: colors.mutedText }]}>
+              Your conversations stay available to read. Trial or Premium access is needed to send
+              AI messages.
+            </Text>
+            <AppButton
+              title="View Premium plans"
+              onPress={() => router.push('/(utils)/trial-upgrade')}
+            />
+          </AppCard>
+        )}
         {/* ── Input Bar ── */}
-        <View style={[s.inputBar, { borderTopColor: colors.border, paddingBottom: keyboardVisible ? 8 : insets.bottom + 76 }]}>
+        <View
+          style={[
+            s.inputBar,
+            {
+              borderTopColor: colors.border,
+              paddingBottom: keyboardVisible ? 8 : Math.max(insets.bottom, 12),
+            },
+          ]}
+        >
           <TextInput
+            editable={hasFullAccess}
+            accessibilityLabel="Message"
             value={inputText}
             onChangeText={setInputText}
             placeholder={t('chat.typePlaceholder')}
@@ -441,8 +595,10 @@ export default function Chat() {
             ]}
           />
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Send message"
             onPress={() => sendMessage()}
-            disabled={!inputText.trim() || isTyping}
+            disabled={!inputText.trim() || isTyping || !hasFullAccess}
             style={({ pressed }) => [
               s.sendBtn,
               {
@@ -479,8 +635,8 @@ const s = StyleSheet.create({
     marginBottom: 4,
   },
   backBtn: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
@@ -493,11 +649,16 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  headerTitle: { fontSize: 17, fontWeight: '900' },
-  headerSub: { fontSize: 12, fontWeight: '600', marginTop: 1 },
+  headerTitle: { ...Typography.heading, fontSize: 24 },
+  headerSub: {
+    fontFamily: Typography.family.body,
+    fontSize: 12,
+    fontWeight: Typography.weight.semibold,
+    marginTop: 1,
+  },
   headerActionBtn: {
-    width: 38,
-    height: 38,
+    width: 44,
+    height: 44,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
@@ -516,8 +677,14 @@ const s = StyleSheet.create({
   msgBubble: { maxWidth: '78%', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 20 },
   userBubble: { borderBottomRightRadius: 4 },
   aiBubble: { borderBottomLeftRadius: 4, borderWidth: 1 },
-  msgText: { fontSize: 15, lineHeight: 22 },
-  msgTime: { fontSize: 10, fontWeight: '600', marginTop: 6, alignSelf: 'flex-end' },
+  msgText: { ...Typography.body },
+  msgTime: {
+    fontFamily: Typography.family.body,
+    fontSize: 10,
+    fontWeight: Typography.weight.bold,
+    marginTop: 6,
+    alignSelf: 'flex-end',
+  },
 
   /* typing */
   typingRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginBottom: 8 },
@@ -546,8 +713,9 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 12,
   },
-  emptyTitle: { fontSize: 18, fontWeight: '900', textAlign: 'center' },
+  emptyTitle: { ...Typography.cardHeading, textAlign: 'center' },
   emptySub: {
+    fontFamily: Typography.family.body,
     fontSize: 14,
     lineHeight: 21,
     textAlign: 'center',
@@ -564,7 +732,12 @@ const s = StyleSheet.create({
     borderRadius: UI.radius.lg,
     borderWidth: 1,
   },
-  emptySugText: { fontSize: 14, fontWeight: '700', flex: 1 },
+  emptySugText: {
+    fontFamily: Typography.family.body,
+    fontSize: 14,
+    fontWeight: Typography.weight.semibold,
+    flex: 1,
+  },
 
   /* input bar */
   inputBar: {
@@ -576,6 +749,7 @@ const s = StyleSheet.create({
     borderTopWidth: 1,
   },
   input: {
+    fontFamily: Typography.family.body,
     flex: 1,
     borderRadius: 22,
     paddingHorizontal: 18,

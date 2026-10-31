@@ -1,3 +1,6 @@
+import { Typography } from '@/constants/typography';
+import { backTo } from '@/lib/navigation';
+import { WellnessIconText } from '@/components/WellnessIconText';
 import React, { useMemo, useState } from 'react';
 import {
   View,
@@ -16,7 +19,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, UI } from '@/constants/theme';
 import { useStressHistory } from '@/hooks/useStressHistory';
 import { toast } from '@/components/Toast';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialIcons from '@/components/AppIcon';
 
 const SENSES: {
   key: string;
@@ -67,7 +70,7 @@ export default function Grounding() {
   async function done() {
     await addStressCompletion('grounding-54321', t('grounding.title'));
     toast.success(t('common.groundingSuccess'));
-    router.back();
+    backTo(undefined, '/(tabs)/stress');
   }
 
   return (
@@ -75,11 +78,16 @@ export default function Grounding() {
       style={{ flex: 1, backgroundColor: colors.background }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top + 6 }]}>
+      <View
+        style={[
+          styles.container,
+          { backgroundColor: colors.background, paddingTop: insets.top + 6 },
+        ]}
+      >
         {/* Header */}
         <View style={styles.header}>
           <Pressable
-            onPress={() => router.back()}
+            onPress={() => backTo(undefined, '/(tabs)/stress')}
             style={({ pressed }) => [
               styles.backButton,
               {
@@ -112,7 +120,9 @@ export default function Grounding() {
           <View style={[styles.infoCard, { backgroundColor: '#5B8A5A' }]}>
             <View style={styles.infoTop}>
               <View style={styles.infoIconWrap}>
-                <Text style={{ fontSize: 22 }}>🌿</Text>
+                <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 22 }}>
+                  🌿
+                </WellnessIconText>
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.infoLabel}>How it works</Text>
@@ -148,7 +158,9 @@ export default function Grounding() {
                 <View style={[styles.countBadge, { backgroundColor: sense.tint }]}>
                   <Text style={styles.countText}>{sense.count}</Text>
                 </View>
-                <Text style={{ fontSize: 22 }}>{sense.emoji}</Text>
+                <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 22 }}>
+                  {sense.emoji}
+                </WellnessIconText>
                 <Text style={[styles.senseLabel, { color: colors.text }]}>
                   {sense.count} {sense.label}
                 </Text>
@@ -173,7 +185,7 @@ export default function Grounding() {
                       <TextInput
                         value={value}
                         onChangeText={(text) => updateAnswer(sense.key, i, text)}
-                        placeholder={`${sense.emoji} #${i + 1}`}
+                        placeholder={`Observation ${i + 1}`}
                         placeholderTextColor={colors.placeholder}
                         style={[
                           styles.input,
@@ -202,7 +214,9 @@ export default function Grounding() {
               },
             ]}
           >
-            <Text style={{ fontSize: 20 }}>🌟</Text>
+            <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 20 }}>
+              🌟
+            </WellnessIconText>
             <Text
               style={[
                 styles.finishText,
@@ -224,9 +238,9 @@ export default function Grounding() {
             </Text>
           )}
           {filledCount >= totalInputs && (
-            <Text style={[styles.encouragement, { color: '#5B8A5A' }]}>
+            <WellnessIconText style={[styles.encouragement, { color: '#5B8A5A' }]}>
               All senses engaged — you are fully present 🌿
-            </Text>
+            </WellnessIconText>
           )}
         </ScrollView>
       </View>
@@ -258,13 +272,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   headerTitle: {
-    fontSize: 22,
-    fontWeight: '900',
+    ...Typography.heading,
   },
-  headerSubtitle: {
-    fontSize: 14,
-    marginTop: 2,
-  },
+  headerSubtitle: { fontFamily: Typography.family.body, fontSize: 14, marginTop: 2 },
 
   scrollContent: {
     paddingTop: 16,
@@ -293,17 +303,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   infoLabel: {
+    fontFamily: Typography.family.body,
     color: 'rgba(255,255,255,0.75)',
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: Typography.weight.medium,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 4,
   },
   infoText: {
+    fontFamily: Typography.family.body,
     color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: Typography.weight.semibold,
     lineHeight: 21,
   },
   progressRow: {
@@ -324,9 +336,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   progressText: {
+    fontFamily: Typography.family.body,
     color: 'rgba(255,255,255,0.85)',
     fontSize: 13,
-    fontWeight: '800',
+    fontWeight: Typography.weight.semibold,
     minWidth: 36,
     textAlign: 'right',
   },
@@ -352,13 +365,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   countText: {
+    fontFamily: Typography.family.body,
     color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: '900',
+    fontWeight: Typography.weight.bold,
   },
   senseLabel: {
+    fontFamily: Typography.family.body,
     fontSize: 15,
-    fontWeight: '800',
+    fontWeight: Typography.weight.medium,
     flex: 1,
   },
 
@@ -379,6 +394,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   input: {
+    fontFamily: Typography.family.body,
     flex: 1,
     padding: 12,
     borderRadius: UI.radius.md,
@@ -398,15 +414,17 @@ const styles = StyleSheet.create({
     ...UI.shadow.md,
   },
   finishText: {
+    fontFamily: Typography.family.body,
     fontSize: 16,
-    fontWeight: '900',
+    fontWeight: Typography.weight.semibold,
   },
 
   // Encouragement
   encouragement: {
+    fontFamily: Typography.family.body,
     textAlign: 'center',
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: Typography.weight.semibold,
     fontStyle: 'italic',
   },
 });

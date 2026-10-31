@@ -1,3 +1,6 @@
+import { Typography } from '@/constants/typography';
+import { backTo } from '@/lib/navigation';
+import { WellnessIconText } from '@/components/WellnessIconText';
 import React from 'react';
 import { View, Text, Pressable, ScrollView, Platform, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -5,15 +8,11 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, UI } from '@/constants/theme';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialIcons from '@/components/AppIcon';
 
 /* ── safe back navigation ────────────────────────── */
 function goBack(from?: string) {
-  if (from) {
-    router.replace(from as any);
-  } else {
-    router.back();
-  }
+  backTo(from, '/(tabs)/chat');
 }
 
 /* ── AI team member data ─────────────────────────── */
@@ -178,7 +177,9 @@ export default function AIProfileScreen() {
           <View style={[s.heroCircle3, { backgroundColor: 'rgba(255,255,255,0.04)' }]} />
 
           <View style={s.heroAvatarWrap}>
-            <Text style={{ fontSize: 52 }}>{member.emoji}</Text>
+            <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 52 }}>
+              {member.emoji}
+            </WellnessIconText>
           </View>
 
           <Text style={s.heroName}>{member.name}</Text>
@@ -282,8 +283,8 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
   },
-  headerTitle: { fontSize: 22, fontWeight: '900' },
-  headerSub: { fontSize: 14, marginTop: 2 },
+  headerTitle: { ...Typography.heading },
+  headerSub: { fontFamily: Typography.family.body, fontSize: 14, marginTop: 2 },
 
   scrollContent: {
     paddingTop: 16,
@@ -333,9 +334,10 @@ const s = StyleSheet.create({
     marginBottom: 14,
   },
   heroName: {
+    fontFamily: Typography.family.body,
     color: '#FFF',
     fontSize: 22,
-    fontWeight: '900',
+    fontWeight: Typography.weight.semibold,
     marginBottom: 8,
   },
   heroRolePill: {
@@ -345,9 +347,10 @@ const s = StyleSheet.create({
     borderRadius: 12,
   },
   heroRoleText: {
+    fontFamily: Typography.family.body,
     color: '#FFF',
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: Typography.weight.semibold,
   },
 
   /* cards */
@@ -358,16 +361,14 @@ const s = StyleSheet.create({
     ...UI.shadow.sm,
   },
   cardLabel: {
+    fontFamily: Typography.family.body,
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: Typography.weight.medium,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 8,
   },
-  cardBody: {
-    fontSize: 14,
-    lineHeight: 22,
-  },
+  cardBody: { fontFamily: Typography.family.body, fontSize: 14, lineHeight: 22 },
 
   /* pills */
   pillsWrap: {
@@ -384,8 +385,9 @@ const s = StyleSheet.create({
     borderRadius: 10,
   },
   pillText: {
+    fontFamily: Typography.family.body,
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: Typography.weight.semibold,
   },
 
   /* CTA */
@@ -399,9 +401,10 @@ const s = StyleSheet.create({
     ...UI.shadow.sm,
   },
   ctaBtnText: {
+    fontFamily: Typography.family.body,
     color: '#FFF',
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: Typography.weight.medium,
   },
 
   /* disclaimer */
@@ -412,7 +415,8 @@ const s = StyleSheet.create({
     gap: 6,
   },
   disclaimerText: {
+    fontFamily: Typography.family.body,
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: Typography.weight.semibold,
   },
 });

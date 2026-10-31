@@ -1,3 +1,6 @@
+import { Typography } from '@/constants/typography';
+import { backTo } from '@/lib/navigation';
+import { WellnessIconText } from '@/components/WellnessIconText';
 import React from 'react';
 import { View, Text, Pressable, ScrollView, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,7 +11,7 @@ import { useFreudScore } from '@/hooks/useFreudScore';
 import { getFreudColor } from '@/lib/freudScore';
 import { SkeletonRect } from '@/components/Skeleton';
 import { UI } from '@/constants/theme';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialIcons from '@/components/AppIcon';
 
 const C = {
   pageBg: '#6f6660',
@@ -33,10 +36,26 @@ function BreakdownBar({
   return (
     <View style={{ marginBottom: 14 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-        <Text style={{ fontSize: 14, fontWeight: '600', color: C.brownLight }}>
+        <WellnessIconText
+          style={{
+            fontFamily: Typography.family.body,
+            fontSize: 14,
+            fontWeight: Typography.weight.semibold,
+            color: C.brownLight,
+          }}
+        >
           {icon} {label}
+        </WellnessIconText>
+        <Text
+          style={{
+            fontFamily: Typography.family.body,
+            fontSize: 14,
+            fontWeight: Typography.weight.semibold,
+            color,
+          }}
+        >
+          {value}
         </Text>
-        <Text style={{ fontSize: 14, fontWeight: '700', color }}>{value}</Text>
       </View>
       <View
         style={{
@@ -81,7 +100,7 @@ export default function ProfileCompletion() {
         }}
       >
         <Pressable
-          onPress={() => router.back()}
+          onPress={() => backTo(undefined, '/(tabs)/home')}
           style={{
             width: 44,
             height: 44,
@@ -95,7 +114,7 @@ export default function ProfileCompletion() {
         >
           <MaterialIcons name="arrow-back" size={20} color="white" />
         </Pressable>
-        <Text style={{ color: 'white', fontSize: 18, fontWeight: '700' }}>
+        <Text style={{ ...Typography.section, color: 'white' }}>
           {t('profileCompletion.title')}
         </Text>
       </View>
@@ -118,12 +137,21 @@ export default function ProfileCompletion() {
             </View>
           ) : (
             <>
-              <Text style={{ fontSize: 24, fontWeight: '900', color: C.brownLight }}>
+              <Text style={{ ...Typography.heading, color: C.brownLight }}>
                 {name
                   ? t('profileCompletion.greeting', { name })
                   : t('profileCompletion.profileComplete')}
               </Text>
-              <Text style={{ opacity: 0.6, marginTop: 8, color: C.brownLight, fontSize: 15, lineHeight: 22 }}>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  opacity: 0.6,
+                  marginTop: 8,
+                  color: C.brownLight,
+                  fontSize: 15,
+                  lineHeight: 22,
+                }}
+              >
                 {t('profileCompletion.freudScoreIntro', {
                   defaultValue: "Here's your initial Freud Score based on your assessment.",
                 })}
@@ -143,27 +171,30 @@ export default function ProfileCompletion() {
                     justifyContent: 'center',
                   }}
                 >
-                  <Text style={{ fontSize: 36, fontWeight: '900', color: scoreColor }}>
+                  <Text
+                    style={{
+                      fontFamily: Typography.family.body,
+                      fontSize: 36,
+                      fontWeight: Typography.weight.semibold,
+                      color: scoreColor,
+                    }}
+                  >
                     {score}
                   </Text>
                 </View>
                 <Text
                   style={{
+                    fontFamily: Typography.family.body,
                     marginTop: 12,
                     fontSize: 18,
-                    fontWeight: '800',
+                    fontWeight: Typography.weight.semibold,
                     color: scoreColor,
                   }}
                 >
                   {freudScore?.label ?? ''}
                 </Text>
                 <Text
-                  style={{
-                    marginTop: 4,
-                    fontSize: 13,
-                    color: C.brownLight,
-                    opacity: 0.6,
-                  }}
+                  style={{ ...Typography.section, marginTop: 4, color: C.brownLight, opacity: 0.6 }}
                 >
                   {t('freudScore.title')}
                 </Text>
@@ -232,7 +263,14 @@ export default function ProfileCompletion() {
             elevation: 4,
           })}
         >
-          <Text style={{ color: 'white', fontWeight: '800', fontSize: 17 }}>
+          <Text
+            style={{
+              fontFamily: Typography.family.body,
+              color: 'white',
+              fontWeight: Typography.weight.semibold,
+              fontSize: 17,
+            }}
+          >
             {t('common.continue')}
           </Text>
           <MaterialIcons name="arrow-forward" size={20} color="white" />

@@ -1,18 +1,22 @@
+import { parentRouteForPath } from '@/lib/route-parents';
+import { Typography } from '@/constants/typography';
+import { backTo } from '@/lib/navigation';
 import React, { useMemo, useState, useCallback } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet, Dimensions } from 'react-native';
-import { useLocalSearchParams, router } from 'expo-router';
+import { useLocalSearchParams, usePathname, type Href, router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, UI } from '@/constants/theme';
 import { STRESS_VIDEOS } from '@/data/stressVideos';
 import { getStressQuotes } from '@/constants/quotes';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialIcons from '@/components/AppIcon';
 import ScreenHeader from '@/components/ScreenHeader';
 import YoutubePlayer from 'react-native-youtube-iframe';
 
 const { width } = Dimensions.get('window');
 
 export default function WatchVideoScreen() {
+  const pathname = usePathname();
   const { videoId } = useLocalSearchParams<{ videoId: string; category: string }>();
   const { t } = useTranslation();
   const theme = useColorScheme() ?? 'light';
@@ -46,8 +50,14 @@ export default function WatchVideoScreen() {
         ]}
       >
         <Text style={{ color: colors.text }}>{t('videoDetail.notFound')}</Text>
-        <Pressable onPress={() => router.back()} style={{ marginTop: 20 }}>
-          <Text style={{ color: colors.primary, fontWeight: '900' }}>
+        <Pressable onPress={() => backTo(undefined, parentRouteForPath(pathname) as Href)} style={{ marginTop: 20 }}>
+          <Text
+            style={{
+              fontFamily: Typography.family.body,
+              color: colors.primary,
+              fontWeight: Typography.weight.semibold,
+            }}
+          >
             {t('videoDetail.goBack')}
           </Text>
         </Pressable>
@@ -109,14 +119,15 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   quoteText: {
-    fontSize: 18,
-    fontWeight: '700',
+    ...Typography.heading,
+    fontSize: 20,
     textAlign: 'center',
     fontStyle: 'italic',
     lineHeight: 26,
     marginBottom: 16,
   },
   videoSubtitle: {
+    fontFamily: Typography.family.body,
     fontSize: 14,
     textAlign: 'center',
     opacity: 0.8,

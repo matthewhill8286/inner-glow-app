@@ -1,3 +1,5 @@
+import { finishTo } from '@/lib/navigation';
+import { Typography } from '@/constants/typography';
 import React from 'react';
 import { View, Text, Pressable, Platform, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -5,7 +7,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, UI } from '@/constants/theme';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialIcons from '@/components/AppIcon';
 
 const getGoalLabels = (t: any): Record<string, string> => ({
   focus: t('mindfulCompleted.focus'),
@@ -78,8 +80,8 @@ export default function ExerciseCompleted() {
         {/* Congrats text */}
         <Text
           style={{
-            fontSize: 28,
-            fontWeight: '900',
+            ...Typography.heading,
+            fontSize: 24,
             color: colors.text,
             textAlign: 'center',
             marginBottom: 8,
@@ -89,6 +91,7 @@ export default function ExerciseCompleted() {
         </Text>
         <Text
           style={{
+            fontFamily: Typography.family.body,
             fontSize: 15,
             color: colors.mutedText,
             textAlign: 'center',
@@ -116,15 +119,23 @@ export default function ExerciseCompleted() {
           <MaterialIcons name="timer" size={28} color={colors.primary} />
           <Text
             style={{
+              fontFamily: Typography.family.body,
               fontSize: 36,
-              fontWeight: '900',
+              fontWeight: Typography.weight.semibold,
               color: colors.primary,
               marginTop: 8,
             }}
           >
             {mins} min
           </Text>
-          <Text style={{ color: colors.mutedText, fontWeight: '600', marginTop: 2 }}>
+          <Text
+            style={{
+              fontFamily: Typography.family.body,
+              color: colors.mutedText,
+              fontWeight: Typography.weight.semibold,
+              marginTop: 2,
+            }}
+          >
             {goalLabel}
           </Text>
         </View>
@@ -164,8 +175,9 @@ export default function ExerciseCompleted() {
             </View>
             <Text
               style={{
+                fontFamily: Typography.family.body,
                 fontSize: 22,
-                fontWeight: '900',
+                fontWeight: Typography.weight.semibold,
                 color: '#5B8A5A',
               }}
             >
@@ -173,9 +185,10 @@ export default function ExerciseCompleted() {
             </Text>
             <Text
               style={{
+                fontFamily: Typography.family.body,
                 fontSize: 12,
                 color: colors.mutedText,
-                fontWeight: '600',
+                fontWeight: Typography.weight.semibold,
                 marginTop: 4,
               }}
             >
@@ -209,8 +222,9 @@ export default function ExerciseCompleted() {
             </View>
             <Text
               style={{
+                fontFamily: Typography.family.body,
                 fontSize: 22,
-                fontWeight: '900',
+                fontWeight: Typography.weight.semibold,
                 color: '#E8985A',
               }}
             >
@@ -218,9 +232,10 @@ export default function ExerciseCompleted() {
             </Text>
             <Text
               style={{
+                fontFamily: Typography.family.body,
                 fontSize: 12,
                 color: colors.mutedText,
-                fontWeight: '600',
+                fontWeight: Typography.weight.semibold,
                 marginTop: 4,
               }}
             >
@@ -245,6 +260,7 @@ export default function ExerciseCompleted() {
           <MaterialIcons name="lightbulb" size={22} color={colors.primary} />
           <Text
             style={{
+              fontFamily: Typography.family.body,
               flex: 1,
               fontSize: 13,
               color: colors.text,
@@ -257,7 +273,7 @@ export default function ExerciseCompleted() {
 
         {/* Action buttons */}
         <Pressable
-          onPress={() => router.replace('/(tabs)/mindful')}
+          onPress={() => finishTo('/(tabs)/mindful')}
           style={({ pressed }) => ({
             backgroundColor: colors.primary,
             paddingVertical: 18,
@@ -270,8 +286,9 @@ export default function ExerciseCompleted() {
         >
           <Text
             style={{
+              fontFamily: Typography.family.body,
               color: colors.onPrimary,
-              fontWeight: '800',
+              fontWeight: Typography.weight.semibold,
               fontSize: 16,
             }}
           >
@@ -298,8 +315,9 @@ export default function ExerciseCompleted() {
         >
           <Text
             style={{
+              fontFamily: Typography.family.body,
               color: colors.text,
-              fontWeight: '700',
+              fontWeight: Typography.weight.semibold,
               fontSize: 16,
             }}
           >

@@ -1,3 +1,5 @@
+import { Typography } from '@/constants/typography';
+import { backTo } from '@/lib/navigation';
 import React, { useState } from 'react';
 import {
   View,
@@ -13,17 +15,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, UI } from '@/constants/theme';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialIcons from '@/components/AppIcon';
 import { useTranslation } from 'react-i18next';
 import { useSleep } from '@/hooks/useSleep';
-import { useSubscription } from '@/hooks/useSubscription';
 import { showAlert } from '@/lib/state';
 import { toast } from '@/components/Toast';
 
 /* ── helpers ──────────────────────────────────────── */
 function goBack(from?: string) {
-  if (from) router.replace(from as any);
-  else router.back();
+  backTo(from, '/(tabs)/sleep');
 }
 
 const QUALITY_KEYS = ['terrible', 'poor', 'fair', 'good', 'excellent'] as const;
@@ -36,7 +36,6 @@ export default function LogSleepScreen() {
   const colors = Colors[theme];
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ duration?: string; from?: string }>();
-  const { hasFullAccess } = useSubscription();
   const { addSleepEntry } = useSleep();
 
   const [quality, setQuality] = useState(3);
@@ -51,14 +50,6 @@ export default function LogSleepScreen() {
   const [wakeMin, setWakeMin] = useState('00');
 
   const handleSave = async () => {
-    if (!hasFullAccess) {
-      showAlert(t('sleepLog.premiumFeature'), t('sleepLog.premiumMessage'), [
-        { text: t('sleepLog.cancel'), style: 'cancel' },
-        { text: t('sleepLog.upgrade'), onPress: () => router.push('/(utils)/trial-upgrade') },
-      ]);
-      return;
-    }
-
     setSaving(true);
     try {
       const hours = parseFloat(duration) || 0;
@@ -83,7 +74,9 @@ export default function LogSleepScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={{ flex: 1, backgroundColor: colors.background }}
     >
-      <View style={[s.container, { backgroundColor: colors.background, paddingTop: insets.top + 6 }]}>
+      <View
+        style={[s.container, { backgroundColor: colors.background, paddingTop: insets.top + 6 }]}
+      >
         {/* ── Header ──────────────────────────── */}
         <View style={s.header}>
           <Pressable
@@ -116,32 +109,36 @@ export default function LogSleepScreen() {
         >
           {/* ── Quality Rating ────────────────── */}
           <View style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={[s.cardLabel, { color: colors.mutedText }]}>{t('sleepLog.sleepQuality')}</Text>
+            <Text style={[s.cardLabel, { color: colors.mutedText }]}>
+              {t('sleepLog.sleepQuality')}
+            </Text>
             <View style={s.qualityRow}>
               {QUALITY_KEYS.map((key, idx) => {
                 const val = idx + 1;
                 return (
-                <Pressable
-                  key={key}
-                  onPress={() => setQuality(val)}
-                  style={({ pressed }) => [
-                    s.qualityBtn,
-                    {
-                      backgroundColor: quality === val ? '#8B6B47' : colors.inputBg,
-                      transform: [{ scale: pressed ? 0.92 : quality === val ? 1.05 : 1 }],
-                    },
-                  ]}
-                >
-                  <Text style={{ fontSize: 24 }}>{QUALITY_EMOJIS[idx]}</Text>
-                  <Text
-                    style={[
-                      s.qualityLabel,
-                      { color: quality === val ? '#FFF' : colors.mutedText },
+                  <Pressable
+                    key={key}
+                    onPress={() => setQuality(val)}
+                    style={({ pressed }) => [
+                      s.qualityBtn,
+                      {
+                        backgroundColor: quality === val ? '#8B6B47' : colors.inputBg,
+                        transform: [{ scale: pressed ? 0.92 : quality === val ? 1.05 : 1 }],
+                      },
                     ]}
                   >
-                    {t(`sleepLog.${key}`)}
-                  </Text>
-                </Pressable>
+                    <Text style={{ fontFamily: Typography.family.body, fontSize: 24 }}>
+                      {QUALITY_EMOJIS[idx]}
+                    </Text>
+                    <Text
+                      style={[
+                        s.qualityLabel,
+                        { color: quality === val ? '#FFF' : colors.mutedText },
+                      ]}
+                    >
+                      {t(`sleepLog.${key}`)}
+                    </Text>
+                  </Pressable>
                 );
               })}
             </View>
@@ -188,7 +185,9 @@ export default function LogSleepScreen() {
 
           {/* ── Notes ────────────────────────── */}
           <View style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={[s.cardLabel, { color: colors.mutedText }]}>{t('sleepLog.notesOptional')}</Text>
+            <Text style={[s.cardLabel, { color: colors.mutedText }]}>
+              {t('sleepLog.notesOptional')}
+            </Text>
             <TextInput
               value={note}
               onChangeText={setNote}
@@ -211,9 +210,7 @@ export default function LogSleepScreen() {
           {/* ── Tip Card ─────────────────────── */}
           <View style={[s.tipCard, { backgroundColor: '#7B6DC915' }]}>
             <MaterialIcons name="lightbulb-outline" size={18} color="#7B6DC9" />
-            <Text style={[s.tipText, { color: colors.mutedText }]}>
-              {t('sleepLog.aiTip')}
-            </Text>
+            <Text style={[s.tipText, { color: colors.mutedText }]}>{t('sleepLog.aiTip')}</Text>
           </View>
 
           {/* ── Save Button ──────────────────── */}
@@ -230,7 +227,9 @@ export default function LogSleepScreen() {
             ]}
           >
             <MaterialIcons name="check-circle" size={20} color="#FFF" />
-            <Text style={s.saveBtnText}>{saving ? t('sleepLog.saving') : t('sleepLog.saveSleepEntry')}</Text>
+            <Text style={s.saveBtnText}>
+              {saving ? t('sleepLog.saving') : t('sleepLog.saveSleepEntry')}
+            </Text>
           </Pressable>
         </ScrollView>
       </View>
@@ -260,8 +259,8 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
   },
-  headerTitle: { fontSize: 22, fontWeight: '900' },
-  headerSub: { fontSize: 14, marginTop: 2 },
+  headerTitle: { ...Typography.heading },
+  headerSub: { fontFamily: Typography.family.body, fontSize: 14, marginTop: 2 },
 
   scrollContent: {
     paddingTop: 16,
@@ -277,8 +276,9 @@ const s = StyleSheet.create({
     ...UI.shadow.sm,
   },
   cardLabel: {
+    fontFamily: Typography.family.body,
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: Typography.weight.medium,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 14,
@@ -298,8 +298,9 @@ const s = StyleSheet.create({
     gap: 4,
   },
   qualityLabel: {
+    fontFamily: Typography.family.body,
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: Typography.weight.medium,
   },
 
   /* duration */
@@ -316,12 +317,14 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
   durBtnText: {
+    fontFamily: Typography.family.body,
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: Typography.weight.semibold,
   },
 
   /* inputs */
   input: {
+    fontFamily: Typography.family.body,
     padding: 14,
     borderRadius: UI.radius.md,
     borderWidth: 1,
@@ -340,11 +343,7 @@ const s = StyleSheet.create({
     padding: 14,
     borderRadius: UI.radius.lg,
   },
-  tipText: {
-    flex: 1,
-    fontSize: 13,
-    lineHeight: 19,
-  },
+  tipText: { fontFamily: Typography.family.body, flex: 1, fontSize: 13, lineHeight: 19 },
 
   /* save */
   saveBtn: {
@@ -357,8 +356,9 @@ const s = StyleSheet.create({
     ...UI.shadow.md,
   },
   saveBtnText: {
+    fontFamily: Typography.family.body,
     color: '#FFF',
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: Typography.weight.semibold,
   },
 });

@@ -1,19 +1,19 @@
+import { screenBottomPadding } from '@/lib/screen-layout';
+import { Typography } from '@/constants/typography';
+import { backTo } from '@/lib/navigation';
+import { WellnessIconText } from '@/components/WellnessIconText';
 import React, { useState } from 'react';
 import { View, Text, Pressable, ScrollView, Platform, StyleSheet } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, UI } from '@/constants/theme';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialIcons from '@/components/AppIcon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 /* ── safe back navigation ────────────────────────── */
 function goBack(from?: string) {
-  if (from) {
-    router.replace(from as any);
-  } else {
-    router.back();
-  }
+  backTo(from, '/(tabs)/chat');
 }
 
 /* ── goal options ────────────────────────────────── */
@@ -75,11 +75,13 @@ export default function CustomizeScreen() {
         style={[
           s.header,
           {
-            paddingTop: insets.top,
+            paddingTop: insets.top + 8,
           },
         ]}
       >
         <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Back to conversations"
           onPress={() => goBack(from)}
           style={({ pressed }) => [
             s.backBtn,
@@ -102,13 +104,21 @@ export default function CustomizeScreen() {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={[
+          s.scrollContent,
+          { paddingBottom: screenBottomPadding(insets.bottom, false) },
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
         {/* ── Hero Card ──────────────────────────── */}
         <View style={[s.heroCard, { backgroundColor: '#8B6B47' }]}>
           <View style={[s.heroCircle1, { backgroundColor: 'rgba(255,255,255,0.08)' }]} />
           <View style={[s.heroCircle2, { backgroundColor: 'rgba(255,255,255,0.06)' }]} />
           <View style={s.heroEmojiWrap}>
-            <Text style={{ fontSize: 42 }}>⚙️</Text>
+            <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 42 }}>
+              ⚙️
+            </WellnessIconText>
           </View>
           <Text style={s.heroTitle}>{t('customize.heroTitle')}</Text>
           <Text style={s.heroSub}>{t('customize.heroSubtitle')}</Text>
@@ -124,21 +134,33 @@ export default function CustomizeScreen() {
             return (
               <Pressable
                 key={goal.id}
+                accessibilityRole="checkbox"
+                accessibilityLabel={goal.label}
+                accessibilityState={{ checked: active }}
                 onPress={() => toggleGoal(goal.id)}
                 style={({ pressed }) => [
                   s.goalChip,
                   {
                     backgroundColor: active ? '#8B6B4712' : colors.card,
                     borderColor: active ? '#8B6B47' : colors.border,
-                    transform: [{ scale: pressed ? 0.96 : 1 }],
+                    opacity: pressed ? 0.8 : 1,
                   },
                 ]}
               >
-                <Text style={{ fontSize: 20 }}>{goal.emoji}</Text>
+                <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 20 }}>
+                  {goal.emoji}
+                </WellnessIconText>
                 <Text style={[s.goalText, { color: active ? '#8B6B47' : colors.text }]}>
                   {goal.label}
                 </Text>
-                {active && <MaterialIcons name="check-circle" size={16} color="#8B6B47" />}
+                <View
+                  style={{ width: 16, height: 16, opacity: active ? 1 : 0 }}
+                  pointerEvents="none"
+                  accessibilityElementsHidden
+                  importantForAccessibility="no-hide-descendants"
+                >
+                  <MaterialIcons name="check-circle" size={16} color={colors.primary} />
+                </View>
               </Pressable>
             );
           })}
@@ -154,18 +176,23 @@ export default function CustomizeScreen() {
             return (
               <Pressable
                 key={theme.id}
+                accessibilityRole="radio"
+                accessibilityLabel={theme.label}
+                accessibilityState={{ checked: active }}
                 onPress={() => setSelectedTheme(theme.id)}
                 style={({ pressed }) => [
                   s.themeCard,
                   {
                     backgroundColor: active ? theme.color + '10' : colors.card,
                     borderColor: active ? theme.color : colors.border,
-                    transform: [{ scale: pressed ? 0.98 : 1 }],
+                    opacity: pressed ? 0.8 : 1,
                   },
                 ]}
               >
                 <View style={[s.themeEmojiWrap, { backgroundColor: theme.color + '15' }]}>
-                  <Text style={{ fontSize: 22 }}>{theme.emoji}</Text>
+                  <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 22 }}>
+                    {theme.emoji}
+                  </WellnessIconText>
                 </View>
                 <Text style={[s.themeLabel, { color: active ? theme.color : colors.text }]}>
                   {theme.label}
@@ -201,13 +228,16 @@ export default function CustomizeScreen() {
             return (
               <Pressable
                 key={f.id}
+                accessibilityRole="radio"
+                accessibilityLabel={f.label}
+                accessibilityState={{ checked: active }}
                 onPress={() => setSelectedFrequency(f.id)}
                 style={({ pressed }) => [
                   s.freqCard,
                   {
                     backgroundColor: active ? '#5B8A5A10' : colors.card,
                     borderColor: active ? '#5B8A5A' : colors.border,
-                    transform: [{ scale: pressed ? 0.96 : 1 }],
+                    opacity: pressed ? 0.8 : 1,
                   },
                 ]}
               >
@@ -253,15 +283,15 @@ const s = StyleSheet.create({
     marginBottom: 4,
   },
   backBtn: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
   },
-  headerTitle: { fontSize: 22, fontWeight: '900' },
-  headerSub: { fontSize: 14, marginTop: 2 },
+  headerTitle: { ...Typography.heading },
+  headerSub: { fontFamily: Typography.family.body, fontSize: 14, marginTop: 2 },
 
   scrollContent: {
     paddingTop: 16,
@@ -302,13 +332,9 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 12,
   },
-  heroTitle: {
-    color: '#FFF',
-    fontSize: 20,
-    fontWeight: '900',
-    marginBottom: 6,
-  },
+  heroTitle: { ...Typography.heading, color: '#FFF', fontSize: 20, marginBottom: 6 },
   heroSub: {
+    fontFamily: Typography.family.body,
     color: 'rgba(255,255,255,0.80)',
     fontSize: 14,
     lineHeight: 21,
@@ -318,8 +344,9 @@ const s = StyleSheet.create({
 
   /* section label */
   sectionLabel: {
+    fontFamily: Typography.family.body,
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: Typography.weight.medium,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginTop: 8,
@@ -336,11 +363,18 @@ const s = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingVertical: 12,
+    minHeight: 48,
+    maxWidth: '100%',
     borderRadius: UI.radius.lg,
     borderWidth: 1.5,
   },
-  goalText: { fontSize: 13, fontWeight: '700' },
+  goalText: {
+    flexShrink: 1,
+    fontFamily: Typography.family.body,
+    fontSize: 13,
+    fontWeight: Typography.weight.semibold,
+  },
 
   /* theme cards */
   themeCard: {
@@ -358,7 +392,12 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  themeLabel: { fontSize: 15, fontWeight: '800' },
+  themeLabel: {
+    flex: 1,
+    fontFamily: Typography.family.body,
+    fontSize: 15,
+    fontWeight: Typography.weight.medium,
+  },
 
   /* frequency */
   freqRow: {
@@ -374,8 +413,17 @@ const s = StyleSheet.create({
     borderWidth: 1.5,
     alignItems: 'center',
   },
-  freqLabel: { fontSize: 15, fontWeight: '800' },
-  freqSub: { fontSize: 12, fontWeight: '600', marginTop: 2 },
+  freqLabel: {
+    fontFamily: Typography.family.body,
+    fontSize: 15,
+    fontWeight: Typography.weight.medium,
+  },
+  freqSub: {
+    fontFamily: Typography.family.body,
+    fontSize: 12,
+    fontWeight: Typography.weight.semibold,
+    marginTop: 2,
+  },
 
   /* save */
   saveBtn: {
@@ -388,5 +436,10 @@ const s = StyleSheet.create({
     marginTop: 8,
     ...UI.shadow.sm,
   },
-  saveBtnText: { color: '#FFF', fontSize: 16, fontWeight: '800' },
+  saveBtnText: {
+    fontFamily: Typography.family.body,
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: Typography.weight.semibold,
+  },
 });

@@ -1,3 +1,13 @@
+import { alreadyOwnsPlan } from '@/lib/subscription-state';
+import { openSubscriptionManagement } from '@/lib/billing-management';
+import { AppButton } from '@/components/ui/AppButton';
+import { PremiumAccessCard } from '@/components/PremiumAccessCard';
+import { applyPurchaseInfo } from '@/hooks/useSubscription';
+import { Typography } from '@/constants/typography';
+import { functionError } from '@/lib/function-errors';
+import { backTo } from '@/lib/navigation';
+import { WellnessIconText } from '@/components/WellnessIconText';
+import { productMatchesPlan } from '@/lib/purchase-products';
 import React, { useEffect, useState } from 'react';
 import {
   View,
@@ -19,7 +29,17 @@ import { userScopedKey } from '@/lib/storage';
 import { supabase } from '@/supabase/supabase';
 import { Colors, UI } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialIcons from '@/components/AppIcon';
+import configureRevenueCat, {
+  getDefaultOffering,
+  hasPremiumEntitlement,
+  purchasePlan,
+  restorePurchases,
+  PLAN_TO_PACKAGE,
+} from '@/lib/revenuecat';
+import type { PurchasesOffering } from 'react-native-purchases';
+import { useSubscription } from '@/hooks/useSubscription';
+import { LegalLinks } from '@/components/LegalLinks';
 
 /* ── Plan definitions ──────────────────────────────── */
 const PLANS = {
@@ -29,12 +49,10 @@ const PLANS = {
 
 /* ── Features list ─────────────────────────────────── */
 const FEATURES = [
-  { emoji: '🧠', text: 'AI-powered Freud Score insights' },
-  { emoji: '📊', text: 'Detailed mood & sleep analytics' },
-  { emoji: '🎯', text: 'Personalized activity suggestions' },
-  { emoji: '📝', text: 'Unlimited journal entries' },
-  { emoji: '🧘', text: 'Guided stress & mindfulness tools' },
-  { emoji: '💬', text: 'Unlimited Dr. Freud AI sessions' },
+  { emoji: '💬', text: 'AI conversations with all four guides' },
+  { emoji: '📊', text: 'AI analysis of your mood and sleep patterns' },
+  { emoji: '🎯', text: 'Personalised activity suggestions' },
+  { emoji: '🎙️', text: 'Voice transcription for journal entries' },
 ];
 
 export default function TrialUpgrade() {
@@ -43,9 +61,21 @@ export default function TrialUpgrade() {
   const theme = useColorScheme() ?? 'light';
   const colors = Colors[theme];
 
+  const {
+    refresh: refreshSubscription,
+    subscription,
+    hasFullAccess,
+    isLoading: accessLoading,
+  } = useSubscription();
+
   const [isNewUser, setIsNewUser] = useState(true);
-  const [loading, setLoading] = useState<string | null>(null); // null | 'trial' | 'monthly' | 'lifetime'
+  const [loading, setLoading] = useState<string | null>(null); // null | 'trial' | 'monthly' | 'lifetime' | 'restore'
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'lifetime'>('monthly');
+
+  // RevenueCat: localized prices fetched from the App Store / Play Store
+  const [iapOffering, setIapOffering] = useState<PurchasesOffering | null>(null);
+  const [offeringLoading, setOfferingLoading] = useState(Platform.OS === 'ios');
+  const useNativeIAP = Platform.OS === 'ios'; // Apple guideline 3.1.1
 
   useEffect(() => {
     (async () => {
@@ -56,56 +86,74 @@ export default function TrialUpgrade() {
         userScopedKey('assessment:v1', session?.user?.id),
       );
       if (assessment) setIsNewUser(false);
-    })();
+
+      if (Platform.OS === 'ios') await loadOffering();
+    })().catch(() => setOfferingLoading(false));
   }, []);
+
+  async function loadOffering() {
+    setOfferingLoading(true);
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      await configureRevenueCat(session?.user?.id);
+      setIapOffering(await getDefaultOffering());
+    } catch {
+      setIapOffering(null);
+    } finally {
+      setOfferingLoading(false);
+    }
+  }
+
+  function packageFor(plan: 'monthly' | 'lifetime') {
+    return iapOffering?.availablePackages.find(
+      (pkg) => pkg.identifier === PLAN_TO_PACKAGE[plan] && productMatchesPlan(plan, pkg.product),
+    );
+  }
+
+  function priceFor(plan: 'monthly' | 'lifetime'): string {
+    return useNativeIAP
+      ? (packageFor(plan)?.product.priceString ?? 'Unavailable')
+      : PLANS[plan].price;
+  }
 
   /* ── Start 7-day trial ────────────────────────────── */
   async function selectTrial() {
     setLoading('trial');
     try {
-      const expiryDate = new Date();
-      expiryDate.setDate(expiryDate.getDate() + 7);
-
       const {
         data: { session },
       } = await supabase.auth.getSession();
-
-      // Save locally
-      await AsyncStorage.setItem(
-        'auth:subscription:v1',
-        JSON.stringify({ type: 'trial', expiryDate: expiryDate.toISOString() }),
-      );
-
-      // Record trial in Supabase (non-blocking)
-      if (session?.user?.id) {
-        Promise.resolve(
-          supabase
-            .from('subscriptions')
-            .upsert(
-              {
-                user_id: session.user.id,
-                plan: 'trial',
-                status: 'active',
-                trial_end: expiryDate.toISOString(),
-                current_period_end: expiryDate.toISOString(),
-                updated_at: new Date().toISOString(),
-              },
-              { onConflict: 'user_id' },
-            ),
-        ).catch((err: any) => console.warn('Failed to record trial:', err));
-      }
-
+      if (!session?.user) throw new Error('Please sign in first');
+      const { error } = await supabase.rpc('start_free_trial');
+      if (error) throw error;
+      await refreshSubscription();
       router.push('/(utils)/payment-success');
     } catch (e) {
-      toast.error('Failed to start trial');
+      toast.error('Unable to start your trial. Please try again.');
       console.error(e);
     } finally {
       setLoading(null);
     }
   }
 
-  /* ── Create Stripe Checkout via Supabase Edge Function ── */
+  /* ── Buy a plan ─────────────────────────────────────
+   * iOS  → RevenueCat / Apple In-App Purchase (Guideline 3.1.1)
+   * Android / Web → Stripe Checkout via Supabase Edge Function
+   */
   async function buyPlan(plan: 'monthly' | 'lifetime') {
+    if (accessLoading) return;
+    if (alreadyOwnsPlan(subscription, plan)) {
+      if (subscription?.type === 'monthly') {
+        try {
+          await openSubscriptionManagement();
+        } catch {
+          toast.error('Unable to open subscription settings. Please try again.');
+        }
+      } else toast.info('Lifetime Premium is already active.');
+      return;
+    }
     setLoading(plan);
 
     try {
@@ -119,10 +167,34 @@ export default function TrialUpgrade() {
         return;
       }
 
-      const successUrl = Linking.createURL('/(utils)/payment-success');
-      const cancelUrl = Linking.createURL('/(utils)/payment-failure');
+      // ── iOS: Apple In-App Purchase via RevenueCat ──────────────────────
+      if (useNativeIAP) {
+        await configureRevenueCat(session.user.id);
+        const customerInfo = await purchasePlan(plan);
 
-      // Call the Supabase edge function
+        // null → user cancelled the Apple sheet, just bail quietly
+        if (!customerInfo) {
+          setLoading(null);
+          return;
+        }
+
+        if (hasPremiumEntitlement(customerInfo)) {
+          if (!(await applyPurchaseInfo(customerInfo, session.user.id)))
+            throw new Error('Your account changed. Please restore purchases after signing in.');
+          await refreshSubscription();
+          router.push('/(utils)/payment-success');
+        } else {
+          toast.error('Purchase did not unlock premium. Please try Restore.');
+        }
+
+        setLoading(null);
+        return;
+      }
+
+      // ── Android / Web: Stripe Checkout (existing flow) ─────────────────
+      const successUrl = Linking.createURL('/payment-success');
+      const cancelUrl = Linking.createURL('/payment-failure');
+
       const { data, error } = await supabase.functions.invoke('stripe-checkout', {
         body: {
           plan,
@@ -132,43 +204,51 @@ export default function TrialUpgrade() {
         },
       });
 
-      if (error) {
-        throw new Error(error.message || 'Failed to create checkout session');
-      }
-
-      if (!data?.url) {
-        throw new Error('No checkout URL returned');
-      }
-
-      // Save intent locally (will be confirmed by webhook)
-      const expiryDate = plan === 'monthly'
-        ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-        : null;
-
-      await AsyncStorage.setItem(
-        'auth:subscription:v1',
-        JSON.stringify({ type: plan, expiryDate, pending: true }),
-      );
+      if (error) throw await functionError(error);
+      if (!data?.url) throw new Error('No checkout URL returned');
 
       setLoading(null);
-
-      // Open Stripe Checkout in browser
       await WebBrowser.openBrowserAsync(data.url);
     } catch (err: any) {
       console.error('Checkout error:', err);
-      toast.error(err.message || 'Payment failed. Please try again.');
+      toast.error(err?.message || 'Payment failed. Please try again.');
+      setLoading(null);
+    }
+  }
+
+  /* ── Restore Purchases (REQUIRED by Apple Guideline 3.1.1) ── */
+  async function handleRestore() {
+    if (!useNativeIAP) return;
+    setLoading('restore');
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session?.user) throw new Error('Please sign in first');
+      await configureRevenueCat(session.user.id);
+      const info = await restorePurchases();
+      if (info && hasPremiumEntitlement(info)) {
+        if (!(await applyPurchaseInfo(info, session.user.id)))
+          throw new Error('Your account changed. Please restore purchases after signing in.');
+        await refreshSubscription();
+        toast.success('Purchases restored');
+        router.replace('/(utils)/payment-success');
+      } else {
+        toast.error('No previous purchases found for this Apple ID.');
+      }
+    } catch (e: any) {
+      toast.error(e?.message || 'Restore failed');
+    } finally {
       setLoading(null);
     }
   }
 
   const isLoading = loading !== null;
+  const alreadyOwnsSelectedPlan = alreadyOwnsPlan(subscription, selectedPlan);
 
   return (
     <View
-      style={[
-        styles.container,
-        { backgroundColor: colors.background, paddingTop: insets.top + 8 },
-      ]}
+      style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top + 8 }]}
     >
       {/* Loading overlay */}
       {isLoading && (
@@ -176,7 +256,13 @@ export default function TrialUpgrade() {
           <View style={styles.overlayCard}>
             <ActivityIndicator size="large" color="#8B6B47" />
             <Text style={styles.overlayText}>
-              {loading === 'trial' ? 'Starting trial...' : 'Connecting to Stripe...'}
+              {loading === 'trial'
+                ? 'Starting trial…'
+                : loading === 'restore'
+                  ? 'Restoring purchases…'
+                  : useNativeIAP
+                    ? 'Connecting to Apple…'
+                    : 'Opening checkout…'}
             </Text>
           </View>
         </View>
@@ -184,9 +270,9 @@ export default function TrialUpgrade() {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         {/* ── Header ── */}
-        {!isNewUser && (
+        {(!isNewUser || Platform.OS === 'web') && (
           <Pressable
-            onPress={() => router.back()}
+            onPress={() => backTo(undefined, '/(tabs)/profile')}
             style={({ pressed }) => [
               styles.backBtn,
               {
@@ -207,12 +293,12 @@ export default function TrialUpgrade() {
         {/* ── Hero ── */}
         <View style={styles.heroSection}>
           <View style={[styles.heroBadge, { backgroundColor: '#8B6B47' + '15' }]}>
-            <Text style={{ fontSize: 18 }}>✨</Text>
+            <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 18 }}>
+              ✨
+            </WellnessIconText>
             <Text style={[styles.heroBadgeText, { color: '#8B6B47' }]}>Premium</Text>
           </View>
-          <Text style={[styles.heroTitle, { color: colors.text }]}>
-            {t('auth.premiumTitle')}
-          </Text>
+          <Text style={[styles.heroTitle, { color: colors.text }]}>{t('auth.premiumTitle')}</Text>
           <Text style={[styles.heroSub, { color: colors.mutedText }]}>
             {t('auth.premiumSubtitle')}
           </Text>
@@ -220,7 +306,10 @@ export default function TrialUpgrade() {
 
         {/* ── Features ── */}
         <View
-          style={[styles.featuresCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+          style={[
+            styles.featuresCard,
+            { backgroundColor: colors.card, borderColor: colors.border },
+          ]}
         >
           {FEATURES.map((f, i) => (
             <View
@@ -233,7 +322,9 @@ export default function TrialUpgrade() {
                 },
               ]}
             >
-              <Text style={{ fontSize: 18 }}>{f.emoji}</Text>
+              <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 18 }}>
+                {f.emoji}
+              </WellnessIconText>
               <Text style={[styles.featureText, { color: colors.text }]}>{f.text}</Text>
               <MaterialIcons name="check-circle" size={18} color="#5AAF8B" />
             </View>
@@ -241,28 +332,34 @@ export default function TrialUpgrade() {
         </View>
 
         {/* ── Free trial card ── */}
-        <Pressable
-          onPress={selectTrial}
-          disabled={isLoading}
-          style={({ pressed }) => [
-            styles.trialCard,
-            {
-              backgroundColor: '#5B8A5A',
-              opacity: isLoading ? 0.7 : pressed ? 0.9 : 1,
-              transform: [{ scale: pressed ? 0.98 : 1 }],
-            },
-          ]}
-        >
-          <View style={styles.trialContent}>
-            <View>
-              <Text style={styles.trialTitle}>{t('auth.start7DayTrial')}</Text>
-              <Text style={styles.trialSub}>{t('auth.sevenDayTrialDesc')}</Text>
+        {!subscription && !hasFullAccess && (
+          <Pressable
+            onPress={selectTrial}
+            disabled={isLoading}
+            style={({ pressed }) => [
+              styles.trialCard,
+              {
+                backgroundColor: '#5B8A5A',
+                opacity: isLoading ? 0.7 : pressed ? 0.9 : 1,
+                transform: [{ scale: pressed ? 0.98 : 1 }],
+              },
+            ]}
+          >
+            <View style={styles.trialContent}>
+              <View>
+                <Text style={styles.trialTitle}>{t('auth.start7DayTrial')}</Text>
+                <Text style={styles.trialSub}>{t('auth.sevenDayTrialDesc')}</Text>
+              </View>
+              <View style={styles.trialArrow}>
+                <MaterialIcons name="arrow-forward" size={20} color="#5B8A5A" />
+              </View>
             </View>
-            <View style={styles.trialArrow}>
-              <MaterialIcons name="arrow-forward" size={20} color="#5B8A5A" />
-            </View>
-          </View>
-        </Pressable>
+          </Pressable>
+        )}
+        <Text style={[styles.terms, { color: colors.mutedText }]}>
+          Mood and sleep tracking, text journaling, breathing, grounding, alarms and reminders stay
+          free. The seven-day AI trial does not automatically renew or charge you.
+        </Text>
 
         {/* ── Plan selector ── */}
         <View style={styles.planSelector}>
@@ -273,8 +370,7 @@ export default function TrialUpgrade() {
               style={[
                 styles.planTab,
                 {
-                  backgroundColor:
-                    selectedPlan === plan ? '#8B6B47' : colors.card,
+                  backgroundColor: selectedPlan === plan ? '#8B6B47' : colors.card,
                   borderColor: selectedPlan === plan ? '#8B6B47' : colors.border,
                 },
               ]}
@@ -298,42 +394,103 @@ export default function TrialUpgrade() {
                   { color: selectedPlan === plan ? '#FFF' : colors.mutedText },
                 ]}
               >
-                {PLANS[plan].price}
-                <Text style={{ fontSize: 13, fontWeight: '500' }}> {PLANS[plan].period}</Text>
+                {priceFor(plan)}
+                <Text
+                  style={{
+                    fontFamily: Typography.family.body,
+                    fontSize: 13,
+                    fontWeight: Typography.weight.medium,
+                    color: selectedPlan === plan ? '#FFFFFF' : colors.mutedText,
+                  }}
+                >
+                  {' '}
+                  {PLANS[plan].period}
+                </Text>
               </Text>
             </Pressable>
           ))}
         </View>
 
         {/* ── Buy button ── */}
-        <Pressable
+        <AppButton
+          title={
+            alreadyOwnsSelectedPlan
+              ? subscription?.type === 'monthly'
+                ? 'Manage Subscription'
+                : 'Lifetime Premium active'
+              : offeringLoading
+                ? 'Loading prices…'
+                : useNativeIAP
+                  ? selectedPlan === 'monthly'
+                    ? 'Subscribe with Apple'
+                    : 'Buy Lifetime with Apple'
+                  : t('auth.payWithCard')
+          }
+          busy={isLoading || offeringLoading || accessLoading}
+          disabled={
+            accessLoading ||
+            (alreadyOwnsSelectedPlan && subscription?.type === 'lifetime') ||
+            (!alreadyOwnsSelectedPlan && useNativeIAP && !packageFor(selectedPlan))
+          }
           onPress={() => buyPlan(selectedPlan)}
-          disabled={isLoading}
-          style={({ pressed }) => [
-            styles.buyBtn,
-            {
-              backgroundColor: '#8B6B47',
-              opacity: isLoading ? 0.7 : pressed ? 0.9 : 1,
-              transform: [{ scale: pressed ? 0.97 : 1 }],
-            },
-          ]}
-        >
-          <MaterialIcons name="credit-card" size={20} color="#FFF" />
-          <Text style={styles.buyBtnText}>{t('auth.payWithCard')}</Text>
-        </Pressable>
+          style={{ marginTop: 16 }}
+        />
+
+        {hasFullAccess && <PremiumAccessCard />}
+        {/* ── Restore Purchases (required by Apple Guideline 3.1.1) ── */}
+        {useNativeIAP && (
+          <Pressable
+            onPress={handleRestore}
+            disabled={isLoading}
+            style={({ pressed }) => [
+              styles.restoreBtn,
+              { opacity: isLoading ? 0.5 : pressed ? 0.7 : 1 },
+            ]}
+          >
+            <Text style={[styles.restoreBtnText, { color: colors.mutedText }]}>
+              {loading === 'restore' ? 'Restoring…' : 'Restore Purchases'}
+            </Text>
+          </Pressable>
+        )}
 
         {/* ── Secure payment badge ── */}
         <View style={styles.secureRow}>
           <MaterialIcons name="lock" size={14} color={colors.mutedText} />
           <Text style={[styles.secureText, { color: colors.mutedText }]}>
-            Secured by Stripe. Cancel anytime.
+            {useNativeIAP
+              ? selectedPlan === 'monthly'
+                ? 'Billed through your Apple Account. Cancel in Settings.'
+                : 'One-time purchase through your Apple Account.'
+              : 'Secured by Stripe. Cancel anytime.'}
           </Text>
         </View>
 
-        {/* ── Terms ── */}
+        {useNativeIAP && !offeringLoading && !packageFor(selectedPlan) && (
+          <View>
+            <Text style={[styles.terms, { color: colors.mutedText }]}>
+              Purchases are temporarily unavailable. Please retry.
+            </Text>
+            <Pressable onPress={loadOffering} style={styles.restoreBtn}>
+              <Text style={{ color: colors.text }}>Retry loading prices</Text>
+            </Pressable>
+          </View>
+        )}
         <Text style={[styles.terms, { color: colors.mutedText }]}>
-          {t('auth.termsAndPrivacy')}
+          {selectedPlan === 'monthly'
+            ? useNativeIAP
+              ? `Monthly Premium: ${priceFor('monthly')} per month. Payment is charged at confirmation. Renews automatically unless canceled at least 24 hours before the current period ends. Manage or cancel in Apple Settings. Your free app trial does not start a paid subscription.`
+              : `Monthly Premium: ${priceFor('monthly')} per month, billed through Stripe. Renews until canceled. Your free app trial does not start a paid subscription.`
+            : `Lifetime Premium: ${priceFor('lifetime')} paid once. No automatic renewal.${useNativeIAP ? ' Buying lifetime does not cancel an existing monthly subscription. Manage that subscription in Apple Settings.' : ''}`}
         </Text>
+        {useNativeIAP && (
+          <Pressable
+            onPress={() => Linking.openURL('https://apps.apple.com/account/subscriptions')}
+            style={styles.restoreBtn}
+          >
+            <Text style={{ color: colors.text }}>Manage Apple subscriptions</Text>
+          </Pressable>
+        )}
+        <LegalLinks color={colors.mutedText} />
       </ScrollView>
     </View>
   );
@@ -364,8 +521,9 @@ const styles = StyleSheet.create({
     ...UI.shadow.md,
   },
   overlayText: {
+    fontFamily: Typography.family.body,
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: Typography.weight.semibold,
     color: '#8B6B47',
   },
 
@@ -390,9 +548,14 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     marginBottom: 16,
   },
-  heroBadgeText: { fontSize: 14, fontWeight: '800' },
-  heroTitle: { fontSize: 28, fontWeight: '900', textAlign: 'center' },
+  heroBadgeText: {
+    fontFamily: Typography.family.body,
+    fontSize: 14,
+    fontWeight: Typography.weight.medium,
+  },
+  heroTitle: { ...Typography.heading, fontSize: 32, textAlign: 'center' },
   heroSub: {
+    fontFamily: Typography.family.body,
     fontSize: 15,
     textAlign: 'center',
     marginTop: 8,
@@ -415,7 +578,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingVertical: 14,
   },
-  featureText: { flex: 1, fontSize: 14, fontWeight: '600' },
+  featureText: {
+    fontFamily: Typography.family.body,
+    flex: 1,
+    fontSize: 14,
+    fontWeight: Typography.weight.semibold,
+  },
 
   /* Trial card */
   trialCard: {
@@ -429,8 +597,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  trialTitle: { color: '#FFF', fontSize: 17, fontWeight: '900' },
-  trialSub: { color: 'rgba(255,255,255,0.8)', fontSize: 13, marginTop: 4 },
+  trialTitle: {
+    ...Typography.section,
+    color: '#FFF',
+    fontSize: 20,
+    fontWeight: Typography.weight.regular,
+  },
+  trialSub: {
+    fontFamily: Typography.family.body,
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 13,
+    marginTop: 4,
+  },
   trialArrow: {
     width: 36,
     height: 36,
@@ -461,9 +639,23 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 6,
   },
-  planBadgeText: { color: '#FFF', fontSize: 10, fontWeight: '800' },
-  planTabTitle: { fontSize: 15, fontWeight: '800' },
-  planTabPrice: { fontSize: 22, fontWeight: '900', marginTop: 2 },
+  planBadgeText: {
+    fontFamily: Typography.family.body,
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: Typography.weight.medium,
+  },
+  planTabTitle: {
+    fontFamily: Typography.family.body,
+    fontSize: 15,
+    fontWeight: Typography.weight.medium,
+  },
+  planTabPrice: {
+    fontFamily: Typography.family.body,
+    fontSize: 22,
+    fontWeight: Typography.weight.bold,
+    marginTop: 2,
+  },
 
   /* Buy button */
   buyBtn: {
@@ -475,7 +667,26 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     ...UI.shadow.sm,
   },
-  buyBtnText: { color: '#FFF', fontSize: 17, fontWeight: '900' },
+  buyBtnText: {
+    fontFamily: Typography.family.body,
+    color: '#FFF',
+    fontSize: 17,
+    fontWeight: Typography.weight.semibold,
+  },
+
+  /* Restore button */
+  restoreBtn: {
+    alignSelf: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    marginTop: 4,
+  },
+  restoreBtnText: {
+    fontFamily: Typography.family.body,
+    fontSize: 13,
+    fontWeight: Typography.weight.semibold,
+    textDecorationLine: 'underline',
+  },
 
   /* Secure row */
   secureRow: {
@@ -485,10 +696,15 @@ const styles = StyleSheet.create({
     gap: 6,
     marginTop: 14,
   },
-  secureText: { fontSize: 12, fontWeight: '600' },
+  secureText: {
+    fontFamily: Typography.family.body,
+    fontSize: 12,
+    fontWeight: Typography.weight.semibold,
+  },
 
   /* Terms */
   terms: {
+    fontFamily: Typography.family.body,
     fontSize: 11,
     textAlign: 'center',
     marginTop: 16,

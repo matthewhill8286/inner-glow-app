@@ -1,3 +1,4 @@
+import { Typography } from '@/constants/typography';
 /* ---------------------------
  * 2) MostCommonChips
  * -------------------------- */
@@ -105,8 +106,9 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   chipsTitle: {
+    fontFamily: Typography.family.body,
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: Typography.weight.semibold,
     color: '#8B6B43',
   },
   chipsWrap: {
@@ -133,9 +135,10 @@ const styles = StyleSheet.create({
     borderColor: '#828a6a',
   },
   chipText: {
+    fontFamily: Typography.family.body,
     color: '#6A5E55',
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: Typography.weight.semibold,
   },
   chipTextSelected: {
     color: 'white',
@@ -152,10 +155,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#6f7a5d',
   },
   chipRemoveText: {
+    fontFamily: Typography.family.body,
     color: '#6A5E55',
     opacity: 0.7,
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: Typography.weight.semibold,
     lineHeight: 18,
     marginTop: -1,
   },

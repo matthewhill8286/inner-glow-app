@@ -1,3 +1,6 @@
+import { Typography } from '@/constants/typography';
+import { UI } from '@/constants/theme';
+import { backTo } from '@/lib/navigation';
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, Pressable, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -48,7 +51,7 @@ export default function SuggestedCategories() {
         }}
       >
         <Pressable
-          onPress={() => router.back()}
+          onPress={() => backTo(undefined, '/(tabs)/home')}
           style={{
             width: 44,
             height: 44,
@@ -60,9 +63,13 @@ export default function SuggestedCategories() {
             backgroundColor: 'rgba(255,255,255,0.1)',
           }}
         >
-          <Text style={{ color: 'white', fontSize: 24 }}>←</Text>
+          <Text style={{ fontFamily: Typography.family.body, color: 'white', fontSize: 24 }}>
+            ←
+          </Text>
         </Pressable>
-        <Text style={{ color: 'white', fontSize: 18, fontWeight: '700' }}>{t('suggestedCategories.header')}</Text>
+        <Text style={{ ...Typography.section, color: 'white' }}>
+          {t('suggestedCategories.heading')}
+        </Text>
       </View>
 
       <ScrollView
@@ -83,10 +90,20 @@ export default function SuggestedCategories() {
             </View>
           ) : (
             <>
-              <Text style={{ color: '#6a5e55', fontSize: 24, fontWeight: '900', marginTop: 10 }}>
+              <Text
+                style={{ ...Typography.heading, color: '#6a5e55', fontSize: 24, marginTop: 10 }}
+              >
                 {t('suggestedCategories.title')}
               </Text>
-              <Text style={{ color: '#6a5e55', opacity: 0.75, marginTop: 8, fontSize: 16 }}>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  color: '#6a5e55',
+                  opacity: 0.75,
+                  marginTop: 8,
+                  fontSize: 16,
+                }}
+              >
                 {t('suggestedCategories.subtitle')}
               </Text>
 
@@ -99,7 +116,10 @@ export default function SuggestedCategories() {
                       .map((s) => {
                         const item = ISSUES.find((i) => i.key === s.key);
                         const base = item?.title ?? String(s.key);
-                        return { id: s.key, label: t('suggestedCategories.topPrefix', { name: base }) };
+                        return {
+                          id: s.key,
+                          label: t('suggestedCategories.topPrefix', { name: base }),
+                        };
                       })}
                     selectedIds={
                       new Set(
@@ -146,7 +166,14 @@ export default function SuggestedCategories() {
                         borderColor: isOn ? '#6bbf8e' : 'transparent',
                       }}
                     >
-                      <Text style={{ fontSize: 17, fontWeight: '900', color: '#6a5e55' }}>
+                      <Text
+                        style={{
+                          fontFamily: Typography.family.body,
+                          fontSize: 17,
+                          fontWeight: Typography.weight.semibold,
+                          color: '#6a5e55',
+                        }}
+                      >
                         {item.title}
                       </Text>
                       <Text style={{ color: '#6a5e55', opacity: 0.7, marginTop: 4 }}>
@@ -161,7 +188,14 @@ export default function SuggestedCategories() {
                             borderTopColor: 'rgba(0,0,0,0.05)',
                           }}
                         >
-                          <Text style={{ fontWeight: '800', opacity: 0.75, color: '#6a5e55' }}>
+                          <Text
+                            style={{
+                              fontFamily: Typography.family.body,
+                              fontWeight: Typography.weight.semibold,
+                              opacity: 0.75,
+                              color: '#6a5e55',
+                            }}
+                          >
                             Why:
                           </Text>
                           {why.reasons.slice(0, 2).map((r) => (
@@ -199,10 +233,20 @@ export default function SuggestedCategories() {
               elevation: 4,
             }}
           >
-            <Text style={{ color: 'white', fontWeight: '800', fontSize: 18 }} disabled={loading}>
+            <Text
+              style={{
+                fontFamily: Typography.family.body,
+                color: 'white',
+                fontWeight: Typography.weight.semibold,
+                fontSize: 18,
+              }}
+              disabled={loading}
+            >
               {t('suggestedCategories.continue')}
             </Text>
-            <Text style={{ color: 'white', fontSize: 20 }}>→</Text>
+            <Text style={{ fontFamily: Typography.family.body, color: 'white', fontSize: 20 }}>
+              →
+            </Text>
           </Pressable>
         </View>
       </ScrollView>

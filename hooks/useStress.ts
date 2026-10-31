@@ -1,3 +1,4 @@
+import { notifyStressExercise } from '@/lib/notificationStore';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/supabase/supabase';
 import { StressKit, StressCompletion, DEFAULT_KIT } from '@/lib/types';
@@ -142,6 +143,7 @@ export const useStress = (opts?: { lazy?: boolean }) => {
 
       return item;
     },
+    onSuccess: (item) => notifyStressExercise(item.title),
     onMutate: async ({ exerciseId, title }) => {
       await queryClient.cancelQueries({ queryKey: historyKey });
       const previous = queryClient.getQueryData<StressCompletion[]>(historyKey);

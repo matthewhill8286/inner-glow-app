@@ -1,3 +1,6 @@
+import { Typography } from '@/constants/typography';
+import { backTo } from '@/lib/navigation';
+import { WellnessIconText } from '@/components/WellnessIconText';
 import React, { useMemo, useState } from 'react';
 import { View, Text, Pressable, ScrollView, Modal, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,7 +11,7 @@ import { useMoodInsights, MoodInsight } from '@/hooks/useMoodInsights';
 import { MoodCheckIn } from '@/lib/types';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, UI } from '@/constants/theme';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialIcons from '@/components/AppIcon';
 
 /* ── Mood config ── */
 const MOOD_META: Record<string, { emoji: string; color: string; label: string }> = {
@@ -88,7 +91,7 @@ export default function MoodHistory() {
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           <Pressable
-            onPress={() => router.back()}
+            onPress={() => backTo(undefined, '/(tabs)/mood')}
             style={({ pressed }) => ({
               width: 36,
               height: 36,
@@ -109,7 +112,7 @@ export default function MoodHistory() {
               style={{ marginLeft: 4 }}
             />
           </Pressable>
-          <Text style={{ fontSize: 22, fontWeight: '800', color: colors.text, flex: 1 }}>
+          <Text style={{ ...Typography.heading, fontSize: 24, color: colors.text, flex: 1 }}>
             My Mood
           </Text>
           {tab === 'history' && (
@@ -163,8 +166,9 @@ export default function MoodHistory() {
               >
                 <Text
                   style={{
+                    fontFamily: Typography.family.body,
                     fontSize: 14,
-                    fontWeight: '800',
+                    fontWeight: Typography.weight.semibold,
                     color: active ? '#fff' : colors.mutedText,
                   }}
                 >
@@ -185,7 +189,15 @@ export default function MoodHistory() {
             {/* Active filter chip */}
             {filterMood && (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <Text style={{ fontSize: 13, color: colors.mutedText }}>Filtered by:</Text>
+                <Text
+                  style={{
+                    fontFamily: Typography.family.body,
+                    fontSize: 13,
+                    color: colors.mutedText,
+                  }}
+                >
+                  Filtered by:
+                </Text>
                 <Pressable
                   onPress={() => setFilterMood(null)}
                   style={{
@@ -198,15 +210,28 @@ export default function MoodHistory() {
                     backgroundColor: (MOOD_META[filterMood]?.color ?? '#8B6B47') + '15',
                   }}
                 >
-                  <Text style={{ fontSize: 14 }}>{MOOD_META[filterMood]?.emoji}</Text>
+                  <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 14 }}>
+                    {MOOD_META[filterMood]?.emoji}
+                  </WellnessIconText>
                   <Text
-                    style={{ fontSize: 13, fontWeight: '700', color: MOOD_META[filterMood]?.color }}
+                    style={{
+                      fontFamily: Typography.family.body,
+                      fontSize: 13,
+                      fontWeight: Typography.weight.semibold,
+                      color: MOOD_META[filterMood]?.color,
+                    }}
                   >
                     {MOOD_META[filterMood]?.label}
                   </Text>
                   <MaterialIcons name="close" size={14} color={MOOD_META[filterMood]?.color} />
                 </Pressable>
-                <Text style={{ fontSize: 12, color: colors.mutedText }}>
+                <Text
+                  style={{
+                    fontFamily: Typography.family.body,
+                    fontSize: 12,
+                    color: colors.mutedText,
+                  }}
+                >
                   ({filtered.length} entries)
                 </Text>
               </View>
@@ -226,11 +251,20 @@ export default function MoodHistory() {
                   ...UI.shadow.sm,
                 }}
               >
-                <Text style={{ fontSize: 36 }}>🌙</Text>
-                <Text style={{ fontSize: 16, fontWeight: '800', color: colors.text }}>
+                <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 36 }}>
+                  🌙
+                </WellnessIconText>
+                <Text style={{ ...Typography.cardHeading, color: colors.text }}>
                   No mood entries yet
                 </Text>
-                <Text style={{ fontSize: 14, color: colors.mutedText, textAlign: 'center' }}>
+                <Text
+                  style={{
+                    fontFamily: Typography.family.body,
+                    fontSize: 14,
+                    color: colors.mutedText,
+                    textAlign: 'center',
+                  }}
+                >
                   Start tracking your mood to see your history here.
                 </Text>
               </View>
@@ -239,8 +273,9 @@ export default function MoodHistory() {
                 <View key={dateLabel}>
                   <Text
                     style={{
+                      fontFamily: Typography.family.body,
                       fontSize: 14,
-                      fontWeight: '700',
+                      fontWeight: Typography.weight.semibold,
                       color: colors.mutedText,
                       marginBottom: 10,
                     }}
@@ -281,26 +316,49 @@ export default function MoodHistory() {
                               justifyContent: 'center',
                             }}
                           >
-                            <Text style={{ fontSize: 26 }}>{meta.emoji}</Text>
+                            <WellnessIconText
+                              style={{
+                                fontFamily: Typography.family.body,
+                                fontSize: 26,
+                                color: meta.color,
+                              }}
+                            >
+                              {meta.emoji}
+                            </WellnessIconText>
                           </View>
                           <View style={{ flex: 1 }}>
-                            <Text style={{ fontSize: 15, fontWeight: '800', color: colors.text }}>
+                            <Text
+                              style={{
+                                fontFamily: Typography.family.body,
+                                fontSize: 15,
+                                fontWeight: Typography.weight.semibold,
+                                color: colors.text,
+                              }}
+                            >
                               {meta.label}
                             </Text>
-                            <Text style={{ fontSize: 12, color: colors.mutedText, marginTop: 3 }}>
+                            <Text
+                              style={{
+                                fontFamily: Typography.family.body,
+                                fontSize: 12,
+                                color: colors.mutedText,
+                                marginTop: 3,
+                              }}
+                            >
                               {timeStr} · Energy {item.energy}/5 · Stress {item.stress}/10
                             </Text>
                             {item.note && (
                               <Text
                                 numberOfLines={1}
                                 style={{
+                                  fontFamily: Typography.family.body,
                                   fontSize: 12,
                                   color: colors.mutedText,
                                   marginTop: 4,
                                   fontStyle: 'italic',
                                 }}
                               >
-                                "{item.note}"
+                                &quot;{item.note}&quot;
                               </Text>
                             )}
                           </View>
@@ -335,14 +393,29 @@ export default function MoodHistory() {
             >
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                 <MaterialIcons name="auto-awesome" size={20} color="#8B6B47" />
-                <Text style={{ fontSize: 15, fontWeight: '800', color: '#8B6B47' }}>
+                <Text
+                  style={{
+                    fontFamily: Typography.family.body,
+                    fontSize: 15,
+                    fontWeight: Typography.weight.semibold,
+                    color: '#8B6B47',
+                  }}
+                >
                   {t('moodInsights.title')}
                 </Text>
                 {insightsFetching && !insightsLoading && (
                   <ActivityIndicator size="small" color="#8B6B47" style={{ marginLeft: 'auto' }} />
                 )}
               </View>
-              <Text style={{ fontSize: 13, color: colors.mutedText, marginTop: 8, lineHeight: 20 }}>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  fontSize: 13,
+                  color: colors.mutedText,
+                  marginTop: 8,
+                  lineHeight: 20,
+                }}
+              >
                 {summary || t('moodInsights.subtitle')}
               </Text>
             </View>
@@ -362,10 +435,24 @@ export default function MoodHistory() {
                 }}
               >
                 <ActivityIndicator size="large" color="#8B6B47" />
-                <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text }}>
+                <Text
+                  style={{
+                    fontFamily: Typography.family.body,
+                    fontSize: 15,
+                    fontWeight: Typography.weight.semibold,
+                    color: colors.text,
+                  }}
+                >
                   {t('moodInsights.analyzing')}
                 </Text>
-                <Text style={{ fontSize: 13, color: colors.mutedText, textAlign: 'center' }}>
+                <Text
+                  style={{
+                    fontFamily: Typography.family.body,
+                    fontSize: 13,
+                    color: colors.mutedText,
+                    textAlign: 'center',
+                  }}
+                >
                   {t('moodInsights.analyzingSubtitle')}
                 </Text>
               </View>
@@ -385,10 +472,24 @@ export default function MoodHistory() {
                 }}
               >
                 <MaterialIcons name="error-outline" size={36} color="#C45B5B" />
-                <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text }}>
+                <Text
+                  style={{
+                    fontFamily: Typography.family.body,
+                    fontSize: 15,
+                    fontWeight: Typography.weight.semibold,
+                    color: colors.text,
+                  }}
+                >
                   {t('moodInsights.errorTitle')}
                 </Text>
-                <Text style={{ fontSize: 13, color: colors.mutedText, textAlign: 'center' }}>
+                <Text
+                  style={{
+                    fontFamily: Typography.family.body,
+                    fontSize: 13,
+                    color: colors.mutedText,
+                    textAlign: 'center',
+                  }}
+                >
                   {t('moodInsights.errorSubtitle')}
                 </Text>
                 <Pressable
@@ -405,7 +506,14 @@ export default function MoodHistory() {
                   })}
                 >
                   <MaterialIcons name="refresh" size={18} color="#fff" />
-                  <Text style={{ fontSize: 14, fontWeight: '800', color: '#fff' }}>
+                  <Text
+                    style={{
+                      fontFamily: Typography.family.body,
+                      fontSize: 14,
+                      fontWeight: Typography.weight.semibold,
+                      color: '#fff',
+                    }}
+                  >
                     {t('moodInsights.retry')}
                   </Text>
                 </Pressable>
@@ -426,11 +534,20 @@ export default function MoodHistory() {
                   ...UI.shadow.sm,
                 }}
               >
-                <Text style={{ fontSize: 36 }}>🔮</Text>
-                <Text style={{ fontSize: 16, fontWeight: '800', color: colors.text }}>
+                <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 36 }}>
+                  🔮
+                </WellnessIconText>
+                <Text style={{ ...Typography.cardHeading, color: colors.text }}>
                   {t('moodInsights.noDataTitle')}
                 </Text>
-                <Text style={{ fontSize: 14, color: colors.mutedText, textAlign: 'center' }}>
+                <Text
+                  style={{
+                    fontFamily: Typography.family.body,
+                    fontSize: 14,
+                    color: colors.mutedText,
+                    textAlign: 'center',
+                  }}
+                >
                   {t('moodInsights.noDataSubtitle')}
                 </Text>
                 <Pressable
@@ -448,7 +565,14 @@ export default function MoodHistory() {
                   })}
                 >
                   <MaterialIcons name="add" size={18} color="#fff" />
-                  <Text style={{ fontSize: 14, fontWeight: '800', color: '#fff' }}>
+                  <Text
+                    style={{
+                      fontFamily: Typography.family.body,
+                      fontSize: 14,
+                      fontWeight: Typography.weight.semibold,
+                      color: '#fff',
+                    }}
+                  >
                     {t('moodInsights.checkInNow')}
                   </Text>
                 </Pressable>
@@ -485,12 +609,15 @@ export default function MoodHistory() {
                         marginBottom: 14,
                       }}
                     >
-                      <MaterialIcons
-                        name={catMeta.icon as any}
-                        size={13}
-                        color={insight.color}
-                      />
-                      <Text style={{ fontSize: 11, fontWeight: '700', color: insight.color }}>
+                      <MaterialIcons name={catMeta.icon as any} size={13} color={insight.color} />
+                      <Text
+                        style={{
+                          fontFamily: Typography.family.body,
+                          fontSize: 11,
+                          fontWeight: Typography.weight.semibold,
+                          color: insight.color,
+                        }}
+                      >
                         {catMeta.label}
                       </Text>
                     </View>
@@ -507,14 +634,17 @@ export default function MoodHistory() {
                           justifyContent: 'center',
                         }}
                       >
-                        <MaterialIcons
-                          name={insight.icon as any}
-                          size={24}
-                          color={insight.color}
-                        />
+                        <MaterialIcons name={insight.icon as any} size={24} color={insight.color} />
                       </View>
                       <View style={{ flex: 1 }}>
-                        <Text style={{ fontSize: 16, fontWeight: '800', color: colors.text }}>
+                        <Text
+                          style={{
+                            fontFamily: Typography.family.body,
+                            fontSize: 16,
+                            fontWeight: Typography.weight.semibold,
+                            color: colors.text,
+                          }}
+                        >
                           {insight.title}
                         </Text>
                       </View>
@@ -523,6 +653,7 @@ export default function MoodHistory() {
                     {/* Description */}
                     <Text
                       style={{
+                        fontFamily: Typography.family.body,
                         fontSize: 14,
                         lineHeight: 22,
                         color: colors.mutedText,
@@ -541,9 +672,7 @@ export default function MoodHistory() {
                       }}
                     >
                       <Pressable
-                        onPress={() =>
-                          setDismissedInsights((prev) => [...prev, insight.id])
-                        }
+                        onPress={() => setDismissedInsights((prev) => [...prev, insight.id])}
                         style={({ pressed }) => ({
                           flexDirection: 'row',
                           alignItems: 'center',
@@ -557,7 +686,14 @@ export default function MoodHistory() {
                         })}
                       >
                         <MaterialIcons name="check" size={16} color={insight.color} />
-                        <Text style={{ fontSize: 13, fontWeight: '800', color: insight.color }}>
+                        <Text
+                          style={{
+                            fontFamily: Typography.family.body,
+                            fontSize: 13,
+                            fontWeight: Typography.weight.semibold,
+                            color: insight.color,
+                          }}
+                        >
                           {t('moodInsights.gotIt')}
                         </Text>
                       </Pressable>
@@ -569,17 +705,47 @@ export default function MoodHistory() {
                             const desc = (insight.description || '').toLowerCase();
 
                             // Navigate to root-level action screens so "back" returns here
-                            if (label.includes('journal') || label.includes('writing') || label.includes('write') || desc.includes('journal')) {
+                            if (
+                              label.includes('journal') ||
+                              label.includes('writing') ||
+                              label.includes('write') ||
+                              desc.includes('journal')
+                            ) {
                               router.push('/(suggestion-actions)/journal');
-                            } else if (label.includes('sleep') || label.includes('bedtime') || label.includes('rest') || desc.includes('sleep')) {
+                            } else if (
+                              label.includes('sleep') ||
+                              label.includes('bedtime') ||
+                              label.includes('rest') ||
+                              desc.includes('sleep')
+                            ) {
                               router.push('/(suggestion-actions)/sleep');
-                            } else if (label.includes('breath') || label.includes('meditat') || label.includes('mindful') || label.includes('relax') || desc.includes('breathing')) {
+                            } else if (
+                              label.includes('breath') ||
+                              label.includes('meditat') ||
+                              label.includes('mindful') ||
+                              label.includes('relax') ||
+                              desc.includes('breathing')
+                            ) {
                               router.push('/(suggestion-actions)/mindful');
-                            } else if (label.includes('stress') || label.includes('boundar') || label.includes('calm') || desc.includes('stress')) {
+                            } else if (
+                              label.includes('stress') ||
+                              label.includes('boundar') ||
+                              label.includes('calm') ||
+                              desc.includes('stress')
+                            ) {
                               router.push('/(suggestion-actions)/stress');
-                            } else if (label.includes('mood') || label.includes('check-in') || label.includes('check in') || label.includes('track')) {
+                            } else if (
+                              label.includes('mood') ||
+                              label.includes('check-in') ||
+                              label.includes('check in') ||
+                              label.includes('track')
+                            ) {
                               router.push('/(suggestion-actions)/check-in');
-                            } else if (label.includes('chat') || label.includes('talk') || label.includes('therap')) {
+                            } else if (
+                              label.includes('chat') ||
+                              label.includes('talk') ||
+                              label.includes('therap')
+                            ) {
                               router.push('/(suggestion-actions)/chat');
                             } else if (insight.category === 'suggestion') {
                               router.push('/(suggestion-actions)/mindful');
@@ -603,7 +769,14 @@ export default function MoodHistory() {
                           })}
                         >
                           <MaterialIcons name="arrow-forward" size={16} color="#fff" />
-                          <Text style={{ fontSize: 13, fontWeight: '800', color: '#fff' }}>
+                          <Text
+                            style={{
+                              fontFamily: Typography.family.body,
+                              fontSize: 13,
+                              fontWeight: Typography.weight.semibold,
+                              color: '#fff',
+                            }}
+                          >
                             {insight.actionLabel}
                           </Text>
                         </Pressable>
@@ -628,10 +801,16 @@ export default function MoodHistory() {
                 }}
               >
                 <MaterialIcons name="check-circle" size={40} color="#5B8A5A" />
-                <Text style={{ fontSize: 16, fontWeight: '800', color: colors.text }}>
+                <Text style={{ ...Typography.cardHeading, color: colors.text }}>
                   {t('moodInsights.allReviewed')}
                 </Text>
-                <Text style={{ fontSize: 13, color: colors.mutedText, textAlign: 'center' }}>
+                <Text
+                  style={{
+                    ...Typography.cardHeading,
+                    color: colors.mutedText,
+                    textAlign: 'center',
+                  }}
+                >
                   {t('moodInsights.allReviewedSubtitle')}
                 </Text>
                 <Pressable
@@ -652,7 +831,14 @@ export default function MoodHistory() {
                   })}
                 >
                   <MaterialIcons name="refresh" size={18} color="#fff" />
-                  <Text style={{ fontSize: 14, fontWeight: '800', color: '#fff' }}>
+                  <Text
+                    style={{
+                      fontFamily: Typography.family.body,
+                      fontSize: 14,
+                      fontWeight: Typography.weight.semibold,
+                      color: '#fff',
+                    }}
+                  >
                     {t('moodInsights.generateNew')}
                   </Text>
                 </Pressable>
@@ -676,7 +862,14 @@ export default function MoodHistory() {
                 })}
               >
                 <MaterialIcons name="refresh" size={18} color="#8B6B47" />
-                <Text style={{ fontSize: 14, fontWeight: '700', color: '#8B6B47' }}>
+                <Text
+                  style={{
+                    fontFamily: Typography.family.body,
+                    fontSize: 14,
+                    fontWeight: Typography.weight.semibold,
+                    color: '#8B6B47',
+                  }}
+                >
                   {t('moodInsights.refreshInsights')}
                 </Text>
               </Pressable>
@@ -727,9 +920,7 @@ export default function MoodHistory() {
                 marginBottom: 24,
               }}
             >
-              <Text style={{ fontSize: 20, fontWeight: '900', color: colors.text }}>
-                Filter Mood
-              </Text>
+              <Text style={{ ...Typography.section, color: colors.text }}>Filter Mood</Text>
               <Pressable onPress={() => setShowFilter(false)}>
                 <MaterialIcons name="close" size={24} color={colors.text} />
               </Pressable>
@@ -738,8 +929,9 @@ export default function MoodHistory() {
             {/* Mood Type Filter */}
             <Text
               style={{
+                fontFamily: Typography.family.body,
                 fontSize: 12,
-                fontWeight: '700',
+                fontWeight: Typography.weight.semibold,
                 color: colors.mutedText,
                 textTransform: 'uppercase',
                 letterSpacing: 0.5,
@@ -769,11 +961,20 @@ export default function MoodHistory() {
                       transform: [{ scale: pressed ? 0.95 : 1 }],
                     })}
                   >
-                    <Text style={{ fontSize: 18 }}>{meta.emoji}</Text>
+                    <WellnessIconText
+                      style={{
+                        fontFamily: Typography.family.body,
+                        fontSize: 18,
+                        color: meta.color,
+                      }}
+                    >
+                      {meta.emoji}
+                    </WellnessIconText>
                     <Text
                       style={{
+                        fontFamily: Typography.family.body,
                         fontSize: 14,
-                        fontWeight: '700',
+                        fontWeight: Typography.weight.semibold,
                         color: active ? meta.color : colors.text,
                       }}
                     >
@@ -800,7 +1001,14 @@ export default function MoodHistory() {
               })}
             >
               <MaterialIcons name="filter-list" size={20} color="#fff" />
-              <Text style={{ fontSize: 16, fontWeight: '800', color: '#fff' }}>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  fontSize: 16,
+                  fontWeight: Typography.weight.semibold,
+                  color: '#fff',
+                }}
+              >
                 Filter Mood ({filtered.length})
               </Text>
             </Pressable>
@@ -818,7 +1026,14 @@ export default function MoodHistory() {
                   opacity: pressed ? 0.7 : 1,
                 })}
               >
-                <Text style={{ fontSize: 14, fontWeight: '700', color: '#C45B5B' }}>
+                <Text
+                  style={{
+                    fontFamily: Typography.family.body,
+                    fontSize: 14,
+                    fontWeight: Typography.weight.semibold,
+                    color: '#C45B5B',
+                  }}
+                >
                   Clear Filter
                 </Text>
               </Pressable>

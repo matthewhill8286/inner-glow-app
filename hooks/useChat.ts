@@ -147,6 +147,7 @@ export const useChat = () => {
     isLoading: chatHistoryQuery.isLoading,
     isError: chatHistoryQuery.isError,
     error: chatHistoryQuery.error,
+    refresh: chatHistoryQuery.refetch,
 
     /* mutations */
     saveMessages: (issueKey: string, messages: ChatMessage[]) =>

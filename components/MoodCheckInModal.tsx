@@ -1,7 +1,10 @@
+import { Typography } from '@/constants/typography';
+import { UI } from '@/constants/theme';
+import { WellnessIconText } from '@/components/WellnessIconText';
 import React, { useState } from 'react';
 import { View, Text, Pressable, Modal, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialIcons from '@/components/AppIcon';
 
 /* ------------------------------------------------------------------ */
 /*  Mood scale                                                         */
@@ -12,7 +15,7 @@ const MOODS = [
   { key: 'low', emoji: '😕', color: '#F97316' },
   { key: 'neutral', emoji: '😐', color: '#EAB308' },
   { key: 'good', emoji: '🙂', color: '#22C55E' },
-  { key: 'great', emoji: '😊', color: '#5AAF8B' },
+  { key: 'great', emoji: '😄', color: '#5AAF8B' },
 ] as const;
 
 export type MoodValue = (typeof MOODS)[number]['key'];
@@ -63,15 +66,10 @@ export default function MoodCheckInModal({
     setMoodBefore(null);
   };
 
-  const title =
-    step === 'before'
-      ? t('moodCheckIn.howBefore')
-      : t('moodCheckIn.howAfter');
+  const title = step === 'before' ? t('moodCheckIn.howBefore') : t('moodCheckIn.howAfter');
 
   const subtitle =
-    step === 'before'
-      ? t('moodCheckIn.beforeSubtitle')
-      : t('moodCheckIn.afterSubtitle');
+    step === 'before' ? t('moodCheckIn.beforeSubtitle') : t('moodCheckIn.afterSubtitle');
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={handleSkip}>
@@ -103,13 +101,12 @@ export default function MoodCheckInModal({
               <Pressable
                 key={m.key}
                 onPress={() => handleSelect(m.key)}
-                style={({ pressed }) => [
-                  styles.moodBtn,
-                  { opacity: pressed ? 0.7 : 1 },
-                ]}
+                style={({ pressed }) => [styles.moodBtn, { opacity: pressed ? 0.7 : 1 }]}
               >
                 <View style={[styles.moodCircle, { backgroundColor: m.color + '15' }]}>
-                  <Text style={styles.moodEmoji}>{m.emoji}</Text>
+                  <WellnessIconText style={[styles.moodEmoji, { color: m.color }]}>
+                    {m.emoji}
+                  </WellnessIconText>
                 </View>
                 <Text style={[styles.moodLabel, { color: m.color }]}>
                   {t(`moodCheckIn.moods.${m.key}`)}
@@ -162,18 +159,15 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   activityName: {
+    fontFamily: Typography.family.body,
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: Typography.weight.semibold,
     marginBottom: 12,
     textAlign: 'center',
   },
-  title: {
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: '900',
-    textAlign: 'center',
-  },
+  title: { ...Typography.heading, color: '#fff', fontSize: 20, textAlign: 'center' },
   subtitle: {
+    fontFamily: Typography.family.body,
     color: '#aaa',
     fontSize: 14,
     marginTop: 6,
@@ -198,12 +192,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  moodEmoji: {
-    fontSize: 26,
-  },
+  moodEmoji: { fontFamily: Typography.family.body, fontSize: 26 },
   moodLabel: {
+    fontFamily: Typography.family.body,
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: Typography.weight.medium,
   },
   skipBtn: {
     flexDirection: 'row',
@@ -214,8 +207,9 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   skipText: {
+    fontFamily: Typography.family.body,
     color: '#888',
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: Typography.weight.semibold,
   },
 });

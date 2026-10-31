@@ -1,3 +1,5 @@
+import { Typography } from '@/constants/typography';
+import { backTo } from '@/lib/navigation';
 import React, { useCallback } from 'react';
 import { View, Text, Pressable, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -5,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { router } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, UI } from '@/constants/theme';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialIcons from '@/components/AppIcon';
 
 export default function NoInternetScreen() {
   const { t } = useTranslation();
@@ -14,7 +16,7 @@ export default function NoInternetScreen() {
   const colors = Colors[theme];
 
   const handleRefresh = useCallback(() => {
-    router.back();
+    router.replace('/');
   }, []);
 
   return (
@@ -27,7 +29,7 @@ export default function NoInternetScreen() {
         }}
       >
         <Pressable
-          onPress={() => router.back()}
+          onPress={() => backTo(undefined, '/(tabs)/home')}
           style={({ pressed }) => ({
             width: 40,
             height: 40,
@@ -75,8 +77,8 @@ export default function NoInternetScreen() {
 
         <Text
           style={{
-            fontSize: 26,
-            fontWeight: '900',
+            ...Typography.heading,
+            fontSize: 24,
             color: colors.text,
             textAlign: 'center',
             marginBottom: 10,
@@ -87,6 +89,7 @@ export default function NoInternetScreen() {
 
         <Text
           style={{
+            fontFamily: Typography.family.body,
             fontSize: 14,
             color: colors.mutedText,
             textAlign: 'center',
@@ -113,7 +116,14 @@ export default function NoInternetScreen() {
           })}
         >
           <MaterialIcons name="refresh" size={16} color="#5B8A5A" />
-          <Text style={{ fontSize: 13, fontWeight: '700', color: '#5B8A5A' }}>
+          <Text
+            style={{
+              fontFamily: Typography.family.body,
+              fontSize: 13,
+              fontWeight: Typography.weight.semibold,
+              color: '#5B8A5A',
+            }}
+          >
             {t('offlineScreen.refresh')}
           </Text>
         </Pressable>
@@ -123,7 +133,7 @@ export default function NoInternetScreen() {
         style={{ paddingHorizontal: UI.spacing.xl, paddingBottom: Platform.OS === 'ios' ? 44 : 28 }}
       >
         <Pressable
-          onPress={() => router.push('/(tabs)/home')}
+          onPress={() => router.replace('/')}
           style={({ pressed }) => ({
             flexDirection: 'row',
             alignItems: 'center',
@@ -136,7 +146,16 @@ export default function NoInternetScreen() {
             ...UI.shadow.md,
           })}
         >
-          <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{t('errorScreen.takeMeHome')}</Text>
+          <Text
+            style={{
+              fontFamily: Typography.family.body,
+              fontSize: 16,
+              fontWeight: Typography.weight.semibold,
+              color: '#fff',
+            }}
+          >
+            {t('errorScreen.takeMeHome')}
+          </Text>
           <MaterialIcons name="home" size={20} color="#fff" />
         </Pressable>
       </View>

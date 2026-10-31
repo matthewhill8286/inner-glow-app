@@ -1,8 +1,9 @@
+import { Typography } from '@/constants/typography';
 import React, { useMemo } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, UI } from '@/constants/theme';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialIcons from '@/components/AppIcon';
 
 /* ── mood → color mapping ──────────────────────── */
 const MOOD_COLORS: Record<string, string> = {
@@ -171,7 +172,12 @@ export default function Calendar({
                   style={[
                     s.dayText,
                     { color: selected ? '#FFF' : colors.text },
-                    today && !selected && { fontWeight: '800', color: '#8B6B47' },
+                    today &&
+                      !selected && {
+                        fontFamily: Typography.family.body,
+                        fontWeight: Typography.weight.semibold,
+                        color: '#8B6B47',
+                      },
                   ]}
                 >
                   {date.getDate()}
@@ -220,13 +226,28 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
   monthCenter: { alignItems: 'center' },
-  monthTitle: { fontSize: 17, fontWeight: '900' },
-  monthSub: { fontSize: 12, fontWeight: '600', marginTop: 2 },
+  monthTitle: {
+    fontFamily: Typography.family.body,
+    fontSize: 17,
+    fontWeight: Typography.weight.semibold,
+  },
+  monthSub: {
+    fontFamily: Typography.family.body,
+    fontSize: 12,
+    fontWeight: Typography.weight.semibold,
+    marginTop: 2,
+  },
 
   /* week header */
   weekRow: { flexDirection: 'row', marginBottom: 8 },
   weekCell: { flex: 1, alignItems: 'center' },
-  weekText: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.3 },
+  weekText: {
+    fontFamily: Typography.family.body,
+    fontSize: 12,
+    fontWeight: Typography.weight.semibold,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
 
   divider: { height: 1, marginBottom: 6 },
 
@@ -252,8 +273,9 @@ const s = StyleSheet.create({
     borderWidth: 2,
   },
   dayText: {
+    fontFamily: Typography.family.body,
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: Typography.weight.semibold,
   },
 
   /* dot */

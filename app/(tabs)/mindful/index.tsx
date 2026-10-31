@@ -1,3 +1,5 @@
+import { backTo } from '@/lib/navigation';
+import { Typography } from '@/constants/typography';
 import React from 'react';
 import { View, Text, Pressable, ScrollView, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -6,7 +8,7 @@ import { router } from 'expo-router';
 import { useMindfulness } from '@/hooks/useMindfulness';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, UI } from '@/constants/theme';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialIcons from '@/components/AppIcon';
 
 const SESSION_ICONS: Record<string, { icon: string; color: string }> = {
   meditation: { icon: 'self-improvement', color: '#7B6DC9' },
@@ -72,7 +74,7 @@ export default function MindfulHoursMain() {
       <ScreenHeader
         title="Mindful Hours"
         showBack
-        onBack={() => router.replace('/(tabs)/home')}
+        onBack={() => backTo(undefined, '/(tabs)/home')}
         rightElement={
           <Pressable
             onPress={() => router.push('/(tabs)/mindful/stats')}
@@ -116,8 +118,9 @@ export default function MindfulHoursMain() {
         >
           <Text
             style={{
+              fontFamily: Typography.family.body,
               fontSize: 42,
-              fontWeight: '900',
+              fontWeight: Typography.weight.semibold,
               color: colors.primary,
               letterSpacing: -1,
             }}
@@ -126,9 +129,10 @@ export default function MindfulHoursMain() {
           </Text>
           <Text
             style={{
+              fontFamily: Typography.family.body,
               fontSize: 14,
               color: colors.mutedText,
-              fontWeight: '600',
+              fontWeight: Typography.weight.semibold,
               marginTop: 2,
             }}
           >
@@ -164,10 +168,24 @@ export default function MindfulHoursMain() {
           <MaterialIcons name="today" size={22} color="#5B8A5A" />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={{ fontWeight: '700', color: colors.text, fontSize: 15 }}>
+          <Text
+            style={{
+              fontFamily: Typography.family.body,
+              fontWeight: Typography.weight.semibold,
+              color: colors.text,
+              fontSize: 15,
+            }}
+          >
             Today&apos;s Mindfulness
           </Text>
-          <Text style={{ color: colors.mutedText, fontSize: 13, marginTop: 2 }}>
+          <Text
+            style={{
+              fontFamily: Typography.family.body,
+              color: colors.mutedText,
+              fontSize: 13,
+              marginTop: 2,
+            }}
+          >
             {todayMins} min{todayMins !== 1 ? 's' : ''} completed
           </Text>
         </View>
@@ -181,7 +199,14 @@ export default function MindfulHoursMain() {
             opacity: pressed ? 0.8 : 1,
           })}
         >
-          <Text style={{ color: colors.onPrimary, fontWeight: '700', fontSize: 13 }}>
+          <Text
+            style={{
+              fontFamily: Typography.family.body,
+              color: colors.onPrimary,
+              fontWeight: Typography.weight.semibold,
+              fontSize: 13,
+            }}
+          >
             + New Exercise
           </Text>
         </Pressable>
@@ -196,9 +221,18 @@ export default function MindfulHoursMain() {
           marginBottom: 12,
         }}
       >
-        <Text style={{ fontSize: 18, fontWeight: '800', color: colors.text }}>Recent Sessions</Text>
+        <Text style={{ ...Typography.section, color: colors.text }}>Recent Sessions</Text>
         <Pressable onPress={() => router.push('/(tabs)/mindful/stats')}>
-          <Text style={{ fontSize: 13, fontWeight: '600', color: colors.primary }}>View All</Text>
+          <Text
+            style={{
+              fontFamily: Typography.family.body,
+              fontSize: 13,
+              fontWeight: Typography.weight.semibold,
+              color: colors.primary,
+            }}
+          >
+            View All
+          </Text>
         </Pressable>
       </View>
 
@@ -216,14 +250,7 @@ export default function MindfulHoursMain() {
           }}
         >
           <MaterialIcons name="self-improvement" size={64} color={colors.icon} />
-          <Text
-            style={{
-              marginTop: 16,
-              fontSize: 18,
-              fontWeight: '600',
-              color: colors.text,
-            }}
-          >
+          <Text style={{ ...Typography.section, marginTop: 16, color: colors.text }}>
             No sessions yet
           </Text>
           <Text style={{ marginTop: 8, color: colors.mutedText, textAlign: 'center' }}>
@@ -276,7 +303,8 @@ export default function MindfulHoursMain() {
                 <View style={{ flex: 1 }}>
                   <Text
                     style={{
-                      fontWeight: '700',
+                      fontFamily: Typography.family.body,
+                      fontWeight: Typography.weight.semibold,
                       color: colors.text,
                       fontSize: 15,
                     }}
@@ -285,6 +313,7 @@ export default function MindfulHoursMain() {
                   </Text>
                   <Text
                     style={{
+                      fontFamily: Typography.family.body,
                       color: colors.mutedText,
                       fontSize: 12,
                       marginTop: 2,
@@ -297,14 +326,23 @@ export default function MindfulHoursMain() {
                   <View style={{ alignItems: 'flex-end' }}>
                     <Text
                       style={{
+                        fontFamily: Typography.family.body,
                         fontSize: 16,
-                        fontWeight: '800',
+                        fontWeight: Typography.weight.semibold,
                         color: colors.primary,
                       }}
                     >
                       {minutes}m
                     </Text>
-                    <Text style={{ fontSize: 11, color: colors.mutedText }}>Duration</Text>
+                    <Text
+                      style={{
+                        fontFamily: Typography.family.body,
+                        fontSize: 11,
+                        color: colors.mutedText,
+                      }}
+                    >
+                      Duration
+                    </Text>
                   </View>
                   <MaterialIcons name="chevron-right" size={20} color={colors.mutedText} />
                 </View>

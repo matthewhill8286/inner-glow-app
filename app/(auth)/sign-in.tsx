@@ -1,3 +1,5 @@
+import { Typography } from '@/constants/typography';
+import { UI } from '@/constants/theme';
 import React, { useState } from 'react';
 import {
   View,
@@ -15,7 +17,7 @@ import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '@/supabase/supabase';
 import { authTokenVar } from '@/lib/state';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialIcons from '@/components/AppIcon';
 
 /* ── Design tokens (matches Figma assessment palette) ── */
 const C = {
@@ -120,8 +122,8 @@ export default function SignIn() {
           </View>
           <Text
             style={{
-              fontSize: 28,
-              fontWeight: '900',
+              ...Typography.heading,
+              fontSize: 24,
               color: C.brownLight,
               textAlign: 'center',
             }}
@@ -130,6 +132,7 @@ export default function SignIn() {
           </Text>
           <Text
             style={{
+              fontFamily: Typography.family.body,
               fontSize: 15,
               color: C.brownLight,
               opacity: 0.7,
@@ -165,7 +168,13 @@ export default function SignIn() {
             >
               <MaterialIcons name="error-outline" size={18} color={C.red} />
               <Text
-                style={{ flex: 1, fontSize: 13, fontWeight: '600', color: C.red }}
+                style={{
+                  fontFamily: Typography.family.body,
+                  flex: 1,
+                  fontSize: 13,
+                  fontWeight: Typography.weight.semibold,
+                  color: C.red,
+                }}
               >
                 {error}
               </Text>
@@ -227,8 +236,9 @@ export default function SignIn() {
           >
             <Text
               style={{
+                fontFamily: Typography.family.body,
                 fontSize: 13,
-                fontWeight: '700',
+                fontWeight: Typography.weight.semibold,
                 color: C.brownText,
               }}
             >
@@ -258,10 +268,15 @@ export default function SignIn() {
             elevation: 4,
           })}
         >
-          {loading ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : null}
-          <Text style={{ color: 'white', fontWeight: '800', fontSize: 18 }}>
+          {loading ? <ActivityIndicator size="small" color="#fff" /> : null}
+          <Text
+            style={{
+              fontFamily: Typography.family.body,
+              color: 'white',
+              fontWeight: Typography.weight.semibold,
+              fontSize: 18,
+            }}
+          >
             {loading ? t('auth.signingIn') : t('auth.continue')}
           </Text>
         </Pressable>
@@ -272,7 +287,14 @@ export default function SignIn() {
             onPress={() => router.push('/(auth)/sign-up')}
             style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
           >
-            <Text style={{ fontSize: 14, fontWeight: '700', color: C.brownLight }}>
+            <Text
+              style={{
+                fontFamily: Typography.family.body,
+                fontSize: 14,
+                fontWeight: Typography.weight.semibold,
+                color: C.brownLight,
+              }}
+            >
               {t('auth.noAccountYet')}{' '}
               <Text style={{ color: C.brown, textDecorationLine: 'underline' }}>
                 {t('auth.signUp')}
@@ -287,8 +309,9 @@ export default function SignIn() {
 
 /* ── Shared styles ── */
 const labelStyle = {
+  fontFamily: Typography.family.body,
   fontSize: 12,
-  fontWeight: '700' as const,
+  fontWeight: Typography.weight.semibold,
   color: C.brownLight,
   textTransform: 'uppercase' as const,
   letterSpacing: 0.5,
@@ -305,8 +328,9 @@ const inputWrap = {
 };
 
 const inputField = {
+  fontFamily: Typography.family.body,
   flex: 1,
   fontSize: 15,
-  fontWeight: '600' as const,
+  fontWeight: Typography.weight.semibold,
   color: '#1B1A18',
 };

@@ -1,3 +1,4 @@
+import { notifyMindfulnessSession } from '@/lib/notificationStore';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/supabase/supabase';
 import { MindfulEntry } from '@/lib/types';
@@ -61,6 +62,7 @@ export const useMindfulness = () => {
 
       return item;
     },
+    onSuccess: (item) => notifyMindfulnessSession(Math.round(item.seconds / 60)),
     onMutate: async ({ seconds, note }) => {
       await queryClient.cancelQueries({ queryKey: key });
       const previous = queryClient.getQueryData<MindfulEntry[]>(key);

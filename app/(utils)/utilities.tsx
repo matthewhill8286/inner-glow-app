@@ -1,10 +1,12 @@
+import { Typography } from '@/constants/typography';
+import { backTo } from '@/lib/navigation';
 import React from 'react';
 import { View, Text, Pressable, Platform, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, UI } from '@/constants/theme';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialIcons from '@/components/AppIcon';
 
 const SCREENS: { title: string; subtitle: string; path: string; icon: string; iconBg: string }[] = [
   {
@@ -68,7 +70,7 @@ export default function UtilitiesScreen() {
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           <Pressable
-            onPress={() => router.back()}
+            onPress={() => backTo(undefined, '/(tabs)/home')}
             style={({ pressed }) => ({
               width: 40,
               height: 40,
@@ -89,12 +91,11 @@ export default function UtilitiesScreen() {
               style={{ marginLeft: 4 }}
             />
           </Pressable>
-          <Text style={{ fontSize: 22, fontWeight: '800', color: colors.text }}>
-            Error & Other Utilities
-          </Text>
+          <Text style={{ ...Typography.heading, color: colors.text }}>Error & Other Utilities</Text>
         </View>
         <Text
           style={{
+            fontFamily: Typography.family.body,
             fontSize: 14,
             color: colors.mutedText,
             marginTop: 8,
@@ -144,10 +145,24 @@ export default function UtilitiesScreen() {
               <MaterialIcons name={screen.icon as any} size={24} color="#fff" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text }}>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  fontSize: 16,
+                  fontWeight: Typography.weight.semibold,
+                  color: colors.text,
+                }}
+              >
                 {screen.title}
               </Text>
-              <Text style={{ fontSize: 13, color: colors.mutedText, marginTop: 2 }}>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  fontSize: 13,
+                  color: colors.mutedText,
+                  marginTop: 2,
+                }}
+              >
                 {screen.subtitle}
               </Text>
             </View>

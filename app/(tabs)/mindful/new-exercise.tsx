@@ -1,3 +1,5 @@
+import { Typography } from '@/constants/typography';
+import { backTo } from '@/lib/navigation';
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { View, Text, Pressable, ScrollView, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -5,7 +7,7 @@ import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, UI } from '@/constants/theme';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialIcons from '@/components/AppIcon';
 import { createAudioPlayer, type AudioPlayer } from 'expo-audio';
 
 // ─── Goal options ────────────────────────────
@@ -131,7 +133,7 @@ export default function NewExercise() {
     if (step > 1) {
       setStep(step - 1);
     } else {
-      router.back();
+      backTo(undefined, '/(tabs)/mindful');
     }
   };
 
@@ -166,15 +168,22 @@ export default function NewExercise() {
             </Pressable>
             <Text
               style={{
+                fontFamily: Typography.family.body,
                 fontSize: Platform.OS === 'ios' ? 26 : 22,
-                fontWeight: Platform.OS === 'ios' ? '900' : '700',
+                fontWeight: Platform.OS === 'ios' ? Typography.weight.bold : '700',
                 color: colors.text,
               }}
             >
               {t('newExercise.title')}
             </Text>
           </View>
-          <Text style={{ color: colors.mutedText, fontWeight: '600' }}>
+          <Text
+            style={{
+              fontFamily: Typography.family.body,
+              color: colors.mutedText,
+              fontWeight: Typography.weight.semibold,
+            }}
+          >
             {t('newExercise.stepCounter', { step, total: 3 })}
           </Text>
         </View>
@@ -257,8 +266,9 @@ export default function NewExercise() {
         >
           <Text
             style={{
+              fontFamily: Typography.family.body,
               color: canProceed ? colors.onPrimary : colors.mutedText,
-              fontWeight: '800',
+              fontWeight: Typography.weight.semibold,
               fontSize: 16,
             }}
           >
@@ -284,18 +294,12 @@ function StepGoal({
 }) {
   return (
     <View>
-      <Text
-        style={{
-          fontSize: 20,
-          fontWeight: '800',
-          color: colors.text,
-          marginBottom: 4,
-        }}
-      >
+      <Text style={{ ...Typography.section, color: colors.text, marginBottom: 4 }}>
         {t('newExercise.goalTitle')}
       </Text>
       <Text
         style={{
+          fontFamily: Typography.family.body,
           color: colors.mutedText,
           fontSize: 14,
           marginBottom: 20,
@@ -337,9 +341,10 @@ function StepGoal({
               </View>
               <Text
                 style={{
+                  fontFamily: Typography.family.body,
                   flex: 1,
                   fontSize: 16,
-                  fontWeight: '700',
+                  fontWeight: Typography.weight.semibold,
                   color: colors.text,
                 }}
               >
@@ -381,18 +386,12 @@ function StepTime({
 }) {
   return (
     <View>
-      <Text
-        style={{
-          fontSize: 20,
-          fontWeight: '800',
-          color: colors.text,
-          marginBottom: 4,
-        }}
-      >
+      <Text style={{ ...Typography.section, color: colors.text, marginBottom: 4 }}>
         {t('newExercise.timeTitle')}
       </Text>
       <Text
         style={{
+          fontFamily: Typography.family.body,
           color: colors.mutedText,
           fontSize: 14,
           marginBottom: 28,
@@ -418,8 +417,9 @@ function StepTime({
         >
           <Text
             style={{
+              fontFamily: Typography.family.body,
               fontSize: 52,
-              fontWeight: '900',
+              fontWeight: Typography.weight.semibold,
               color: colors.primary,
               letterSpacing: -1,
             }}
@@ -428,9 +428,10 @@ function StepTime({
           </Text>
           <Text
             style={{
+              fontFamily: Typography.family.body,
               fontSize: 14,
               color: colors.mutedText,
-              fontWeight: '600',
+              fontWeight: Typography.weight.semibold,
               marginTop: 2,
             }}
           >
@@ -464,7 +465,16 @@ function StepTime({
             opacity: pressed ? 0.7 : 1,
           })}
         >
-          <Text style={{ fontSize: 18, fontWeight: '800', color: colors.text }}>−5</Text>
+          <Text
+            style={{
+              fontFamily: Typography.family.body,
+              fontSize: 18,
+              fontWeight: Typography.weight.semibold,
+              color: colors.text,
+            }}
+          >
+            −5
+          </Text>
         </Pressable>
 
         {/* -1 button */}
@@ -482,7 +492,16 @@ function StepTime({
             opacity: pressed ? 0.7 : 1,
           })}
         >
-          <Text style={{ fontSize: 18, fontWeight: '800', color: colors.text }}>−1</Text>
+          <Text
+            style={{
+              fontFamily: Typography.family.body,
+              fontSize: 18,
+              fontWeight: Typography.weight.semibold,
+              color: colors.text,
+            }}
+          >
+            −1
+          </Text>
         </Pressable>
 
         {/* +1 button */}
@@ -500,7 +519,16 @@ function StepTime({
             opacity: pressed ? 0.7 : 1,
           })}
         >
-          <Text style={{ fontSize: 18, fontWeight: '800', color: colors.text }}>+1</Text>
+          <Text
+            style={{
+              fontFamily: Typography.family.body,
+              fontSize: 18,
+              fontWeight: Typography.weight.semibold,
+              color: colors.text,
+            }}
+          >
+            +1
+          </Text>
         </Pressable>
 
         {/* +5 button */}
@@ -518,7 +546,16 @@ function StepTime({
             opacity: pressed ? 0.7 : 1,
           })}
         >
-          <Text style={{ fontSize: 18, fontWeight: '800', color: colors.text }}>+5</Text>
+          <Text
+            style={{
+              fontFamily: Typography.family.body,
+              fontSize: 18,
+              fontWeight: Typography.weight.semibold,
+              color: colors.text,
+            }}
+          >
+            +5
+          </Text>
         </Pressable>
       </View>
 
@@ -549,7 +586,8 @@ function StepTime({
             >
               <Text
                 style={{
-                  fontWeight: '700',
+                  fontFamily: Typography.family.body,
+                  fontWeight: Typography.weight.semibold,
                   color: isSelected ? colors.onPrimary : colors.text,
                   fontSize: 14,
                 }}
@@ -580,18 +618,12 @@ function StepSoundscape({
 }) {
   return (
     <View>
-      <Text
-        style={{
-          fontSize: 20,
-          fontWeight: '800',
-          color: colors.text,
-          marginBottom: 4,
-        }}
-      >
+      <Text style={{ ...Typography.section, color: colors.text, marginBottom: 4 }}>
         {t('newExercise.soundscapeTitle')}
       </Text>
       <Text
         style={{
+          fontFamily: Typography.family.body,
           color: colors.mutedText,
           fontSize: 14,
           marginBottom: 20,
@@ -634,9 +666,10 @@ function StepSoundscape({
               </View>
               <Text
                 style={{
+                  fontFamily: Typography.family.body,
                   flex: 1,
                   fontSize: 16,
-                  fontWeight: '700',
+                  fontWeight: Typography.weight.semibold,
                   color: colors.text,
                 }}
               >
@@ -655,7 +688,12 @@ function StepSoundscape({
                 >
                   {isPreviewing ? (
                     <>
-                      <MaterialIcons name="volume-up" size={16} color={sound.color} style={{ marginRight: 4 }} />
+                      <MaterialIcons
+                        name="volume-up"
+                        size={16}
+                        color={sound.color}
+                        style={{ marginRight: 4 }}
+                      />
                       {[10, 18, 8, 22, 14, 20, 6, 16].map((h, i) => (
                         <View
                           key={i}

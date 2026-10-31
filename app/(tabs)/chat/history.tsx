@@ -1,120 +1,128 @@
-import React, { useMemo } from 'react';
-import { View, Text, Pressable, FlatList, ActivityIndicator } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { View, Text, FlatList, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTranslation } from 'react-i18next';
-import ScreenHeader from '@/components/ScreenHeader';
 import { router } from 'expo-router';
+import ScreenHeader from '@/components/ScreenHeader';
+import { ConversationRow } from '@/components/ConversationRow';
+import { AppField } from '@/components/ui/AppField';
+import { AppButton } from '@/components/ui/AppButton';
+import { StatusState } from '@/components/ui/StatusState';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, UI } from '@/constants/theme';
-import { useChat, type ConversationMeta } from '@/hooks/useChat';
+import { Typography } from '@/constants/typography';
+import { useChat } from '@/hooks/useChat';
 import { useTopics } from '@/hooks/useTopics';
-
+import { conversationTitle, matchesConversation } from '@/lib/conversation-display';
+import { screenBottomPadding } from '@/lib/screen-layout';
+import { backTo } from '@/lib/navigation';
 export default function ChatHistory() {
+  const colors = Colors[useColorScheme() ?? 'light'];
   const insets = useSafeAreaInsets();
-  const { t } = useTranslation();
-  const theme = useColorScheme() ?? 'light';
-  const colors = Colors[theme];
-  const { conversations, isLoading, error } = useChat();
+  const { conversations, isLoading, error, refresh } = useChat();
   const { topics } = useTopics();
-
-  /* Build display items from the pre-parsed conversations */
-  const historyItems = useMemo(() => {
-    return conversations.map((convo: ConversationMeta) => {
-      const topic = topics.find((tp: any) => tp.id === convo.topicId);
-      const topicName =
-        topic?.name || (convo.topicId === 'general' ? convo.persona.speciality : convo.topicId);
-
-      return {
-        key: convo.raw,
-        personaId: convo.personaId,
-        title: `${convo.persona.emoji} ${convo.persona.name} · ${topicName}`,
-        lastMessage: convo.lastMessage?.content || t('chat.noMessages'),
-        date: convo.lastMessage?.createdAt
-          ? new Date(convo.lastMessage.createdAt).toLocaleDateString()
-          : '',
-        messageCount: convo.messages.length,
-      };
-    });
-  }, [conversations, topics, t]);
-
-  if (error) {
-    return (
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: colors.background,
-          padding: UI.spacing.xl,
-          paddingTop: insets.top + 6,
-        }}
-      >
-        <ScreenHeader
-          title={t('chat.historyTitle')}
-          subtitle={t('chat.historySubtitle')}
-          showBack
-        />
-      </View>
-    );
-  }
-
+  const [query, setQuery] = useState('');
+  const items = useMemo(
+    () =>
+      conversations
+        .map((conversation) => ({
+          conversation,
+          topic:
+            topics.find((topic) => topic.id === conversation.topicId)?.name ??
+            conversation.persona.speciality,
+        }))
+        .filter(({ conversation, topic }) =>
+          matchesConversation(
+            query,
+            conversationTitle(conversation.messages, topic),
+            conversation.persona.name,
+            topic,
+          ),
+        ),
+    [conversations, topics, query],
+  );
   return (
-    <View
-      style={{
-        flex: 1,
-        backgroundColor: colors.background,
-        padding: UI.spacing.xl,
-        paddingTop: insets.top + 6,
-      }}
-    >
-      <ScreenHeader title={t('chat.historyTitle')} subtitle={t('chat.historySubtitle')} showBack />
-
-      {isLoading && historyItems.length === 0 ? (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator color={colors.text} />
-        </View>
-      ) : historyItems.length === 0 ? (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', opacity: 0.6 }}>
-          <Text style={{ color: colors.text, fontSize: 16 }}>{t('chat.noHistory')}</Text>
-        </View>
+    <View style={{ flex: 1, backgroundColor: colors.background, paddingHorizontal: UI.spacing.xl }}>
+      <ScreenHeader
+        title="Conversation history"
+        subtitle="Find a conversation and continue where you left off."
+        showBack
+        onBack={() => backTo('/(tabs)/chat', '/(tabs)/chat')}
+      />
+      <AppField
+        label="Search conversations"
+        placeholder="Search by conversation, coach or topic"
+        value={query}
+        onChangeText={setQuery}
+        autoCorrect={false}
+        returnKeyType="search"
+      />
+      {error && (
+        <StatusState
+          title="Could not load conversations"
+          message="Please try again. Your saved conversations have not been removed."
+          busy={isLoading}
+          onRetry={() => {
+            void refresh();
+          }}
+        />
+      )}
+      {isLoading && conversations.length === 0 ? (
+        <ActivityIndicator style={{ marginTop: 24 }} color={colors.primary} />
       ) : (
         <FlatList
           style={{ marginTop: 16 }}
-          data={historyItems}
-          keyExtractor={(item) => item.key}
-          contentContainerStyle={{ gap: 10, paddingBottom: 18 }}
+          data={items}
+          keyExtractor={(item) => item.conversation.raw}
+          keyboardDismissMode="on-drag"
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{
+            gap: 12,
+            paddingBottom: screenBottomPadding(insets.bottom, false),
+          }}
+          ListEmptyComponent={
+            !error ? (
+              <View style={{ gap: 12, paddingVertical: 24 }}>
+                <Text
+                  accessibilityRole="header"
+                  style={[Typography.section, { color: colors.text }]}
+                >
+                  {query ? 'No matching conversations' : 'Your conversations will appear here'}
+                </Text>
+                <Text style={[Typography.body, { color: colors.mutedText }]}>
+                  {query
+                    ? 'Try another title, coach or topic.'
+                    : 'Start with a thought or choose a prompt.'}
+                </Text>
+                <AppButton
+                  title={query ? 'Clear search' : 'Start a conversation'}
+                  variant="secondary"
+                  onPress={() =>
+                    query
+                      ? setQuery('')
+                      : router.push({
+                          pathname: '/(tabs)/chat/new-conversation',
+                          params: { from: '/(tabs)/chat/history' },
+                        })
+                  }
+                />
+              </View>
+            ) : null
+          }
           renderItem={({ item }) => (
-            <Pressable
+            <ConversationRow
+              conversation={item.conversation}
+              topic={item.topic}
               onPress={() =>
                 router.push({
                   pathname: '/(tabs)/chat/[issueKey]',
-                  params: { issueKey: item.key, persona: item.personaId },
+                  params: {
+                    issueKey: item.conversation.raw,
+                    persona: item.conversation.personaId,
+                    from: '/(tabs)/chat/history',
+                  },
                 })
               }
-              style={({ pressed }) => ({
-                padding: 16,
-                borderRadius: UI.radius.lg,
-                backgroundColor: colors.card,
-                opacity: pressed ? 0.85 : 1,
-              })}
-            >
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Text
-                  style={{ fontSize: 15, fontWeight: '900', color: colors.text, flex: 1, marginRight: 8 }}
-                  numberOfLines={1}
-                >
-                  {item.title}
-                </Text>
-                <Text style={{ fontSize: 12, color: colors.mutedText }}>{item.date}</Text>
-              </View>
-              <Text
-                style={{ color: colors.mutedText, marginTop: 6, fontSize: 14 }}
-                numberOfLines={1}
-              >
-                {item.lastMessage}
-              </Text>
-              <Text style={{ color: colors.subtleText, marginTop: 4, fontSize: 11 }}>
-                {item.messageCount} {item.messageCount === 1 ? 'message' : 'messages'}
-              </Text>
-            </Pressable>
+            />
           )}
         />
       )}

@@ -1,16 +1,18 @@
+import { Typography } from '@/constants/typography';
+import { backTo } from '@/lib/navigation';
+import { WellnessIconText } from '@/components/WellnessIconText';
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, Pressable, Platform, StyleSheet, Animated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialIcons from '@/components/AppIcon';
 import { useSleep } from '@/hooks/useSleep';
 import { UI } from '@/constants/theme';
 
 /* ── helpers ──────────────────────────────────────── */
 function goBack(from?: string) {
-  if (from) router.replace(from as any);
-  else router.back();
+  backTo(from, '/(tabs)/sleep');
 }
 
 function formatTime(date: Date) {
@@ -119,7 +121,9 @@ export default function StartSleepingScreen() {
 
             {/* Sleeping illustration placeholder */}
             <View style={s.illustrationWrap}>
-              <Text style={{ fontSize: 80 }}>😴</Text>
+              <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 80 }}>
+                😴
+              </WellnessIconText>
             </View>
           </>
         ) : (
@@ -132,7 +136,9 @@ export default function StartSleepingScreen() {
 
             {/* Moon illustration */}
             <View style={s.illustrationWrap}>
-              <Text style={{ fontSize: 80 }}>🌙</Text>
+              <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 80 }}>
+                🌙
+              </WellnessIconText>
             </View>
           </>
         )}
@@ -233,19 +239,22 @@ const s = StyleSheet.create({
   },
 
   greeting: {
+    fontFamily: Typography.family.body,
     color: '#FFF',
     fontSize: 24,
-    fontWeight: '900',
+    fontWeight: Typography.weight.semibold,
     marginBottom: 8,
   },
   clock: {
+    fontFamily: Typography.family.body,
     color: '#FFF',
     fontSize: 52,
-    fontWeight: '900',
+    fontWeight: Typography.weight.semibold,
     letterSpacing: 2,
     marginBottom: 12,
   },
   subtitle: {
+    fontFamily: Typography.family.body,
     color: 'rgba(255,255,255,0.60)',
     fontSize: 14,
     textAlign: 'center',
@@ -269,9 +278,10 @@ const s = StyleSheet.create({
     borderRadius: 12,
   },
   statText: {
+    fontFamily: Typography.family.body,
     color: 'rgba(255,255,255,0.8)',
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: Typography.weight.bold,
   },
 
   illustrationWrap: {
@@ -302,9 +312,10 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
   mainBtnLabel: {
+    fontFamily: Typography.family.body,
     color: 'rgba(255,255,255,0.70)',
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: Typography.weight.medium,
     marginTop: 16,
   },
 
@@ -320,8 +331,9 @@ const s = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.15)',
   },
   scheduleBtnText: {
+    fontFamily: Typography.family.body,
     color: 'rgba(255,255,255,0.8)',
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: Typography.weight.semibold,
   },
 });

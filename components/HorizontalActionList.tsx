@@ -1,3 +1,5 @@
+import { Typography } from '@/constants/typography';
+import { WellnessIconText } from '@/components/WellnessIconText';
 import React from 'react';
 import { View, Text, Pressable, ScrollView, useColorScheme } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -32,7 +34,7 @@ export function HorizontalActionList({ title }: { title: string }) {
     {
       title: t('quickActions.moodTitle'),
       subtitle: t('quickActions.moodSubtitle'),
-      onPress: () => router.push('/(tabs)/mood'),
+      onPress: () => router.push('/(tabs)/mood/check-in'),
       icon: 'text.bubble',
       color: colors.scoreGreen,
       emoji: '😊',
@@ -67,8 +69,7 @@ export function HorizontalActionList({ title }: { title: string }) {
     <View style={{ marginTop: 24, marginBottom: 8 }}>
       <Text
         style={{
-          fontSize: 17,
-          fontWeight: '800',
+          ...Typography.section,
           color: colors.text,
           paddingHorizontal: 4,
           marginBottom: 14,
@@ -84,6 +85,7 @@ export function HorizontalActionList({ title }: { title: string }) {
         {actions.map((action) => (
           <Pressable
             key={action.title}
+            accessibilityRole="button"
             onPress={action.onPress}
             style={({ pressed }) => [
               {
@@ -110,21 +112,29 @@ export function HorizontalActionList({ title }: { title: string }) {
                 marginBottom: 12,
               }}
             >
-              <Text style={{ fontSize: 20 }}>{action.emoji}</Text>
+              <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 20 }}>
+                {action.emoji}
+              </WellnessIconText>
             </View>
             <Text
               style={{
+                fontFamily: Typography.family.body,
                 fontSize: 15,
-                fontWeight: '800',
+                fontWeight: Typography.weight.semibold,
                 color: colors.text,
                 marginBottom: 4,
               }}
-              numberOfLines={1}
+              numberOfLines={2}
             >
               {action.title}
             </Text>
             <Text
-              style={{ fontSize: 12, color: colors.mutedText, lineHeight: 17 }}
+              style={{
+                fontFamily: Typography.family.body,
+                fontSize: 12,
+                color: colors.mutedText,
+                lineHeight: 17,
+              }}
               numberOfLines={2}
             >
               {action.subtitle}

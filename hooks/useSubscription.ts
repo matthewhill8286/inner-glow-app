@@ -1,175 +1,211 @@
 import { useEffect, useMemo } from 'react';
+import { Platform } from 'react-native';
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '@/supabase/supabase';
+import { userScopedKey } from '@/lib/storage';
+import { recordDiagnostic } from '@/lib/diagnostics';
+import configureRevenueCat, { getCustomerInfo } from '@/lib/revenuecat';
+import {
+  parseSubscriptionCache,
+  subscriptionHasAccess,
+  subscriptionFromEntitlement,
+  type Subscription,
+} from '@/lib/subscription-state';
 
-/* ── Types ──────────────────────────────────────── */
-
-export type SubscriptionPlan = 'trial' | 'monthly' | 'lifetime';
-export type SubscriptionStatus =
-  | 'pending'
-  | 'active'
-  | 'past_due'
-  | 'canceling'
-  | 'canceled'
-  | 'expired';
-
-export type Subscription = {
-  type: SubscriptionPlan;
-  status: SubscriptionStatus;
-  expiryDate?: string | null;
-  stripeCustomerId?: string | null;
-  /** True when checkout was initiated but webhook hasn't confirmed yet */
-  pending?: boolean;
-};
-
-const STORAGE_KEY = 'auth:subscription:v1';
-
-/* ── Zustand store (single shared instance) ────── */
+export type { Subscription, SubscriptionPlan, SubscriptionStatus } from '@/lib/subscription-state';
+const STORAGE_KEY = 'auth:subscription:v2';
+let generation = 0;
+let receiptRevision = 0;
 
 interface SubscriptionStore {
   subscription: Subscription | null;
+  userId: string | null;
   isLoading: boolean;
-  /** Deduplication: holds the in-flight promise so concurrent callers share one fetch */
   _inflight: Promise<void> | null;
+  error: string | null;
+  checkedAt: number | null;
   load: () => Promise<void>;
   refresh: () => Promise<void>;
 }
 
 const useSubscriptionStore = create<SubscriptionStore>((set, get) => ({
   subscription: null,
+  userId: null,
   isLoading: true,
   _inflight: null,
-
+  error: null,
+  checkedAt: null,
   load: async () => {
-    // Deduplicate: if a fetch is already in flight, reuse it
-    if (get()._inflight) {
-      await get()._inflight;
-      return;
-    }
-
-    const doFetch = async () => {
+    if (get()._inflight) return get()._inflight!;
+    const requestGeneration = generation;
+    const requestReceipt = receiptRevision;
+    const task = (async () => {
       try {
-        // 1. Load local cache first for instant UI
-        const raw = await AsyncStorage.getItem(STORAGE_KEY);
-        let local: Subscription | null = null;
-        if (raw) {
-          try {
-            local = JSON.parse(raw);
-          } catch {
-            local = null;
-          }
-        }
-        if (local) set({ subscription: local });
-
-        // 2. Sync with Supabase (source of truth)
         const {
           data: { session },
         } = await supabase.auth.getSession();
+        if (requestGeneration !== generation) return;
+        const userId = session?.user.id ?? null;
+        if (get().userId !== userId) set({ subscription: null, userId });
+        if (!userId) return;
+        const key = userScopedKey(STORAGE_KEY, userId);
+        const raw = await AsyncStorage.getItem(key);
+        let cached: Subscription | null = null;
+        try {
+          cached = parseSubscriptionCache(raw);
+        } catch {
+          /* discard invalid cache */
+        }
+        if (requestGeneration !== generation) return;
+        if (!get().subscription) set({ subscription: cached });
 
-        if (session?.user?.id) {
-          try {
-            const { data: dbSub, error: dbErr } = await supabase
-              .from('subscriptions')
-              .select('plan, status, current_period_end, trial_end, stripe_customer_id')
-              .eq('user_id', session.user.id)
-              .maybeSingle();
-
-            // Gracefully handle table not existing yet (PGRST205) or other DB errors
-            if (dbErr) {
-              console.warn('[useSubscription] DB query error (table may not exist yet):', dbErr.code);
-            } else if (dbSub) {
-              const synced: Subscription = {
-                type: dbSub.plan as SubscriptionPlan,
-                status: dbSub.status as SubscriptionStatus,
-                expiryDate: dbSub.current_period_end || dbSub.trial_end || null,
-                stripeCustomerId: dbSub.stripe_customer_id || null,
-              };
-
-              // Check if server status upgraded from pending
-              if (local?.pending && dbSub.status === 'active') {
-                synced.pending = false;
+        const { data, error } = await supabase
+          .from('subscriptions')
+          .select('plan, status, current_period_end, trial_end, stripe_customer_id, provider')
+          .eq('user_id', userId)
+          .maybeSingle();
+        if (error) recordDiagnostic('billing_refresh', 'BILLING_UNAVAILABLE');
+        let subscription: Subscription | null = error
+          ? (get().subscription ?? cached)
+          : data
+            ? {
+                type: data.plan as Subscription['type'],
+                status: data.status as Subscription['status'],
+                expiryDate: data.current_period_end || data.trial_end,
+                stripeCustomerId: data.stripe_customer_id,
               }
+            : null;
 
-              set({ subscription: synced });
-              // Update local cache
-              await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(synced));
+        if (Platform.OS === 'ios') {
+          try {
+            await configureRevenueCat(userId);
+            const info = await getCustomerInfo();
+            if (!info) throw new Error('Receipt verification unavailable');
+            if (info) {
+              const appleSubscription = subscriptionFromEntitlement(
+                info.entitlements.active.premium,
+              );
+              // The native receipt is available immediately after purchase/restore.
+              // Never replace it with a delayed or stale RevenueCat webhook row.
+              if (appleSubscription) subscription = appleSubscription;
+              else if (data?.provider === 'revenuecat') subscription = null;
             }
-          } catch (subErr) {
-            console.warn('[useSubscription] subscriptions query failed:', subErr);
+          } catch (err) {
+            if (subscriptionHasAccess(get().subscription)) subscription = get().subscription;
+            recordDiagnostic('billing_refresh', 'BILLING_UNAVAILABLE');
+            set({ error: 'Unable to verify Apple access. Your current access is preserved.' });
           }
         }
+        if (
+          requestGeneration !== generation ||
+          get().userId !== userId ||
+          requestReceipt !== receiptRevision
+        )
+          return;
+        set({
+          subscription,
+          checkedAt: Date.now(),
+          ...(error ? { error: 'Unable to refresh access. Please try again.' } : {}),
+        });
+        if (subscription)
+          await AsyncStorage.setItem(
+            key,
+            JSON.stringify({ ...subscription, storeVerifiedUntil: undefined }),
+          );
+        else await AsyncStorage.removeItem(key);
       } catch (err) {
-        console.warn('[useSubscription] sync error:', err);
+        recordDiagnostic('billing_refresh', 'BILLING_UNAVAILABLE');
+        if (requestGeneration === generation)
+          set({ error: 'Unable to refresh access. Please try again.' });
       } finally {
-        set({ isLoading: false, _inflight: null });
+        if (requestGeneration === generation) set({ isLoading: false, _inflight: null });
       }
-    };
-
-    const promise = doFetch();
-    set({ _inflight: promise });
-    await promise;
+    })();
+    set({ _inflight: task });
+    return task;
   },
-
   refresh: async () => {
-    set({ isLoading: true, _inflight: null });
+    if (get()._inflight) await get()._inflight;
+    set({ isLoading: true, error: null });
     await get().load();
   },
 }));
 
-/* ── Public hook (drop-in replacement) ─────────── */
+export function resetSubscription() {
+  generation++;
+  useSubscriptionStore.setState({
+    subscription: null,
+    userId: null,
+    isLoading: false,
+    _inflight: null,
+    error: null,
+    checkedAt: null,
+  });
+}
+
+export function refreshSubscription() {
+  return useSubscriptionStore.getState().refresh();
+}
 
 export function useSubscription() {
-  const { subscription, isLoading, load, refresh } = useSubscriptionStore();
-
-  // Load once on first mount across the entire app
+  const { subscription, isLoading, load, refresh, error, checkedAt } = useSubscriptionStore();
   useEffect(() => {
-    load();
+    if (!useSubscriptionStore.getState().checkedAt) void load();
   }, [load]);
-
-  /* ── Derived state ────────────────────────────── */
-
   return useMemo(() => {
+    const hasFullAccess = subscriptionHasAccess(subscription);
     const isExpired =
-      subscription != null &&
-      subscription.expiryDate != null &&
-      new Date(subscription.expiryDate) < new Date() &&
-      subscription.type !== 'lifetime';
-
-    const isLifetime = subscription?.type === 'lifetime' && subscription?.status === 'active';
-
-    const isMonthlyActive =
-      subscription?.type === 'monthly' && subscription?.status === 'active' && !isExpired;
-
-    const isTrialActive =
-      subscription?.type === 'trial' && subscription?.status === 'active' && !isExpired;
-
-    const isCanceling = subscription?.status === 'canceling';
-    const isPastDue = subscription?.status === 'past_due';
-    const isPending = subscription?.pending === true;
-
-    // Full access: lifetime, active monthly, or active trial
-    const hasFullAccess = !!(isLifetime || isMonthlyActive || isTrialActive);
-
-    // Days remaining in trial (null if not on trial)
-    const trialDaysLeft =
-      isTrialActive && subscription?.expiryDate
-        ? Math.max(0, Math.ceil((new Date(subscription.expiryDate).getTime() - Date.now()) / 86400000))
-        : null;
-
+      !hasFullAccess &&
+      (subscription?.status === 'expired' ||
+        subscription?.status === 'canceled' ||
+        (!!subscription?.expiryDate &&
+          Date.parse(subscription.expiryDate) <= Date.now() &&
+          subscription.type !== 'lifetime'));
+    const isTrialActive = subscription?.type === 'trial' && hasFullAccess;
     return {
       subscription,
       isLoading,
-      isExpired,
-      isLifetime,
-      isMonthlyActive,
-      isTrialActive,
-      isCanceling,
-      isPastDue,
-      isPending,
-      hasFullAccess,
-      trialDaysLeft,
+      error,
+      checkedAt,
       refresh,
+      hasFullAccess,
+      isExpired,
+      isLifetime: subscription?.type === 'lifetime' && hasFullAccess,
+      isMonthlyActive: subscription?.type === 'monthly' && hasFullAccess,
+      isTrialActive,
+      isCanceling: subscription?.status === 'canceling',
+      isPastDue: subscription?.status === 'past_due',
+      isPending: subscription?.pending === true || subscription?.status === 'pending',
+      trialDaysLeft:
+        isTrialActive && subscription?.expiryDate
+          ? Math.max(0, Math.ceil((Date.parse(subscription.expiryDate) - Date.now()) / 86400000))
+          : null,
     };
-  }, [subscription, isLoading, refresh]);
+  }, [subscription, isLoading, refresh, error, checkedAt]);
+}
+
+/** Publish the verified receipt before waiting for webhook/database propagation. */
+export async function applyPurchaseInfo(
+  info: import('react-native-purchases').CustomerInfo,
+  expectedUserId: string,
+) {
+  const startGeneration = generation;
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session || session.user.id !== expectedUserId || startGeneration !== generation)
+    return false;
+  const store = useSubscriptionStore.getState();
+  if (store.userId && store.userId !== session.user.id) return false;
+  const subscription = subscriptionFromEntitlement(info.entitlements.active.premium);
+  receiptRevision++;
+  useSubscriptionStore.setState({
+    subscription,
+    userId: session.user.id,
+    isLoading: false,
+    error: null,
+    checkedAt: Date.now(),
+  });
+  return true;
 }

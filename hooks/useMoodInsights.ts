@@ -1,3 +1,4 @@
+import { invokeAI } from '@/lib/ai-privacy';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/supabase/supabase';
 import { useMood } from './useMood';
@@ -45,7 +46,7 @@ export const useMoodInsights = () => {
         createdAt: m.createdAt,
       }));
 
-      const { data, error } = await supabase.functions.invoke('mood-insights', {
+      const { data, error } = await invokeAI('mood-insights', {
         body: { moodEntries: entries },
       });
 

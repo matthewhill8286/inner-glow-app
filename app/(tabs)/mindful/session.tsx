@@ -1,3 +1,5 @@
+import { Typography } from '@/constants/typography';
+import { backTo } from '@/lib/navigation';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, Pressable, Platform, Animated, Easing } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -5,10 +7,15 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, UI } from '@/constants/theme';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialIcons from '@/components/AppIcon';
 import Svg, { Circle } from 'react-native-svg';
 import { useMindfulness } from '@/hooks/useMindfulness';
-import { playSoundscape, stopSoundscape, pauseSoundscape, resumeSoundscape } from '@/lib/soundscape';
+import {
+  playSoundscape,
+  stopSoundscape,
+  pauseSoundscape,
+  resumeSoundscape,
+} from '@/lib/soundscape';
 
 // ─── Breathing phases ───────────────────────────
 type Phase = 'inhale' | 'hold' | 'exhale' | 'holdAfter';
@@ -83,11 +90,21 @@ export default function Session() {
   const isActiveRef = useRef(isActive);
   const addMindfulMinutesRef = useRef(addMindfulMinutes);
 
-  useEffect(() => { phaseRef.current = currentPhase; }, [currentPhase]);
-  useEffect(() => { phaseTimerRef.current = phaseTimer; }, [phaseTimer]);
-  useEffect(() => { elapsedRef.current = elapsed; }, [elapsed]);
-  useEffect(() => { isActiveRef.current = isActive; }, [isActive]);
-  useEffect(() => { addMindfulMinutesRef.current = addMindfulMinutes; }, [addMindfulMinutes]);
+  useEffect(() => {
+    phaseRef.current = currentPhase;
+  }, [currentPhase]);
+  useEffect(() => {
+    phaseTimerRef.current = phaseTimer;
+  }, [phaseTimer]);
+  useEffect(() => {
+    elapsedRef.current = elapsed;
+  }, [elapsed]);
+  useEffect(() => {
+    isActiveRef.current = isActive;
+  }, [isActive]);
+  useEffect(() => {
+    addMindfulMinutesRef.current = addMindfulMinutes;
+  }, [addMindfulMinutes]);
 
   // ─── Get next phase (skipping phases with 0 duration) ────
   const getNextPhase = useCallback(
@@ -105,7 +122,9 @@ export default function Session() {
   // ─── Start soundscape on mount, stop on unmount ────
   useEffect(() => {
     playSoundscape(soundscape);
-    return () => { stopSoundscape(); };
+    return () => {
+      stopSoundscape();
+    };
   }, [soundscape]);
 
   // ─── Pause/resume soundscape ────
@@ -154,7 +173,9 @@ export default function Session() {
     breatheAnimRef.current = anim;
     anim.start();
 
-    return () => { anim.stop(); };
+    return () => {
+      anim.stop();
+    };
   }, [currentPhase, isActive, phaseDurations, breatheAnim]);
 
   // ─── Main timer — single stable interval ────
@@ -222,7 +243,7 @@ export default function Session() {
       const goalLabel = goal || 'focus';
       addMindfulMinutes(elapsed, `${goalLabel} exercise`).catch(() => {});
     }
-    router.back();
+    backTo(undefined, '/(tabs)/mindful');
   };
 
   return (
@@ -237,15 +258,17 @@ export default function Session() {
     >
       {/* Close button */}
       <View
-        style={{
-          position: 'absolute',
-          top: Platform.OS === 'ios' ? 60 : 40,
-          left: 20,
-          right: 20,
-          flexDirection: 'row',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-        } as any}
+        style={
+          {
+            position: 'absolute',
+            top: Platform.OS === 'ios' ? 60 : 40,
+            left: 20,
+            right: 20,
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          } as any
+        }
       >
         <Pressable
           onPress={handleQuit}
@@ -277,9 +300,10 @@ export default function Session() {
           <MaterialIcons name="music-note" size={16} color="rgba(255,255,255,0.8)" />
           <Text
             style={{
+              fontFamily: Typography.family.body,
               color: 'rgba(255,255,255,0.8)',
               fontSize: 13,
-              fontWeight: '600',
+              fontWeight: Typography.weight.semibold,
             }}
           >
             {soundscape}
@@ -290,8 +314,9 @@ export default function Session() {
       {/* Phase label */}
       <Text
         style={{
+          fontFamily: Typography.family.body,
           fontSize: 24,
-          fontWeight: '800',
+          fontWeight: Typography.weight.semibold,
           color: phaseColors.accent,
           marginBottom: 32,
           letterSpacing: 1,
@@ -345,8 +370,9 @@ export default function Session() {
         >
           <Text
             style={{
+              fontFamily: Typography.family.body,
               fontSize: 42,
-              fontWeight: '900',
+              fontWeight: Typography.weight.semibold,
               color: '#FFFFFF',
               letterSpacing: -1,
             }}
@@ -355,9 +381,10 @@ export default function Session() {
           </Text>
           <Text
             style={{
+              fontFamily: Typography.family.body,
               fontSize: 13,
               color: 'rgba(255,255,255,0.5)',
-              fontWeight: '600',
+              fontWeight: Typography.weight.semibold,
               marginTop: 4,
             }}
           >
@@ -367,8 +394,9 @@ export default function Session() {
           {/* Phase countdown */}
           <Text
             style={{
+              fontFamily: Typography.family.body,
               fontSize: 16,
-              fontWeight: '700',
+              fontWeight: Typography.weight.semibold,
               color: phaseColors.accent,
               marginTop: 10,
               opacity: 0.9,
@@ -388,20 +416,17 @@ export default function Session() {
           marginBottom: 40,
         }}
       >
-        {PHASE_ORDER
-          .filter((p) => phaseDurations[p] > 0)
-          .map((p) => (
-            <View
-              key={p}
-              style={{
-                width: currentPhase === p ? 24 : 8,
-                height: 8,
-                borderRadius: 4,
-                backgroundColor:
-                  currentPhase === p ? phaseColors.accent : 'rgba(255,255,255,0.25)',
-              }}
-            />
-          ))}
+        {PHASE_ORDER.filter((p) => phaseDurations[p] > 0).map((p) => (
+          <View
+            key={p}
+            style={{
+              width: currentPhase === p ? 24 : 8,
+              height: 8,
+              borderRadius: 4,
+              backgroundColor: currentPhase === p ? phaseColors.accent : 'rgba(255,255,255,0.25)',
+            }}
+          />
+        ))}
       </View>
 
       {/* Playback controls */}

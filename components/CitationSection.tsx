@@ -1,13 +1,7 @@
+import { Typography } from '@/constants/typography';
 import React, { useState, useRef } from 'react';
-import {
-  View,
-  Text,
-  Pressable,
-  Animated,
-  Linking,
-  StyleSheet,
-} from 'react-native';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { View, Text, Pressable, Animated, Linking, StyleSheet } from 'react-native';
+import MaterialIcons from '@/components/AppIcon';
 import { useTranslation } from 'react-i18next';
 import type { Citation } from '@/lib/citations';
 
@@ -70,26 +64,12 @@ export default function CitationSection({
         ]}
         hitSlop={8}
       >
-        <MaterialIcons
-          name="menu-book"
-          size={compact ? 12 : 14}
-          color={accentColor}
-        />
-        <Text
-          style={[
-            s.toggleText,
-            compact && s.toggleTextCompact,
-            { color: accentColor },
-          ]}
-        >
+        <MaterialIcons name="menu-book" size={compact ? 12 : 14} color={accentColor} />
+        <Text style={[s.toggleText, compact && s.toggleTextCompact, { color: accentColor }]}>
           {t('citations.sources', { count: citations.length })}
         </Text>
         <Animated.View style={{ transform: [{ rotateZ }] }}>
-          <MaterialIcons
-            name="expand-more"
-            size={compact ? 14 : 16}
-            color={accentColor}
-          />
+          <MaterialIcons name="expand-more" size={compact ? 14 : 16} color={accentColor} />
         </Animated.View>
       </Pressable>
 
@@ -104,30 +84,20 @@ export default function CitationSection({
                 s.citationRow,
                 compact && s.citationRowCompact,
                 {
-                  backgroundColor: pressed
-                    ? accentColor + '08'
-                    : 'transparent',
+                  backgroundColor: pressed ? accentColor + '08' : 'transparent',
                 },
               ]}
             >
               <View style={[s.sourceTag, { backgroundColor: accentColor + '14' }]}>
                 <Text
-                  style={[
-                    s.sourceText,
-                    compact && s.sourceTextCompact,
-                    { color: accentColor },
-                  ]}
+                  style={[s.sourceText, compact && s.sourceTextCompact, { color: accentColor }]}
                   numberOfLines={1}
                 >
                   {c.source}
                 </Text>
               </View>
               <Text
-                style={[
-                  s.titleText,
-                  compact && s.titleTextCompact,
-                  { color: colors.text },
-                ]}
+                style={[s.titleText, compact && s.titleTextCompact, { color: colors.text }]}
                 numberOfLines={2}
               >
                 {c.title}
@@ -142,11 +112,7 @@ export default function CitationSection({
           ))}
 
           <Text
-            style={[
-              s.disclaimer,
-              compact && s.disclaimerCompact,
-              { color: colors.subtleText },
-            ]}
+            style={[s.disclaimer, compact && s.disclaimerCompact, { color: colors.subtleText }]}
           >
             {t('citations.disclaimer')}
           </Text>
@@ -178,12 +144,11 @@ const s = StyleSheet.create({
     gap: 3,
   },
   toggleText: {
+    fontFamily: Typography.family.body,
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: Typography.weight.semibold,
   },
-  toggleTextCompact: {
-    fontSize: 11,
-  },
+  toggleTextCompact: { fontFamily: Typography.family.body, fontSize: 11 },
 
   /* list */
   list: {
@@ -218,35 +183,30 @@ const s = StyleSheet.create({
     flexShrink: 0,
   },
   sourceText: {
+    fontFamily: Typography.family.body,
     fontSize: 10,
-    fontWeight: '800',
+    fontWeight: Typography.weight.semibold,
     letterSpacing: 0.3,
   },
-  sourceTextCompact: {
-    fontSize: 9,
-  },
+  sourceTextCompact: { fontFamily: Typography.family.body, fontSize: 9 },
 
   /* title */
   titleText: {
+    fontFamily: Typography.family.body,
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: Typography.weight.medium,
     lineHeight: 16,
     flex: 1,
   },
-  titleTextCompact: {
-    fontSize: 11,
-    lineHeight: 14,
-  },
+  titleTextCompact: { fontFamily: Typography.family.body, fontSize: 11, lineHeight: 14 },
 
   /* disclaimer */
   disclaimer: {
+    fontFamily: Typography.family.body,
     fontSize: 10,
     fontStyle: 'italic',
     marginTop: 4,
     lineHeight: 14,
   },
-  disclaimerCompact: {
-    fontSize: 9,
-    marginTop: 2,
-  },
+  disclaimerCompact: { fontFamily: Typography.family.body, fontSize: 9, marginTop: 2 },
 });

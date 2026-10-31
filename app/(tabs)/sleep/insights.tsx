@@ -1,3 +1,6 @@
+import { Typography } from '@/constants/typography';
+import { backTo } from '@/lib/navigation';
+import { WellnessIconText } from '@/components/WellnessIconText';
 import React, { useState, useMemo } from 'react';
 import {
   View,
@@ -14,7 +17,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, UI } from '@/constants/theme';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialIcons from '@/components/AppIcon';
 import { useSleep } from '@/hooks/useSleep';
 import { useSleepInsights } from '@/hooks/useSleepInsights';
 import { SleepEntry } from '@/lib/types';
@@ -32,8 +35,7 @@ const SLEEP_COLORS = {
 
 /* ── helpers ──────────────────────────────────────── */
 function goBack(from?: string) {
-  if (from) router.replace(from as any);
-  else router.back();
+  backTo(from, '/(tabs)/sleep');
 }
 
 function getEntryDuration(entry: SleepEntry) {
@@ -105,7 +107,11 @@ const barS = StyleSheet.create({
     width: '100%',
     borderRadius: 8,
   },
-  barLabel: { fontSize: 10, fontWeight: '600' },
+  barLabel: {
+    fontFamily: Typography.family.body,
+    fontSize: 10,
+    fontWeight: Typography.weight.medium,
+  },
 });
 
 /* ── AI Suggestion Item ──────────────────────────── */
@@ -133,12 +139,7 @@ function AISuggestionItem({
         <Text style={[sugS.title, { color: colors.text }]}>{title}</Text>
         <Text style={[sugS.subtitle, { color: colors.mutedText }]}>{subtitle}</Text>
         {citations && citations.length > 0 && (
-          <CitationSection
-            citations={citations}
-            accentColor={color}
-            colors={colors}
-            compact
-          />
+          <CitationSection citations={citations} accentColor={color} colors={colors} compact />
         )}
       </View>
       <MaterialIcons name="chevron-right" size={18} color={colors.subtleText} />
@@ -163,8 +164,8 @@ const sugS = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  title: { fontSize: 14, fontWeight: '800' },
-  subtitle: { fontSize: 12, marginTop: 2 },
+  title: { ...Typography.label, fontSize: 14 },
+  subtitle: { fontFamily: Typography.family.body, fontSize: 12, marginTop: 2 },
 });
 
 /* ── Main Screen ─────────────────────────────────── */
@@ -324,7 +325,13 @@ export default function SleepInsightsScreen() {
             <BarChart data={chartData} maxVal={maxChartVal} colors={colors} />
           ) : (
             <View style={s.emptyChart}>
-              <Text style={{ color: colors.subtleText, fontSize: 13 }}>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  color: colors.subtleText,
+                  fontSize: 13,
+                }}
+              >
                 {t('sleepInsights.noData')}
               </Text>
             </View>
@@ -355,8 +362,9 @@ export default function SleepInsightsScreen() {
             >
               <Text
                 style={{
+                  fontFamily: Typography.family.body,
                   fontSize: 13,
-                  fontWeight: '700',
+                  fontWeight: Typography.weight.semibold,
                   color:
                     irregularity < 30
                       ? SLEEP_COLORS.core
@@ -400,7 +408,9 @@ export default function SleepInsightsScreen() {
           </Text>
           <View style={s.statsGrid}>
             <View style={[s.statBlock, { backgroundColor: SLEEP_COLORS.core + '12' }]}>
-              <Text style={{ fontSize: 20 }}>🌙</Text>
+              <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 20 }}>
+                🌙
+              </WellnessIconText>
               <Text style={[s.statValue, { color: SLEEP_COLORS.core }]}>
                 {(avgDur * 0.65).toFixed(1)}h
               </Text>
@@ -409,7 +419,9 @@ export default function SleepInsightsScreen() {
               </Text>
             </View>
             <View style={[s.statBlock, { backgroundColor: SLEEP_COLORS.rem + '12' }]}>
-              <Text style={{ fontSize: 20 }}>💭</Text>
+              <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 20 }}>
+                💭
+              </WellnessIconText>
               <Text style={[s.statValue, { color: SLEEP_COLORS.rem }]}>
                 {(avgDur * 0.25).toFixed(1)}h
               </Text>
@@ -418,7 +430,9 @@ export default function SleepInsightsScreen() {
               </Text>
             </View>
             <View style={[s.statBlock, { backgroundColor: SLEEP_COLORS.post + '12' }]}>
-              <Text style={{ fontSize: 20 }}>✨</Text>
+              <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 20 }}>
+                ✨
+              </WellnessIconText>
               <Text style={[s.statValue, { color: SLEEP_COLORS.post }]}>
                 {Math.round(avgDur * 0.1 * 60)}m
               </Text>
@@ -431,7 +445,9 @@ export default function SleepInsightsScreen() {
 
         {/* ── AI Suggestions ───────────────────── */}
         <View style={s.sectionHeader}>
-          <Text style={{ fontSize: 18 }}>🤖</Text>
+          <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 18 }}>
+            🤖
+          </WellnessIconText>
           <Text style={[s.sectionTitle, { color: colors.text }]}>
             {t('sleepInsights.aiSuggestions')}
           </Text>
@@ -452,7 +468,14 @@ export default function SleepInsightsScreen() {
               ) : (
                 <>
                   <MaterialIcons name="refresh" size={16} color="#8B6B47" />
-                  <Text style={{ fontSize: 13, fontWeight: '700', color: '#8B6B47' }}>
+                  <Text
+                    style={{
+                      fontFamily: Typography.family.body,
+                      fontSize: 13,
+                      fontWeight: Typography.weight.semibold,
+                      color: '#8B6B47',
+                    }}
+                  >
                     {t('sleepInsights.refreshInsights')}
                   </Text>
                 </>
@@ -464,7 +487,15 @@ export default function SleepInsightsScreen() {
         {/* AI Summary */}
         {aiSummary ? (
           <View style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={{ fontSize: 14, color: colors.text, lineHeight: 20, fontWeight: '500' }}>
+            <Text
+              style={{
+                fontFamily: Typography.family.body,
+                fontSize: 14,
+                color: colors.text,
+                lineHeight: 20,
+                fontWeight: Typography.weight.medium,
+              }}
+            >
               {aiSummary}
             </Text>
             {aiSummaryCitations.length > 0 && (
@@ -482,10 +513,19 @@ export default function SleepInsightsScreen() {
         {aiLoading ? (
           <View style={{ alignItems: 'center', paddingVertical: 32, gap: 12 }}>
             <ActivityIndicator size="large" color="#8B6B47" />
-            <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text }}>
+            <Text
+              style={{
+                fontFamily: Typography.family.body,
+                fontSize: 14,
+                fontWeight: Typography.weight.semibold,
+                color: colors.text,
+              }}
+            >
               {t('sleepInsights.analyzing')}
             </Text>
-            <Text style={{ fontSize: 12, color: colors.mutedText }}>
+            <Text
+              style={{ fontFamily: Typography.family.body, fontSize: 12, color: colors.mutedText }}
+            >
               {t('sleepInsights.analyzingSubtitle')}
             </Text>
           </View>
@@ -504,10 +544,24 @@ export default function SleepInsightsScreen() {
             ]}
           >
             <MaterialIcons name="cloud-off" size={32} color={SLEEP_COLORS.irregular} />
-            <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text }}>
+            <Text
+              style={{
+                fontFamily: Typography.family.body,
+                fontSize: 15,
+                fontWeight: Typography.weight.semibold,
+                color: colors.text,
+              }}
+            >
               {t('sleepInsights.errorTitle')}
             </Text>
-            <Text style={{ fontSize: 13, color: colors.mutedText, textAlign: 'center' }}>
+            <Text
+              style={{
+                fontFamily: Typography.family.body,
+                fontSize: 13,
+                color: colors.mutedText,
+                textAlign: 'center',
+              }}
+            >
               {t('sleepInsights.errorSubtitle')}
             </Text>
             <Pressable
@@ -521,7 +575,14 @@ export default function SleepInsightsScreen() {
                 opacity: pressed ? 0.8 : 1,
               })}
             >
-              <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 14 }}>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  color: '#FFF',
+                  fontWeight: Typography.weight.semibold,
+                  fontSize: 14,
+                }}
+              >
                 {t('sleepInsights.retry')}
               </Text>
             </Pressable>
@@ -541,10 +602,24 @@ export default function SleepInsightsScreen() {
             ]}
           >
             <MaterialIcons name="bedtime" size={32} color={SLEEP_COLORS.rem} />
-            <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text }}>
+            <Text
+              style={{
+                fontFamily: Typography.family.body,
+                fontSize: 15,
+                fontWeight: Typography.weight.semibold,
+                color: colors.text,
+              }}
+            >
               {t('sleepInsights.noDataTitle')}
             </Text>
-            <Text style={{ fontSize: 13, color: colors.mutedText, textAlign: 'center' }}>
+            <Text
+              style={{
+                fontFamily: Typography.family.body,
+                fontSize: 13,
+                color: colors.mutedText,
+                textAlign: 'center',
+              }}
+            >
               {t('sleepInsights.noDataSubtitle')}
             </Text>
           </View>
@@ -589,8 +664,8 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
   },
-  headerTitle: { fontSize: 22, fontWeight: '900' },
-  headerSub: { fontSize: 14, marginTop: 2 },
+  headerTitle: { ...Typography.heading },
+  headerSub: { fontFamily: Typography.family.body, fontSize: 14, marginTop: 2 },
 
   scrollContent: {
     paddingTop: 16,
@@ -609,8 +684,9 @@ const s = StyleSheet.create({
     borderRadius: 14,
   },
   periodTabText: {
+    fontFamily: Typography.family.body,
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: Typography.weight.medium,
   },
 
   /* cards */
@@ -621,8 +697,9 @@ const s = StyleSheet.create({
     ...UI.shadow.sm,
   },
   cardLabel: {
+    fontFamily: Typography.family.body,
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: Typography.weight.medium,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 10,
@@ -640,8 +717,9 @@ const s = StyleSheet.create({
     gap: 12,
   },
   irregularValue: {
+    fontFamily: Typography.family.body,
     fontSize: 28,
-    fontWeight: '900',
+    fontWeight: Typography.weight.bold,
   },
   irregularBadge: {
     paddingHorizontal: 14,
@@ -671,12 +749,14 @@ const s = StyleSheet.create({
     gap: 4,
   },
   statValue: {
+    fontFamily: Typography.family.body,
     fontSize: 18,
-    fontWeight: '900',
+    fontWeight: Typography.weight.bold,
   },
   statLabel: {
+    fontFamily: Typography.family.body,
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: Typography.weight.bold,
   },
 
   /* section */
@@ -686,8 +766,5 @@ const s = StyleSheet.create({
     gap: 8,
     marginTop: 4,
   },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '900',
-  },
+  sectionTitle: { ...Typography.section, fontSize: 20 },
 });

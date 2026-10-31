@@ -1,3 +1,4 @@
+import { notifyJournalEntry } from '@/lib/notificationStore';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/supabase/supabase';
 import { JournalEntry } from '@/lib/types';
@@ -87,6 +88,7 @@ export const useJournal = () => {
 
       return entry;
     },
+    onSuccess: (item) => notifyJournalEntry(item.title),
     onMutate: async (input) => {
       await queryClient.cancelQueries({ queryKey: key });
       const previous = queryClient.getQueryData<JournalEntry[]>(key);

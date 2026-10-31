@@ -1,12 +1,8 @@
+import { backTo, finishTo } from '@/lib/navigation';
+import { Typography } from '@/constants/typography';
+import { WellnessIconText } from '@/components/WellnessIconText';
 import React, { useState, useMemo } from 'react';
-import {
-  View,
-  Text,
-  Pressable,
-  TextInput,
-  ScrollView,
-  KeyboardAvoidingView,
-} from 'react-native';
+import { View, Text, Pressable, TextInput, ScrollView, KeyboardAvoidingView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -16,7 +12,7 @@ import { useJournal } from '@/hooks/useJournal';
 import { JournalEntry } from '@/lib/types';
 import { JOURNAL_PROMPTS } from '@/data/journalPrompts';
 import { toast } from '@/components/Toast';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import MaterialIcons from '@/components/AppIcon';
 
 /* ── Emotions grid ── */
 const EMOTIONS: { label: string; emoji: string; color: string }[] = [
@@ -105,7 +101,7 @@ export default function NewJournalEntry() {
     try {
       await createJournalEntry(entryInput as any);
       toast.success(t('toasts.journalCreated'));
-      router.replace('/(tabs)/journal');
+      finishTo('/(tabs)/journal');
     } catch (err) {
       console.error('Failed to create journal entry:', err);
       toast.error(t('toasts.journalCreateError'));
@@ -130,7 +126,7 @@ export default function NewJournalEntry() {
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
             <Pressable
-              onPress={() => router.back()}
+              onPress={() => backTo(undefined, '/(tabs)/journal')}
               style={({ pressed }) => ({
                 width: 36,
                 height: 36,
@@ -151,10 +147,20 @@ export default function NewJournalEntry() {
                 style={{ marginLeft: 4 }}
               />
             </Pressable>
-            <Text style={{ fontSize: 22, fontWeight: '800', color: colors.text }}>New Journal</Text>
+            <Text style={{ ...Typography.heading, fontSize: 24, color: colors.text }}>
+              New Journal
+            </Text>
           </View>
-          <Text style={{ fontSize: 13, color: colors.mutedText, marginTop: 4, marginLeft: 46 }}>
-            Choose how you'd like to journal
+          <Text
+            style={{
+              fontFamily: Typography.family.body,
+              fontSize: 13,
+              color: colors.mutedText,
+              marginTop: 4,
+              marginLeft: 46,
+            }}
+          >
+            Choose how you&#39;d like to journal
           </Text>
         </View>
 
@@ -187,9 +193,16 @@ export default function NewJournalEntry() {
             >
               <MaterialIcons name="mic" size={36} color="#fff" />
             </View>
-            <Text style={{ fontSize: 20, fontWeight: '800', color: '#fff' }}>Voice Journal</Text>
-            <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)', textAlign: 'center' }}>
-              Record your thoughts and we'll transcribe them for you
+            <Text style={{ ...Typography.section, color: '#fff' }}>Voice Journal</Text>
+            <Text
+              style={{
+                fontFamily: Typography.family.body,
+                fontSize: 13,
+                color: 'rgba(255,255,255,0.8)',
+                textAlign: 'center',
+              }}
+            >
+              Record your thoughts and we&#39;ll transcribe them for you
             </Text>
           </Pressable>
 
@@ -218,8 +231,15 @@ export default function NewJournalEntry() {
             >
               <MaterialIcons name="edit-note" size={36} color="#fff" />
             </View>
-            <Text style={{ fontSize: 20, fontWeight: '800', color: '#fff' }}>Text Journal</Text>
-            <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)', textAlign: 'center' }}>
+            <Text style={{ ...Typography.section, color: '#fff' }}>Text Journal</Text>
+            <Text
+              style={{
+                fontFamily: Typography.family.body,
+                fontSize: 13,
+                color: 'rgba(255,255,255,0.8)',
+                textAlign: 'center',
+              }}
+            >
               Write your thoughts down at your own pace
             </Text>
           </Pressable>
@@ -249,7 +269,7 @@ export default function NewJournalEntry() {
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
             <Pressable
-              onPress={() => (prompt ? router.back() : setStep('pick'))}
+              onPress={() => (prompt ? backTo(undefined, '/(tabs)/journal') : setStep('pick'))}
               style={({ pressed }) => ({
                 width: 36,
                 height: 36,
@@ -270,7 +290,7 @@ export default function NewJournalEntry() {
                 style={{ marginLeft: 4 }}
               />
             </Pressable>
-            <Text style={{ fontSize: 22, fontWeight: '800', color: colors.text }}>
+            <Text style={{ ...Typography.heading, fontSize: 24, color: colors.text }}>
               Add New Journal
             </Text>
           </View>
@@ -289,11 +309,14 @@ export default function NewJournalEntry() {
                   (EMOTIONS.find((e) => e.label === mood)?.color ?? '#8B6B47') + '15',
               }}
             >
-              <Text style={{ fontSize: 14 }}>{EMOTIONS.find((e) => e.label === mood)?.emoji}</Text>
+              <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 14 }}>
+                {EMOTIONS.find((e) => e.label === mood)?.emoji}
+              </WellnessIconText>
               <Text
                 style={{
+                  fontFamily: Typography.family.body,
                   fontSize: 12,
-                  fontWeight: '700',
+                  fontWeight: Typography.weight.semibold,
                   color: EMOTIONS.find((e) => e.label === mood)?.color ?? colors.text,
                 }}
               >
@@ -323,12 +346,15 @@ export default function NewJournalEntry() {
               borderColor: '#7B6DC9' + '25',
             }}
           >
-            <Text style={{ fontSize: 14 }}>{'\uD83D\uDCA1'}</Text>
+            <Text style={{ fontFamily: Typography.family.body, fontSize: 14 }}>
+              {'\uD83D\uDCA1'}
+            </Text>
             <Text
               style={{
+                fontFamily: Typography.family.body,
                 flex: 1,
                 fontSize: 13,
-                fontWeight: '600',
+                fontWeight: Typography.weight.semibold,
                 color: '#7B6DC9',
                 fontStyle: 'italic',
               }}
@@ -352,8 +378,9 @@ export default function NewJournalEntry() {
         >
           <Text
             style={{
+              fontFamily: Typography.family.body,
               fontSize: 12,
-              fontWeight: '700',
+              fontWeight: Typography.weight.semibold,
               color: colors.mutedText,
               textTransform: 'uppercase',
               letterSpacing: 0.5,
@@ -367,7 +394,13 @@ export default function NewJournalEntry() {
             onChangeText={setTitle}
             placeholder="Give your journal a title..."
             placeholderTextColor={colors.placeholder}
-            style={{ fontSize: 18, fontWeight: '700', color: colors.text, paddingVertical: 4 }}
+            style={{
+              fontFamily: Typography.family.body,
+              fontSize: 18,
+              fontWeight: Typography.weight.semibold,
+              color: colors.text,
+              paddingVertical: 4,
+            }}
           />
         </View>
 
@@ -400,8 +433,9 @@ export default function NewJournalEntry() {
           <View>
             <Text
               style={{
+                fontFamily: Typography.family.body,
                 fontSize: 12,
-                fontWeight: '700',
+                fontWeight: Typography.weight.semibold,
                 color: colors.mutedText,
                 textTransform: 'uppercase',
                 letterSpacing: 0.5,
@@ -409,7 +443,15 @@ export default function NewJournalEntry() {
             >
               Timeline
             </Text>
-            <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text, marginTop: 2 }}>
+            <Text
+              style={{
+                fontFamily: Typography.family.body,
+                fontSize: 14,
+                fontWeight: Typography.weight.semibold,
+                color: colors.text,
+                marginTop: 2,
+              }}
+            >
               {displayDate}
             </Text>
           </View>
@@ -436,8 +478,9 @@ export default function NewJournalEntry() {
           >
             <Text
               style={{
+                fontFamily: Typography.family.body,
                 fontSize: 12,
-                fontWeight: '700',
+                fontWeight: Typography.weight.semibold,
                 color: colors.mutedText,
                 textTransform: 'uppercase',
                 letterSpacing: 0.5,
@@ -446,7 +489,14 @@ export default function NewJournalEntry() {
               Your Thoughts
             </Text>
             {wordCount > 0 && (
-              <Text style={{ fontSize: 12, fontWeight: '600', color: colors.subtleText }}>
+              <Text
+                style={{
+                  fontFamily: Typography.family.body,
+                  fontSize: 12,
+                  fontWeight: Typography.weight.semibold,
+                  color: colors.subtleText,
+                }}
+              >
                 {wordCount} {wordCount === 1 ? 'word' : 'words'}
               </Text>
             )}
@@ -459,6 +509,7 @@ export default function NewJournalEntry() {
             multiline
             textAlignVertical="top"
             style={{
+              fontFamily: Typography.family.body,
               fontSize: 15,
               lineHeight: 24,
               color: colors.text,
@@ -472,8 +523,9 @@ export default function NewJournalEntry() {
         <View>
           <Text
             style={{
+              fontFamily: Typography.family.body,
               fontSize: 12,
-              fontWeight: '700',
+              fontWeight: Typography.weight.semibold,
               color: colors.mutedText,
               textTransform: 'uppercase',
               letterSpacing: 0.5,
@@ -504,11 +556,16 @@ export default function NewJournalEntry() {
                     transform: [{ scale: pressed ? 0.94 : 1 }],
                   })}
                 >
-                  <Text style={{ fontSize: 28 }}>{e.emoji}</Text>
+                  <WellnessIconText
+                    style={{ fontFamily: Typography.family.body, fontSize: 28, color: e.color }}
+                  >
+                    {e.emoji}
+                  </WellnessIconText>
                   <Text
                     style={{
+                      fontFamily: Typography.family.body,
                       fontSize: 12,
-                      fontWeight: '700',
+                      fontWeight: Typography.weight.semibold,
                       color: active ? e.color : colors.mutedText,
                     }}
                   >
@@ -524,15 +581,16 @@ export default function NewJournalEntry() {
         <View>
           <Text
             style={{
+              fontFamily: Typography.family.body,
               fontSize: 12,
-              fontWeight: '700',
+              fontWeight: Typography.weight.semibold,
               color: colors.mutedText,
               textTransform: 'uppercase',
               letterSpacing: 0.5,
               marginBottom: 12,
             }}
           >
-            What's this about?
+            What&#39;s this about?
           </Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
             {TAGS.map((tag) => {
@@ -553,8 +611,9 @@ export default function NewJournalEntry() {
                 >
                   <Text
                     style={{
+                      fontFamily: Typography.family.body,
                       fontSize: 13,
-                      fontWeight: '700',
+                      fontWeight: Typography.weight.semibold,
                       color: active ? '#8B6B47' : colors.mutedText,
                     }}
                   >
@@ -589,13 +648,7 @@ export default function NewJournalEntry() {
             size={22}
             color={canSave ? '#fff' : colors.placeholder}
           />
-          <Text
-            style={{
-              fontSize: 16,
-              fontWeight: '800',
-              color: canSave ? '#fff' : colors.placeholder,
-            }}
-          >
+          <Text style={{ ...Typography.heading, color: canSave ? '#fff' : colors.placeholder }}>
             Create Journal
           </Text>
         </Pressable>

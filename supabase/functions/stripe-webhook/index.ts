@@ -45,8 +45,10 @@ serve(async (req: Request) => {
     const rawBody = await req.text();
     const sig = req.headers.get('stripe-signature');
 
-    // ── Verify webhook signature (if secret configured) ──
-    if (webhookSecret && sig) {
+    if (!webhookSecret) return Response.json({ error: 'Payment verification is unavailable' }, { status: 503, headers: corsHeaders });
+    if (!sig) return Response.json({ error: 'Missing webhook signature' }, { status: 400, headers: corsHeaders });
+    // Every event must be authenticated before changing premium access.
+    {
       const verified = await verifyStripeSignature(rawBody, sig, webhookSecret);
       if (!verified) {
         return new Response(
@@ -65,7 +67,8 @@ serve(async (req: Request) => {
       case 'checkout.session.completed': {
         const session = event.data.object;
         const userId = session.client_reference_id || session.metadata?.user_id;
-        const plan = session.metadata?.plan || 'monthly';
+        const plan = session.metadata?.plan;
+        if (!['monthly', 'lifetime'].includes(plan) || session.payment_status !== 'paid') break;
 
         if (!userId) {
           console.warn('No user_id in checkout session metadata');
@@ -82,7 +85,7 @@ serve(async (req: Request) => {
         // lifetime has no expiry
 
         // Update subscriptions table
-        await sb.from('subscriptions').upsert(
+        await requireWrite(sb.from('subscriptions').upsert(
           {
             user_id: userId,
             plan,
@@ -94,13 +97,13 @@ serve(async (req: Request) => {
             updated_at: new Date().toISOString(),
           },
           { onConflict: 'user_id' },
-        );
+        ));
 
         // Also update the profiles table
-        await sb.from('profiles').update({
+        await requireWrite(sb.from('profiles').update({
           subscription_type: plan,
           subscription_expiry: expiryDate,
-        }).eq('id', userId);
+        }).eq('user_id', userId));
 
         console.log(`Subscription activated for user ${userId}: ${plan}`);
         break;
@@ -122,15 +125,15 @@ serve(async (req: Request) => {
             ? new Date(subscription.current_period_end * 1000).toISOString()
             : null;
 
-          await sb.from('subscriptions').update({
+          await requireWrite(sb.from('subscriptions').update({
             status: subscription.cancel_at_period_end ? 'canceling' : 'active',
             current_period_end: periodEnd,
             updated_at: new Date().toISOString(),
-          }).eq('user_id', sub.user_id);
+          }).eq('user_id', sub.user_id));
 
-          await sb.from('profiles').update({
+          await requireWrite(sb.from('profiles').update({
             subscription_expiry: periodEnd,
-          }).eq('id', sub.user_id);
+          }).eq('user_id', sub.user_id));
         }
         break;
       }
@@ -146,15 +149,15 @@ serve(async (req: Request) => {
           .single();
 
         if (sub?.user_id) {
-          await sb.from('subscriptions').update({
+          await requireWrite(sb.from('subscriptions').update({
             status: 'canceled',
             updated_at: new Date().toISOString(),
-          }).eq('user_id', sub.user_id);
+          }).eq('user_id', sub.user_id));
 
-          await sb.from('profiles').update({
+          await requireWrite(sb.from('profiles').update({
             subscription_type: 'expired',
             subscription_expiry: new Date().toISOString(),
-          }).eq('id', sub.user_id);
+          }).eq('user_id', sub.user_id));
 
           console.log(`Subscription canceled for user ${sub.user_id}`);
         }
@@ -172,10 +175,10 @@ serve(async (req: Request) => {
           .single();
 
         if (sub?.user_id) {
-          await sb.from('subscriptions').update({
+          await requireWrite(sb.from('subscriptions').update({
             status: 'past_due',
             updated_at: new Date().toISOString(),
-          }).eq('user_id', sub.user_id);
+          }).eq('user_id', sub.user_id));
 
           console.log(`Payment failed for user ${sub.user_id}`);
         }
@@ -240,4 +243,9 @@ async function verifyStripeSignature(
   } catch {
     return false;
   }
+}
+
+async function requireWrite(query: PromiseLike<{ error: unknown }>) {
+  const { error } = await query;
+  if (error) throw error;
 }
