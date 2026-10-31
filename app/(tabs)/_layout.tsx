@@ -1,6 +1,7 @@
 import { primaryTabForPath } from '@/lib/route-parents';
 import { SessionGate } from '@/components/SessionGate';
 import { GlowTabBar, type GlowTab } from '@/components/navigation/GlowTabBar';
+import { useHealthSleepAutoSync } from '@/hooks/useHealthSleep';
 import { Tabs, useSegments, usePathname } from 'expo-router';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -8,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 export default function TabsLayout() {
   const { t } = useTranslation();
   const activeTab = primaryTabForPath(usePathname());
+  useHealthSleepAutoSync();
   const segments = useSegments() as string[];
   const isChatDetail =
     segments.includes('chat') && segments.length > 2 && segments.at(-1) !== 'index';

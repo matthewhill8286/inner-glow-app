@@ -28,7 +28,8 @@
       "package": "com.matthill8286.innerglow",
       "permissions": [
         "android.permission.RECORD_AUDIO",
-        "android.permission.MODIFY_AUDIO_SETTINGS"
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.health.READ_SLEEP"
       ]
     },
     "web": {
@@ -98,7 +99,24 @@
       ],
       "expo-web-browser",
       "expo-asset",
-      "expo-notifications"
+      "expo-notifications",
+      [
+        "@kingstinct/react-native-healthkit",
+        {
+          "NSHealthShareUsageDescription": "Inner Glow reads your sleep from Apple Health when you connect it, so your nights show up in your sleep history and insights without logging them by hand.",
+          "NSHealthUpdateUsageDescription": false,
+          "background": false
+        }
+      ],
+      "react-native-health-connect",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 26
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

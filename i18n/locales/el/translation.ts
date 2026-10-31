@@ -1279,6 +1279,7 @@ export default {
     good: 'Καλός',
     excellent: 'Εξαιρετικός',
     sleepSaved: 'Η καταχώρηση ύπνου αποθηκεύτηκε.',
+    sleepSaveFailed: 'Δεν ήταν δυνατή η αποθήκευση αυτής της νύχτας. Δοκιμάστε ξανά.',
     premiumFeature: 'Premium Λειτουργία',
     premiumMessage: 'Αναβαθμίστε σε Premium για καταγραφή νέων καταχωρήσεων ύπνου.',
     cancel: 'Ακύρωση',
