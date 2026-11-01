@@ -40,12 +40,14 @@ try {
     'supabase/migrations/20261101_profile_setup.sql',
     'supabase/migrations/20261102_glow_ai.sql',
     'supabase/migrations/20261103_profile_nickname.sql',
+    'supabase/migrations/20261104_active_sessions.sql',
     'tests/submission.sql',
     'tests/sleep-stages.sql',
     'tests/mood-factors.sql',
     'tests/assessment-redesign.sql',
     'tests/profile-setup.sql',
     'tests/glow-ai.sql',
+    'tests/active-sessions.sql',
   ];
   for (const file of files)
     run(
@@ -53,7 +55,7 @@ try {
       readFileSync(file, 'utf8'),
     );
   console.log(
-    'Database regressions passed: trial abuse, billing snapshots, cancellation, sandbox isolation, blocking, reports, account deletion, sleep stage ownership, optional mood energy and stress, the assessment answers, the profile setup, and the Glow AI free quota and summaries.',
+    'Database regressions passed: trial abuse, billing snapshots, cancellation, sandbox isolation, blocking, reports, account deletion, sleep stage ownership, optional mood energy and stress, the assessment answers, the profile setup, the Glow AI free quota and summaries, and active sessions.',
   );
 } catch (error) {
   console.error(error.message);

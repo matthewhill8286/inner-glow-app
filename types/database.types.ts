@@ -1200,6 +1200,11 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: undefined
       }
+      list_my_sessions: {
+        Args: never
+        Returns: { id: string; user_agent: string | null; created_at: string; last_active: string; is_current: boolean }[]
+      }
+      revoke_my_session: { Args: { p_session_id: string }; Returns: boolean }
       report_community_content: {
         Args: { p_reason: string; p_target_id: string; p_target_type: string }
         Returns: undefined
