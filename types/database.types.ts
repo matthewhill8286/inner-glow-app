@@ -738,6 +738,7 @@ export type Database = {
           ai_tone: string
           ai_voice_replies: boolean
           notification_prefs: Json
+          nickname: string | null
           routine: string | null
           selected_issues: Json | null
           subscription_expiry: string | null
@@ -756,6 +757,7 @@ export type Database = {
           ai_tone?: string
           ai_voice_replies?: boolean
           notification_prefs?: Json
+          nickname?: string | null
           routine?: string | null
           selected_issues?: Json | null
           subscription_expiry?: string | null
@@ -774,6 +776,7 @@ export type Database = {
           ai_tone?: string
           ai_voice_replies?: boolean
           notification_prefs?: Json
+          nickname?: string | null
           routine?: string | null
           selected_issues?: Json | null
           subscription_expiry?: string | null

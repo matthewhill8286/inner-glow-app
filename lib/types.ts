@@ -97,6 +97,8 @@ export type UserProfile = {
   /** Daily check-in reminder time, "08:30". */
   checkinTime?: string | null;
   notificationPrefs?: Record<string, boolean>;
+  /** "What should we call you?" (06 P3); greetings prefer it to the first name. */
+  nickname?: string | null;
   /** Glow AI settings (05 §3.8). */
   aiTone?: 'gentle' | 'direct' | 'playful';
   aiMemory?: boolean;

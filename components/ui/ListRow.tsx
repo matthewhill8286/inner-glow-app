@@ -37,6 +37,8 @@ export type ListRowProps = {
   style?: StyleProp<ViewStyle>;
   /** Keeps the label and supporting text to one line each (talk lists). */
   singleLine?: boolean;
+  /** Destructive row (06 §3.0): `#FBEDEE` bubble, icon and label in danger red. */
+  tone?: 'default' | 'danger';
   /** Set by `ListGroup`. */
   divider?: boolean;
   /** Set by `ListGroup`. */
@@ -56,10 +58,12 @@ export function ListRow({
   accessibilityLabel,
   style,
   singleLine = false,
+  tone = 'default',
   divider = false,
   appearance = 'grouped',
 }: ListRowProps) {
   const isToggle = trailing === 'toggle';
+  const danger = tone === 'danger';
   const press = isToggle && onToggle ? () => onToggle(!toggled) : onPress;
   const role = isToggle ? 'switch' : trailing === 'radio' ? 'radio' : press ? 'button' : undefined;
   const state = isToggle ? { checked: toggled } : trailing === 'radio' ? { selected } : undefined;
@@ -68,8 +72,12 @@ export function ListRow({
     <Pressable
       accessibilityRole={role}
       accessibilityState={state}
-      accessibilityLabel={accessibilityLabel ?? (supportingText ? `${label}, ${supportingText}` : label)}
-      accessibilityValue={trailing === 'value' || (trailing === 'chevron' && value) ? { text: value } : undefined}
+      accessibilityLabel={
+        accessibilityLabel ?? (supportingText ? `${label}, ${supportingText}` : label)
+      }
+      accessibilityValue={
+        trailing === 'value' || (trailing === 'chevron' && value) ? { text: value } : undefined
+      }
       onPress={press}
       disabled={!press}
       style={({ pressed }) => [
@@ -80,27 +88,61 @@ export function ListRow({
           flexDirection: 'row',
           alignItems: 'center',
           gap: 12,
-          backgroundColor: pressed ? palette.surfaceLilacSoft : appearance === 'card' ? palette.surface : 'transparent',
+          backgroundColor: pressed
+            ? palette.surfaceLilacSoft
+            : appearance === 'card'
+              ? palette.surface
+              : 'transparent',
           borderRadius: appearance === 'card' ? 20 : 0,
         },
         style,
       ]}
     >
-      {divider && <View style={{ position: 'absolute', top: 0, left: icon ? 64 : 16, right: 16, height: 1, backgroundColor: palette.surfaceLilac }} />}
+      {divider && (
+        <View
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: icon ? 64 : 16,
+            right: 16,
+            height: 1,
+            backgroundColor: palette.surfaceLilac,
+          }}
+        />
+      )}
       {icon && (
-        <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: palette.selected, alignItems: 'center', justifyContent: 'center' }}>
-          <Icon name={icon} size={20} />
+        <View
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: 18,
+            backgroundColor: danger ? palette.dangerSoft : palette.selected,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Icon name={icon} size={20} color={danger ? palette.danger : undefined} />
         </View>
       )}
       <View style={{ flex: 1, gap: 2 }}>
-        <Text numberOfLines={singleLine ? 1 : undefined} style={[Type.bodyMMedium, { color: palette.ink }]}>{label}</Text>
+        <Text
+          numberOfLines={singleLine ? 1 : undefined}
+          style={[Type.bodyMMedium, { color: danger ? palette.danger : palette.ink }]}
+        >
+          {label}
+        </Text>
         {supportingText ? (
-          <Text numberOfLines={singleLine ? 1 : undefined} style={[Type.captionS, { color: palette.textMuted }]}>
+          <Text
+            numberOfLines={singleLine ? 1 : undefined}
+            style={[Type.captionS, { color: palette.textMuted }]}
+          >
             {supportingText}
           </Text>
         ) : null}
       </View>
-      {(trailing === 'value' || trailing === 'chevron') && value ? <Text style={[Type.captionM, { color: palette.textMuted }]}>{value}</Text> : null}
+      {(trailing === 'value' || trailing === 'chevron') && value ? (
+        <Text style={[Type.captionM, { color: palette.textMuted }]}>{value}</Text>
+      ) : null}
       {trailing === 'chevron' && <Icon name="arrow/chevron-right" size={18} />}
       {/* The row handles the press, so the trailing controls are display-only here. */}
       {isToggle && (
@@ -126,10 +168,19 @@ export function ListGroup({
   gap?: number;
   style?: StyleProp<ViewStyle>;
 }) {
-  const rows = React.Children.toArray(children).filter(React.isValidElement) as React.ReactElement<ListRowProps>[];
+  const rows = React.Children.toArray(children).filter(
+    React.isValidElement,
+  ) as React.ReactElement<ListRowProps>[];
   const grouped = appearance === 'grouped';
   return (
-    <View style={[grouped ? { backgroundColor: palette.surface, borderRadius: 24, overflow: 'hidden' } : { gap }, style]}>
+    <View
+      style={[
+        grouped
+          ? { backgroundColor: palette.surface, borderRadius: 24, overflow: 'hidden' }
+          : { gap },
+        style,
+      ]}
+    >
       {rows.map((row, i) => React.cloneElement(row, { divider: grouped && i > 0, appearance }))}
     </View>
   );

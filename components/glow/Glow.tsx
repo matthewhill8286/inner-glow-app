@@ -1,9 +1,22 @@
 import { useEffect } from 'react';
-import { StyleSheet, View, useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native';
+import {
+  StyleSheet,
+  View,
+  useWindowDimensions,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 import { Blur, Canvas, Circle, Group, Oval, vec } from '@shopify/react-native-skia';
-import { Easing, useDerivedValue, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
+import {
+  Easing,
+  useDerivedValue,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from 'react-native-reanimated';
 import { palette } from '@/constants/theme';
 import { Icon } from '@/components/icons/Icon';
+import { useAccessibilityPrefs, useGlowOpacity } from '@/lib/accessibility-prefs';
 
 /**
  * Figma glows are ellipses with a low-opacity solid fill and a LAYER_BLUR
@@ -28,13 +41,30 @@ const DESIGN_WIDTH = 375;
  * All glows for one screen in a single Skia canvas behind the content.
  * Horizontal positions scale with the window width; vertical ones stay as designed.
  */
-export function GlowField({ glows, style, scaleToWidth = true }: { glows: GlowSpec[]; style?: StyleProp<ViewStyle>; scaleToWidth?: boolean }) {
+export function GlowField({
+  glows,
+  style,
+  scaleToWidth = true,
+}: {
+  glows: GlowSpec[];
+  style?: StyleProp<ViewStyle>;
+  scaleToWidth?: boolean;
+}) {
   const { width } = useWindowDimensions();
   const sx = scaleToWidth ? width / DESIGN_WIDTH : 1;
+  const glowOpacity = useGlowOpacity();
   return (
     <Canvas style={[StyleSheet.absoluteFill, style]} pointerEvents="none">
       {glows.map((g, i) => (
-        <Oval key={i} x={g.x * sx} y={g.y} width={g.width * sx} height={g.height ?? g.width} color={g.color} opacity={g.opacity}>
+        <Oval
+          key={i}
+          x={g.x * sx}
+          y={g.y}
+          width={g.width * sx}
+          height={g.height ?? g.width}
+          color={g.color}
+          opacity={glowOpacity(g.opacity)}
+        >
           <Blur blur={g.blur / 2} />
         </Oval>
       ))}
@@ -47,13 +77,29 @@ export function GlowField({ glows, style, scaleToWidth = true }: { glows: GlowSp
  * padded by 1.5× the blur so the blur is not clipped; the view keeps the
  * ellipse's own size, so it can be positioned like the Figma node.
  */
-export function Glow({ color, opacity, width, height, blur, style }: Omit<GlowSpec, 'x' | 'y'> & { style?: StyleProp<ViewStyle> }) {
+export function Glow({
+  color,
+  opacity,
+  width,
+  height,
+  blur,
+  style,
+}: Omit<GlowSpec, 'x' | 'y'> & { style?: StyleProp<ViewStyle> }) {
   const h = height ?? width;
   const pad = blur * 1.5;
+  const glowOpacity = useGlowOpacity();
   return (
     <View pointerEvents="none" style={[{ width, height: h }, style]}>
-      <Canvas style={{ position: 'absolute', left: -pad, top: -pad, width: width + pad * 2, height: h + pad * 2 }}>
-        <Oval x={pad} y={pad} width={width} height={h} color={color} opacity={opacity}>
+      <Canvas
+        style={{
+          position: 'absolute',
+          left: -pad,
+          top: -pad,
+          width: width + pad * 2,
+          height: h + pad * 2,
+        }}
+      >
+        <Oval x={pad} y={pad} width={width} height={h} color={color} opacity={glowOpacity(opacity)}>
           <Blur blur={blur / 2} />
         </Oval>
       </Canvas>
@@ -80,11 +126,19 @@ export function GlowOrb({
   const box = size + pad * 2;
   const c = box / 2;
   const progress = useSharedValue(0);
+  const reduceMotion = useAccessibilityPrefs((s) => s.reduceMotion);
 
   useEffect(() => {
-    if (!breathing) return;
-    progress.value = withRepeat(withTiming(1, { duration: 2000, easing: Easing.inOut(Easing.sin) }), -1, true);
-  }, [breathing, progress]);
+    if (!breathing || reduceMotion) {
+      progress.value = 0.5;
+      return;
+    }
+    progress.value = withRepeat(
+      withTiming(1, { duration: 2000, easing: Easing.inOut(Easing.sin) }),
+      -1,
+      true,
+    );
+  }, [breathing, reduceMotion, progress]);
 
   const breathe = useDerivedValue(() => [{ scale: 0.96 + 0.08 * progress.value }]);
 
@@ -95,7 +149,13 @@ export function GlowOrb({
           <Circle cx={c} cy={c} r={size / 2} color={palette.lavenderSoft} opacity={0.5}>
             <Blur blur={(size * 0.21) / 2} />
           </Circle>
-          <Circle cx={c + size * 0.105} cy={c + size * 0.053} r={(size * 0.684) / 2} color={palette.sky} opacity={0.35}>
+          <Circle
+            cx={c + size * 0.105}
+            cy={c + size * 0.053}
+            r={(size * 0.684) / 2}
+            color={palette.sky}
+            opacity={0.35}
+          >
             <Blur blur={(size * 0.158) / 2} />
           </Circle>
         </Group>

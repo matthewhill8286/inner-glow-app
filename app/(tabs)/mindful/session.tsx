@@ -10,6 +10,8 @@ import { Colors, UI } from '@/constants/theme';
 import MaterialIcons from '@/components/AppIcon';
 import Svg, { Circle } from 'react-native-svg';
 import { useMindfulness } from '@/hooks/useMindfulness';
+import * as Haptics from 'expo-haptics';
+import { useAccessibilityPrefs } from '@/lib/accessibility-prefs';
 import {
   playSoundscape,
   stopSoundscape,
@@ -215,6 +217,9 @@ export default function Session() {
         // Move to next phase
         const nextPhase = getNextPhase(phaseRef.current);
         setCurrentPhase(nextPhase);
+        // Haptic cues (Settings · Accessibility): a light tap at each phase change.
+        if (Platform.OS !== 'web' && useAccessibilityPrefs.getState().haptics)
+          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
         setPhaseTimer(0);
       } else {
         setPhaseTimer(nextPhaseTimer);

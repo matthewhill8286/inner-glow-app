@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { greetingName } from '@/lib/profile-stats';
 import { ScrollView, Text, View, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -30,7 +31,7 @@ export default function GlowAiHome() {
   const { profile } = useProfile();
   const { canStartTalk } = useGlowAiGate();
   const usage = useGlowAiUsage();
-  const firstName = (profile?.name ?? '').trim().split(/\s+/)[0] ?? '';
+  const firstName = greetingName(profile);
   const firstTalk = conversations.at(-1)?.raw;
 
   const recent = useMemo(

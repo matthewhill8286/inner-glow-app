@@ -1,725 +1,386 @@
-import { profileChoiceLabel } from '@/lib/profile-choices';
-import { screenBottomPadding } from '@/lib/screen-layout';
-import { PremiumAccessCard } from '@/components/PremiumAccessCard';
-import { Typography } from '@/constants/typography';
-import { WellnessIconText } from '@/components/WellnessIconText';
-import { LegalLinks } from '@/components/LegalLinks';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, Pressable, ScrollView, Platform, StyleSheet, Modal } from 'react-native';
+import React from 'react';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
-import { useFocusEffect } from '@react-navigation/native';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useProfile } from '@/hooks/useProfile';
-import { Colors, UI } from '@/constants/theme';
-import { authTokenVar } from '@/lib/state';
-import { SkeletonRect } from '@/components/Skeleton';
-import { SESSION_KEY } from '@/lib/storage';
 import { useTranslation } from 'react-i18next';
-import { supabase } from '@/supabase/supabase';
-import { useQueryClient } from '@tanstack/react-query';
-import MaterialIcons from '@/components/AppIcon';
-import { toast } from '@/components/Toast';
-import { SUPPORTED_LANGUAGES, setLanguage, type LanguageCode } from '@/i18n';
+import Svg, { Circle, Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
+import { palette } from '@/constants/theme';
+import { Type } from '@/constants/typography';
+import { Icon } from '@/components/icons/Icon';
+import { Glow, GlowField } from '@/components/glow/Glow';
+import { IconButton } from '@/components/ui/IconButton';
+import { ListGroup, ListRow } from '@/components/ui/ListRow';
+import { ProfileAvatar } from '@/components/settings/SettingsParts';
+import ProfileAura from '@/assets/svg/illustrations/profile/profile-aura.svg';
+import { useProfile } from '@/hooks/useProfile';
+import { useUser } from '@/hooks/useUser';
+import { useSubscription } from '@/hooks/useSubscription';
+import { useProfileStats } from '@/hooks/useProfileStats';
+import { useAvatarUrl } from '@/lib/avatar';
+import { screenBottomPadding } from '@/lib/screen-layout';
 
-async function signOut(queryClient: any, t: (key: string) => string) {
-  try {
-    await supabase.auth.signOut();
-    await AsyncStorage.removeItem(SESSION_KEY);
-    queryClient.clear();
-    authTokenVar(null);
-    router.replace('/(auth)/sign-in');
-  } catch (err) {
-    console.error('Sign out error:', err);
-    toast.error(t('toasts.signOutError'));
-  }
+const RING = 68;
+const RING_R = 32;
+const RING_C = 2 * Math.PI * RING_R;
+const BAR_MAX = 54;
+
+function Stat({ value, label, onPress }: { value: number; label: string; onPress?: () => void }) {
+  return (
+    <Pressable
+      accessible
+      accessibilityRole={onPress ? 'button' : undefined}
+      accessibilityLabel={`${value} ${label}`}
+      onPress={onPress}
+      disabled={!onPress}
+      style={{ flex: 1, alignItems: 'center', gap: 4 }}
+    >
+      <Text style={[Type.body, { fontSize: 26, lineHeight: 32, color: palette.ink }]}>{value}</Text>
+      <Text style={[Type.captionS, { color: palette.textMuted }]}>{label}</Text>
+    </Pressable>
+  );
 }
 
-const SETTINGS_ITEMS: {
-  key: string;
-  emoji: string;
-  label: string;
-  tint: string;
-  route: string;
-}[] = [
-  {
-    key: 'community',
-    emoji: '👥',
-    label: 'community.headerTitle',
-    tint: '#526651',
-    route: '/(tabs)/community',
-  },
-  {
-    key: 'notifications',
-    emoji: '🔔',
-    label: 'profilePage.notifications',
-    tint: '#E8985A',
-    route: '/(tabs)/notifications',
-  },
-  {
-    key: 'categories',
-    emoji: '📂',
-    label: 'profilePage.manageCategories',
-    tint: '#7B6DC9',
-    route: '/(tabs)/profile/categories',
-  },
-  {
-    key: 'connectedApps',
-    emoji: '❤️',
-    label: 'connectedApps.title',
-    tint: '#C45B5B',
-    route: '/(tabs)/profile/connected-apps',
-  },
-  {
-    key: 'help',
-    emoji: '💬',
-    label: 'profilePage.helpCenter',
-    tint: '#5A8FB5',
-    route: '/(utils)/help-center',
-  },
-  {
-    key: 'language',
-    emoji: '🌐',
-    label: 'profilePage.language',
-    tint: '#5AAF8B',
-    route: '__language__',
-  },
-  {
-    key: 'security',
-    emoji: '🔐',
-    label: 'profilePage.twoFactorAuth',
-    tint: '#5B8A5A',
-    route: '/(auth)/two-factor-setup',
-  },
-];
-
+/**
+ * Profile (06 P1, `6719:4387`): the aura and avatar with an edit badge, name and joining month, the
+ * plan pill, day streak / check-ins / mindful minutes, the Glow score ring, this week's mood bars,
+ * and My plan, Settings and Help Centre. The streak opens Your streak.
+ */
 export default function Profile() {
   const { t, i18n } = useTranslation();
-  const queryClient = useQueryClient();
-  const [email, setEmail] = useState<string | null>(null);
-  const [showLanguagePicker, setShowLanguagePicker] = useState(false);
-  const theme = useColorScheme() ?? 'light';
-  const colors = Colors[theme];
   const insets = useSafeAreaInsets();
-  const { profile, isLoading: profileLoading } = useProfile();
-  const scrollRef = useRef<ScrollView>(null);
-
-  useFocusEffect(
-    useCallback(() => {
-      scrollRef.current?.scrollTo({ y: 0, animated: false });
-    }, []),
-  );
-
-  const currentLang =
-    SUPPORTED_LANGUAGES.find((l) => l.code === i18n.language) ?? SUPPORTED_LANGUAGES[0];
-
-  useEffect(() => {
-    (async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      setEmail(session?.user?.email ?? null);
-    })();
-  }, []);
+  const { profile } = useProfile({ lazy: true });
+  const { data: user } = useUser();
+  const { data: photoUrl } = useAvatarUrl(profile?.avatarPath);
+  const { hasFullAccess, isTrialActive } = useSubscription();
+  const stats = useProfileStats();
+  const joined = user?.created_at
+    ? new Date(user.created_at).toLocaleDateString(i18n.language, {
+        month: 'short',
+        year: 'numeric',
+      })
+    : null;
+  const days = t('me.profile.weekdays').split(',');
+  const change = stats.scoreChange;
 
   return (
-    <View
-      style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top + 6 }]}
-    >
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>{t('common.profile')}</Text>
-          <Text style={[styles.headerSubtitle, { color: colors.mutedText }]}>
-            {email || t('profilePage.notSignedIn')}
-          </Text>
-        </View>
-      </View>
-
-      <ScrollView
-        ref={scrollRef}
-        contentContainerStyle={[
-          styles.scrollContent,
-          { paddingBottom: screenBottomPadding(insets.bottom) },
+    <View style={{ flex: 1, backgroundColor: palette.bg }}>
+      <GlowField
+        glows={[
+          { color: palette.lavenderSoft, opacity: 0.25, x: -70, y: -50, width: 300, blur: 90 },
+          { color: palette.mustard, opacity: 0.18, x: 190, y: 60, width: 240, blur: 90 },
         ]}
+      />
+      <ScrollView
+        contentContainerStyle={{
+          paddingTop: insets.top + 10,
+          paddingHorizontal: 24,
+          paddingBottom: screenBottomPadding(insets.bottom),
+        }}
         showsVerticalScrollIndicator={false}
       >
-        {profileLoading ? (
-          <View style={{ gap: 14 }}>
-            <SkeletonRect height={180} borderRadius={UI.radius.xxl} />
-            <SkeletonRect height={100} borderRadius={UI.radius.xxl} />
-            <SkeletonRect height={260} borderRadius={UI.radius.xxl} />
+        <View style={{ height: 44, alignItems: 'center', justifyContent: 'center' }}>
+          <Text accessibilityRole="header" style={[Type.bodyMSemi, { color: palette.plumDeep }]}>
+            {t('me.profile.title')}
+          </Text>
+          <IconButton
+            variant="solid"
+            icon="line/filter"
+            iconSize={20}
+            accessibilityLabel={t('me.profile.settings')}
+            onPress={() => router.push('/(tabs)/profile/settings')}
+            style={{ position: 'absolute', right: 0 }}
+          />
+        </View>
+
+        <View style={{ height: 196, alignItems: 'center', marginTop: -20 }}>
+          <View style={{ position: 'absolute', top: -28 }} pointerEvents="none">
+            <ProfileAura width={248} height={248} />
           </View>
-        ) : (
-          <>
-            {/* Profile hero card */}
-            <View style={[styles.heroCard, { backgroundColor: '#526651' }]}>
-              <View style={styles.heroTop}>
-                <View style={styles.heroAvatarWrap}>
-                  <WellnessIconText
-                    style={{ fontFamily: Typography.family.body, fontSize: 28, color: '#FFFFFF' }}
-                  >
-                    🧘
-                  </WellnessIconText>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.heroName}>
-                    {profile?.name || t('profilePage.yourProfile')}
-                  </Text>
-                  <Text style={styles.heroEmail}>{email || t('profilePage.setupProfile')}</Text>
-                </View>
-                <Pressable
-                  onPress={() => router.push('/(tabs)/profile/edit')}
-                  style={({ pressed }) => [styles.editBadge, { opacity: pressed ? 0.8 : 1 }]}
-                >
-                  <MaterialIcons name="edit" size={13} color="#8B6B47" />
-                  <Text style={styles.editText}>{t('common.edit')}</Text>
-                </Pressable>
-              </View>
-
-              {/* Goal & Routine */}
-              <View style={styles.heroDivider} />
-              <View style={styles.heroInfoRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.heroInfoLabel}>{t('profilePage.primaryGoal')}</Text>
-                  <Text style={styles.heroInfoValue}>
-                    {profileChoiceLabel(profile?.intention, 'goal', t) || t('common.notSet')}
-                  </Text>
-                </View>
-                <View style={styles.heroInfoDivider} />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.heroInfoLabel}>{t('profilePage.checkInRoutine')}</Text>
-                  <Text style={styles.heroInfoValue}>
-                    {profileChoiceLabel(profile?.routine, 'routine', t) || t('common.notSet')}
-                  </Text>
-                </View>
-              </View>
-            </View>
-
-            <PremiumAccessCard />
-
-            {/* Settings section */}
-            <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                {t('profilePage.settingsTitle')}
-              </Text>
-            </View>
-
-            <View
-              style={[
-                styles.settingsCard,
-                { backgroundColor: colors.card, borderColor: colors.border },
-              ]}
-            >
-              {SETTINGS_ITEMS.map((item, index) => (
-                <Pressable
-                  key={item.key}
-                  accessibilityRole="button"
-                  accessibilityLabel={t(item.label)}
-                  onPress={() => {
-                    if (item.route === '__language__') {
-                      setShowLanguagePicker(true);
-                    } else if (item.key === 'notifications') {
-                      router.navigate({
-                        pathname: '/(tabs)/notifications',
-                        params: { from: '/(tabs)/profile' },
-                      });
-                    } else if (item.key === 'community') {
-                      router.navigate('/(tabs)/community');
-                    } else {
-                      router.push(item.route as any);
-                    }
-                  }}
-                  style={({ pressed }) => [
-                    styles.settingsRow,
-                    {
-                      borderBottomColor: colors.divider,
-                      borderBottomWidth: index < SETTINGS_ITEMS.length - 1 ? 1 : 0,
-                      backgroundColor: pressed
-                        ? theme === 'light'
-                          ? 'rgba(0,0,0,0.02)'
-                          : 'rgba(255,255,255,0.03)'
-                        : 'transparent',
-                    },
-                  ]}
-                >
-                  <View style={[styles.settingsIconWrap, { backgroundColor: item.tint + '15' }]}>
-                    {item.key === 'community' ? (
-                      <MaterialIcons name="people" size={20} color={item.tint} />
-                    ) : (
-                      <WellnessIconText
-                        style={{
-                          fontFamily: Typography.family.body,
-                          fontSize: 16,
-                          color: item.tint,
-                        }}
-                      >
-                        {item.emoji}
-                      </WellnessIconText>
-                    )}
-                  </View>
-                  <Text style={[styles.settingsLabel, { color: colors.text }]}>
-                    {t(item.label)}
-                  </Text>
-                  {item.key === 'language' && (
-                    <Text
-                      style={{
-                        fontFamily: Typography.family.body,
-                        fontSize: 13,
-                        color: colors.mutedText,
-                        fontWeight: Typography.weight.semibold,
-                      }}
-                    >
-                      {currentLang.label}
-                    </Text>
-                  )}
-                  <MaterialIcons name="chevron-right" size={20} color={colors.mutedText} />
-                </Pressable>
-              ))}
-            </View>
-
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Support &amp; privacy</Text>
-            <View
-              style={[
-                styles.settingsCard,
-                { backgroundColor: colors.card, borderColor: colors.border },
-              ]}
-            >
-              {[
-                { label: 'Contact Support', icon: 'help-circle', route: '/(utils)/support' },
-                { label: 'Blocked Users', icon: 'slash', route: '/(utils)/blocked-users' },
-                { label: 'AI Data Permission', icon: 'shield', route: '/(utils)/ai-privacy' },
-                { label: 'Delete Account', icon: 'trash-2', route: '/(utils)/delete-account' },
-              ].map((item, index) => (
-                <Pressable
-                  key={item.route}
-                  accessibilityRole="button"
-                  onPress={() => router.push(item.route as any)}
-                  style={({ pressed }) => [
-                    styles.settingsRow,
-                    {
-                      borderBottomColor: colors.divider,
-                      borderBottomWidth: index < 3 ? 1 : 0,
-                      opacity: pressed ? 0.7 : 1,
-                    },
-                  ]}
-                >
-                  <View style={[styles.settingsIconWrap, { backgroundColor: colors.background }]}>
-                    <MaterialIcons
-                      name={item.icon}
-                      size={18}
-                      color={index === 3 ? '#C45B5B' : colors.primary}
-                    />
-                  </View>
-                  <Text
-                    style={[styles.settingsLabel, { color: index === 3 ? '#C45B5B' : colors.text }]}
-                  >
-                    {item.label}
-                  </Text>
-                  <MaterialIcons name="chevron-right" size={20} color={colors.mutedText} />
-                </Pressable>
-              ))}
-            </View>
-            <LegalLinks color={colors.mutedText} />
-            {/* Sign out */}
+          <Glow
+            color={palette.mustard}
+            opacity={0.28}
+            width={120}
+            blur={40}
+            style={{ position: 'absolute', top: 36 }}
+          />
+          <View style={{ marginTop: 48 }}>
+            <ProfileAvatar size={96} name={profile?.name} photoUrl={photoUrl} />
             <Pressable
-              onPress={() => signOut(queryClient, t)}
-              style={({ pressed }) => [
-                styles.signOutButton,
-                {
-                  backgroundColor: theme === 'light' ? '#C45B5B12' : '#C45B5B18',
-                  borderColor: theme === 'light' ? '#C45B5B20' : '#C45B5B25',
-                  transform: [{ scale: pressed ? 0.98 : 1 }],
-                },
-              ]}
+              accessibilityRole="button"
+              accessibilityLabel={t('me.profile.edit')}
+              onPress={() => router.push('/(tabs)/profile/edit')}
+              hitSlop={8}
+              style={{
+                position: 'absolute',
+                right: -4,
+                bottom: -4,
+                width: 30,
+                height: 30,
+                borderRadius: 15,
+                backgroundColor: palette.white,
+                borderWidth: 1,
+                borderColor: palette.borderLilac,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
             >
-              <MaterialIcons
-                name="logout"
-                size={18}
-                color={theme === 'light' ? '#C45B5B' : '#E87B7B'}
-              />
-              <Text
-                style={[styles.signOutText, { color: theme === 'light' ? '#C45B5B' : '#E87B7B' }]}
-              >
-                {t('common.signOut')}
+              <Icon name="line/edit" size={16} />
+            </Pressable>
+          </View>
+        </View>
+
+        <Text
+          style={[
+            Type.titleMd,
+            { fontSize: 24, lineHeight: 30, color: palette.ink, textAlign: 'center', marginTop: 8 },
+          ]}
+        >
+          {profile?.name ?? ''}
+        </Text>
+        {joined && (
+          <Text
+            style={[Type.captionM, { color: palette.textMuted, textAlign: 'center', marginTop: 6 }]}
+          >
+            {t('me.profile.since', { date: joined })}
+          </Text>
+        )}
+
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 12,
+            marginTop: 16,
+          }}
+        >
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+              backgroundColor: palette.selected,
+              borderRadius: 999,
+              paddingVertical: 6,
+              paddingHorizontal: 12,
+            }}
+          >
+            <View
+              style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: palette.lavender }}
+            />
+            <Text style={[Type.buttonS, { fontSize: 12, color: palette.plum }]}>
+              {hasFullAccess
+                ? isTrialActive
+                  ? t('me.profile.trial')
+                  : t('me.profile.pro')
+                : t('me.profile.free')}
+            </Text>
+          </View>
+          {!hasFullAccess && (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push('/(utils)/trial-upgrade')}
+              hitSlop={10}
+            >
+              <Text style={[Type.buttonS, { fontSize: 12, color: '#B39A1E' }]}>
+                {t('me.profile.tryPro')}
               </Text>
             </Pressable>
+          )}
+        </View>
 
-            {/* App version footer */}
-            <WellnessIconText style={[styles.versionText, { color: colors.subtleText }]}>
-              {t('profilePage.version')} — Made with 💛
-            </WellnessIconText>
-            <Text style={[styles.medicalDisclaimer, { color: colors.subtleText }]}>
-              {t('profilePage.medicalDisclaimer')}
-            </Text>
-          </>
-        )}
-      </ScrollView>
+        <View
+          style={{
+            backgroundColor: palette.white,
+            borderRadius: 24,
+            height: 84,
+            flexDirection: 'row',
+            alignItems: 'center',
+            marginTop: 22,
+          }}
+        >
+          <Stat
+            value={stats.streak.count}
+            label={t('me.profile.streak')}
+            onPress={() => router.push('/(tabs)/profile/streak')}
+          />
+          <View style={{ width: 1, height: 40, backgroundColor: palette.surfaceLilac }} />
+          <Stat value={stats.checkIns} label={t('me.profile.checkIns')} />
+          <View style={{ width: 1, height: 40, backgroundColor: palette.surfaceLilac }} />
+          <Stat value={stats.mindfulMinutes} label={t('me.profile.mindful')} />
+        </View>
 
-      {/* Language picker modal */}
-      <Modal
-        visible={showLanguagePicker}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowLanguagePicker(false)}
-      >
-        <Pressable style={styles.modalOverlay} onPress={() => setShowLanguagePicker(false)}>
-          <View
-            style={[
-              styles.modalContent,
-              { backgroundColor: colors.card, borderColor: colors.border },
-            ]}
+        <View style={{ flexDirection: 'row', gap: 9, marginTop: 12 }}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`${t('me.profile.glowScore')} ${stats.score}`}
+            onPress={() => router.push('/(tabs)/freud-score')}
+            style={{
+              flex: 1,
+              height: 150,
+              backgroundColor: palette.white,
+              borderRadius: 24,
+              padding: 16,
+              overflow: 'hidden',
+            }}
           >
-            <Text style={[styles.modalTitle, { color: colors.text }]}>
-              {t('profilePage.language')}
+            <Glow
+              color={palette.mustard}
+              opacity={0.3}
+              width={100}
+              blur={30}
+              style={{ position: 'absolute', left: 30, top: 40 }}
+            />
+            <Text
+              style={[Type.microBold, { fontSize: 12, lineHeight: 16, color: palette.lavender }]}
+            >
+              {t('me.profile.glowScore')}
             </Text>
+            <View
+              style={{
+                width: RING,
+                height: RING,
+                alignSelf: 'center',
+                marginTop: 8,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Svg width={RING} height={RING} style={{ position: 'absolute' }}>
+                <Circle
+                  cx={RING / 2}
+                  cy={RING / 2}
+                  r={RING_R}
+                  stroke={palette.plum}
+                  strokeOpacity={0.12}
+                  strokeWidth={4}
+                  fill="none"
+                />
+                <Circle
+                  cx={RING / 2}
+                  cy={RING / 2}
+                  r={RING_R}
+                  stroke={palette.plum}
+                  strokeWidth={4}
+                  strokeLinecap="round"
+                  fill="none"
+                  strokeDasharray={`${RING_C} ${RING_C}`}
+                  strokeDashoffset={RING_C * (1 - Math.min(100, Math.max(0, stats.score)) / 100)}
+                  transform={`rotate(-90 ${RING / 2} ${RING / 2})`}
+                />
+              </Svg>
+              <Text style={[Type.body, { fontSize: 26, lineHeight: 32, color: palette.ink }]}>
+                {stats.score}
+              </Text>
+            </View>
+            <Text style={[Type.captionS, { color: palette.plum, marginTop: 'auto' }]}>
+              {change === null
+                ? t('me.profile.scoreNew')
+                : change > 0
+                  ? t('me.profile.scoreUp', { count: change })
+                  : change < 0
+                    ? t('me.profile.scoreDown', { count: -change })
+                    : t('me.profile.scoreSame')}
+            </Text>
+          </Pressable>
 
-            {SUPPORTED_LANGUAGES.map((lang) => {
-              const isSelected = i18n.language === lang.code;
-              return (
-                <Pressable
-                  key={lang.code}
-                  onPress={async () => {
-                    await setLanguage(lang.code);
-                    setShowLanguagePicker(false);
-                  }}
-                  style={({ pressed }) => [
-                    styles.langRow,
-                    {
-                      backgroundColor: isSelected
-                        ? '#5AAF8B15'
-                        : pressed
-                          ? theme === 'light'
-                            ? 'rgba(0,0,0,0.03)'
-                            : 'rgba(255,255,255,0.05)'
-                          : 'transparent',
-                      borderColor: isSelected ? '#5AAF8B' : colors.border,
-                    },
-                  ]}
-                >
-                  <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 24 }}>
-                    {lang.flag}
-                  </WellnessIconText>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push('/(tabs)/mood')}
+            style={{
+              flex: 1,
+              height: 150,
+              backgroundColor: palette.white,
+              borderRadius: 24,
+              padding: 16,
+            }}
+          >
+            <Text
+              style={[Type.microBold, { fontSize: 12, lineHeight: 16, color: palette.lavender }]}
+            >
+              {t('me.profile.moodWeek')}
+            </Text>
+            <Text
+              numberOfLines={1}
+              style={[
+                Type.bodyMSemi,
+                { fontSize: 18, lineHeight: 24, color: palette.ink, marginTop: 6 },
+              ]}
+            >
+              {stats.weekMood ? t(`me.profile.moods.${stats.weekMood}`) : t('me.profile.moodNone')}
+            </Text>
+            <View
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'flex-end',
+                marginTop: 'auto',
+              }}
+            >
+              {stats.moodBars.map((value, i) => (
+                <View key={i} style={{ alignItems: 'center', gap: 4 }}>
+                  <Svg width={10} height={BAR_MAX}>
+                    <Defs>
+                      <LinearGradient id={`moodBar${i}`} x1="0" y1="0" x2="0" y2="1">
+                        <Stop offset="0" stopColor={palette.mustard} />
+                        <Stop offset="1" stopColor={palette.lavender} stopOpacity={0.6} />
+                      </LinearGradient>
+                    </Defs>
+                    {value === null ? (
+                      <Rect
+                        x={0}
+                        y={BAR_MAX - 10}
+                        width={10}
+                        height={10}
+                        rx={5}
+                        fill={palette.surfaceLilac}
+                      />
+                    ) : (
+                      <Rect
+                        x={0}
+                        y={BAR_MAX - (BAR_MAX * value) / 5}
+                        width={10}
+                        height={(BAR_MAX * value) / 5}
+                        rx={5}
+                        fill={`url(#moodBar${i})`}
+                      />
+                    )}
+                  </Svg>
                   <Text
                     style={[
-                      styles.langLabel,
-                      {
-                        fontFamily: Typography.family.body,
-                        color: colors.text,
-                        fontWeight: isSelected ? Typography.weight.bold : '600',
-                      },
+                      Type.micro,
+                      { fontSize: 10, lineHeight: 12, color: palette.textSubtle },
                     ]}
                   >
-                    {lang.label}
+                    {days[i]}
                   </Text>
-                  {isSelected && (
-                    <View style={styles.langCheck}>
-                      <MaterialIcons name="check" size={16} color="#FFFFFF" />
-                    </View>
-                  )}
-                </Pressable>
-              );
-            })}
+                </View>
+              ))}
+            </View>
+          </Pressable>
+        </View>
 
-            <Pressable
-              onPress={() => setShowLanguagePicker(false)}
-              style={({ pressed }) => [
-                styles.modalClose,
-                {
-                  backgroundColor: theme === 'light' ? '#f2f2f2' : 'rgba(255,255,255,0.08)',
-                  opacity: pressed ? 0.7 : 1,
-                },
-              ]}
-            >
-              <Text style={[styles.modalCloseText, { color: colors.text }]}>
-                {t('common.close')}
-              </Text>
-            </Pressable>
-          </View>
-        </Pressable>
-      </Modal>
+        <ListGroup style={{ marginTop: 12 }}>
+          <ListRow
+            icon="line/crown"
+            label={t('me.profile.myPlan')}
+            value={hasFullAccess ? t('me.profile.planPro') : t('me.profile.planFree')}
+            onPress={() => router.push('/(tabs)/profile/plan')}
+          />
+          <ListRow
+            icon="line/filter"
+            label={t('me.profile.settings')}
+            onPress={() => router.push('/(tabs)/profile/settings')}
+          />
+          <ListRow
+            icon="line/chat"
+            label={t('me.profile.help')}
+            onPress={() => router.push('/(utils)/help-center')}
+          />
+        </ListGroup>
+      </ScrollView>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingHorizontal: UI.spacing.xl,
-  } as any,
-
-  // Header
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    marginTop: 6,
-    marginBottom: 4,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-  },
-  headerTitle: {
-    ...Typography.heading,
-  },
-  headerSubtitle: { fontFamily: Typography.family.body, fontSize: 14, marginTop: 2 },
-
-  scrollContent: {
-    paddingTop: 16,
-    paddingBottom: 100,
-    gap: 14,
-  },
-
-  // Hero profile card
-  heroCard: {
-    borderRadius: UI.radius.xxl,
-    padding: 20,
-    ...UI.shadow.md,
-  },
-  heroTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-  },
-  heroAvatarWrap: {
-    width: 52,
-    height: 52,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.20)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  heroName: {
-    fontFamily: Typography.family.body,
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: Typography.weight.semibold,
-  },
-  heroEmail: {
-    fontFamily: Typography.family.body,
-    color: 'rgba(255,255,255,0.70)',
-    fontSize: 13,
-    fontWeight: Typography.weight.medium,
-    marginTop: 2,
-  },
-  editBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(255,255,255,0.92)',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
-  },
-  editText: {
-    fontFamily: Typography.family.body,
-    color: '#8B6B47',
-    fontSize: 12,
-    fontWeight: Typography.weight.semibold,
-  },
-  heroDivider: {
-    height: 1,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    marginVertical: 16,
-  },
-  heroInfoRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 14,
-  },
-  heroInfoDivider: {
-    width: 1,
-    height: 36,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-  },
-  heroInfoLabel: {
-    fontFamily: Typography.family.body,
-    color: 'rgba(255,255,255,0.60)',
-    fontSize: 11,
-    fontWeight: Typography.weight.medium,
-    letterSpacing: 0.5,
-    marginBottom: 4,
-  },
-  heroInfoValue: {
-    fontFamily: Typography.family.body,
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: Typography.weight.bold,
-  },
-
-  // Subscription card
-  subCard: {
-    borderRadius: UI.radius.xxl,
-    padding: 18,
-    borderWidth: 1,
-    ...UI.shadow.sm,
-  },
-  subTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  subIconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  subTitle: {
-    fontFamily: Typography.family.body,
-    fontSize: 16,
-    fontWeight: Typography.weight.semibold,
-  },
-  subExpiry: { fontFamily: Typography.family.body, fontSize: 13, marginTop: 2 },
-  upgradeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    marginTop: 14,
-    backgroundColor: '#5B8A5A',
-    paddingVertical: 13,
-    paddingHorizontal: 16,
-    borderRadius: UI.radius.md,
-    ...UI.shadow.sm,
-  },
-  upgradeText: {
-    fontFamily: Typography.family.body,
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: Typography.weight.semibold,
-    flex: 1,
-  },
-
-  // Section
-  sectionHeader: {
-    marginTop: 6,
-    marginBottom: -4,
-  },
-  sectionTitle: { ...Typography.section, fontSize: 20 },
-
-  // Settings card
-  settingsCard: {
-    borderRadius: UI.radius.xxl,
-    borderWidth: 1,
-    overflow: 'hidden',
-    ...UI.shadow.sm,
-  },
-  settingsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  settingsIconWrap: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  settingsLabel: {
-    fontFamily: Typography.family.body,
-    flex: 1,
-    fontSize: 15,
-    fontWeight: Typography.weight.medium,
-  },
-
-  // Sign out
-  signOutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 15,
-    borderRadius: UI.radius.lg,
-    borderWidth: 1,
-    marginTop: 6,
-  },
-  signOutText: {
-    fontFamily: Typography.family.body,
-    fontSize: 15,
-    fontWeight: Typography.weight.semibold,
-  },
-
-  // Footer
-  versionText: {
-    fontFamily: Typography.family.body,
-    textAlign: 'center',
-    fontSize: 12,
-    fontWeight: Typography.weight.medium,
-    marginTop: 4,
-  },
-  medicalDisclaimer: {
-    fontFamily: Typography.family.body,
-    textAlign: 'center',
-    fontSize: 10,
-    fontWeight: Typography.weight.regular,
-    lineHeight: 14,
-    marginTop: 8,
-    marginBottom: 8,
-    paddingHorizontal: 20,
-    fontStyle: 'italic',
-  },
-
-  // Language modal
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 30,
-  },
-  modalContent: {
-    width: '100%',
-    borderRadius: 24,
-    padding: 24,
-    borderWidth: 1,
-    ...UI.shadow.md,
-  },
-  modalTitle: {
-    ...Typography.section,
-    fontSize: 20,
-    fontWeight: Typography.weight.regular,
-    marginBottom: 18,
-    textAlign: 'center',
-  },
-  langRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 16,
-    borderWidth: 2,
-    marginBottom: 10,
-  },
-  langLabel: { fontFamily: Typography.family.body, flex: 1, fontSize: 17 },
-  langCheck: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: '#5AAF8B',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalClose: {
-    marginTop: 8,
-    paddingVertical: 14,
-    borderRadius: 14,
-    alignItems: 'center',
-  },
-  modalCloseText: {
-    fontFamily: Typography.family.body,
-    fontSize: 15,
-    fontWeight: Typography.weight.semibold,
-  },
-});

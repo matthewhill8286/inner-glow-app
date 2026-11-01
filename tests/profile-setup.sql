@@ -13,3 +13,9 @@ DO $$ BEGIN
   BEGIN UPDATE profiles SET notification_prefs='[]' WHERE user_id='00000000-0000-4000-8000-0000000000c1'; RAISE EXCEPTION 'notification prefs array accepted';
   EXCEPTION WHEN check_violation THEN NULL; END;
 END $$;
+UPDATE profiles SET nickname='Matt' WHERE user_id='00000000-0000-4000-8000-0000000000c1';
+SELECT public.assert_true((SELECT nickname='Matt' FROM profiles WHERE user_id='00000000-0000-4000-8000-0000000000c1'),'nickname saved');
+DO $$ BEGIN
+  BEGIN UPDATE profiles SET nickname='   ' WHERE user_id='00000000-0000-4000-8000-0000000000c1'; RAISE EXCEPTION 'blank nickname accepted';
+  EXCEPTION WHEN check_violation THEN NULL; END;
+END $$;

@@ -1,231 +1,243 @@
-import { backTo, finishTo } from '@/lib/navigation';
-import { PROFILE_GOALS, PROFILE_ROUTINES, profileChoiceValue } from '@/lib/profile-choices';
-import { AppField } from '@/components/ui/AppField';
-import { AppButton } from '@/components/ui/AppButton';
-import { screenBottomPadding } from '@/lib/screen-layout';
-import { Typography } from '@/constants/typography';
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Platform,
+  ActivityIndicator,
   KeyboardAvoidingView,
-  useWindowDimensions,
+  Platform,
+  Pressable,
+  Text,
+  View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import { useProfile } from '@/hooks/useProfile';
+import { useQueryClient } from '@tanstack/react-query';
+import { palette } from '@/constants/theme';
+import { Type } from '@/constants/typography';
+import { Glow } from '@/components/glow/Glow';
+import { AppButton } from '@/components/ui/AppButton';
+import { AppField } from '@/components/ui/AppField';
+import { Chip } from '@/components/ui/Chip';
 import { toast } from '@/components/Toast';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors, UI } from '@/constants/theme';
-import ScreenHeader from '@/components/ScreenHeader';
+import {
+  ProfileAvatar,
+  SettingsScreen,
+  SettingsSection,
+} from '@/components/settings/SettingsParts';
+import ProfileAura from '@/assets/svg/illustrations/profile/profile-aura.svg';
+import { ISSUES, type IssueKey } from '@/data/issues';
+import { useProfile } from '@/hooks/useProfile';
+import { useUser } from '@/hooks/useUser';
+import { pickAvatar, uploadAvatar, useAvatarUrl } from '@/lib/avatar';
+import { backTo } from '@/lib/navigation';
+import { birthdayToInput, maskBirthday, parseBirthday } from '@/lib/profile-setup';
+import { supabase } from '@/supabase/supabase';
 
-function RadioOption({
-  label,
-  selected,
-  onPress,
-}: {
-  label: string;
-  selected: boolean;
-  onPress: () => void;
-}) {
-  const theme = useColorScheme() ?? 'light';
-  const colors = Colors[theme];
-  const { fontScale } = useWindowDimensions();
-
-  return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="radio"
-      accessibilityLabel={label}
-      accessibilityState={{ checked: selected }}
-      aria-checked={selected}
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        backgroundColor: selected ? '#828a6a' : colors.card,
-        paddingVertical: 16,
-        paddingHorizontal: 14,
-        gap: 10,
-        minWidth: 160 * Math.min(fontScale, 1.5),
-        maxWidth: '100%',
-        borderRadius: 16,
-        flexBasis: '45%',
-        flexGrow: 1,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 8,
-        elevation: 2,
-      }}
-    >
-      <Text
-        style={{
-          fontFamily: Typography.family.body,
-          fontSize: 16,
-          fontWeight: Typography.weight.semibold,
-          color: selected ? 'white' : colors.text,
-          flex: 1,
-        }}
-      >
-        {label}
-      </Text>
-      <View
-        style={{
-          width: 24,
-          height: 24,
-          flexShrink: 0,
-          borderRadius: 12,
-          borderWidth: 2,
-          borderColor: selected ? 'white' : colors.text,
-          alignItems: 'center',
-          justifyContent: 'center',
-          opacity: selected ? 1 : 0.3,
-        }}
-      >
-        {selected && (
-          <View
-            style={{
-              width: 12,
-              height: 12,
-              borderRadius: 6,
-              backgroundColor: 'white',
-            }}
-          />
-        )}
-      </View>
-    </Pressable>
-  );
-}
-
-export default function ProfileEdit() {
+/**
+ * Personal information (06 P3, `6719:4677`): photo, full name, "What should we call you?", email,
+ * date of birth and what you'd like help with. The help chips are the app's topics
+ * (`selected_issues`), which drive Home and suggestions. Country has no data behind it yet, so it is
+ * left out. A new email is confirmed through the link Supabase sends to it.
+ */
+export default function PersonalInformation() {
   const { t } = useTranslation();
-  const theme = useColorScheme() ?? 'light';
-  const colors = Colors[theme];
-  const insets = useSafeAreaInsets();
-  const { profile, isLoading, saveProfile, isSavingProfile } = useProfile();
-
+  const queryClient = useQueryClient();
+  const { data: user } = useUser();
+  const { profile, updateProfile, isUpdatingProfile } = useProfile({ lazy: true });
+  const { data: photoUrl } = useAvatarUrl(profile?.avatarPath);
   const [name, setName] = useState('');
-  const [intention, setIntention] = useState('');
-  const [routine, setRoutine] = useState('');
+  const [nickname, setNickname] = useState('');
+  const [email, setEmail] = useState('');
+  const [birthday, setBirthday] = useState('');
+  const [issues, setIssues] = useState<Set<IssueKey>>(new Set());
+  const [uploading, setUploading] = useState(false);
+  const [errors, setErrors] = useState<{ name?: string; birthday?: string }>({});
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (profile) {
-      setName(profile.name || '');
-      setIntention(profile.intention || '');
-      setRoutine(profile.routine || '');
-    }
+    if (!profile) return;
+    setName(profile.name ?? '');
+    setNickname(profile.nickname ?? '');
+    setBirthday(birthdayToInput(profile.birthday));
+    setIssues(new Set((profile.selectedIssues ?? []) as IssueKey[]));
   }, [profile]);
+  useEffect(() => setEmail(user?.email ?? ''), [user?.email]);
 
-  async function handleSave() {
+  async function changePhoto() {
+    if (!user?.id) return;
+    const photo = await pickAvatar();
+    if (!photo) return;
+    setUploading(true);
     try {
-      await saveProfile({
-        ...profile,
-        name: name.trim() || undefined,
-        intention: intention || undefined,
-        routine: routine || undefined,
-      });
-      toast.success(t('profileEdit.profileUpdated'));
-      finishTo('/(tabs)/profile');
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Unable to save your profile.');
+      const path = await uploadAvatar(user.id, photo);
+      await updateProfile({ avatarPath: path });
+      // Same path after a replace, so drop the cached signed URL.
+      await queryClient.invalidateQueries({ queryKey: ['avatar-url', path] });
+    } catch {
+      toast.error(t('me.personal.photoError'));
+    } finally {
+      setUploading(false);
     }
   }
 
-  if (isLoading) {
-    return null;
+  async function save() {
+    const parsed = birthday.trim() ? parseBirthday(birthday) : null;
+    const next = {
+      name: name.trim() ? undefined : t('me.personal.nameError'),
+      birthday: birthday.trim() && !parsed ? t('me.personal.birthdayError') : undefined,
+    };
+    setErrors(next);
+    if (next.name || next.birthday) return;
+    setSaving(true);
+    try {
+      await updateProfile({
+        name: name.trim(),
+        nickname: nickname.trim() || null,
+        birthday: parsed,
+        selectedIssues: [...issues],
+      });
+      const newEmail = email.trim();
+      if (newEmail && newEmail !== user?.email) {
+        const { error } = await supabase.auth.updateUser({ email: newEmail });
+        if (error) throw error;
+        toast.success(t('me.personal.emailSent', { email: newEmail }));
+      } else toast.success(t('me.personal.saved'));
+      backTo(undefined, '/(tabs)/profile');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(false);
+    }
   }
+
+  const toggle = (key: IssueKey) =>
+    setIssues((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
 
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      style={{
-        flex: 1,
-        backgroundColor: colors.background,
-        paddingHorizontal: UI.spacing.xl,
-      }}
+      style={{ flex: 1 }}
     >
-      <ScreenHeader
-        title={t('profileEdit.title')}
-        showBack
-        onBack={() => backTo('/(tabs)/profile', '/(tabs)/profile')}
-      />
-
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{
-          paddingBottom: screenBottomPadding(insets.bottom, false),
-          paddingTop: 14,
-        }}
+      <SettingsScreen
+        title={t('me.personal.title')}
+        backLabel={t('common.back')}
+        onBack={() => backTo(undefined, '/(tabs)/profile')}
+        glows={[
+          { color: palette.lavenderSoft, opacity: 0.22, x: -70, y: -50, width: 280, blur: 90 },
+          { color: palette.sky, opacity: 0.15, x: 200, y: 40, width: 220, blur: 90 },
+        ]}
+        contentStyle={{ gap: 20 }}
+        cta={
+          <AppButton
+            title={t('me.personal.save')}
+            busy={saving || isUpdatingProfile}
+            onPress={() => void save()}
+          />
+        }
       >
+        <View style={{ alignItems: 'center', height: 170, marginTop: -10 }}>
+          <View style={{ position: 'absolute', top: 0 }} pointerEvents="none">
+            <ProfileAura width={188} height={188} />
+          </View>
+          <Glow
+            color={palette.mustard}
+            opacity={0.25}
+            width={110}
+            blur={36}
+            style={{ position: 'absolute', top: 39 }}
+          />
+          <View style={{ marginTop: 52 }}>
+            <ProfileAvatar size={84} name={name || profile?.name} photoUrl={photoUrl} />
+            {uploading && (
+              <View
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  borderRadius: 42,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: 'rgba(255,255,255,0.6)',
+                }}
+              >
+                <ActivityIndicator color={palette.plum} />
+              </View>
+            )}
+          </View>
+        </View>
+        <Pressable
+          accessibilityRole="button"
+          disabled={uploading}
+          onPress={() => void changePhoto()}
+          hitSlop={10}
+          style={{ alignSelf: 'center', marginTop: -16 }}
+        >
+          <Text style={[Type.buttonS, { fontSize: 14, color: palette.plum }]}>
+            {t('me.personal.changePhoto')}
+          </Text>
+        </Pressable>
+
         <AppField
-          label={t('profileEdit.yourName')}
+          variant="box"
+          label={t('me.personal.fullName')}
           value={name}
           onChangeText={setName}
-          placeholder={t('profileEdit.namePlaceholder')}
+          error={errors.name}
           autoComplete="name"
-          maxLength={80}
+          textContentType="name"
+        />
+        <AppField
+          variant="box"
+          label={t('me.personal.nickname')}
+          value={nickname}
+          onChangeText={setNickname}
+          maxLength={40}
+          autoComplete="nickname"
+          textContentType="nickname"
+        />
+        <View style={{ gap: 6 }}>
+          <AppField
+            variant="box"
+            label={t('me.personal.email')}
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoComplete="email"
+            textContentType="emailAddress"
+          />
+          {email.trim() !== (user?.email ?? '') && (
+            <Text style={[Type.captionS, { color: palette.textMuted }]}>
+              {t('me.personal.emailNote')}
+            </Text>
+          )}
+        </View>
+        <AppField
+          variant="box"
+          label={t('me.personal.birthday')}
+          value={birthday}
+          onChangeText={(v) => setBirthday(maskBirthday(v))}
+          placeholder={t('me.personal.birthdayPlaceholder')}
+          keyboardType="number-pad"
+          error={errors.birthday}
+          endIcon="line/calendar"
         />
 
-        <Text style={[styles.label, { marginTop: 24, color: colors.mutedText }]}>
-          {t('profileEdit.primaryGoal')}
-        </Text>
-        <View style={{ marginTop: 12, flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-          {PROFILE_GOALS.map((key) => (
-            <RadioOption
-              key={key}
-              label={t('profileSetup.' + key)}
-              selected={intention === profileChoiceValue(key)}
-              onPress={() => setIntention(profileChoiceValue(key))}
-            />
-          ))}
-        </View>
-
-        <Text style={[styles.label, { marginTop: 24, color: colors.mutedText }]}>
-          {t('profileEdit.checkInTime')}
-        </Text>
-        <View style={{ marginTop: 12, flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-          {PROFILE_ROUTINES.map((key) => (
-            <RadioOption
-              key={key}
-              label={t('profileSetup.' + key)}
-              selected={routine === profileChoiceValue(key)}
-              onPress={() => setRoutine(profileChoiceValue(key))}
-            />
-          ))}
-        </View>
-
-        <AppButton
-          title={t('profileEdit.saveChanges')}
-          busy={isSavingProfile}
-          onPress={handleSave}
-          style={{ marginTop: 32 }}
-        />
-      </ScrollView>
+        <SettingsSection label={t('me.personal.helpWith')}>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {ISSUES.map((issue) => (
+              <Chip
+                key={issue.key}
+                kind="option"
+                label={t(`me.issues.${issue.key}`)}
+                selected={issues.has(issue.key)}
+                onPress={() => toggle(issue.key)}
+              />
+            ))}
+          </View>
+        </SettingsSection>
+      </SettingsScreen>
     </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({
-  label: {
-    fontFamily: Typography.family.body,
-    fontSize: 16,
-    fontWeight: Typography.weight.medium,
-    color: '#6a5e55',
-    marginLeft: 4,
-  },
-  input: {
-    fontFamily: Typography.family.body,
-    marginTop: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderRadius: 20,
-    fontSize: 16,
-    fontWeight: Typography.weight.semibold,
-  },
-});

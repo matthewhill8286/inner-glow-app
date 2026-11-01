@@ -16,6 +16,7 @@ function profileFromRow(data: Record<string, any>): UserProfile {
     birthday: data.birthday ?? null,
     checkinTime: typeof data.checkin_time === 'string' ? data.checkin_time.slice(0, 5) : null,
     notificationPrefs: (data.notification_prefs as Record<string, boolean> | null) ?? {},
+    nickname: data.nickname ?? null,
     aiTone: data.ai_tone ?? 'gentle',
     aiMemory: data.ai_memory ?? true,
     aiJournal: data.ai_journal ?? true,
@@ -121,6 +122,7 @@ export const useProfile = (opts?: { lazy?: boolean }) => {
       if (updates.birthday !== undefined) dbUpdates.birthday = updates.birthday;
       if (updates.checkinTime !== undefined) dbUpdates.checkin_time = updates.checkinTime;
       if (updates.notificationPrefs !== undefined) dbUpdates.notification_prefs = updates.notificationPrefs;
+      if (updates.nickname !== undefined) dbUpdates.nickname = updates.nickname?.trim() || null;
       if (updates.aiTone !== undefined) dbUpdates.ai_tone = updates.aiTone;
       if (updates.aiMemory !== undefined) dbUpdates.ai_memory = updates.aiMemory;
       if (updates.aiJournal !== undefined) dbUpdates.ai_journal = updates.aiJournal;
