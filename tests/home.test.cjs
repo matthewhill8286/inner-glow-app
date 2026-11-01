@@ -80,3 +80,10 @@ test('the mood scale maps check-in words, scores and slider positions', () => {
   assert.equal(scale.xForScore(2, 303), 80.75);
   assert.deepEqual([0, 10, 45, 46, 151.5, 293, 400].map((x) => scale.scoreAtX(x, 303)), [1, 1, 1, 2, 3, 5, 5]);
 });
+
+test('Glow score history needs check-ins on three different days', () => {
+  assert.equal(home.checkInDays([]), 0);
+  assert.equal(home.checkInDays([{ createdAt: local(10, 1, 8) }, { createdAt: local(10, 1, 21) }, { createdAt: local(10, 2, 9) }]), 2);
+  assert.equal(home.checkInDays([{ createdAt: local(10, 1, 8) }, { createdAt: local(10, 2, 9) }, { createdAt: local(10, 3, 9) }]), 3);
+  assert.equal(home.SCORE_HISTORY_MIN_DAYS, 3);
+});

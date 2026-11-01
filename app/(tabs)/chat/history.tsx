@@ -15,6 +15,9 @@ import { useTopics } from '@/hooks/useTopics';
 import { conversationTitle, matchesConversation } from '@/lib/conversation-display';
 import { screenBottomPadding } from '@/lib/screen-layout';
 import { backTo } from '@/lib/navigation';
+import { useTranslation } from 'react-i18next';
+import { palette } from '@/constants/theme';
+import { EmptyScreen } from '@/components/EmptyScreen';
 export default function ChatHistory() {
   const colors = Colors[useColorScheme() ?? 'light'];
   const insets = useSafeAreaInsets();
@@ -40,6 +43,24 @@ export default function ChatHistory() {
         ),
     [conversations, topics, query],
   );
+  const { t } = useTranslation();
+  const startTalking = () =>
+    router.push({ pathname: '/(tabs)/chat/new-conversation', params: { from: '/(tabs)/chat/history' } });
+
+  // Glow AI · No talks yet (09 §3.5): no search field until there is something to search.
+  if (!isLoading && !error && conversations.length === 0) {
+    return (
+      <EmptyScreen
+        header={{ kind: 'nav', title: t('emptyStates.talks.title'), backLabel: t('common.back'), onBack: () => backTo('/(tabs)/chat', '/(tabs)/chat') }}
+        glowColor={palette.lavenderSoft}
+        title={t('emptyStates.talks.emptyTitle')}
+        body={t('emptyStates.talks.body')}
+        action={{ label: t('emptyStates.talks.action'), onPress: startTalking }}
+        tabBarVisible={false}
+      />
+    );
+  }
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.background, paddingHorizontal: UI.spacing.xl }}>
       <ScreenHeader
@@ -96,14 +117,7 @@ export default function ChatHistory() {
                 <AppButton
                   title={query ? 'Clear search' : 'Start a conversation'}
                   variant="secondary"
-                  onPress={() =>
-                    query
-                      ? setQuery('')
-                      : router.push({
-                          pathname: '/(tabs)/chat/new-conversation',
-                          params: { from: '/(tabs)/chat/history' },
-                        })
-                  }
+                  onPress={() => (query ? setQuery('') : startTalking())}
                 />
               </View>
             ) : null

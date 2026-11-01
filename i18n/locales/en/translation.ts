@@ -572,6 +572,34 @@ export default {
       cta: 'Go to my home',
     },
   },
+  // Empty states from 09 §2.4 (Journal, Mood history, Glow score history, Glow AI talks).
+  emptyStates: {
+    journal: {
+      title: 'Journal',
+      emptyTitle: 'Your sky is still empty',
+      body: 'Each entry becomes a star. Write a few lines or just say it out loud.',
+      action: 'Write my first entry',
+    },
+    mood: {
+      title: 'Mood history',
+      emptyTitle: 'No check-ins yet',
+      body: 'Log how you feel once a day and your month will fill with colour.',
+      action: 'Log my mood',
+    },
+    score: {
+      title: 'Glow score',
+      emptyTitle: 'Your history will show here',
+      body: 'After 3 days of check-ins you’ll see how your Glow score changes and why.',
+      action: 'Check in now',
+    },
+    talks: {
+      title: 'Your talks',
+      emptyTitle: 'No talks yet',
+      body: 'Whatever’s on your mind, Glow AI is here to listen without judgement.',
+      action: 'Start talking',
+      noMatches: 'No talks match your search.',
+    },
+  },
   searchFixes: {
     results_one: '{{count}} result',
     results_other: '{{count}} results',

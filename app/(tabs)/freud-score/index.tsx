@@ -19,7 +19,11 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryKeys';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors, UI } from '@/constants/theme';
+import { Colors, UI, palette } from '@/constants/theme';
+import { EmptyScreen } from '@/components/EmptyScreen';
+import { useMood } from '@/hooks/useMood';
+import { checkInDays, SCORE_HISTORY_MIN_DAYS } from '@/lib/home';
+import { backTo } from '@/lib/navigation';
 import { useFreudScore } from '@/hooks/useFreudScore';
 import { getFreudColor } from '@/lib/freudScore';
 import type { FreudScoreRecord } from '@/lib/freudScore';
@@ -531,6 +535,7 @@ export default function FreudScoreScreen() {
   const queryClient = useQueryClient();
   const { currentScore, scoreHistory, isLoadingHistory, isDataLoading, saveScore } =
     useFreudScore();
+  const { moodCheckIns, isLoading: moodLoading } = useMood();
   const hasSavedRef = useRef(false);
   const [showFilter, setShowFilter] = useState(false);
 
@@ -595,6 +600,19 @@ export default function FreudScoreScreen() {
     };
     return map[currentScore.label] ?? 'average';
   }, [currentScore.label]);
+
+  // Glow score · History empty (09 §3.10): history appears after check-ins on three different days.
+  if (!moodLoading && checkInDays(moodCheckIns) < SCORE_HISTORY_MIN_DAYS) {
+    return (
+      <EmptyScreen
+        header={{ kind: 'nav', title: t('emptyStates.score.title'), backLabel: t('common.back'), onBack: () => backTo(undefined, '/(tabs)/home') }}
+        glowColor={palette.mustard}
+        title={t('emptyStates.score.emptyTitle')}
+        body={t('emptyStates.score.body')}
+        action={{ label: t('emptyStates.score.action'), onPress: () => router.push('/(tabs)/mood/check-in') }}
+      />
+    );
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
