@@ -46,6 +46,20 @@ test('enabled reminders persist and turning them off cancels the scheduled notif
  assert.equal((await api.loadReminderPreferences()).daily_checkin,false);
  assert.deepEqual(canceled,['reminder-1']);
 });
+test('the daily check-in uses the time chosen in profile setup and keeps it for later toggles',async()=>{
+ const requests=[],storage=new Map();
+ const api=load('ios',{
+  getPermissionsAsync:async()=>({status:'granted'}),
+  scheduleNotificationAsync:async req=>{requests.push(req);return 'reminder-'+requests.length},
+  cancelScheduledNotificationAsync:async()=>{},
+  SchedulableTriggerInputTypes:{DAILY:'daily',WEEKLY:'weekly'},
+ },storage);
+ await api.setReminderEnabled('daily_checkin',true,{hour:8,minute:30});
+ assert.equal(requests[0].trigger.hour,8);assert.equal(requests[0].trigger.minute,30);
+ await api.setReminderEnabled('daily_checkin',false);
+ await api.setReminderEnabled('daily_checkin',true);
+ assert.equal(requests[1].trigger.hour,8);assert.equal(requests[1].trigger.minute,30);
+});
 test('foreground notifications show a banner and denied permission fails clearly',async()=>{
  let handler;
  const api=load('ios',{

@@ -60,6 +60,20 @@
       "expo-localization",
       "@react-native-community/datetimepicker",
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "Inner Glow uses your photo library when you choose a profile photo. Only the photo you pick is used, and only you can see it.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Inner Glow uses Face ID, when you turn on the app lock, so only you can open your journal and check-ins."
+        }
+      ],
+      [
         "expo-font",
         {
           "ios": {

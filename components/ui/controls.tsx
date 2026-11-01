@@ -9,7 +9,18 @@ import { Icon } from '@/components/icons/Icon';
  * Toggle 46×28, library `6746:4340` (00-foundations §11.6). On plum, off `#E1DAE6` (control/off); knob 22 white.
  * The Set up option rows draw off as `#E6E0EA` and some List Rows use a `#FFF6D6` knob; the component values win.
  */
-export function Toggle({ value, onValueChange, accessibilityLabel }: { value: boolean; onValueChange: (v: boolean) => void; accessibilityLabel?: string }) {
+export function Toggle({
+  value,
+  onValueChange,
+  accessibilityLabel,
+  knobColor = palette.white,
+}: {
+  value: boolean;
+  onValueChange: (v: boolean) => void;
+  accessibilityLabel?: string;
+  /** The notification rows in profile setup (P3) draw a `#FFF6D6` knob. */
+  knobColor?: string;
+}) {
   return (
     <Pressable
       accessibilityRole="switch"
@@ -19,7 +30,7 @@ export function Toggle({ value, onValueChange, accessibilityLabel }: { value: bo
       hitSlop={8}
       style={{ width: 46, height: 28, borderRadius: 14, backgroundColor: value ? palette.plum : palette.toggleOffAlt, justifyContent: 'center' }}
     >
-      <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: palette.white, marginLeft: value ? 21 : 3 }} />
+      <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: knobColor, marginLeft: value ? 21 : 3 }} />
     </Pressable>
   );
 }

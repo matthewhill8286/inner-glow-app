@@ -22,6 +22,15 @@ Deno.serve(async (req: Request) => {
     const body = await req.json();
     if (body.confirmation !== 'DELETE')
       return Response.json({ error: 'Deletion confirmation required' }, { status: 400, headers });
+    // Profile photos live in Storage, which the RPC refuses to orphan, so remove them first.
+    const { data: photos, error: listError } = await sb.storage.from('avatars').list(user.id);
+    if (listError) throw listError;
+    if (photos?.length) {
+      const { error: removeError } = await sb.storage
+        .from('avatars')
+        .remove(photos.map((photo) => `${user.id}/${photo.name}`));
+      if (removeError) throw removeError;
+    }
     // The RPC deletes all app rows and the auth account in one transaction.
     // A failure rolls back rather than leaving a partially deleted account.
     const { error: deleteError } = await sb.rpc('delete_innerglow_account', { p_user_id: user.id });

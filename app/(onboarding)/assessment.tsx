@@ -8,6 +8,8 @@ import { toast } from '@/components/Toast';
 import { palette } from '@/constants/theme';
 import { Type } from '@/constants/typography';
 import { useProfile } from '@/hooks/useProfile';
+import { useFreudScore } from '@/hooks/useFreudScore';
+import { calculateInitialFreudScore } from '@/lib/freudScore';
 import { useUser } from '@/hooks/useUser';
 import { userScopedKey } from '@/lib/storage';
 import { backTo } from '@/lib/navigation';
@@ -56,6 +58,7 @@ function freshAnswers(): AssessmentAnswers {
 
 export default function AssessmentScreen() {
   const { saveAssessment, isSavingAssessment } = useProfile();
+  const { saveScore } = useFreudScore({ lazy: true });
   const { data: user } = useUser();
   const { t } = useTranslation();
   const { width } = useWindowDimensions();
@@ -149,7 +152,12 @@ export default function AssessmentScreen() {
       await AsyncStorage.setItem(userScopedKey('assessment:v1', user?.id), JSON.stringify(payload));
       await draftWrites.current;
       await AsyncStorage.removeItem(userScopedKey(DRAFT_KEY, user?.id));
-      router.replace('/(onboarding)/assessment-summary');
+      // The starting Glow score that profile setup shows on "You're all set". A failure here must not
+      // block onboarding; the score is recalculated from check-ins later.
+      await saveScore({ result: calculateInitialFreudScore(payload), generateSuggestions: true }).catch((err) =>
+        console.warn('[Assessment] Failed to save the starting score:', err),
+      );
+      router.replace('/(onboarding)/profile-setup');
     } catch {
       finishing.current = false;
       toast.error(t('assessmentFlow.saveFailed'));

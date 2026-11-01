@@ -272,6 +272,17 @@ The canonical layout is in **01-onboarding-auth.md → Welcome paywall**. Differ
 - Glows: 37.5,0 300² `#E2CC40@0.38` blur 80; 160,90 200² `#D8B4D8@0.30` blur 80.
 - **Gaps:** the code routes completion to `/(onboarding)/assessment-summary` (`assessment.tsx:911`). Route it to this paywall variant instead. Close and success both continue to P1. Pass the variant copy as a prop to the shared paywall component built for 01.
 
+## 3b. Built (Nov 2026): profile setup
+
+The profile frames were re-extracted from Figma section `4002:15061` before building; they now use the library back button (white, `#CFC6D6` stroke), SemiBold 26 titles, Primary L buttons at y 674, library Chips on P2 and the library Toggle with a `#FFF6D6` knob on P3. The §4–5 values below are the earlier extraction.
+
+- **Flow:** assessment → (starting Glow score saved) → P1 → P2 → P3 → P4 → P5 → Home. `assessment-summary` and `suggested-categories` are no longer in onboarding. P5 saves the assessment goal as `profiles.intention` and the top three suggested topics as `selected_issues`, which is what `entryRouteForProfile` treats as setup done. The "Your plan is ready" paywall (A15) is not wired yet.
+- **P1:** the photo goes to the private `avatars` bucket (`<user id>/avatar.jpg`, signed URLs, owner-only policies) and `profiles.avatar_path`; `delete-account` removes it first. The birthday is stored in `profiles.birthday` and is the source of truth; the field is masked as DD / MM / YYYY and must be a real past date.
+- **P2:** presets Morning 08:30, Afternoon 14:00, Evening 21:00; tapping the time opens a time picker (iOS sheet, Android dialog) and a custom time selects no chip. "Set reminder" saves `profiles.checkin_time` and reschedules `daily_checkin` at that time.
+- **P3:** choices are saved to `profiles.notification_prefs`. Journal reminder and Weekly insights schedule local reminders. **Glow AI messages is saved but sends nothing yet**: it needs server push and a push-token table.
+- **P4:** only shown when the phone has biometrics enrolled. The wording follows the phone: Face ID or Touch ID on iOS; "fingerprint or face unlock", "fingerprint unlock" or "face unlock" on Android. The lock is per user and per device (AsyncStorage) and asks at launch and after 30 seconds in the background (`components/AppLockGate.tsx`; the lock screen is not designed and reuses the P4 look).
+- **Figma slips kept or changed:** the step track is full plum in every frame, so its empty part is as dark as the fill end; code follows Figma. The P5 ring track is also full plum, which hides the progress; code draws it at plum @0.12.
+
 ## 4. Profile setup shell (P1–P4)
 
 1. **Glows:** 37.5,−10 300² `#E2CC40@0.30` blur 80; 170,90 200² `#D8B4D8@0.28` blur 80.

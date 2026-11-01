@@ -90,6 +90,13 @@ export type UserProfile = {
   intention?: string | null;
   routine?: string | null;
   selectedIssues?: string[];
+  /** Object path in the private `avatars` bucket, "<user id>/avatar.jpg". */
+  avatarPath?: string | null;
+  /** ISO date, "1990-05-14". */
+  birthday?: string | null;
+  /** Daily check-in reminder time, "08:30". */
+  checkinTime?: string | null;
+  notificationPrefs?: Record<string, boolean>;
   updatedAt?: string;
 };
 
