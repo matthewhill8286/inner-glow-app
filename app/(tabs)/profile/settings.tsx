@@ -136,7 +136,7 @@ export default function Settings() {
                 ? undefined
                 : t(notificationsOn ? 'me.settings.on' : 'me.settings.off')
             }
-            onPress={go('/(tabs)/notifications')}
+            onPress={go('/(tabs)/profile/notifications')}
           />
           <ListRow
             icon="line/globe"
@@ -212,7 +212,7 @@ export default function Settings() {
             icon="line/lock"
             label={t('me.settings.security')}
             value={lockLabel ?? undefined}
-            onPress={go('/(auth)/two-factor-setup')}
+            onPress={go('/(tabs)/profile/security')}
           />
           <ListRow
             icon="line/bot"

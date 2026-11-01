@@ -34,11 +34,16 @@ export type ListRowProps = {
   selected?: boolean;
   onPress?: () => void;
   accessibilityLabel?: string;
+  accessibilityHint?: string;
   style?: StyleProp<ViewStyle>;
   /** Keeps the label and supporting text to one line each (talk lists). */
   singleLine?: boolean;
   /** Destructive row (06 §3.0): `#FBEDEE` bubble, icon and label in danger red. */
   tone?: 'default' | 'danger';
+  /** Toggle knob colour; Notifications and Security use `#FFF6D6` (08 §1.1). */
+  knobColor?: string;
+  /** Accessibility label for the switch when the row itself opens something else. */
+  toggleLabel?: string;
   /** Set by `ListGroup`. */
   divider?: boolean;
   /** Set by `ListGroup`. */
@@ -56,22 +61,40 @@ export function ListRow({
   selected = false,
   onPress,
   accessibilityLabel,
+  accessibilityHint,
   style,
   singleLine = false,
   tone = 'default',
+  knobColor,
+  toggleLabel,
   divider = false,
   appearance = 'grouped',
 }: ListRowProps) {
   const isToggle = trailing === 'toggle';
   const danger = tone === 'danger';
-  const press = isToggle && onToggle ? () => onToggle(!toggled) : onPress;
-  const role = isToggle ? 'switch' : trailing === 'radio' ? 'radio' : press ? 'button' : undefined;
-  const state = isToggle ? { checked: toggled } : trailing === 'radio' ? { selected } : undefined;
+  // A toggle row with its own onPress (a reminder that opens its time sheet) keeps a live switch.
+  const splitToggle = isToggle && !!onToggle && !!onPress;
+  const press = isToggle && onToggle && !onPress ? () => onToggle(!toggled) : onPress;
+  const role =
+    isToggle && !splitToggle
+      ? 'switch'
+      : trailing === 'radio'
+        ? 'radio'
+        : press
+          ? 'button'
+          : undefined;
+  const state =
+    isToggle && !splitToggle
+      ? { checked: toggled }
+      : trailing === 'radio'
+        ? { selected }
+        : undefined;
 
   return (
     <Pressable
       accessibilityRole={role}
       accessibilityState={state}
+      accessibilityHint={accessibilityHint}
       accessibilityLabel={
         accessibilityLabel ?? (supportingText ? `${label}, ${supportingText}` : label)
       }
@@ -144,11 +167,20 @@ export function ListRow({
         <Text style={[Type.captionM, { color: palette.textMuted }]}>{value}</Text>
       ) : null}
       {trailing === 'chevron' && <Icon name="arrow/chevron-right" size={18} />}
-      {/* The row handles the press, so the trailing controls are display-only here. */}
-      {isToggle && (
-        <View pointerEvents="none">
-          <Toggle value={toggled} onValueChange={() => {}} />
-        </View>
+      {/* Unless the row opens something else, it handles the press and the switch is display-only. */}
+      {splitToggle ? (
+        <Toggle
+          value={toggled}
+          onValueChange={onToggle!}
+          knobColor={knobColor}
+          accessibilityLabel={toggleLabel ?? label}
+        />
+      ) : (
+        isToggle && (
+          <View pointerEvents="none">
+            <Toggle value={toggled} onValueChange={() => {}} knobColor={knobColor} />
+          </View>
+        )
       )}
       {trailing === 'radio' && <Radio selected={selected} />}
     </Pressable>
