@@ -10,6 +10,8 @@ import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, UI } from '@/constants/theme';
 import { useJournal } from '@/hooks/useJournal';
+import { EmptyScreen } from '@/components/EmptyScreen';
+import { palette } from '@/constants/theme';
 import MaterialIcons from '@/components/AppIcon';
 
 /* ── helpers ── */
@@ -122,6 +124,19 @@ export default function JournalHome() {
     },
   ];
 
+
+  // Journal · Empty (09 §3.11): the whole screen becomes the empty state until the first entry.
+  if (!isLoading && (journalEntries ?? []).length === 0) {
+    return (
+      <EmptyScreen
+        header={{ kind: 'title', title: t('emptyStates.journal.title') }}
+        glowColor={palette.lavenderSoft}
+        title={t('emptyStates.journal.emptyTitle')}
+        body={t('emptyStates.journal.body')}
+        action={{ label: t('emptyStates.journal.action'), onPress: () => router.push('/(tabs)/journal/new') }}
+      />
+    );
+  }
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       {/* ── Standard Header ── */}

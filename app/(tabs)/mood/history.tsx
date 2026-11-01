@@ -10,7 +10,8 @@ import { useMood } from '@/hooks/useMood';
 import { useMoodInsights, MoodInsight } from '@/hooks/useMoodInsights';
 import { MoodCheckIn } from '@/lib/types';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors, UI } from '@/constants/theme';
+import { Colors, UI, palette } from '@/constants/theme';
+import { EmptyScreen } from '@/components/EmptyScreen';
 import MaterialIcons from '@/components/AppIcon';
 
 /* ── Mood config ── */
@@ -78,6 +79,19 @@ export default function MoodHistory() {
     });
     return Array.from(map.entries());
   }, [filtered]);
+
+  // Mood · History empty (09 §3.12): the calendar, legend and summary wait for the first check-in.
+  if (!loading && (items ?? []).length === 0) {
+    return (
+      <EmptyScreen
+        header={{ kind: 'nav', title: t('emptyStates.mood.title'), backLabel: t('common.back'), onBack: () => backTo(undefined, '/(tabs)/mood') }}
+        glowColor={palette.rose}
+        title={t('emptyStates.mood.emptyTitle')}
+        body={t('emptyStates.mood.body')}
+        action={{ label: t('emptyStates.mood.action'), onPress: () => router.push('/(tabs)/mood/check-in') }}
+      />
+    );
+  }
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>

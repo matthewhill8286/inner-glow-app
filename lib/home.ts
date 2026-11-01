@@ -15,6 +15,20 @@ export function isFirstDay(moodCount: number, scoreCount: number) {
   return moodCount === 0 && scoreCount === 0;
 }
 
+/**
+ * Glow score history appears after check-ins on three different days (09 §3.10); until then the
+ * screen shows its empty state. Days are counted in local time.
+ */
+export const SCORE_HISTORY_MIN_DAYS = 3;
+export function checkInDays(checkIns: { createdAt: string }[]): number {
+  return new Set(
+    checkIns.map((c) => {
+      const d = new Date(c.createdAt);
+      return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    }),
+  ).size;
+}
+
 export function trend(current: number | null | undefined, previous: number | null | undefined): Trend {
   if (current == null || previous == null || current === previous) return null;
   return current > previous ? 'up' : 'down';
