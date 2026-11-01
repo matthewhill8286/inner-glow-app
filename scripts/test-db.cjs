@@ -17,9 +17,10 @@ try {
     'POSTGRES_HOST_AUTH_METHOD=trust',
     'postgres:17',
   ]);
-  // Wait for the isolated test database, never touching the hosted project.
+  // Wait for the isolated test database, never touching the hosted project. TCP, because the
+  // image's temporary init server answers on the socket only and then restarts.
   for (let attempt = 0; attempt < 60; attempt++) {
-    const r = spawnSync('docker', ['exec', container, 'pg_isready', '-U', 'postgres'], {
+    const r = spawnSync('docker', ['exec', container, 'pg_isready', '-h', '127.0.0.1', '-U', 'postgres'], {
       encoding: 'utf8',
     });
     if (r.status === 0) break;
@@ -37,11 +38,13 @@ try {
     'supabase/migrations/20261101_mood_factors.sql',
     'supabase/migrations/20261101_assessment_redesign.sql',
     'supabase/migrations/20261101_profile_setup.sql',
+    'supabase/migrations/20261102_glow_ai.sql',
     'tests/submission.sql',
     'tests/sleep-stages.sql',
     'tests/mood-factors.sql',
     'tests/assessment-redesign.sql',
     'tests/profile-setup.sql',
+    'tests/glow-ai.sql',
   ];
   for (const file of files)
     run(
@@ -49,7 +52,7 @@ try {
       readFileSync(file, 'utf8'),
     );
   console.log(
-    'Database regressions passed: trial abuse, billing snapshots, cancellation, sandbox isolation, blocking, reports, account deletion, sleep stage ownership, optional mood energy and stress, the assessment answers, and the profile setup.',
+    'Database regressions passed: trial abuse, billing snapshots, cancellation, sandbox isolation, blocking, reports, account deletion, sleep stage ownership, optional mood energy and stress, the assessment answers, the profile setup, and the Glow AI free quota and summaries.',
   );
 } catch (error) {
   console.error(error.message);

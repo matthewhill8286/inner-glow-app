@@ -5,9 +5,16 @@ import { extractCitations, type Citation } from '@/lib/citations';
 
 export type PersonaId = 'freud' | 'calm' | 'sleep' | 'mood';
 
+export type ChatRisk = 'none' | 'high';
+export type GlowAiUsage = { used: number; limit: number };
+
 export type ChatAIResponse = {
   text: string;
   citations: Citation[];
+  /** 'high' opens the in-chat support sheet (05 §3.7). */
+  risk: ChatRisk;
+  /** Free plan only: talks used this week, including this one. */
+  usage?: GlowAiUsage;
 };
 
 export async function sendChatToAI(
@@ -15,9 +22,10 @@ export async function sendChatToAI(
   issueTags: string[],
   messages: { role: string; content: string }[],
   persona: PersonaId = 'freud',
+  chatKey?: string,
 ): Promise<ChatAIResponse> {
   const { data, error } = await invokeAI('chat', {
-    body: { issueTitle, issueTags, messages, persona },
+    body: { issueTitle, issueTags, messages, persona, chatKey },
   });
 
   if (error) throw await functionError(error);
@@ -29,7 +37,31 @@ export async function sendChatToAI(
   // Extract relevant medical citations from the response content
   const citations = extractCitations(text);
 
-  return { text, citations };
+  return { text, citations, risk: data.risk === 'high' ? 'high' : 'none', usage: data.usage };
+}
+
+export type ChatSummary = {
+  title: string;
+  summary: string;
+  moodBefore: string | null;
+  moodAfter: string | null;
+  moodBeforeLabel: string | null;
+  moodAfterLabel: string | null;
+  keyPoints: string[];
+  minutes: number;
+};
+
+/** Session summary (05 §3.5). The function also stores it, so memory and history can use it. */
+export async function summariseChat(
+  chatKey: string,
+  messages: { role: string; content: string; createdAt?: string }[],
+  locale: string,
+): Promise<ChatSummary> {
+  const { data, error } = await invokeAI('chat-summary', { body: { chatKey, messages, locale } });
+  if (error) throw await functionError(error);
+  if (typeof data?.title !== 'string')
+    throw new Error('The summary came back empty. Please try again.');
+  return data as ChatSummary;
 }
 
 /* ── Persona metadata (shared with UI) ──────────────── */

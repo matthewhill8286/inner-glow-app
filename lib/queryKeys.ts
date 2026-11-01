@@ -48,6 +48,8 @@ export const queryKeys = {
   chat: {
     all: ['chatHistories'] as const,
     list: (userId?: string) => ['chatHistories', userId] as const,
+    usage: (userId?: string) => ['glowAiUsage', userId] as const,
+    summary: (userId?: string, chatKey?: string) => ['glowAiSummary', userId, chatKey] as const,
   },
   profile: {
     all: ['profile'] as const,

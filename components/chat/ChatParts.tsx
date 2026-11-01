@@ -10,26 +10,29 @@ import { MiniGlowOrb } from '@/components/glow/Glow';
 
 /**
  * Chat header (05 §2.2, updated in 09 §3.2): the library back button, the mini orb, "Glow AI" in
- * SemiBold 15 ink and a "● status" line in Medium 11 lavender. The voice button waits for voice mode.
+ * SemiBold 15 ink and a "● status" line in Medium 11 lavender. The design's voice button on the
+ * right waits for voice mode; that slot holds an optional action, such as ending the talk.
  */
 export function ChatHeader({
   status,
   onBack,
   backLabel,
   title,
+  action,
   style,
 }: {
   status: string;
   onBack: () => void;
   backLabel: string;
   title: string;
+  action?: { icon: IconName; label: string; onPress: () => void };
   style?: StyleProp<ViewStyle>;
 }) {
   return (
     <View style={[{ height: 44, flexDirection: 'row', alignItems: 'center', gap: 14 }, style]}>
       <IconButton variant="nav" accessibilityLabel={backLabel} onPress={onBack} />
       <MiniGlowOrb />
-      <View accessible accessibilityLabel={`${title}, ${status}`}>
+      <View accessible accessibilityLabel={`${title}, ${status}`} style={{ flex: 1 }}>
         <Text
           accessibilityRole="header"
           style={[Type.bodyMSemi, { lineHeight: 21, color: palette.ink }]}
@@ -38,6 +41,14 @@ export function ChatHeader({
         </Text>
         <Text style={[Type.micro, { lineHeight: 15, color: palette.lavender }]}>● {status}</Text>
       </View>
+      {action && (
+        <IconButton
+          variant="filled"
+          icon={action.icon}
+          accessibilityLabel={action.label}
+          onPress={action.onPress}
+        />
+      )}
     </View>
   );
 }
