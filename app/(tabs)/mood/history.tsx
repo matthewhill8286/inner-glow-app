@@ -12,6 +12,7 @@ import { MoodCheckIn } from '@/lib/types';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, UI, palette } from '@/constants/theme';
 import { EmptyScreen } from '@/components/EmptyScreen';
+import { DayDetailsSheet } from '@/components/mood/DayDetailsSheet';
 import MaterialIcons from '@/components/AppIcon';
 
 /* ── Mood config ── */
@@ -53,6 +54,8 @@ export default function MoodHistory() {
 
   const { tab: initialTab } = useLocalSearchParams<{ tab?: string }>();
   const [tab, setTab] = useState<Tab>(initialTab === 'suggestions' ? 'suggestions' : 'history');
+  // Day details (09 §3.14) replaces the full-page entry.
+  const [openLog, setOpenLog] = useState<(typeof items)[number] | null>(null);
   const [filterMood, setFilterMood] = useState<MoodCheckIn['mood'] | null>(null);
   const [showFilter, setShowFilter] = useState(false);
   const [dismissedInsights, setDismissedInsights] = useState<string[]>([]);
@@ -306,7 +309,7 @@ export default function MoodHistory() {
                       return (
                         <Pressable
                           key={item.id}
-                          onPress={() => router.push(`/(tabs)/mood/${item.id}`)}
+                          onPress={() => setOpenLog(item)}
                           style={({ pressed }) => ({
                             flexDirection: 'row',
                             alignItems: 'center',
@@ -1055,6 +1058,7 @@ export default function MoodHistory() {
           </View>
         </View>
       </Modal>
+      <DayDetailsSheet log={openLog} onClose={() => setOpenLog(null)} />
     </View>
   );
 }
