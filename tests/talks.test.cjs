@@ -43,3 +43,21 @@ test('titles and summaries are short single lines', () => {
   assert.equal(t.talkSummary([]), '');
   assert.equal(t.talkSummary([msg('user', 'Only me so far')]), 'Only me so far');
 });
+
+test('the free quota week starts on Monday in UTC', () => {
+  assert.equal(t.usageWeekStart(new Date(Date.UTC(2026, 10, 1, 23, 30))), '2026-10-26');
+  assert.equal(t.usageWeekStart(new Date(Date.UTC(2026, 10, 2, 0, 5))), '2026-11-02');
+});
+
+test('emergency numbers follow the region and fall back to 112', () => {
+  assert.equal(t.emergencyNumber('GB'), '999');
+  assert.equal(t.emergencyNumber('CY'), '112');
+  assert.equal(t.emergencyNumber('us'), '911');
+  assert.equal(t.emergencyNumber(null), '112');
+});
+
+test('the check-in offer is three hours ahead, rounded up to the hour', () => {
+  assert.equal(JSON.stringify(t.checkInAgainTime(new Date(2026, 10, 1, 9, 40))), '{"hour":13,"label":"13:00"}');
+  assert.equal(t.checkInAgainTime(new Date(2026, 10, 1, 10, 0)).label, '13:00');
+  assert.equal(t.checkInAgainTime(new Date(2026, 10, 1, 22, 30)).label, '02:00');
+});

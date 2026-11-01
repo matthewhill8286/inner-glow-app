@@ -733,6 +733,10 @@ export type Database = {
           checkin_time: string | null
           intention: string | null
           name: string | null
+          ai_journal: boolean
+          ai_memory: boolean
+          ai_tone: string
+          ai_voice_replies: boolean
           notification_prefs: Json
           routine: string | null
           selected_issues: Json | null
@@ -747,6 +751,10 @@ export type Database = {
           checkin_time?: string | null
           intention?: string | null
           name?: string | null
+          ai_journal?: boolean
+          ai_memory?: boolean
+          ai_tone?: string
+          ai_voice_replies?: boolean
           notification_prefs?: Json
           routine?: string | null
           selected_issues?: Json | null
@@ -761,6 +769,10 @@ export type Database = {
           checkin_time?: string | null
           intention?: string | null
           name?: string | null
+          ai_journal?: boolean
+          ai_memory?: boolean
+          ai_tone?: string
+          ai_voice_replies?: boolean
           notification_prefs?: Json
           routine?: string | null
           selected_issues?: Json | null
@@ -1052,6 +1064,69 @@ export type Database = {
           points?: number
           target_weakness?: string | null
           title?: string
+        }
+        Relationships: []
+      }
+      glow_ai_summaries: {
+        Row: {
+          chat_key: string
+          key_points: string[]
+          minutes: number
+          mood_after: string | null
+          mood_after_label: string | null
+          mood_before: string | null
+          mood_before_label: string | null
+          summary: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          chat_key: string
+          key_points?: string[]
+          minutes?: number
+          mood_after?: string | null
+          mood_after_label?: string | null
+          mood_before?: string | null
+          mood_before_label?: string | null
+          summary: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          chat_key?: string
+          key_points?: string[]
+          minutes?: number
+          mood_after?: string | null
+          mood_after_label?: string | null
+          mood_before?: string | null
+          mood_before_label?: string | null
+          summary?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      glow_ai_usage: {
+        Row: {
+          chat_key: string
+          created_at: string
+          user_id: string
+          week_start: string
+        }
+        Insert: {
+          chat_key: string
+          created_at?: string
+          user_id: string
+          week_start: string
+        }
+        Update: {
+          chat_key?: string
+          created_at?: string
+          user_id?: string
+          week_start?: string
         }
         Relationships: []
       }

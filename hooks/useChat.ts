@@ -116,6 +116,12 @@ export const useChat = () => {
         .eq('issue_key', issueKey);
 
       if (error) throw error;
+      // The summary goes with its talk, so memory never recalls a deleted conversation.
+      await supabase
+        .from('glow_ai_summaries')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('chat_key', issueKey);
       return issueKey;
     },
     onMutate: async (issueKey) => {
@@ -137,6 +143,22 @@ export const useChat = () => {
     },
   });
 
+  /* ── Delete every conversation and summary (05 §3.8) ── */
+  const clearAllMutation = useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error('Not authenticated');
+      const { error } = await supabase.from('chat_histories').delete().eq('user_id', user.id);
+      if (error) throw error;
+      const { error: summaryError } = await supabase
+        .from('glow_ai_summaries')
+        .delete()
+        .eq('user_id', user.id);
+      if (summaryError) throw summaryError;
+    },
+    onSuccess: () => queryClient.setQueryData(key, {}),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: key }),
+  });
+
   return {
     /* raw data */
     history,
@@ -153,7 +175,8 @@ export const useChat = () => {
     saveMessages: (issueKey: string, messages: ChatMessage[]) =>
       saveMessagesMutation.mutateAsync({ issueKey, messages }),
     clearHistory: clearHistoryMutation.mutateAsync,
+    clearAll: clearAllMutation.mutateAsync,
     isSaving: saveMessagesMutation.isPending,
-    isClearing: clearHistoryMutation.isPending,
+    isClearing: clearHistoryMutation.isPending || clearAllMutation.isPending,
   };
 };

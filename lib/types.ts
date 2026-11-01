@@ -97,6 +97,11 @@ export type UserProfile = {
   /** Daily check-in reminder time, "08:30". */
   checkinTime?: string | null;
   notificationPrefs?: Record<string, boolean>;
+  /** Glow AI settings (05 §3.8). */
+  aiTone?: 'gentle' | 'direct' | 'playful';
+  aiMemory?: boolean;
+  aiJournal?: boolean;
+  aiVoiceReplies?: boolean;
   updatedAt?: string;
 };
 

@@ -9,7 +9,7 @@ import { GlowField, GlowOrb } from '@/components/glow/Glow';
 import { LegalNote } from '@/components/ui/controls';
 import { ChatHeader, Composer, StarterRow } from '@/components/chat/ChatParts';
 import { useChat } from '@/hooks/useChat';
-import { usePremiumGate } from '@/hooks/usePremiumGate';
+import { useGlowAiGate } from '@/hooks/useGlowAi';
 import { stageChatDraft } from '@/lib/chat-drafts';
 import { getPersona } from '@/lib/chat';
 import { buildNewChatKey } from '@/lib/chatKeys';
@@ -32,23 +32,34 @@ const STARTERS: { key: 'anxious' | 'sleep' | 'vent' | 'reflect'; icon: IconName 
 export default function NewConversation() {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const { from, initialMessage, persona: personaParam } = useLocalSearchParams<{ from?: string; initialMessage?: string; persona?: string }>();
+  const {
+    from,
+    initialMessage,
+    persona: personaParam,
+  } = useLocalSearchParams<{ from?: string; initialMessage?: string; persona?: string }>();
   const { isLoading } = useChat();
-  const { requirePremium } = usePremiumGate();
+  const { canStartTalk } = useGlowAiGate();
   const persona = getPersona(personaParam);
   const [text, setText] = useState(initialMessage ?? '');
 
   function start(message: string) {
     const first = message.trim();
-    if (!first || isLoading || requirePremium()) return;
+    if (!first || isLoading || !canStartTalk()) return;
     router.replace({
       pathname: '/(tabs)/chat/[issueKey]',
-      params: { issueKey: stageChatDraft(buildNewChatKey(persona.id), first), from: '/(tabs)/chat', persona: persona.id },
+      params: {
+        issueKey: stageChatDraft(buildNewChatKey(persona.id), first),
+        from: '/(tabs)/chat',
+        persona: persona.id,
+      },
     });
   }
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: palette.bg }}>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      style={{ flex: 1, backgroundColor: palette.bg }}
+    >
       <GlowField
         glows={[
           { color: palette.mustard, opacity: 0.28, x: -50, y: -20, width: 280, blur: 80 },
@@ -62,16 +73,37 @@ export default function NewConversation() {
         onBack={() => backTo(from, '/(tabs)/chat')}
         style={{ marginTop: insets.top + 10, marginHorizontal: 24 }}
       />
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 16 }}>
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 16 }}
+      >
         <GlowOrb size={152} style={{ alignSelf: 'center', marginTop: 60 }} />
-        <Text accessibilityRole="header" style={[Type.titleMd, { fontSize: 24, lineHeight: 34, color: palette.ink, textAlign: 'center', marginTop: 16 }]}>
+        <Text
+          accessibilityRole="header"
+          style={[
+            Type.titleMd,
+            {
+              fontSize: 24,
+              lineHeight: 34,
+              color: palette.ink,
+              textAlign: 'center',
+              marginTop: 16,
+            },
+          ]}
+        >
           {t('glowAi.newChat.title')}
         </Text>
-        <Text style={[Type.bodySm, { color: palette.textMuted, textAlign: 'center', marginTop: 2 }]}>{t('glowAi.newChat.subtitle')}</Text>
+        <Text
+          style={[Type.bodySm, { color: palette.textMuted, textAlign: 'center', marginTop: 2 }]}
+        >
+          {t('glowAi.newChat.subtitle')}
+        </Text>
         <View style={{ gap: 8, marginTop: 24 }}>
           {STARTERS.map((s) => {
             const label = t(`glowAi.newChat.starters.${s.key}`);
-            return <StarterRow key={s.key} icon={s.icon} label={label} onPress={() => start(label)} />;
+            return (
+              <StarterRow key={s.key} icon={s.icon} label={label} onPress={() => start(label)} />
+            );
           })}
         </View>
       </ScrollView>

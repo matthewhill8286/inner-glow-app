@@ -13,14 +13,14 @@ import { TalkCard } from '@/components/chat/ChatParts';
 import { useChat } from '@/hooks/useChat';
 import { useProfile } from '@/hooks/useProfile';
 import { useTopics } from '@/hooks/useTopics';
-import { usePremiumGate } from '@/hooks/usePremiumGate';
+import { useGlowAiGate, useGlowAiUsage } from '@/hooks/useGlowAi';
 import { screenBottomPadding } from '@/lib/screen-layout';
 import { talkDate, talkIcon, talkSummary, talkTitle } from '@/lib/talks';
 
 /**
  * Glow AI home (05 §3.1): "Glow AI" title with a settings button, the S=209 orb, the greeting, one
- * "Start talking" button and the three most recent talks with "See all". The design's Voice button
- * and the free-plan quota line wait for voice mode and a free tier.
+ * "Start talking" button, the free plan's quota line and the three most recent talks with "See all".
+ * The design's Voice button waits for voice mode.
  */
 export default function GlowAiHome() {
   const { t, i18n } = useTranslation();
@@ -28,7 +28,8 @@ export default function GlowAiHome() {
   const { conversations, isLoading, error, refresh } = useChat();
   const { topics } = useTopics();
   const { profile } = useProfile();
-  const { requirePremium } = usePremiumGate();
+  const { canStartTalk } = useGlowAiGate();
+  const usage = useGlowAiUsage();
   const firstName = (profile?.name ?? '').trim().split(/\s+/)[0] ?? '';
   const firstTalk = conversations.at(-1)?.raw;
 
@@ -39,7 +40,10 @@ export default function GlowAiHome() {
         return {
           key: c.raw,
           personaId: c.personaId,
-          icon: talkIcon({ personaId: c.personaId, topicId: c.topicId, topicName }, c.raw === firstTalk),
+          icon: talkIcon(
+            { personaId: c.personaId, topicId: c.topicId, topicName },
+            c.raw === firstTalk,
+          ),
           title: talkTitle(c.messages, topicName ?? t('glowAi.newTalk')),
           summary: talkSummary(c.messages),
           date: talkDate(c.updatedAt, i18n.language, t('glowAi.today')),
@@ -49,7 +53,7 @@ export default function GlowAiHome() {
   );
 
   const startTalking = () => {
-    if (isLoading || requirePremium()) return;
+    if (isLoading || !canStartTalk()) return;
     router.push({ pathname: '/(tabs)/chat/new-conversation', params: { from: '/(tabs)/chat' } });
   };
 
@@ -61,9 +65,21 @@ export default function GlowAiHome() {
           { color: palette.lavenderSoft, opacity: 0.25, x: 180, y: 60, width: 220, blur: 80 },
         ]}
       />
-      <ScrollView contentContainerStyle={{ paddingTop: insets.top + 16, paddingHorizontal: 24, paddingBottom: screenBottomPadding(insets.bottom) }} showsVerticalScrollIndicator={false}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Text accessibilityRole="header" style={[Type.titleXl, { lineHeight: 42, color: palette.ink }]}>
+      <ScrollView
+        contentContainerStyle={{
+          paddingTop: insets.top + 16,
+          paddingHorizontal: 24,
+          paddingBottom: screenBottomPadding(insets.bottom),
+        }}
+        showsVerticalScrollIndicator={false}
+      >
+        <View
+          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+        >
+          <Text
+            accessibilityRole="header"
+            style={[Type.titleXl, { lineHeight: 42, color: palette.ink }]}
+          >
             {t('glowAi.title')}
           </Text>
           <IconButton
@@ -71,16 +87,49 @@ export default function GlowAiHome() {
             icon="line/filter"
             iconSize={20}
             accessibilityLabel={t('glowAi.settings')}
-            onPress={() => router.push({ pathname: '/(tabs)/chat/customize', params: { from: '/(tabs)/chat' } })}
+            onPress={() =>
+              router.push({ pathname: '/(tabs)/chat/customize', params: { from: '/(tabs)/chat' } })
+            }
           />
         </View>
 
         <GlowOrb size={209} style={{ alignSelf: 'center', marginTop: 42 }} />
-        <Text style={[Type.titleLg, { lineHeight: 36, color: palette.ink, textAlign: 'center', marginTop: 16 }]}>
+        <Text
+          style={[
+            Type.titleLg,
+            { lineHeight: 36, color: palette.ink, textAlign: 'center', marginTop: 16 },
+          ]}
+        >
           {firstName ? t('glowAi.greeting', { name: firstName }) : t('glowAi.greetingNoName')}
         </Text>
-        <Text style={[Type.bodySm, { color: palette.textMuted, textAlign: 'center', marginTop: 2 }]}>{t('glowAi.subtitle')}</Text>
-        <AppButton title={t('glowAi.start')} icon="line/chat" iconPosition="left" onPress={startTalking} style={{ marginTop: 24 }} />
+        <Text
+          style={[Type.bodySm, { color: palette.textMuted, textAlign: 'center', marginTop: 2 }]}
+        >
+          {t('glowAi.subtitle')}
+        </Text>
+        <AppButton
+          title={t('glowAi.start')}
+          icon="line/chat"
+          iconPosition="left"
+          onPress={startTalking}
+          style={{ marginTop: 24 }}
+        />
+        {usage.left !== null && (
+          <Text
+            style={[
+              Type.captionS,
+              {
+                fontFamily: Type.bodyMMedium.fontFamily,
+                lineHeight: 17,
+                color: palette.textSubtle,
+                textAlign: 'center',
+                marginTop: 12,
+              },
+            ]}
+          >
+            {t('glowAi.quota', { left: usage.left, limit: usage.limit })}
+          </Text>
+        )}
 
         {error ? (
           <StatusState
@@ -91,12 +140,25 @@ export default function GlowAiHome() {
           />
         ) : recent.length > 0 ? (
           <View style={{ marginTop: 42, gap: 10 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: 2,
+              }}
+            >
               <Text accessibilityRole="header" style={[Type.bodyStrong, { color: palette.ink }]}>
                 {t('glowAi.recent')}
               </Text>
-              <Pressable accessibilityRole="button" onPress={() => router.push('/(tabs)/chat/history')} hitSlop={10}>
-                <Text style={[Type.buttonS, { color: palette.lavender }]}>{t('glowAi.seeAll')}</Text>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => router.push('/(tabs)/chat/history')}
+                hitSlop={10}
+              >
+                <Text style={[Type.buttonS, { color: palette.lavender }]}>
+                  {t('glowAi.seeAll')}
+                </Text>
               </Pressable>
             </View>
             {recent.map((talk) => (
@@ -107,7 +169,10 @@ export default function GlowAiHome() {
                 summary={talk.summary}
                 date={talk.date}
                 onPress={() =>
-                  router.push({ pathname: '/(tabs)/chat/[issueKey]', params: { issueKey: talk.key, persona: talk.personaId, from: '/(tabs)/chat' } })
+                  router.push({
+                    pathname: '/(tabs)/chat/[issueKey]',
+                    params: { issueKey: talk.key, persona: talk.personaId, from: '/(tabs)/chat' },
+                  })
                 }
               />
             ))}

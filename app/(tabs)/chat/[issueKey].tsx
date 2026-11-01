@@ -11,8 +11,11 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import { useSubscription } from '@/hooks/useSubscription';
-import { AppButton } from '@/components/ui/AppButton';
+import { useUser } from '@/hooks/useUser';
+import { queryKeys } from '@/lib/queryKeys';
+import { CrisisSheet } from '@/components/chat/CrisisSheet';
 import { StatusState } from '@/components/ui/StatusState';
 import { LegalNote } from '@/components/ui/controls';
 import { GlowField, GlowOrb } from '@/components/glow/Glow';
@@ -76,7 +79,10 @@ export default function Chat() {
   const issue = useMemo(() => topics.find((i: any) => i.id === topicId), [topicId, topics]);
   const persona = useMemo(() => getPersona(personaParam), [personaParam]);
 
-  const { hasFullAccess, isLoading: accessLoading } = useSubscription();
+  const { isLoading: accessLoading } = useSubscription();
+  const queryClient = useQueryClient();
+  const { data: user } = useUser();
+  const [crisisOpen, setCrisisOpen] = useState(false);
 
   /* ── Chat data ── */
   const { history, saveMessages, isLoading: loading } = useChat();
@@ -168,18 +174,8 @@ export default function Chat() {
     async (text?: string, retry = false, openingHistory?: ChatMessage[]) => {
       const msgText = (text || inputText).trim();
       if (!msgText || !issueKey || !historyReady || requestRef.current?.key === issueKey) return;
-      if (!hasFullAccess) {
-        if (!accessLoading)
-          showAlert(
-            'Continue with Premium',
-            'Your saved conversations remain available to read. Start a trial or choose Premium to send AI messages.',
-            [
-              { text: 'Close', style: 'cancel' },
-              { text: 'View plans', onPress: () => router.push('/(utils)/trial-upgrade') },
-            ],
-          );
-        return;
-      }
+      // Free users may send too; the chat function counts the talk and answers 402 at the limit.
+      if (accessLoading) return;
       const request = { key: issueKey, token: Symbol() };
       requestRef.current = request;
       setFailedMessage(null);
@@ -206,7 +202,11 @@ export default function Chat() {
           issue?.context_tags ?? [],
           withUserMsg.map((m) => ({ role: m.role, content: m.content })),
           persona.id as PersonaId,
+          issueKey,
         );
+        if (aiResponse.usage)
+          void queryClient.invalidateQueries({ queryKey: queryKeys.chat.usage(user?.id) });
+        if (aiResponse.risk === 'high') setCrisisOpen(true);
 
         const aiMsg: ChatMessage = {
           id: `msg_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
@@ -228,7 +228,10 @@ export default function Chat() {
           saved,
           message: err instanceof ServiceError ? `${message} Reference: ${err.reference}` : message,
         });
-        if (err instanceof ServiceError && err.status === 403) {
+        if (err instanceof ServiceError && err.status === 402) {
+          void queryClient.invalidateQueries({ queryKey: queryKeys.chat.usage(user?.id) });
+          router.push('/(tabs)/chat/free-limit');
+        } else if (err instanceof ServiceError && err.status === 403) {
           showAlert('Trial or premium access required', message, [
             { text: 'Cancel', style: 'cancel' },
             { text: 'View access options', onPress: () => router.push('/(utils)/trial-upgrade') },
@@ -241,7 +244,20 @@ export default function Chat() {
         }
       }
     },
-    [inputText, issueKey, messages, topicName, issue, persona, saveMessages, t, historyReady],
+    [
+      inputText,
+      issueKey,
+      messages,
+      topicName,
+      issue,
+      persona,
+      saveMessages,
+      t,
+      historyReady,
+      accessLoading,
+      queryClient,
+      user?.id,
+    ],
   );
 
   // Start prompt-based conversations in the same update as history hydration.
@@ -262,6 +278,16 @@ export default function Chat() {
       status={t('glowAi.chat.status')}
       backLabel={t('common.back')}
       onBack={() => goBack(from)}
+      action={
+        messages.some((m) => m.role === 'assistant') && !isAiTyping
+          ? {
+              icon: 'line/check',
+              label: t('glowAi.chat.end'),
+              onPress: () =>
+                router.push({ pathname: '/(tabs)/chat/summary', params: { issueKey } }),
+            }
+          : undefined
+      }
       style={{ marginTop: insets.top + 10, marginHorizontal: 24 }}
     />
   );
@@ -379,29 +405,17 @@ export default function Chat() {
             busy={isAiTyping}
           />
         )}
-        {!accessLoading && !hasFullAccess && (
-          <View style={{ backgroundColor: palette.white, borderRadius: 22, padding: 16, gap: 12 }}>
-            <Text style={[Type.captionM, { color: palette.textMuted }]}>
-              Your conversations stay available to read. Trial or Premium access is needed to send
-              AI messages.
-            </Text>
-            <AppButton
-              title="View Premium plans"
-              size="s"
-              onPress={() => router.push('/(utils)/trial-upgrade')}
-            />
-          </View>
-        )}
         <Composer
           value={inputText}
           onChangeText={setInputText}
           onSend={() => void sendMessage()}
           placeholder={t('glowAi.composer.placeholder')}
           sendLabel={t('glowAi.composer.send')}
-          disabled={isTyping || !hasFullAccess}
+          disabled={isTyping}
         />
         {!keyboardVisible && <LegalNote text={t('glowAi.note')} />}
       </View>
+      <CrisisSheet visible={crisisOpen} onClose={() => setCrisisOpen(false)} />
     </KeyboardAvoidingView>
   );
 }

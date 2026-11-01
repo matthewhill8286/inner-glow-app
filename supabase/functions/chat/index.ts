@@ -1,6 +1,17 @@
-import { authenticationError } from '../_shared/auth.ts';
+import { aiAccess } from '../_shared/auth.ts';
 
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
+const FREE_TALKS_PER_WEEK = 10;
+const CORS = { 'Access-Control-Allow-Origin': '*' };
+
+type Tone = 'gentle' | 'direct' | 'playful';
+const TONES: Record<Tone, string> = {
+  gentle: 'The person asked for a gentle tone: soft, patient and reassuring.',
+  direct:
+    'The person asked for a direct tone: clear and practical, with short answers and no padding.',
+  playful:
+    'The person asked for a playful tone: light and warm, with a little gentle humour where it fits.',
+};
 
 /* ------------------------------------------------------------------ */
 /*  Persona definitions                                                */
@@ -81,7 +92,13 @@ const PERSONAS: Record<PersonaId, PersonaDef> = {
 /*  System prompt builder                                              */
 /* ------------------------------------------------------------------ */
 
-function buildSystemPrompt(persona: PersonaId, issueTitle: string, issueTags: string[]): string {
+function buildSystemPrompt(
+  persona: PersonaId,
+  issueTitle: string,
+  issueTags: string[],
+  tone: Tone,
+  context: string[],
+): string {
   const p = PERSONAS[persona] || PERSONAS.freud;
   const tagsStr = issueTags.length > 0 ? issueTags.join(', ') : 'general support';
 
@@ -99,7 +116,86 @@ Important safety rules:
 - Never diagnose conditions or prescribe medication.
 - Use simple, accessible language. Avoid clinical jargon unless explaining a concept.
 
-Tone: ${p.tone}`;
+Tone: ${p.tone}
+${TONES[tone]}${context.length ? `\n\n${context.join('\n\n')}` : ''}`;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Settings, memory and journal context                               */
+/* ------------------------------------------------------------------ */
+
+type Settings = { tone: Tone; memory: boolean; journal: boolean };
+
+async function loadContext(access: { userId: string; sb: any }, chatKey?: string) {
+  const { data: profile } = await access.sb
+    .from('profiles')
+    .select('ai_tone,ai_memory,ai_journal')
+    .eq('user_id', access.userId)
+    .maybeSingle();
+  const settings: Settings = {
+    tone: (profile?.ai_tone as Tone) in TONES ? (profile!.ai_tone as Tone) : 'gentle',
+    memory: profile?.ai_memory !== false,
+    journal: profile?.ai_journal !== false,
+  };
+  const context: string[] = [];
+  if (settings.memory) {
+    const { data } = await access.sb
+      .from('glow_ai_summaries')
+      .select('chat_key,title,key_points')
+      .eq('user_id', access.userId)
+      .order('updated_at', { ascending: false })
+      .limit(5);
+    const past = (data ?? []).filter((r: any) => r.chat_key !== chatKey);
+    if (past.length)
+      context.push(
+        'Earlier talks with this person (use only when relevant, and never quote them back word for word):\n' +
+          past.map((r: any) => `- ${r.title}: ${(r.key_points ?? []).join('; ')}`).join('\n'),
+      );
+  }
+  if (settings.journal) {
+    const { data } = await access.sb
+      .from('journal_entries')
+      .select('title,body,created_at')
+      .eq('user_id', access.userId)
+      .order('created_at', { ascending: false })
+      .limit(3);
+    if (data?.length)
+      context.push(
+        'Recent journal entries the person has allowed you to reflect on:\n' +
+          data
+            .map(
+              (r: any) =>
+                `- ${String(r.created_at).slice(0, 10)} ${r.title ?? ''}: ${String(r.body ?? '').slice(0, 300)}`,
+            )
+            .join('\n'),
+      );
+  }
+  return { settings, context };
+}
+
+/* ------------------------------------------------------------------ */
+/*  Risk                                                               */
+/* ------------------------------------------------------------------ */
+
+/** 'high' opens the in-chat support sheet (05 §3.7). A failed check never blocks the reply. */
+async function riskOf(text: string): Promise<'none' | 'high'> {
+  try {
+    const response = await fetch('https://api.openai.com/v1/moderations', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'omni-moderation-latest', input: text.substring(0, 4000) }),
+    });
+    if (!response.ok) throw new Error(`moderation returned ${response.status}`);
+    const categories = (await response.json()).results?.[0]?.categories ?? {};
+    return categories['self-harm'] ||
+      categories['self-harm/intent'] ||
+      categories['self-harm/instructions']
+      ? 'high'
+      : 'none';
+  } catch (err) {
+    console.error('[chat risk]', err instanceof Error ? err.message : err);
+    return 'none';
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -111,6 +207,8 @@ interface ChatRequest {
   issueTags: string[];
   messages: { role: string; content: string }[];
   persona?: PersonaId;
+  /** The conversation key. Free users need it: each talk counts once a week. */
+  chatKey?: string;
 }
 
 /* ------------------------------------------------------------------ */
@@ -128,8 +226,8 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  const authError = await authenticationError(req, { 'Access-Control-Allow-Origin': '*' });
-  if (authError) return authError;
+  const access = await aiAccess(req, CORS);
+  if (access.response) return access.response;
 
   try {
     if (!OPENAI_API_KEY) {
@@ -137,15 +235,47 @@ Deno.serve(async (req: Request) => {
     }
 
     const body: ChatRequest = await req.json();
-    const { issueTitle, issueTags, messages, persona } = body;
+    const { issueTitle, issueTags, messages, persona, chatKey } = body;
 
     if (!issueTitle || !Array.isArray(messages) || messages.length === 0) {
       throw new Error('Invalid request: issueTitle and messages are required');
     }
 
+    // Free plan: claim this talk for the week before spending anything on it.
+    let usage: { used: number; limit: number } | undefined;
+    if (!access.premium) {
+      // App builds from before the free plan send no chatKey; they keep the Premium-only answer.
+      if (typeof chatKey !== 'string' || !chatKey || chatKey.length > 200)
+        return Response.json(
+          { error: 'An active trial or premium purchase is required.' },
+          { status: 403, headers: CORS },
+        );
+      const { data: claim, error: claimError } = await access.sb
+        .rpc('claim_glow_ai_chat', {
+          p_user_id: access.userId,
+          p_chat_key: chatKey,
+          p_limit: FREE_TALKS_PER_WEEK,
+        })
+        .single();
+      if (claimError) throw claimError;
+      usage = { used: claim.used, limit: claim.chat_limit };
+      if (!claim.allowed)
+        return Response.json(
+          { error: "You've used this week's free chats.", code: 'free_limit', usage },
+          { status: 402, headers: CORS },
+        );
+    }
+
     // Build the OpenAI messages array with persona-aware system prompt
     const personaId: PersonaId = persona && persona in PERSONAS ? persona : 'freud';
-    const systemPrompt = buildSystemPrompt(personaId, issueTitle, issueTags || []);
+    const { settings, context } = await loadContext(access, chatKey);
+    const systemPrompt = buildSystemPrompt(
+      personaId,
+      issueTitle,
+      issueTags || [],
+      settings.tone,
+      context,
+    );
 
     // Map and validate message roles
     const validRoles = ['user', 'assistant'];
@@ -160,22 +290,26 @@ Deno.serve(async (req: Request) => {
     const recentMessages = chatMessages.slice(-20);
 
     const openaiMessages = [{ role: 'system' as const, content: systemPrompt }, ...recentMessages];
+    const lastUser = [...recentMessages].reverse().find((m) => m.role === 'user')?.content ?? '';
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: openaiMessages,
-        temperature: 0.7,
-        max_tokens: 800,
-        presence_penalty: 0.3,
-        frequency_penalty: 0.3,
+    const [response, risk] = await Promise.all([
+      fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${OPENAI_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: openaiMessages,
+          temperature: 0.7,
+          max_tokens: 800,
+          presence_penalty: 0.3,
+          frequency_penalty: 0.3,
+        }),
       }),
-    });
+      riskOf(lastUser),
+    ]);
 
     if (!response.ok) {
       const errText = await response.text();
@@ -189,7 +323,7 @@ Deno.serve(async (req: Request) => {
       throw new Error('No content in OpenAI response');
     }
 
-    return new Response(JSON.stringify({ text }), {
+    return new Response(JSON.stringify({ text, risk, usage }), {
       headers: {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*',

@@ -16,6 +16,10 @@ function profileFromRow(data: Record<string, any>): UserProfile {
     birthday: data.birthday ?? null,
     checkinTime: typeof data.checkin_time === 'string' ? data.checkin_time.slice(0, 5) : null,
     notificationPrefs: (data.notification_prefs as Record<string, boolean> | null) ?? {},
+    aiTone: data.ai_tone ?? 'gentle',
+    aiMemory: data.ai_memory ?? true,
+    aiJournal: data.ai_journal ?? true,
+    aiVoiceReplies: data.ai_voice_replies ?? false,
     updatedAt: data.updated_at,
   };
 }
@@ -117,6 +121,10 @@ export const useProfile = (opts?: { lazy?: boolean }) => {
       if (updates.birthday !== undefined) dbUpdates.birthday = updates.birthday;
       if (updates.checkinTime !== undefined) dbUpdates.checkin_time = updates.checkinTime;
       if (updates.notificationPrefs !== undefined) dbUpdates.notification_prefs = updates.notificationPrefs;
+      if (updates.aiTone !== undefined) dbUpdates.ai_tone = updates.aiTone;
+      if (updates.aiMemory !== undefined) dbUpdates.ai_memory = updates.aiMemory;
+      if (updates.aiJournal !== undefined) dbUpdates.ai_journal = updates.aiJournal;
+      if (updates.aiVoiceReplies !== undefined) dbUpdates.ai_voice_replies = updates.aiVoiceReplies;
 
       const { data, error } = await supabase.from('profiles').upsert(dbUpdates).select().single();
 
