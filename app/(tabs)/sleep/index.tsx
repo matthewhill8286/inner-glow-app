@@ -13,6 +13,7 @@ import { SleepEntry } from '@/lib/types';
 import { useTranslation } from 'react-i18next';
 import { useSleepDetection } from '@/hooks/useSleepDetection';
 import { SleepNoData } from '@/components/sleep/SleepNoData';
+import { STAGE_ORDER, summariseStages } from '@/lib/sleep-stages';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -23,6 +24,14 @@ const SLEEP_COLORS = {
   normal: '#4AAD7A',
   irregular: '#C45B5B',
   post: '#E8985A',
+  deep: '#4A6FA5',
+};
+
+const STAGE_COLORS = {
+  light: SLEEP_COLORS.core,
+  deep: SLEEP_COLORS.deep,
+  rem: SLEEP_COLORS.rem,
+  awake: SLEEP_COLORS.irregular,
 };
 
 /* ── helpers ──────────────────────────────────────── */
@@ -272,16 +281,14 @@ export default function SleepScreen() {
 
   const stats = useMemo(() => computeSleepStats(entries), [entries]);
 
-  // Compute breakdown percentages (mock split for visual since we don't have REM/Core data)
+  // Real stage split from Apple Health / Health Connect nights; null hides the ring.
   const segments = useMemo(() => {
-    if (entries.length === 0) return [{ color: SLEEP_COLORS.core, pct: 100, label: 'Core' }];
-    return [
-      { color: SLEEP_COLORS.core, pct: 45, label: 'Core' },
-      { color: SLEEP_COLORS.rem, pct: 30, label: 'REM' },
-      { color: SLEEP_COLORS.normal, pct: 15, label: 'Normal' },
-      { color: SLEEP_COLORS.irregular, pct: 10, label: 'Irregular' },
-    ];
-  }, [entries]);
+    const summary = summariseStages(entries);
+    if (!summary) return null;
+    return STAGE_ORDER.filter((k) => summary.share[k] > 0)
+      .sort((a, b) => summary.share[b] - summary.share[a])
+      .map((k) => ({ color: STAGE_COLORS[k], pct: Math.round(summary.share[k] * 100), label: t(`sleepHome.stage.${k}`) }));
+  }, [entries, t]);
 
   // Recent entries for quick preview
   const recentEntries = entries.slice(0, 3);
@@ -368,8 +375,8 @@ export default function SleepScreen() {
                 </View>
               </View>
 
-              {/* Breakdown ring */}
-              <SleepBreakdownRing size={140} segments={segments} />
+              {/* Breakdown ring, only for nights with stages */}
+              {segments && <SleepBreakdownRing size={140} segments={segments} />}
 
               {/* Improvement badge */}
               {improvement > 0 && (

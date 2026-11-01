@@ -78,18 +78,36 @@ async function syncSleep(userId: string, queryClient: QueryClient): Promise<numb
       now,
     );
     if (toSave.length) {
-      const { error } = await supabase.from('sleep').insert(
-        toSave.map((e) => ({
-          user_id: userId,
-          start_iso: e.startISO,
-          end_iso: e.endISO,
-          // `sleep.duration` is an integer column read as hours; start/end keep the exact span.
-          duration: e.duration == null ? null : Math.round(e.duration),
-          awakenings: e.awakenings ?? null,
-          created_at: e.endISO,
-        })),
-      );
+      const { data: saved, error } = await supabase
+        .from('sleep')
+        .insert(
+          toSave.map((e) => ({
+            user_id: userId,
+            start_iso: e.startISO,
+            end_iso: e.endISO,
+            // `sleep.duration` is an integer column read as hours; start/end keep the exact span.
+            duration: e.duration == null ? null : Math.round(e.duration),
+            awakenings: e.awakenings ?? null,
+            source: 'health',
+            created_at: e.endISO,
+          })),
+        )
+        .select('id, start_iso');
       if (error) throw error;
+
+      // Match the new rows back to their nights by bedtime; Postgres returns a different ISO format.
+      const idByStart = new Map((saved ?? []).map((r) => [Date.parse(r.start_iso ?? ''), r.id]));
+      const stageRows = toSave.flatMap((e) => {
+        const sleepId = idByStart.get(Date.parse(e.startISO));
+        return sleepId
+          ? e.stages.map((st) => ({ sleep_id: sleepId, user_id: userId, stage: st.stage, start_at: st.startISO, end_at: st.endISO }))
+          : [];
+      });
+      if (stageRows.length) {
+        const { error: stageError } = await supabase.from('sleep_stages').insert(stageRows);
+        // The nights are saved either way; a night without stages just shows no breakdown.
+        if (stageError) console.warn('[health-sleep] stages not saved', stageError);
+      }
       await queryClient.invalidateQueries({ queryKey: queryKeys.sleep.all });
     }
     await persist({ lastSyncISO: new Date().toISOString() });

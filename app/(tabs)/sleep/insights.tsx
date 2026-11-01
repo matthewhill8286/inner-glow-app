@@ -21,6 +21,7 @@ import MaterialIcons from '@/components/AppIcon';
 import { useSleep } from '@/hooks/useSleep';
 import { useSleepInsights } from '@/hooks/useSleepInsights';
 import { SleepEntry } from '@/lib/types';
+import { summariseStages } from '@/lib/sleep-stages';
 import CitationSection from '@/components/CitationSection';
 
 const { width: SCREEN_W } = Dimensions.get('window');
@@ -34,6 +35,12 @@ const SLEEP_COLORS = {
 };
 
 /* ── helpers ──────────────────────────────────────── */
+function formatStageMinutes(minutes: number) {
+  const h = Math.floor(minutes / 60);
+  const m = Math.round(minutes % 60);
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
 function goBack(from?: string) {
   backTo(from, '/(tabs)/sleep');
 }
@@ -221,10 +228,8 @@ export default function SleepInsightsScreen() {
   const maxChartVal = Math.max(10, ...chartData.map((d) => d.value));
 
   // Compute stats
-  const avgDur =
-    filteredEntries.length > 0
-      ? filteredEntries.reduce((a, e) => a + getEntryDuration(e), 0) / filteredEntries.length
-      : 0;
+  const stageSummary = useMemo(() => summariseStages(filteredEntries), [filteredEntries]);
+
   const avgQual =
     filteredEntries.filter((e) => e.quality).length > 0
       ? filteredEntries.filter((e) => e.quality).reduce((a, e) => a + (e.quality || 0), 0) /
@@ -401,47 +406,30 @@ export default function SleepInsightsScreen() {
           </View>
         </View>
 
-        {/* ── Stats Breakdown ──────────────────── */}
-        <View style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[s.cardLabel, { color: colors.mutedText }]}>
-            {t('sleepInsights.breakdown')}
-          </Text>
-          <View style={s.statsGrid}>
-            <View style={[s.statBlock, { backgroundColor: SLEEP_COLORS.core + '12' }]}>
-              <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 20 }}>
-                🌙
-              </WellnessIconText>
-              <Text style={[s.statValue, { color: SLEEP_COLORS.core }]}>
-                {(avgDur * 0.65).toFixed(1)}h
-              </Text>
-              <Text style={[s.statLabel, { color: colors.mutedText }]}>
-                {t('sleepInsights.core')}
-              </Text>
-            </View>
-            <View style={[s.statBlock, { backgroundColor: SLEEP_COLORS.rem + '12' }]}>
-              <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 20 }}>
-                💭
-              </WellnessIconText>
-              <Text style={[s.statValue, { color: SLEEP_COLORS.rem }]}>
-                {(avgDur * 0.25).toFixed(1)}h
-              </Text>
-              <Text style={[s.statLabel, { color: colors.mutedText }]}>
-                {t('sleepInsights.rem')}
-              </Text>
-            </View>
-            <View style={[s.statBlock, { backgroundColor: SLEEP_COLORS.post + '12' }]}>
-              <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 20 }}>
-                ✨
-              </WellnessIconText>
-              <Text style={[s.statValue, { color: SLEEP_COLORS.post }]}>
-                {Math.round(avgDur * 0.1 * 60)}m
-              </Text>
-              <Text style={[s.statLabel, { color: colors.mutedText }]}>
-                {t('sleepInsights.postRem')}
-              </Text>
+        {/* ── Stage Breakdown (only nights with stages from Health) ── */}
+        {stageSummary && (
+          <View style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[s.cardLabel, { color: colors.mutedText }]}>
+              {t('sleepInsights.breakdown')}
+            </Text>
+            <View style={s.statsGrid}>
+              {(
+                [
+                  { key: 'light', label: t('sleepInsights.lightSleep'), color: SLEEP_COLORS.core },
+                  { key: 'deep', label: t('sleepInsights.deepSleep'), color: SLEEP_COLORS.post },
+                  { key: 'rem', label: t('sleepInsights.rem'), color: SLEEP_COLORS.rem },
+                ] as const
+              ).map((stage) => (
+                <View key={stage.key} style={[s.statBlock, { backgroundColor: stage.color + '12' }]}>
+                  <Text style={[s.statValue, { color: stage.color }]}>
+                    {formatStageMinutes(stageSummary.avgMinutes[stage.key])}
+                  </Text>
+                  <Text style={[s.statLabel, { color: colors.mutedText }]}>{stage.label}</Text>
+                </View>
+              ))}
             </View>
           </View>
-        </View>
+        )}
 
         {/* ── AI Suggestions ───────────────────── */}
         <View style={s.sectionHeader}>

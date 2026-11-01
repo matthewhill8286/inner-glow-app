@@ -58,6 +58,10 @@ export type MindfulEntry = {
   note?: string;
 };
 
+export type SleepSource = 'manual' | 'sleep_mode' | 'health';
+export type SleepStageKind = 'awake' | 'rem' | 'light' | 'deep';
+export type SleepStage = { stage: SleepStageKind; startISO: string; endISO: string };
+
 export type SleepEntry = {
   id: string;
   startISO: string; // bedtime ISO
@@ -67,6 +71,11 @@ export type SleepEntry = {
   duration?: number;
   notes?: string;
   createdAtISO: string;
+  /** Where the night came from; rows saved before the column existed read as manual. */
+  source?: SleepSource;
+  factors?: string[];
+  /** Only nights from Apple Health or Health Connect have stages. */
+  stages?: SleepStage[];
 };
 
 export type UserProfile = {
