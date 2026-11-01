@@ -65,6 +65,7 @@ export const useJournal = () => {
           is_voice_entry: input.isVoiceEntry ?? false,
           audio_url: input.audioUrl || null,
           recording_duration_ms: input.recordingDurationMs || null,
+          mood_log_id: input.moodLogId ?? null,
         })
         .select()
         .single();

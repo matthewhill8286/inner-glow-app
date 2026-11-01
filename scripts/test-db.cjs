@@ -34,8 +34,10 @@ try {
     'supabase/migrations/20261015_account_deletion.sql',
     'supabase/migrations/20261016_support_requests.sql',
     'supabase/migrations/20261101_sleep_source_stages.sql',
+    'supabase/migrations/20261101_mood_factors.sql',
     'tests/submission.sql',
     'tests/sleep-stages.sql',
+    'tests/mood-factors.sql',
   ];
   for (const file of files)
     run(
@@ -43,7 +45,7 @@ try {
       readFileSync(file, 'utf8'),
     );
   console.log(
-    'Database regressions passed: trial abuse, billing snapshots, cancellation, sandbox isolation, blocking, reports, account deletion, and sleep stage ownership.',
+    'Database regressions passed: trial abuse, billing snapshots, cancellation, sandbox isolation, blocking, reports, account deletion, sleep stage ownership, and optional mood energy and stress.',
   );
 } catch (error) {
   console.error(error.message);

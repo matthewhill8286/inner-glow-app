@@ -300,7 +300,7 @@ function InnerGlowCard({
     {
       key: 'stress',
       label: t('homeGlow.stress'),
-      value: mood.latest ? t(`homeGlow.stressLevel.${stressLevel(mood.latest.stress)}`) : '–',
+      value: mood.latest?.stress != null ? t(`homeGlow.stressLevel.${stressLevel(mood.latest.stress)}`) : '–',
       trend: trend(mood.latest?.stress, mood.previous?.stress),
     },
   ];

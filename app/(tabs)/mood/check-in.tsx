@@ -1,645 +1,165 @@
-import { toast } from '@/components/Toast';
-import { Typography } from '@/constants/typography';
-import { backTo } from '@/lib/navigation';
-import { WellnessIconText, AnimatedWellnessIconText } from '@/components/WellnessIconText';
-import React, { useState, useRef, useEffect, useMemo } from 'react';
-import {
-  View,
-  Text,
-  Pressable,
-  TextInput,
-  ScrollView,
-  Animated,
-  PanResponder,
-  KeyboardAvoidingView,
-  Platform,
-} from 'react-native';
+import React, { useRef, useState } from 'react';
+import { KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
+import { palette } from '@/constants/theme';
+import { Type } from '@/constants/typography';
+import { backTo } from '@/lib/navigation';
+import { toast } from '@/components/Toast';
+import { Icon } from '@/components/icons/Icon';
+import { IconButton } from '@/components/ui/IconButton';
+import { AppButton } from '@/components/ui/AppButton';
+import { Chip } from '@/components/ui/Chip';
+import { MoodOrb } from '@/components/mood/MoodOrb';
+import { MoodSlider } from '@/components/mood/MoodSlider';
 import { useMood } from '@/hooks/useMood';
-import { MoodCheckIn } from '@/lib/types';
-import { showAlert } from '@/lib/state';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors, UI } from '@/constants/theme';
-import MaterialIcons from '@/components/AppIcon';
+import { useJournal } from '@/hooks/useJournal';
+import { moodStep, type MoodScore } from '@/lib/mood-scale';
+import { MOOD_FACTORS } from '@/lib/mood-logged';
+import type { MoodFactor } from '@/lib/types';
 
-/* ── Mood definitions with full-screen colors ── */
-function getMoods(t: any): {
-  key: MoodCheckIn['mood'];
-  label: string;
-  face: string;
-  bg: string;
-  color: string;
-  description: string;
-}[] {
-  return [
-    {
-      key: 'Bad',
-      label: t('moodCheckIn.depressed'),
-      face: '\uD83D\uDE2D',
-      bg: '#7B6DC9',
-      color: '#fff',
-      description: t('moodCheckIn.feelingDepressed'),
-    },
-    {
-      key: 'Low',
-      label: t('moodCheckIn.sad'),
-      face: '\uD83D\uDE1E',
-      bg: '#5A8FB5',
-      color: '#fff',
-      description: t('moodCheckIn.feelingSad'),
-    },
-    {
-      key: 'Okay',
-      label: t('moodCheckIn.neutral'),
-      face: '\uD83D\uDE10',
-      bg: '#E8985A',
-      color: '#fff',
-      description: t('moodCheckIn.feelingNeutral'),
-    },
-    {
-      key: 'Good',
-      label: t('moodCheckIn.happy'),
-      face: '\uD83D\uDE0A',
-      bg: '#5B8A5A',
-      color: '#fff',
-      description: t('moodCheckIn.feelingHappy'),
-    },
-    {
-      key: 'Great',
-      label: t('moodCheckIn.overjoyed'),
-      face: '\uD83E\uDD29',
-      bg: '#D4A843',
-      color: '#fff',
-      description: t('moodCheckIn.feelingOverjoyed'),
-    },
-  ];
-}
-
-export default function MoodCheckIn_Screen() {
-  const theme = useColorScheme() ?? 'light';
-  const colors = Colors[theme];
+/**
+ * Mood check-in (04 §M2–M4). Step 1 picks the mood on the orb and slider; step 2 adds
+ * optional factors and a note, which is also saved to the journal. Saving opens Mood logged.
+ */
+export default function MoodCheckInScreen() {
   const { t } = useTranslation();
-  const { addMoodCheckIn } = useMood();
   const insets = useSafeAreaInsets();
+  const { addMoodCheckIn } = useMood();
+  const { createJournalEntry } = useJournal();
 
-  const [step, setStep] = useState<'mood' | 'details'>('mood');
-  // Home's mood slider can open this with its chosen mood (1–5); otherwise start at Neutral.
+  // Home's mood slider can open this with its chosen mood (1–5); otherwise start at Okay.
   const { mood: moodParam } = useLocalSearchParams<{ mood?: string }>();
-  const [selectedIdx, setSelectedIdx] = useState(() => {
-    const score = Number(moodParam);
-    return Number.isInteger(score) && score >= 1 && score <= 5 ? score - 1 : 2;
+  const [score, setScore] = useState<MoodScore>(() => {
+    const s = Number(moodParam);
+    return (Number.isInteger(s) && s >= 1 && s <= 5 ? s : 3) as MoodScore;
   });
-  const [energy, setEnergy] = useState<MoodCheckIn['energy']>(3);
-  const [stress, setStress] = useState<MoodCheckIn['stress']>(5);
+  const [step, setStep] = useState<'mood' | 'details'>('mood');
+  const [factors, setFactors] = useState<MoodFactor[]>([]);
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
-  const saveInProgress = useRef(false);
+  const saving$ = useRef(false);
+  const mood = moodStep(score);
 
-  const MOODS = getMoods(t);
-  const current = MOODS[selectedIdx];
+  const toggle = (f: MoodFactor) => setFactors((cur) => (cur.includes(f) ? cur.filter((x) => x !== f) : [...cur, f]));
 
-  /* ── Animations ── */
-  const bgAnim = useRef(new Animated.Value(0)).current;
-  const faceScale = useRef(new Animated.Value(1)).current;
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(bgAnim, { toValue: selectedIdx, duration: 300, useNativeDriver: false }),
-      Animated.sequence([
-        Animated.timing(faceScale, { toValue: 1.15, duration: 150, useNativeDriver: true }),
-        Animated.timing(faceScale, { toValue: 1, duration: 150, useNativeDriver: true }),
-      ]),
-    ]).start();
-  }, [selectedIdx, bgAnim, faceScale]);
-
-  const bgColor = bgAnim.interpolate({
-    inputRange: MOODS.map((_, i) => i),
-    outputRange: MOODS.map((m) => m.bg),
-  });
-
-  /* ── Swipe gesture to change mood ── */
-  const swipeThreshold = 50;
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (_, gs) =>
-        Math.abs(gs.dx) > 15 && Math.abs(gs.dy) < Math.abs(gs.dx),
-      onPanResponderRelease: (_, gs) => {
-        if (gs.dx < -swipeThreshold) {
-          // Swipe left → next mood
-          setSelectedIdx((prev) => Math.min(MOODS.length - 1, prev + 1));
-        } else if (gs.dx > swipeThreshold) {
-          // Swipe right → previous mood
-          setSelectedIdx((prev) => Math.max(0, prev - 1));
-        }
-      },
-    }),
-  ).current;
-
-  async function saveMood() {
-    if (saveInProgress.current) return;
-    saveInProgress.current = true;
+  async function save() {
+    if (saving$.current) return;
+    saving$.current = true;
     setSaving(true);
     try {
-      await addMoodCheckIn({ mood: current.key, energy, stress, note: note.trim() || undefined });
-      toast.success(`Mood recorded: ${current.label}.`, 4000);
-      backTo(undefined, '/(tabs)/mood');
+      const entry = await addMoodCheckIn({ mood: mood.checkIn, factors, note: note.trim() || undefined });
+      if (note.trim()) {
+        // The note is "saved to your journal too"; a failure here must not lose the check-in.
+        createJournalEntry({ title: '', content: note.trim(), mood: mood.checkIn, moodLogId: entry.id }).catch(() =>
+          toast.error(t('moodCheckIn2.journalFailed')),
+        );
+      }
+      router.replace({ pathname: '/(tabs)/mood/logged', params: { mood: String(score), factors: factors.join(',') } });
     } catch {
-      toast.error('Your mood could not be saved. Please try again.');
+      toast.error(t('moodCheckIn2.saveFailed'));
     } finally {
-      saveInProgress.current = false;
+      saving$.current = false;
       setSaving(false);
     }
   }
 
   if (step === 'mood') {
     return (
-      <Animated.View style={{ flex: 1, backgroundColor: bgColor }} {...panResponder.panHandlers}>
-        {/* Top Bar */}
-        <View
-          style={{
-            paddingTop: insets.top + 6,
-            paddingHorizontal: UI.spacing.xl,
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}
-        >
-          <Pressable
+      <View style={{ flex: 1, backgroundColor: palette.bg, paddingTop: insets.top + 10, paddingBottom: insets.bottom + 24 }}>
+        <View style={{ alignItems: 'flex-end', paddingHorizontal: 24 }}>
+          <IconButton
+            icon="arrow/close"
+            variant="nav"
+            accessibilityLabel={t('moodCheckIn2.close')}
             onPress={() => backTo(undefined, '/(tabs)/mood')}
-            style={({ pressed }) => ({
-              width: 36,
-              height: 36,
-              borderRadius: 18,
-              backgroundColor: 'rgba(255,255,255,0.2)',
-              alignItems: 'center',
-              justifyContent: 'center',
-              opacity: pressed ? 0.7 : 1,
-            })}
-          >
-            <MaterialIcons name="close" size={20} color="#fff" />
-          </Pressable>
-          <Text
-            style={{
-              fontFamily: Typography.family.body,
-              fontSize: 16,
-              fontWeight: Typography.weight.semibold,
-              color: 'rgba(255,255,255,0.7)',
-            }}
-          >
-            {selectedIdx + 1} / {MOODS.length}
+          />
+        </View>
+        <Text accessibilityRole="header" style={{ ...Type.titleLg, lineHeight: 36, color: palette.ink, textAlign: 'center', marginTop: 20, paddingHorizontal: 24 }}>
+          {t('moodCheckIn2.question')}
+        </Text>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <MoodOrb score={score} />
+          <Text accessibilityLiveRegion="polite" style={{ ...Type.display, fontSize: 32, lineHeight: 45, color: palette.ink, marginTop: -24 }}>
+            {t(`moodScale.${mood.key}`)}
           </Text>
         </View>
-
-        {/* Center Content */}
-        <View
-          style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40 }}
-        >
-          <Text style={{ ...Typography.heading, color: 'rgba(255,255,255,0.8)', marginBottom: 20 }}>
-            {t('moodCheckIn.howFeeling')}
-          </Text>
-          <AnimatedWellnessIconText
-            style={{
-              fontFamily: Typography.family.body,
-              fontSize: 120,
-              color: '#FFFFFF',
-              transform: [{ scale: faceScale }],
-            }}
-          >
-            {current.face}
-          </AnimatedWellnessIconText>
-          <Text
-            style={{
-              fontFamily: Typography.family.body,
-              fontSize: 22,
-              fontWeight: Typography.weight.semibold,
-              color: '#fff',
-              marginTop: 24,
-            }}
-          >
-            {current.description}
-          </Text>
+        <View style={{ paddingHorizontal: 36 }}>
+          <MoodSlider
+            size="full"
+            value={score}
+            onChange={setScore}
+            startLabel={t('moodScale.tense')}
+            endLabel={t('moodScale.great')}
+            accessibilityLabel={t('moodCheckIn2.question')}
+          />
         </View>
-
-        {/* Mood Dots Selector */}
-        <View style={{ paddingBottom: insets.bottom + 90, alignItems: 'center' }}>
-          {/* Dot row */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 28 }}>
-            {MOODS.map((m, i) => {
-              const isActive = selectedIdx === i;
-              return (
-                <Pressable
-                  key={m.key}
-                  onPress={() => setSelectedIdx(i)}
-                  style={{
-                    width: isActive ? 16 : 10,
-                    height: isActive ? 16 : 10,
-                    borderRadius: isActive ? 8 : 5,
-                    backgroundColor: isActive ? '#fff' : 'rgba(255,255,255,0.4)',
-                    borderWidth: isActive ? 2 : 0,
-                    borderColor: 'rgba(255,255,255,0.8)',
-                  }}
-                />
-              );
-            })}
-          </View>
-
-          {/* Arrow navigation */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 24, marginBottom: 20 }}>
-            <Pressable
-              onPress={() => setSelectedIdx(Math.max(0, selectedIdx - 1))}
-              style={({ pressed }) => ({
-                width: 44,
-                height: 44,
-                borderRadius: 22,
-                backgroundColor: 'rgba(255,255,255,0.15)',
-                alignItems: 'center',
-                justifyContent: 'center',
-                opacity: selectedIdx === 0 ? 0.3 : pressed ? 0.7 : 1,
-              })}
-              disabled={selectedIdx === 0}
-            >
-              <MaterialIcons name="chevron-left" size={28} color="#fff" />
-            </Pressable>
-
-            <Text
-              style={{
-                fontFamily: Typography.family.body,
-                fontSize: 16,
-                fontWeight: Typography.weight.semibold,
-                color: 'rgba(255,255,255,0.7)',
-                width: 100,
-                textAlign: 'center',
-              }}
-            >
-              {current.label}
-            </Text>
-
-            <Pressable
-              onPress={() => setSelectedIdx(Math.min(MOODS.length - 1, selectedIdx + 1))}
-              style={({ pressed }) => ({
-                width: 44,
-                height: 44,
-                borderRadius: 22,
-                backgroundColor: 'rgba(255,255,255,0.15)',
-                alignItems: 'center',
-                justifyContent: 'center',
-                opacity: selectedIdx === MOODS.length - 1 ? 0.3 : pressed ? 0.7 : 1,
-              })}
-              disabled={selectedIdx === MOODS.length - 1}
-            >
-              <MaterialIcons name="chevron-right" size={28} color="#fff" />
-            </Pressable>
-          </View>
-
-          {/* Set Mood Button */}
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Continue mood check-in"
-            onPress={() => setStep('details')}
-            style={({ pressed }) => ({
-              flexDirection: 'row',
-              alignItems: 'flex-start',
-              gap: 10,
-              backgroundColor: '#fff',
-              paddingHorizontal: 40,
-              paddingVertical: 18,
-              borderRadius: UI.radius.pill,
-              opacity: pressed ? 0.9 : 1,
-              ...UI.shadow.md,
-            })}
-          >
-            <Text
-              style={{
-                fontFamily: Typography.family.body,
-                fontSize: 18,
-                fontWeight: Typography.weight.semibold,
-                color: current.bg,
-              }}
-            >
-              Continue
-            </Text>
-            <MaterialIcons name="arrow-forward" size={20} color={current.bg} />
-          </Pressable>
+        <View style={{ paddingHorizontal: 24, marginTop: 40 }}>
+          <AppButton title={t('moodCheckIn2.continue')} onPress={() => setStep('details')} />
         </View>
-      </Animated.View>
+      </View>
     );
   }
 
-  /* ── Step 2: Details ── */
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: colors.background }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      {/* Header */}
-      <View
-        style={{
-          paddingTop: insets.top + 6,
-          paddingHorizontal: UI.spacing.xl,
-          paddingBottom: UI.spacing.sm,
-        }}
-      >
-        <View
-          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <Pressable
-              onPress={() => setStep('mood')}
-              style={({ pressed }) => ({
-                width: 36,
-                height: 36,
-                borderRadius: 18,
-                backgroundColor: colors.card,
-                borderWidth: 1,
-                borderColor: colors.border,
-                alignItems: 'center',
-                justifyContent: 'center',
-                opacity: pressed ? 0.7 : 1,
-                ...UI.shadow.sm,
-              })}
-            >
-              <MaterialIcons
-                name="arrow-back-ios"
-                size={16}
-                color={colors.text}
-                style={{ marginLeft: 4 }}
-              />
-            </Pressable>
-            <Text style={{ ...Typography.heading, color: colors.text }}>
-              {t('moodCheckIn.details')}
-            </Text>
-          </View>
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 6,
-              paddingHorizontal: 12,
-              paddingVertical: 6,
-              borderRadius: UI.radius.pill,
-              backgroundColor: current.bg + '20',
-            }}
-          >
-            <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 18 }}>
-              {current.face}
-            </WellnessIconText>
-            <Text
-              style={{
-                fontFamily: Typography.family.body,
-                fontSize: 13,
-                fontWeight: Typography.weight.semibold,
-                color: current.bg,
-              }}
-            >
-              {current.label}
-            </Text>
-          </View>
-        </View>
-      </View>
-
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: palette.bg }}>
       <ScrollView
-        contentContainerStyle={{ paddingHorizontal: UI.spacing.xl, paddingBottom: 100, gap: 16 }}
-        showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ paddingTop: insets.top + 10, paddingHorizontal: 24, paddingBottom: insets.bottom + 24 }}
       >
-        {/* Energy Level */}
-        <View
-          style={{
-            backgroundColor: colors.card,
-            borderRadius: UI.radius.xxl,
-            padding: 18,
-            borderWidth: 1,
-            borderColor: colors.border,
-            ...UI.shadow.sm,
-          }}
-        >
-          <Text
-            style={{
-              fontFamily: Typography.family.body,
-              fontSize: 12,
-              fontWeight: Typography.weight.semibold,
-              color: colors.mutedText,
-              textTransform: 'uppercase',
-              letterSpacing: 0.5,
-              marginBottom: 12,
-            }}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <IconButton variant="nav" accessibilityLabel={t('moodCheckIn2.back')} onPress={() => setStep('mood')} />
+          <View
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: palette.selected, borderRadius: 999, paddingVertical: 6, paddingLeft: 10, paddingRight: 14 }}
           >
-            {t('moodCheckIn.energyLevel')}
-          </Text>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            {([1, 2, 3, 4, 5] as const).map((v) => {
-              const active = energy === v;
-              const fills = ['#C45B5B', '#E8985A', '#E8C85A', '#6BBF8A', '#4AAD7A'];
-              return (
-                <Pressable
-                  key={v}
-                  onPress={() => setEnergy(v)}
-                  style={({ pressed }) => ({
-                    flex: 1,
-                    alignItems: 'center',
-                    paddingVertical: 14,
-                    borderRadius: UI.radius.md,
-                    borderWidth: 1.5,
-                    backgroundColor: active ? fills[v - 1] + '18' : 'transparent',
-                    borderColor: active ? fills[v - 1] + '50' : colors.border,
-                    transform: [{ scale: pressed ? 0.93 : 1 }],
-                  })}
-                >
-                  <Text
-                    style={{
-                      fontFamily: Typography.family.body,
-                      fontSize: 18,
-                      fontWeight: Typography.weight.semibold,
-                      color: active ? fills[v - 1] : colors.mutedText,
-                    }}
-                  >
-                    {v}
-                  </Text>
-                  {(v === 1 || v === 5) && (
-                    <Text
-                      style={{
-                        fontFamily: Typography.family.body,
-                        fontSize: 9,
-                        fontWeight: Typography.weight.semibold,
-                        color: colors.mutedText,
-                        marginTop: 2,
-                      }}
-                    >
-                      {v === 1 ? t('moodCheckIn.low') : t('moodCheckIn.high')}
-                    </Text>
-                  )}
-                </Pressable>
-              );
-            })}
+            <Icon name={mood.face} size={18} />
+            <Text style={{ ...Type.label, color: palette.plum }}>{t(`moodScale.${mood.key}`)}</Text>
           </View>
+          <View style={{ width: 44 }} />
         </View>
 
-        {/* Stress Level */}
-        <View
-          style={{
-            backgroundColor: colors.card,
-            borderRadius: UI.radius.xxl,
-            padding: 18,
-            borderWidth: 1,
-            borderColor: colors.border,
-            ...UI.shadow.sm,
-          }}
-        >
-          <Text
-            style={{
-              fontFamily: Typography.family.body,
-              fontSize: 12,
-              fontWeight: Typography.weight.semibold,
-              color: colors.mutedText,
-              textTransform: 'uppercase',
-              letterSpacing: 0.5,
-              marginBottom: 12,
-            }}
-          >
-            {t('moodCheckIn.stressLevel')}
-          </Text>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-            {Array.from({ length: 11 }, (_, i) => i).map((v) => {
-              const active = stress === v;
-              const ratio = v / 10;
-              const r = Math.round(74 + ratio * (196 - 74));
-              const g = Math.round(173 + ratio * (91 - 173));
-              const b = Math.round(122 + ratio * (91 - 122));
-              const stressColor = `rgb(${r},${g},${b})`;
-              return (
-                <Pressable
-                  key={v}
-                  onPress={() => setStress(v as MoodCheckIn['stress'])}
-                  style={({ pressed }) => ({
-                    flexGrow: 1,
-                    minWidth: '17%' as any,
-                    alignItems: 'center',
-                    paddingVertical: 10,
-                    borderRadius: UI.radius.sm,
-                    borderWidth: 1.5,
-                    backgroundColor: active ? stressColor : 'transparent',
-                    borderColor: active ? stressColor : colors.border,
-                    transform: [{ scale: pressed ? 0.92 : 1 }],
-                  })}
-                >
-                  <Text
-                    style={{
-                      fontFamily: Typography.family.body,
-                      fontSize: 14,
-                      fontWeight: active ? Typography.weight.bold : '600',
-                      color: active ? '#FFFFFF' : colors.mutedText,
-                    }}
-                  >
-                    {v}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 }}>
-            <Text
-              style={{
-                fontFamily: Typography.family.body,
-                fontSize: 10,
-                fontWeight: Typography.weight.semibold,
-                color: colors.mutedText,
-              }}
-            >
-              {t('moodCheckIn.none')}
-            </Text>
-            <Text
-              style={{
-                fontFamily: Typography.family.body,
-                fontSize: 10,
-                fontWeight: Typography.weight.semibold,
-                color: colors.mutedText,
-              }}
-            >
-              {t('moodCheckIn.extreme')}
-            </Text>
-          </View>
+        <Text accessibilityRole="header" style={{ ...Type.titleLg, lineHeight: 36, color: palette.ink, marginTop: 26 }}>
+          {t('moodCheckIn2.shaping')}
+        </Text>
+        <Text style={{ ...Type.bodySm, color: palette.textMuted, marginTop: 4 }}>{t('moodCheckIn2.optional')}</Text>
+
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 18 }}>
+          {MOOD_FACTORS.map((f) => (
+            <Chip
+              key={f.key}
+              kind="factor"
+              icon={f.icon}
+              label={t(`moodCheckIn2.factor.${f.key}`)}
+              selected={factors.includes(f.key)}
+              onPress={() => toggle(f.key)}
+            />
+          ))}
         </View>
 
-        {/* Note */}
-        <View
-          style={{
-            backgroundColor: colors.card,
-            borderRadius: UI.radius.xxl,
-            padding: 18,
-            borderWidth: 1,
-            borderColor: colors.border,
-            ...UI.shadow.sm,
-          }}
-        >
-          <Text
-            style={{
-              fontFamily: Typography.family.body,
-              fontSize: 12,
-              fontWeight: Typography.weight.semibold,
-              color: colors.mutedText,
-              textTransform: 'uppercase',
-              letterSpacing: 0.5,
-              marginBottom: 10,
-            }}
-          >
-            {t('moodCheckIn.noteOptional')}
-          </Text>
+        <Text style={{ ...Type.label, fontSize: 13, color: palette.ink, marginTop: 28 }}>{t('moodCheckIn2.addNote')}</Text>
+        <View style={{ backgroundColor: palette.surface, borderRadius: 24, paddingVertical: 18, paddingHorizontal: 20, marginTop: 10, minHeight: 120 }}>
           <TextInput
             value={note}
             onChangeText={setNote}
-            placeholder={t('moodCheckIn.notePlaceholder')}
-            placeholderTextColor={colors.placeholder}
+            placeholder={t('moodCheckIn2.notePlaceholder')}
+            placeholderTextColor={palette.textSubtle}
             multiline
-            style={{
-              fontFamily: Typography.family.body,
-              fontSize: 15,
-              lineHeight: 22,
-              color: colors.text,
-              minHeight: 80,
-              textAlignVertical: 'top',
-              backgroundColor: colors.inputBg,
-              borderRadius: UI.radius.lg,
-              padding: 14,
-            }}
+            maxLength={1000}
+            accessibilityLabel={t('moodCheckIn2.addNote')}
+            style={{ ...Type.bodyM, lineHeight: 23, color: '#44403B', minHeight: 60, textAlignVertical: 'top', padding: 0 }}
           />
+          <Text style={{ ...Type.micro, color: palette.textSubtle, marginTop: 10 }}>{t('moodCheckIn2.savedToJournal')}</Text>
         </View>
 
-        {/* Save Button */}
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Save mood check-in"
-          accessibilityState={{ busy: saving, disabled: saving }}
+        <AppButton
+          title={t('moodCheckIn2.save')}
+          icon="line/check"
+          busy={saving}
           disabled={saving}
-          onPress={saveMood}
-          style={({ pressed }) => ({
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 10,
-            backgroundColor: current.bg,
-            paddingVertical: 18,
-            borderRadius: UI.radius.xl,
-            opacity: pressed ? 0.9 : 1,
-            ...UI.shadow.md,
-          })}
-        >
-          <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 22 }}>
-            {current.face}
-          </WellnessIconText>
-          <Text
-            style={{
-              fontFamily: Typography.family.body,
-              fontSize: 17,
-              fontWeight: Typography.weight.semibold,
-              color: '#fff',
-            }}
-          >
-            {saving ? 'Saving your mood…' : t('moodCheckIn.logCheckIn')}
-          </Text>
-        </Pressable>
+          onPress={save}
+          style={{ marginTop: 32 }}
+        />
       </ScrollView>
     </KeyboardAvoidingView>
   );

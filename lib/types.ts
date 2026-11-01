@@ -1,9 +1,14 @@
+/** Keys allowed by the mood_logs.factors check constraint (04 §M4). */
+export type MoodFactor = 'work' | 'sleep' | 'friends' | 'family' | 'exercise' | 'health' | 'weather' | 'money' | 'alone_time';
+
 export type MoodCheckIn = {
   id: string;
   createdAt: string; // ISO
   mood: 'Great' | 'Good' | 'Okay' | 'Low' | 'Bad';
-  energy: 1 | 2 | 3 | 4 | 5;
-  stress: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
+  /** Only older check-ins have energy and stress; the redesigned check-in asks for factors instead. */
+  energy?: 1 | 2 | 3 | 4 | 5;
+  stress?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
+  factors?: MoodFactor[];
   note?: string;
   tags?: string[];
   topicContext?: string;
@@ -23,6 +28,8 @@ export type JournalEntry = {
   isVoiceEntry?: boolean;
   audioUrl?: string | null;
   recordingDurationMs?: number | null;
+  /** The mood check-in this entry was written with (mood check-in note). */
+  moodLogId?: string | null;
 };
 
 export type StressKit = {

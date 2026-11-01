@@ -1,3 +1,4 @@
+import { averageOf } from '@/lib/mood-scale';
 import { Typography } from '@/constants/typography';
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
@@ -70,7 +71,7 @@ export default function MoodChart({ items }: Readonly<{ items: MoodCheckIn[] }>)
         };
 
       const moodAvg = list.reduce((a, x) => a + moodScore[x.mood], 0) / list.length;
-      const stressAvg = list.reduce((a, x) => a + x.stress, 0) / list.length;
+      const stressAvg = averageOf(list.map((x) => x.stress));
       return { key: k, label: labelFromKey(k), moodAvg, stressAvg, isToday: isToday(k) };
     });
   }, [items]);

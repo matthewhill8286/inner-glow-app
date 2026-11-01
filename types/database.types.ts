@@ -678,34 +678,37 @@ export type Database = {
       mood_logs: {
         Row: {
           emotions: string[] | null
-          energy_score: number
+          energy_score: number | null
+          factors: string[]
           id: string
           logged_at: string
           mood_score: number
           note: string | null
-          stress_score: number
+          stress_score: number | null
           topic_context: string | null
           user_id: string
         }
         Insert: {
           emotions?: string[] | null
-          energy_score: number
+          energy_score?: number | null
+          factors?: string[]
           id?: string
           logged_at?: string
           mood_score: number
           note?: string | null
-          stress_score: number
+          stress_score?: number | null
           topic_context?: string | null
           user_id: string
         }
         Update: {
           emotions?: string[] | null
-          energy_score?: number
+          energy_score?: number | null
+          factors?: string[]
           id?: string
           logged_at?: string
           mood_score?: number
           note?: string | null
-          stress_score?: number
+          stress_score?: number | null
           topic_context?: string | null
           user_id?: string
         }

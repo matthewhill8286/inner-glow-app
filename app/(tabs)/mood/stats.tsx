@@ -1,3 +1,4 @@
+import { averageOf } from '@/lib/mood-scale';
 import { Typography } from '@/constants/typography';
 import { backTo } from '@/lib/navigation';
 import { WellnessIconText } from '@/components/WellnessIconText';
@@ -130,8 +131,8 @@ export default function MoodStats() {
   const summary = useMemo(() => {
     if (filtered.length === 0) return null;
     const avgMood = filtered.reduce((a, x) => a + moodScore(x.mood), 0) / filtered.length;
-    const avgEnergy = filtered.reduce((a, x) => a + x.energy, 0) / filtered.length;
-    const avgStress = filtered.reduce((a, x) => a + x.stress, 0) / filtered.length;
+    const avgEnergy = averageOf(filtered.map((x) => x.energy));
+    const avgStress = averageOf(filtered.map((x) => x.stress));
 
     // Most common mood
     const counts: Record<string, number> = {};
@@ -439,7 +440,7 @@ export default function MoodStats() {
                     color: '#E8985A',
                   }}
                 >
-                  {summary.avgEnergy.toFixed(1)}
+                  {summary.avgEnergy?.toFixed(1) ?? '–'}
                 </Text>
                 <Text
                   style={{
@@ -476,7 +477,7 @@ export default function MoodStats() {
                     color: '#7B6DC9',
                   }}
                 >
-                  {summary.avgStress.toFixed(1)}
+                  {summary.avgStress?.toFixed(1) ?? '–'}
                 </Text>
                 <Text
                   style={{

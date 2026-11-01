@@ -41,7 +41,7 @@ function stressLabel(v: number) {
 }
 
 /* ── AI Insight generation ── */
-function getInsights(mood: string, energy: number, stress: number, note?: string) {
+function getInsights(mood: string, energy: number | undefined, stress: number | undefined, note?: string) {
   const insights: { icon: string; title: string; text: string; color: string }[] = [];
 
   // Crisis detection
@@ -65,7 +65,7 @@ function getInsights(mood: string, energy: number, stress: number, note?: string
     });
   }
 
-  if (stress >= 7) {
+  if (stress != null && stress >= 7) {
     insights.push({
       icon: 'spa',
       title: 'High Stress Detected',
@@ -74,7 +74,7 @@ function getInsights(mood: string, energy: number, stress: number, note?: string
     });
   }
 
-  if (energy <= 2) {
+  if (energy != null && energy <= 2) {
     insights.push({
       icon: 'battery-alert',
       title: 'Low Energy Pattern',
@@ -288,7 +288,8 @@ export default function MoodDetailScreen() {
         }}
         showsVerticalScrollIndicator={false}
       >
-        {/* ── Energy & Stress Stats ── */}
+        {/* ── Energy & Stress Stats (older check-ins only; the redesigned check-in has none) ── */}
+        {entry.energy != null && entry.stress != null && (
         <View style={{ flexDirection: 'row', gap: 10 }}>
           {/* Energy */}
           <View
@@ -468,6 +469,7 @@ export default function MoodDetailScreen() {
             </View>
           </View>
         </View>
+        )}
 
         {/* ── Tags ── */}
         {entry.tags && entry.tags.length > 0 && (
