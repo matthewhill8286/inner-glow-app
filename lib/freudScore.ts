@@ -141,9 +141,12 @@ export function calculateFreudScore(data: {
   // --- 3. Stress sub-score (0-100) — inverse of avg stress, boosted by relief activities ---
   let stressScore = 40; // default middle-ground
   if (moods.length > 0) {
-    const recent = moods.slice(0, 14);
-    const avgStress = recent.reduce((sum, m) => sum + (m.stress ?? 5), 0) / recent.length;
-    stressScore = clamp(Math.round(Math.max(0, 100 - avgStress * 10))); // stress 0-10 → 100-0
+    // Check-ins from the redesigned flow have no stress value, so only the ones that do count.
+    const known = moods.slice(0, 14).map((m) => m.stress).filter((v): v is NonNullable<typeof v> => v != null);
+    if (known.length > 0) {
+      const avgStress = known.reduce((sum: number, v) => sum + v, 0) / known.length;
+      stressScore = clamp(Math.round(Math.max(0, 100 - avgStress * 10))); // stress 0-10 → 100-0
+    }
     // Bonus for stress-relief activities in last 7 days
     const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString();
     const recentActivities = stress.filter((s) => s.date >= weekAgo).length;

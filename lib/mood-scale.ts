@@ -46,3 +46,21 @@ export function scoreAtX(x: number, width: number, inset = 10): MoodScore {
 export function xForScore(score: MoodScore, width: number, inset = 10) {
   return inset + ((score - 1) / 4) * (width - inset * 2);
 }
+
+/** Average of the values that are present; null when none are (energy and stress are optional). */
+export function averageOf(values: (number | null | undefined)[]): number | null {
+  const present = values.filter((v): v is number => typeof v === 'number' && Number.isFinite(v));
+  return present.length ? present.reduce((a, v) => a + v, 0) / present.length : null;
+}
+
+/**
+ * Mood orb colours per mood (04 §A, §B3): outer and inner glow. The aura contours are the
+ * Figma art: Tense has its own wavy aura, the other moods share the Good one (Low flattened).
+ */
+export const ORB_LOOK: Record<MoodScore, { outer: string; inner: string; aura: 'good' | 'tense'; squash: number }> = {
+  1: { outer: '#FFB3BE', inner: '#D8B4D8', aura: 'tense', squash: 1 },
+  2: { outer: '#D8B4D8', inner: '#FFB3BE', aura: 'good', squash: 0.88 },
+  3: { outer: '#E8DFD2', inner: '#FFF6D6', aura: 'good', squash: 1 },
+  4: { outer: '#E2CC40', inner: '#FFF6D6', aura: 'good', squash: 1 },
+  5: { outer: '#7FC6F1', inner: '#E2CC40', aura: 'good', squash: 1 },
+};

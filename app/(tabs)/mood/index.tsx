@@ -1,3 +1,4 @@
+import { averageOf } from '@/lib/mood-scale';
 import { screenBottomPadding } from '@/lib/screen-layout';
 import { Typography } from '@/constants/typography';
 import { WellnessIconText, AnimatedWellnessIconText } from '@/components/WellnessIconText';
@@ -120,8 +121,8 @@ export default function MoodIndex() {
     if (items.length < 2) return null;
     const last14 = items.slice(0, 14);
     const avgMood = last14.reduce((a, x) => a + moodScore(x.mood), 0) / last14.length;
-    const avgEnergy = last14.reduce((a, x) => a + x.energy, 0) / last14.length;
-    const avgStress = last14.reduce((a, x) => a + x.stress, 0) / last14.length;
+    const avgEnergy = averageOf(last14.map((x) => x.energy));
+    const avgStress = averageOf(last14.map((x) => x.stress));
     const uniqueDays = new Set(items.map((i) => i.createdAt.split('T')[0])).size;
     return { avgMood, avgEnergy, avgStress, total: items.length, days: uniqueDays };
   }, [items]);
@@ -517,14 +518,14 @@ export default function MoodIndex() {
                     },
                     {
                       label: 'Energy',
-                      value: stats.avgEnergy.toFixed(1),
+                      value: stats.avgEnergy?.toFixed(1) ?? '–',
                       suffix: '/5',
                       color: '#E8985A',
                       icon: 'bolt' as const,
                     },
                     {
                       label: 'Stress',
-                      value: stats.avgStress.toFixed(1),
+                      value: stats.avgStress?.toFixed(1) ?? '–',
                       suffix: '/10',
                       color: '#7B6DC9',
                       icon: 'whatshot' as const,

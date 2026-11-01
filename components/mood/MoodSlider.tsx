@@ -8,13 +8,19 @@ import { Glow } from '@/components/glow/Glow';
 import { MOOD_SCALE, moodStep, scoreAtX, xForScore, type MoodScore } from '@/lib/mood-scale';
 
 const TRACK_HEIGHT = 20;
-const KNOB = 28;
+
+/** Compact (04 §B2, Home and Write entry) and full (04 §B1, check-in) knob and glow styles. */
+const SIZES = {
+  compact: { knob: 28, knobFill: '#FAEDB8', glowW: 120, glowH: 70, glowBlur: 24, caption: { ...Type.micro } },
+  full: { knob: 30, knobFill: palette.cream, glowW: 70, glowH: 70, glowBlur: 18, caption: { ...Type.caption, fontWeight: '500' as const, lineHeight: 17 } },
+};
 
 /**
- * Compact mood slider (04 §B2): spectrum track with five stops, a cream knob with a mood glow,
- * and Tense / Great captions. Snaps to the stops; `onChange` fires live, `onRelease` once per drag.
+ * Mood slider: spectrum track with five stops, a cream knob with a mood glow, and Tense /
+ * Great captions. Snaps to the stops; `onChange` fires live, `onRelease` once per drag.
  */
 export function MoodSlider({
+  size = 'compact',
   value,
   onChange,
   onRelease,
@@ -23,6 +29,7 @@ export function MoodSlider({
   accessibilityLabel,
   style,
 }: {
+  size?: keyof typeof SIZES;
   value: MoodScore;
   onChange: (score: MoodScore) => void;
   onRelease?: (score: MoodScore) => void;
@@ -58,6 +65,7 @@ export function MoodSlider({
   }, []);
 
   const step = moodStep(value);
+  const { knob: KNOB, knobFill, glowW, glowH, glowBlur, caption } = SIZES[size];
   const knobX = width ? xForScore(value, width) : 0;
   const stops = width ? MOOD_SCALE.map((m) => xForScore(m.score, width)) : [];
 
@@ -85,12 +93,13 @@ export function MoodSlider({
             <Glow
               color={step.color}
               opacity={0.5}
-              width={120}
-              height={70}
-              blur={24}
-              style={{ position: 'absolute', left: knobX - 60, top: (KNOB + 8) / 2 - 35 }}
+              width={glowW}
+              height={glowH}
+              blur={glowBlur}
+              style={{ position: 'absolute', left: knobX - glowW / 2, top: (KNOB + 8) / 2 - glowH / 2 }}
             />
-            <Svg width={width} height={KNOB + 8} pointerEvents="none">
+            {/* The knob overhangs the track ends (as in Figma), so the canvas is wider by half a knob each side. */}
+            <Svg width={width + KNOB} height={KNOB + 8} pointerEvents="none" style={{ position: 'absolute', left: -KNOB / 2 }}>
               <Defs>
                 <LinearGradient id="moodTrack" x1="0" y1="0" x2="1" y2="0">
                   {MOOD_SCALE.map((m) => (
@@ -98,18 +107,18 @@ export function MoodSlider({
                   ))}
                 </LinearGradient>
               </Defs>
-              <Rect x={0} y={(KNOB + 8 - TRACK_HEIGHT) / 2} width={width} height={TRACK_HEIGHT} rx={TRACK_HEIGHT / 2} fill="url(#moodTrack)" />
+              <Rect x={KNOB / 2} y={(KNOB + 8 - TRACK_HEIGHT) / 2} width={width} height={TRACK_HEIGHT} rx={TRACK_HEIGHT / 2} fill="url(#moodTrack)" />
               {stops.map((x, i) => (
-                <Circle key={i} cx={x} cy={(KNOB + 8) / 2} r={2} fill="#FFFFFF" fillOpacity={0.9} />
+                <Circle key={i} cx={x + KNOB / 2} cy={(KNOB + 8) / 2} r={2} fill="#FFFFFF" fillOpacity={0.9} />
               ))}
-              <Circle cx={knobX} cy={(KNOB + 8) / 2} r={KNOB / 2 - 1.25} fill="#FAEDB8" stroke={palette.plum} strokeWidth={2.5} />
+              <Circle cx={knobX + KNOB / 2} cy={(KNOB + 8) / 2} r={KNOB / 2 - 1.25} fill={knobFill} stroke={palette.plum} strokeWidth={2.5} />
             </Svg>
           </>
         )}
       </View>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 2 }}>
-        <Text style={[Type.micro, { color: palette.textSubtle }]}>{startLabel}</Text>
-        <Text style={[Type.micro, { color: palette.textSubtle }]}>{endLabel}</Text>
+        <Text style={[caption, { color: palette.textSubtle }]}>{startLabel}</Text>
+        <Text style={[caption, { color: palette.textSubtle }]}>{endLabel}</Text>
       </View>
     </View>
   );

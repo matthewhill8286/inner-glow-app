@@ -2,7 +2,7 @@ import { moodScoreOf } from '@/lib/mood-scale';
 import { notifyMoodLogged } from '@/lib/notificationStore';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/supabase/supabase';
-import { MoodCheckIn } from '@/lib/types';
+import { MoodCheckIn, MoodFactor } from '@/lib/types';
 import { useUser } from './useUser';
 import { queryKeys, STALE } from '@/lib/queryKeys';
 
@@ -39,8 +39,9 @@ export const useMood = () => {
                 : d.mood_score === 2
                   ? 'Low'
                   : 'Bad',
-        energy: d.energy_score as any,
-        stress: d.stress_score as any,
+        energy: (d.energy_score ?? undefined) as MoodCheckIn['energy'],
+        stress: (d.stress_score ?? undefined) as MoodCheckIn['stress'],
+        factors: (d.factors ?? []) as MoodFactor[],
         note: d.note || undefined,
         tags: d.emotions || undefined,
         topicContext: d.topic_context || undefined,
@@ -74,8 +75,9 @@ export const useMood = () => {
         .insert({
           user_id: user.id,
           mood_score: moodScoreMap[input.mood] || 3,
-          energy_score: input.energy,
-          stress_score: input.stress,
+          energy_score: input.energy ?? null,
+          stress_score: input.stress ?? null,
+          factors: input.factors ?? [],
           note: input.note,
           emotions: input.tags,
           topic_context: input.topicContext || null,
@@ -90,8 +92,9 @@ export const useMood = () => {
         id: data.id,
         createdAt: data.logged_at,
         mood: input.mood,
-        energy: data.energy_score as any,
-        stress: data.stress_score as any,
+        energy: (data.energy_score ?? undefined) as MoodCheckIn['energy'],
+        stress: (data.stress_score ?? undefined) as MoodCheckIn['stress'],
+        factors: (data.factors ?? []) as MoodFactor[],
         note: data.note || undefined,
         tags: data.emotions || undefined,
         topicContext: data.topic_context || undefined,

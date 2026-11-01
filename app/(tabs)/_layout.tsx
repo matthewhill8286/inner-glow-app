@@ -17,7 +17,9 @@ export default function TabsLayout() {
     isChatDetail ||
     (segments.includes('profile') && segments.includes('edit')) ||
     segments.includes('schedule') ||
-    (segments.includes('community') && segments.includes('new-post'));
+    (segments.includes('community') && segments.includes('new-post')) ||
+    // The mood check-in and Mood logged are full-screen flows with no tab bar (04 §M2–M5).
+    (segments.includes('mood') && (segments.includes('check-in') || segments.includes('logged')));
 
   // Design order (00-foundations §4.5): Home, Practices, Glow AI (centre), Journal, Profile.
   const tabs: GlowTab[] = [
