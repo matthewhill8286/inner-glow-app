@@ -48,8 +48,10 @@ const EMPTY_SCORE: FreudScoreResult = {
 /*  Hook                                                               */
 /* ------------------------------------------------------------------ */
 
-export const useFreudScore = (opts?: { lazy?: boolean }) => {
+export const useFreudScore = (opts?: { lazy?: boolean; withHistory?: boolean }) => {
   const lazy = opts?.lazy ?? false;
+  // Home is lazy but still needs the saved history for its trend arrow and first-day check.
+  const loadHistory = !lazy || !!opts?.withHistory;
   const { hasFullAccess } = useSubscription();
   const queryClient = useQueryClient();
   const { data: user } = useUser();
@@ -159,11 +161,11 @@ export const useFreudScore = (opts?: { lazy?: boolean }) => {
 
   /* ═══════════════════════════════════════════════════════════════════
    *  SCORE HISTORY (DB) — for the chart on the detail screen
-   *  Skipped in lazy mode (home screen doesn't need it)
+   *  Skipped in lazy mode unless withHistory is set (Home uses it for trends)
    * ═══════════════════════════════════════════════════════════════════ */
   const historyQuery = useQuery({
     queryKey: scoreKey,
-    enabled: !!user && !lazy,
+    enabled: !!user && loadHistory,
     staleTime: STALE.medium,
     queryFn: async () => {
       if (!user) throw new Error('Not authenticated');

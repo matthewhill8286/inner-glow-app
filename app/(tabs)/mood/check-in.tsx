@@ -15,7 +15,7 @@ import {
   Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useMood } from '@/hooks/useMood';
 import { MoodCheckIn } from '@/lib/types';
@@ -85,7 +85,12 @@ export default function MoodCheckIn_Screen() {
   const insets = useSafeAreaInsets();
 
   const [step, setStep] = useState<'mood' | 'details'>('mood');
-  const [selectedIdx, setSelectedIdx] = useState(2); // start at Neutral
+  // Home's mood slider can open this with its chosen mood (1–5); otherwise start at Neutral.
+  const { mood: moodParam } = useLocalSearchParams<{ mood?: string }>();
+  const [selectedIdx, setSelectedIdx] = useState(() => {
+    const score = Number(moodParam);
+    return Number.isInteger(score) && score >= 1 && score <= 5 ? score - 1 : 2;
+  });
   const [energy, setEnergy] = useState<MoodCheckIn['energy']>(3);
   const [stress, setStress] = useState<MoodCheckIn['stress']>(5);
   const [note, setNote] = useState('');
