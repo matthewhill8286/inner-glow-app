@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { greetingName } from '@/lib/profile-stats';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -61,7 +62,7 @@ export default function HomeScreen() {
   const { sleepEntries } = useSleep();
   const { currentScore, scoreHistory, isLoadingHistory } = useFreudScore({ lazy: true, withHistory: true });
 
-  const firstName = (profile?.name ?? '').trim().split(/\s+/)[0] ?? '';
+  const firstName = greetingName(profile);
   const greeting = t(`home.${greetingKey(new Date().getHours())}`);
   const loading = moodLoading || isLoadingHistory;
 

@@ -23,6 +23,7 @@ import { AppErrorBoundary } from '@/components/ui/AppErrorBoundary';
 import { resetSubscription, refreshSubscription } from '@/hooks/useSubscription';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts, Urbanist_500Medium } from '@expo-google-fonts/urbanist';
+import { loadAccessibilityPrefs } from '@/lib/accessibility-prefs';
 import { palette } from '@/constants/theme';
 
 // Native builds embed Urbanist as one weighted family (expo-font plugin in app.json).
@@ -46,6 +47,7 @@ export default function RootLayout() {
   useEffect(() => {
     installCrashDiagnostics();
     void flushDiagnostics();
+    void loadAccessibilityPrefs();
     return subscribeToPurchaseUpdates(() => {
       void refreshSubscription();
     });
