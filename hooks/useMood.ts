@@ -1,3 +1,4 @@
+import { moodScoreOf } from '@/lib/mood-scale';
 import { notifyMoodLogged } from '@/lib/notificationStore';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/supabase/supabase';
@@ -152,6 +153,27 @@ export const useMood = () => {
     },
   });
 
+  /** Changes only the mood of an existing check-in (the Home slider edits today's entry). */
+  const updateMoodMutation = useMutation({
+    mutationFn: async ({ id, mood }: { id: string; mood: MoodCheckIn['mood'] }) => {
+      const { error } = await supabase.from('mood_logs').update({ mood_score: moodScoreOf(mood) }).eq('id', id);
+      if (error) throw error;
+      return { id, mood };
+    },
+    onMutate: async ({ id, mood }) => {
+      await queryClient.cancelQueries({ queryKey: key });
+      const previous = queryClient.getQueryData<MoodCheckIn[]>(key);
+      queryClient.setQueryData<MoodCheckIn[]>(key, (old) => (old || []).map((m) => (m.id === id ? { ...m, mood } : m)));
+      return { previous };
+    },
+    onError: (_err, _input, context) => {
+      if (context?.previous) queryClient.setQueryData(key, context.previous);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: key });
+    },
+  });
+
   return {
     moodCheckIns: moodQuery.data || [],
     isLoading: moodQuery.isLoading,
@@ -160,6 +182,7 @@ export const useMood = () => {
     error: moodQuery.error,
     addMoodCheckIn: addMoodMutation.mutateAsync,
     deleteMoodCheckIn: deleteMoodMutation.mutateAsync,
+    updateMoodCheckIn: updateMoodMutation.mutateAsync,
     isAdding: addMoodMutation.isPending,
     isDeleting: deleteMoodMutation.isPending,
   };
