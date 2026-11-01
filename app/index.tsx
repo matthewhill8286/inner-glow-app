@@ -4,7 +4,7 @@ import { entryRouteForProfile } from '@/lib/navigation';
 import { useEffect } from 'react';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { View, ActivityIndicator } from 'react-native';
+import { View } from 'react-native';
 import { authTokenVar } from '@/lib/state';
 import { supabase } from '@/supabase/supabase';
 
@@ -82,10 +82,9 @@ export default function Index() {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#6f6660',
+        // Matches the first splash frame so the hand-off does not flash (01 §2.1).
+        backgroundColor: '#241A2E',
       }}
-    >
-      <ActivityIndicator color="white" />
-    </View>
+    />
   );
 }
