@@ -33,8 +33,8 @@ export function entryRouteForProfile(
 ): Href {
   if (!hasAssessment) return '/(onboarding)/assessment';
   const hasIssues = Array.isArray(profile?.selected_issues) && profile.selected_issues.length > 0;
+  // "You're all set" saves the intention and topics together, so either one means setup is done.
   if (!profile || (!profile.intention && !hasIssues)) return '/(onboarding)/profile-setup';
-  if (!hasIssues) return '/(onboarding)/suggested-categories';
   return '/(tabs)/home';
 }
 

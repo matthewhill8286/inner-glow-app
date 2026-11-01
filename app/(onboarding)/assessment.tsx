@@ -1,855 +1,99 @@
-import {
-  readAssessmentAnswer,
-  writeAssessmentAnswer,
-  toggleAssessmentAnswer,
-} from '@/lib/assessment-answers';
-import { getAssessmentSteps } from '@/lib/assessment-flow';
-import { Typography } from '@/constants/typography';
-import { backTo } from '@/lib/navigation';
-import { WellnessIconText } from '@/components/WellnessIconText';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  View,
-  Text,
-  Pressable,
-  TextInput,
-  ScrollView,
-  FlatList,
-  NativeSyntheticEvent,
-  NativeScrollEvent,
-  Platform,
-} from 'react-native';
+import { Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { router } from 'expo-router';
-import { toast } from '@/components/Toast';
-
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import SoundPulse from '@/components/SoundPulse';
-import { useRecorder, usePlayer, computeVoiceMetrics } from '@/lib/recorder';
-import { MoodCheckIn } from '@/lib/types';
+import { toast } from '@/components/Toast';
+import { palette } from '@/constants/theme';
+import { Type } from '@/constants/typography';
 import { useProfile } from '@/hooks/useProfile';
+import { useFreudScore } from '@/hooks/useFreudScore';
+import { calculateInitialFreudScore } from '@/lib/freudScore';
 import { useUser } from '@/hooks/useUser';
 import { userScopedKey } from '@/lib/storage';
-import MaterialIcons from '@/components/AppIcon';
+import { backTo } from '@/lib/navigation';
+import { getAssessmentSteps, stepGlow, TAKING_MEDS, type AssessmentStep } from '@/lib/assessment-flow';
+import { normaliseDraft, type AssessmentAnswers } from '@/lib/assessment-draft';
+import { medicationsText, type MedicationClassKey } from '@/lib/medications';
+import { writeAssessmentAnswer } from '@/lib/assessment-answers';
+import { MOOD_SCALE, moodStep, type MoodScore } from '@/lib/mood-scale';
+import type { GlowSpec } from '@/components/glow/Glow';
+import { Glow } from '@/components/glow/Glow';
+import { AppButton } from '@/components/ui/AppButton';
+import { LegalNote } from '@/components/ui/controls';
+import { MoodOrb } from '@/components/mood/MoodOrb';
+import { MoodSlider } from '@/components/mood/MoodSlider';
+import { AssessmentShell } from '@/components/assessment/AssessmentShell';
+import { DistressCard, GenderCard, OptionRow, PairOption } from '@/components/assessment/choices';
+import { AgeWheel, WeightPicker } from '@/components/assessment/pickers';
+import { SleepMoons, StressLights } from '@/components/assessment/scenes';
+import { ConcernsInput, ReflectionField } from '@/components/assessment/inputs';
+import { MedicationSearch } from '@/components/assessment/MedicationSearch';
+import { VoiceCheckIn } from '@/components/assessment/VoiceCheckIn';
+import AgeAura from '@/assets/svg/illustrations/assessment/age-aura.svg';
+import ThoughtsToCalm from '@/assets/svg/illustrations/assessment/thoughts-to-calm.svg';
 
-/* ── Design tokens (from Figma) ── */
-const C = {
-  pageBg: '#F7F4F2',
-  cardBg: '#FFFFFF',
-  brown: '#a07b55',
-  brownText: '#96784E',
-  brownLight: '#6a5e55',
-  inputBg: '#f2ece6',
-  tagBg: '#E8DDD9',
-  olive: '#828a6a',
-  oliveLight: '#e8eddf',
-  red: '#C45B5B',
-  green: '#5B8A5A',
-  orange: '#E8985A',
-  orangeLight: '#FFF3E8',
-  purple: '#7B6DC9',
-};
+/**
+ * Onboarding assessment (docs/design-handoff/02, re-extracted from Figma section `4002:14604`,
+ * and 10 §3.1–3.2 for the medication search). One screen walks through the steps of
+ * `getAssessmentSteps`, keeps a per-user draft, and saves everything at the end.
+ */
 
-const TICK_SPACING = 20;
+const DRAFT_KEY = 'assessment:draft:v1';
+const GOAL_KEYS = ['reduceStress', 'tryAISupport', 'workThroughExperiences', 'growAndUnderstand', 'justChecking'] as const;
+const CONCERN_KEYS = ['depressed', 'angry', 'anxious', 'lonely', 'numb', 'withdrawn'] as const;
+const DEFAULT_AGE = 25;
+const SHELL_DY = 44; // Figma frames assume a 44pt status bar
 
-/* ── Progress Bar ── */
-function ProgressBar({ current, total }: { current: number; total: number }) {
-  return (
-    <View
-      style={{
-        flexDirection: 'row',
-        gap: 4,
-        marginBottom: 16,
-        paddingHorizontal: 4,
-      }}
-    >
-      {Array.from({ length: total }, (_, i) => (
-        <View
-          key={i}
-          style={{
-            flex: 1,
-            height: 4,
-            borderRadius: 2,
-            backgroundColor: i <= current ? C.olive : '#E8DDD9',
-          }}
-        />
-      ))}
-    </View>
-  );
+/** The design positions full-frame art against a 44pt status bar; shift it to the real inset. */
+function useFrameOffset() {
+  const insets = useSafeAreaInsets();
+  return insets.top - SHELL_DY;
 }
 
-/* ── Unit Toggle (kg / lbs) ── */
-function UnitToggle({
-  value,
-  onChange,
-}: {
-  value: 'kg' | 'lbs';
-  onChange: (v: 'kg' | 'lbs') => void;
-}) {
-  return (
-    <View
-      style={{
-        flexDirection: 'row',
-        backgroundColor: C.inputBg,
-        borderRadius: 25,
-        padding: 4,
-        width: 200,
-        alignSelf: 'center',
-        marginBottom: 30,
-      }}
-    >
-      {(['kg', 'lbs'] as const).map((unit) => (
-        <Pressable
-          key={unit}
-          onPress={() => onChange(unit)}
-          style={{
-            flex: 1,
-            paddingVertical: 10,
-            borderRadius: 22,
-            backgroundColor: value === unit ? C.olive : 'transparent',
-            alignItems: 'center',
-          }}
-        >
-          <Text
-            style={{
-              fontFamily: Typography.family.body,
-              color: value === unit ? 'white' : C.brownLight,
-              fontWeight: Typography.weight.semibold,
-              fontSize: 15,
-            }}
-          >
-            {unit}
-          </Text>
-        </Pressable>
-      ))}
-    </View>
-  );
+function freshAnswers(): AssessmentAnswers {
+  return { createdAt: new Date().toISOString(), weight: 70, weightUnit: 'kg', moodScore: 3, mood: 'Okay', medications: [] };
 }
 
-/* ── Horizontal Ruler (weight / age / stress) ── */
-function HorizontalRuler({
-  min,
-  max,
-  value,
-  onChange,
-  step = 1,
-  unit = '',
-}: {
-  min: number;
-  max: number;
-  value: number;
-  onChange: (val: number) => void;
-  step?: number;
-  unit?: string;
-}) {
-  const flatListRef = React.useRef<FlatList>(null);
-  const [width, setWidth] = useState(0);
-  const isUserScrolling = React.useRef(false);
-  const lastReportedValue = React.useRef(value);
-
-  /* Track the currently visible value during scrolling for display */
-  const [displayValue, setDisplayValue] = useState(value);
-
-  const data = useMemo(() => {
-    const items: number[] = [];
-    for (let i = min; i <= max; i += step) {
-      items.push(i);
-    }
-    return [null, ...items, null];
-  }, [min, max, step]);
-
-  /* Helper: extract selected value from scroll offset */
-  const getValueFromOffset = (x: number): number | null => {
-    const index = Math.round(x / TICK_SPACING);
-    const actualIndex = index + 1;
-    if (actualIndex >= 1 && actualIndex < data.length - 1) {
-      return data[actualIndex] as number;
-    }
-    return null;
-  };
-
-  /* Update display value live during scroll so the big number follows the finger */
-  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const selected = getValueFromOffset(event.nativeEvent.contentOffset.x);
-    if (selected !== null) {
-      setDisplayValue(selected);
-    }
-  };
-
-  /* Commit the final value only after momentum ends (scroll fully settled) */
-  const handleMomentumEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    isUserScrolling.current = false;
-    const selected = getValueFromOffset(event.nativeEvent.contentOffset.x);
-    if (selected !== null && selected !== lastReportedValue.current) {
-      lastReportedValue.current = selected;
-      onChange(selected);
-    }
-  };
-
-  /* Also commit on drag end without momentum (slow drag released at rest) */
-  const handleScrollEndDrag = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    /* If there's momentum, onMomentumScrollEnd will handle it.
-       For a slow release we set a short timeout to commit if momentum doesn't fire. */
-    const selected = getValueFromOffset(event.nativeEvent.contentOffset.x);
-    setTimeout(() => {
-      if (isUserScrolling.current) {
-        isUserScrolling.current = false;
-        if (selected !== null && selected !== lastReportedValue.current) {
-          lastReportedValue.current = selected;
-          onChange(selected);
-        }
-      }
-    }, 120);
-  };
-
-  /* Only programmatically scroll when NOT actively scrolling (initial position, external changes) */
-  React.useEffect(() => {
-    if (width > 0 && flatListRef.current && !isUserScrolling.current) {
-      const index = Math.max(0, (value - min) / step);
-      flatListRef.current.scrollToOffset({ offset: index * TICK_SPACING, animated: false });
-      lastReportedValue.current = value;
-      setDisplayValue(value);
-    }
-  }, [width, min, max, step, value]);
-
-  return (
-    <View
-      style={{ alignItems: 'center', width: '100%' }}
-      onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
-    >
-      <View style={{ flexDirection: 'row', alignItems: 'baseline', marginBottom: 16 }}>
-        <Text
-          style={{
-            fontFamily: Typography.family.body,
-            fontSize: 72,
-            fontWeight: Typography.weight.semibold,
-            color: C.brownLight,
-          }}
-        >
-          {displayValue}
-        </Text>
-        {unit ? (
-          <Text
-            style={{
-              fontFamily: Typography.family.body,
-              fontSize: 22,
-              fontWeight: Typography.weight.semibold,
-              color: C.brownLight,
-              opacity: 0.5,
-              marginLeft: 4,
-            }}
-          >
-            {unit}
-          </Text>
-        ) : null}
-      </View>
-
-      <View style={{ height: 100, width: '100%', justifyContent: 'center' }}>
-        <View
-          style={{
-            position: 'absolute',
-            left: '50%',
-            width: 4,
-            height: 60,
-            backgroundColor: C.olive,
-            borderRadius: 2,
-            zIndex: 10,
-            marginLeft: -2,
-            top: 0,
-          }}
-        />
-
-        {width > 0 && (
-          <FlatList
-            ref={flatListRef}
-            data={data}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            snapToInterval={TICK_SPACING}
-            decelerationRate="fast"
-            onScrollBeginDrag={() => {
-              isUserScrolling.current = true;
-            }}
-            onScrollEndDrag={handleScrollEndDrag}
-            onMomentumScrollEnd={handleMomentumEnd}
-            onScroll={handleScroll}
-            scrollEventThrottle={16}
-            keyExtractor={(_, i) => i.toString()}
-            getItemLayout={(_, index) => {
-              const paddingWidth = width / 2 - TICK_SPACING / 2;
-              let offset = 0;
-              let length = TICK_SPACING;
-
-              if (index === 0) {
-                length = paddingWidth;
-                offset = 0;
-              } else if (index === data.length - 1) {
-                length = paddingWidth;
-                offset = paddingWidth + (data.length - 2) * TICK_SPACING;
-              } else {
-                length = TICK_SPACING;
-                offset = paddingWidth + (index - 1) * TICK_SPACING;
-              }
-
-              return { length, offset, index };
-            }}
-            initialScrollIndex={0}
-            renderItem={({ item }) => {
-              if (item === null) {
-                return <View style={{ width: width / 2 - TICK_SPACING / 2 }} />;
-              }
-              const isMajor = item % 5 === 0;
-              return (
-                <View
-                  style={{
-                    width: TICK_SPACING,
-                    alignItems: 'center',
-                    justifyContent: 'flex-start',
-                  }}
-                >
-                  <View
-                    style={{
-                      width: isMajor ? 3 : 1,
-                      height: isMajor ? 36 : 22,
-                      backgroundColor: '#6a5e5530',
-                      borderRadius: 2,
-                    }}
-                  />
-                  {isMajor && (
-                    <Text
-                      style={{
-                        fontFamily: Typography.family.body,
-                        position: 'absolute',
-                        top: 44,
-                        fontSize: 11,
-                        color: '#6a5e5555',
-                        fontWeight: Typography.weight.semibold,
-                        textAlign: 'center',
-                        width: 40,
-                      }}
-                    >
-                      {item}
-                    </Text>
-                  )}
-                </View>
-              );
-            }}
-          />
-        )}
-      </View>
-    </View>
-  );
-}
-
-/* ── Radio Option ── */
-function RadioOption({
-  label,
-  selected,
-  onPress,
-  icon,
-  multiple = false,
-}: {
-  label: string;
-  selected: boolean;
-  onPress: () => void;
-  icon?: string;
-  multiple?: boolean;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole={multiple ? 'checkbox' : 'radio'}
-      accessibilityLabel={label}
-      accessibilityState={{ checked: selected }}
-      aria-checked={selected}
-      style={({ pressed }) => ({
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: selected ? C.olive : C.cardBg,
-        paddingVertical: 16,
-        paddingHorizontal: 18,
-        borderRadius: 20,
-        marginBottom: 10,
-        borderWidth: 1.5,
-        borderColor: selected ? C.olive : '#E8DDD9',
-        opacity: pressed ? 0.9 : 1,
-      })}
-    >
-      {icon ? (
-        <WellnessIconText
-          style={{ fontFamily: Typography.family.body, fontSize: 18, marginRight: 12 }}
-        >
-          {icon}
-        </WellnessIconText>
-      ) : null}
-      <Text
-        style={{
-          fontFamily: Typography.family.body,
-          fontSize: 15,
-          fontWeight: Typography.weight.semibold,
-          color: selected ? 'white' : C.brownLight,
-          flex: 1,
-        }}
-      >
-        {label}
-      </Text>
-      <View
-        style={{
-          width: 22,
-          height: 22,
-          borderRadius: multiple ? 5 : 11,
-          borderWidth: 2,
-          borderColor: selected ? 'rgba(255,255,255,0.7)' : '#D5CEC7',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        {selected &&
-          (multiple ? (
-            <MaterialIcons name="check" size={16} color="white" />
-          ) : (
-            <View style={{ width: 11, height: 11, borderRadius: 6, backgroundColor: 'white' }} />
-          ))}
-      </View>
-    </Pressable>
-  );
-}
-
-/* ── Sleep Quality Option ── */
-function SleepOption({
-  label,
-  emoji,
-  selected,
-  onPress,
-}: {
-  label: string;
-  emoji: string;
-  selected: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => ({
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: selected ? C.olive : C.cardBg,
-        paddingVertical: 14,
-        paddingHorizontal: 16,
-        borderRadius: 18,
-        marginBottom: 10,
-        borderWidth: 1.5,
-        borderColor: selected ? C.olive : '#E8DDD9',
-        gap: 12,
-        opacity: pressed ? 0.9 : 1,
-      })}
-    >
-      <View
-        style={{
-          width: 36,
-          height: 36,
-          borderRadius: 18,
-          backgroundColor: selected ? 'rgba(255,255,255,0.2)' : C.inputBg,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 18 }}>
-          {emoji}
-        </WellnessIconText>
-      </View>
-      <Text
-        style={{
-          fontFamily: Typography.family.body,
-          fontSize: 15,
-          fontWeight: Typography.weight.semibold,
-          color: selected ? 'white' : C.brownLight,
-          flex: 1,
-        }}
-      >
-        {label}
-      </Text>
-      <View
-        style={{
-          width: 22,
-          height: 22,
-          borderRadius: 11,
-          borderWidth: 2,
-          borderColor: selected ? 'rgba(255,255,255,0.7)' : '#D5CEC7',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        {selected && (
-          <View style={{ width: 11, height: 11, borderRadius: 6, backgroundColor: 'white' }} />
-        )}
-      </View>
-    </Pressable>
-  );
-}
-
-/* ── Stress Dot Selector ── */
-function StressDots({
-  value,
-  onChange,
-  max = 10,
-}: {
-  value: number;
-  onChange: (v: number) => void;
-  max?: number;
-}) {
-  const labels = ['None', '', '', 'Low', '', 'Moderate', '', 'High', '', '', 'Extreme'];
-
-  return (
-    <View style={{ alignItems: 'center' }}>
-      <Text
-        style={{
-          fontFamily: Typography.family.body,
-          fontSize: 72,
-          fontWeight: Typography.weight.semibold,
-          color: C.brownLight,
-          marginBottom: 8,
-        }}
-      >
-        {value}
-      </Text>
-      <Text
-        style={{
-          fontFamily: Typography.family.body,
-          fontSize: 14,
-          fontWeight: Typography.weight.semibold,
-          color: C.olive,
-          marginBottom: 24,
-          opacity: 0.9,
-        }}
-      >
-        {labels[value] || ''}
-      </Text>
-
-      <View
-        style={{
-          flexDirection: 'row',
-          justifyContent: 'center',
-          flexWrap: 'wrap',
-          gap: 8,
-        }}
-      >
-        {Array.from({ length: max + 1 }, (_, i) => {
-          const isSelected = i === value;
-          return (
-            <Pressable
-              key={i}
-              onPress={() => onChange(i)}
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                backgroundColor: isSelected ? C.olive : C.inputBg,
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderWidth: isSelected ? 0 : 1,
-                borderColor: '#E8DDD9',
-              }}
-            >
-              <Text
-                style={{
-                  fontFamily: Typography.family.body,
-                  fontSize: 14,
-                  fontWeight: Typography.weight.semibold,
-                  color: isSelected ? 'white' : C.brownLight,
-                }}
-              >
-                {i}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
-
-      {/* Scale label bar */}
-      <View
-        style={{
-          flexDirection: 'row',
-          justifyContent: 'space-between',
-          width: '100%',
-          marginTop: 12,
-          paddingHorizontal: 4,
-        }}
-      >
-        <Text
-          style={{
-            fontFamily: Typography.family.body,
-            fontSize: 11,
-            color: C.brownLight,
-            opacity: 0.5,
-          }}
-        >
-          No stress
-        </Text>
-        <Text
-          style={{
-            fontFamily: Typography.family.body,
-            fontSize: 11,
-            color: C.brownLight,
-            opacity: 0.5,
-          }}
-        >
-          Extreme
-        </Text>
-      </View>
-    </View>
-  );
-}
-
-/* ── Medication Tag ── */
-function MedTag({ label, onRemove }: { label: string; onRemove: () => void }) {
-  return (
-    <View
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: C.orangeLight,
-        paddingVertical: 10,
-        paddingHorizontal: 14,
-        borderRadius: 14,
-        marginBottom: 8,
-        gap: 10,
-      }}
-    >
-      <MaterialIcons name="medication" size={18} color={C.orange} />
-      <Text
-        style={{
-          fontFamily: Typography.family.body,
-          flex: 1,
-          fontSize: 14,
-          fontWeight: Typography.weight.semibold,
-          color: C.brownLight,
-        }}
-      >
-        {label}
-      </Text>
-      <Pressable onPress={onRemove} hitSlop={8}>
-        <MaterialIcons name="close" size={18} color={C.brownLight} style={{ opacity: 0.5 }} />
-      </Pressable>
-    </View>
-  );
-}
-
-/* ── Mood Chip ── */
-function MoodChip({
-  label,
-  emoji,
-  selected,
-  onPress,
-}: {
-  label: string;
-  emoji: string;
-  selected: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="checkbox"
-      accessibilityLabel={label}
-      accessibilityState={{ checked: selected }}
-      aria-checked={selected}
-      style={({ pressed }) => ({
-        flexDirection: 'column',
-        alignItems: 'center',
-        width: '22%',
-        minWidth: 60,
-        backgroundColor: selected ? C.olive : C.cardBg,
-        paddingVertical: 12,
-        paddingHorizontal: 16,
-        borderRadius: 16,
-        borderWidth: 1.5,
-        borderColor: selected ? C.olive : '#E8DDD9',
-        gap: 8,
-        opacity: pressed ? 0.9 : 1,
-      })}
-    >
-      <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 18 }}>
-        {emoji}
-      </WellnessIconText>
-      <Text
-        style={{
-          fontFamily: Typography.family.body,
-          fontSize: 14,
-          fontWeight: Typography.weight.semibold,
-          color: selected ? 'white' : C.brownLight,
-        }}
-      >
-        {label}
-      </Text>
-    </Pressable>
-  );
-}
-
-/* ── Playback Button ── */
-function PlaybackButton({ uri }: { uri: string }) {
-  const { t } = useTranslation();
-  const { play, pause, isPlaying } = usePlayer(uri);
-  return (
-    <Pressable
-      onPress={() => (isPlaying ? pause() : play())}
-      style={{
-        marginTop: 16,
-        backgroundColor: C.olive,
-        paddingHorizontal: 20,
-        paddingVertical: 12,
-        borderRadius: 20,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-      }}
-    >
-      <MaterialIcons name={isPlaying ? 'pause' : 'play-arrow'} size={20} color="white" />
-      <Text
-        style={{
-          fontFamily: Typography.family.body,
-          color: 'white',
-          fontWeight: Typography.weight.semibold,
-          fontSize: 14,
-        }}
-      >
-        {isPlaying ? t('common.pause') : t('common.playRecording')}
-      </Text>
-    </Pressable>
-  );
-}
-
-/* ── Types & Steps ── */
-type Assessment = {
-  goal?: string | null;
-  gender?: string | null;
-  age?: string | null;
-  weight?: number | null;
-  weightUnit?: 'kg' | 'lbs' | null;
-  mood?: string | null;
-  soughtHelpBefore?: string | null;
-  physicalDistress?: string | null;
-  physicalDistressNotes?: string | null;
-  sleepQuality?: number | null;
-  takingMeds?: string | null;
-  meds?: string | null;
-  otherSymptoms?: string | null;
-  stressLevel?: number | null;
-  soundCheck?: {
-    uri: string;
-    durationMs: number;
-    transcript: string;
-    metrics: { words: number; wpm: number; fillerCount: number };
-  } | null;
-  expressionCheck?: {
-    uri: string;
-    durationMs: number;
-    transcript: string;
-    metrics: { words: number; wpm: number; fillerCount: number };
-    matchScore: number;
-  } | null;
-  createdAt: string;
-};
-
-const EXPRESSION_PHRASE = 'I am here, taking a moment for myself.';
-
-/* ── Mood presets ── */
-const MOOD_OPTIONS = [
-  { label: 'Happy', emoji: '😊' },
-  { label: 'Calm', emoji: '😌' },
-  { label: 'Anxious', emoji: '😰' },
-  { label: 'Sad', emoji: '😢' },
-  { label: 'Angry', emoji: '😤' },
-  { label: 'Tired', emoji: '😴' },
-  { label: 'Neutral', emoji: '😐' },
-  { label: 'Hopeful', emoji: '🌱' },
-];
-
-/* ── Sleep quality labels ── */
-const SLEEP_OPTIONS = [
-  { value: 5, label: 'Excellent', emoji: '🌟' },
-  { value: 4, label: 'Good', emoji: '😊' },
-  { value: 3, label: 'Fair', emoji: '😐' },
-  { value: 2, label: 'Poor', emoji: '😞' },
-  { value: 1, label: 'Very Poor', emoji: '😫' },
-];
-
-/* ── Physical distress options ── */
-const PHYSICAL_OPTIONS = [
-  { label: 'Yes, one or multiple', value: 'Yes' },
-  { label: 'No physical pain at all', value: 'No' },
-  { label: 'Not sure / prefer not to say', value: 'Not sure' },
-];
-
-/* ════════════════════════════════════════════════
- *  MAIN COMPONENT
- * ════════════════════════════════════════════════ */
 export default function AssessmentScreen() {
   const { saveAssessment, isSavingAssessment } = useProfile();
+  const { saveScore } = useFreudScore({ lazy: true });
   const { data: user } = useUser();
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const dy = useFrameOffset();
+  const sx = width / 375;
+
+  const [a, setA] = useState<AssessmentAnswers>(freshAnswers);
   const [step, setStep] = useState(0);
-
-  const YESNO = [
-    { label: t('common.yes'), value: 'Yes' },
-    { label: t('common.no'), value: 'No' },
-    { label: t('common.notSure'), value: 'Not sure' },
-  ];
-
-  const GENDER = [
-    { label: t('common.woman'), value: 'Woman', icon: '👩' },
-    { label: t('common.man'), value: 'Man', icon: '👨' },
-    { label: t('common.nonBinary'), value: 'Non-binary', icon: '🧑' },
-    { label: t('common.preferNotToSay'), value: 'Prefer not to say', icon: '🤐' },
-  ];
-
-  const SOUND_PHRASES = useMemo(() => ['I am here, taking a moment for myself.'], []);
-
-  const [a, setA] = useState<Assessment>({
-    createdAt: new Date().toISOString(),
-    weight: 70,
-    weightUnit: 'kg',
-  });
-
   const [draftOwner, setDraftOwner] = useState<string | null>(null);
   const draftWrites = useRef(Promise.resolve());
   const finishing = useRef(false);
 
+  const set = (patch: Partial<AssessmentAnswers>) => setA((prev) => ({ ...prev, ...patch }));
+  const en = (key: string) => t(key, { lng: 'en' });
+
+  // Load this user's draft, from this screen or the previous one.
   useEffect(() => {
     let active = true;
     setDraftOwner(null);
     if (!user?.id) return;
     const owner = user.id;
-    setA({ createdAt: new Date().toISOString(), weight: 70, weightUnit: 'kg' });
+    setA(freshAnswers());
     setStep(0);
-    void AsyncStorage.getItem(userScopedKey('assessment:draft:v1', owner))
+    void AsyncStorage.getItem(userScopedKey(DRAFT_KEY, owner))
       .then((raw) => {
         if (!active) return;
-        if (raw) {
-          try {
-            const draft = JSON.parse(raw);
-            if (
-              draft.answers &&
-              typeof draft.answers.createdAt === 'string' &&
-              ['goal', 'mood', 'gender', 'age', 'meds', 'takingMeds', 'otherSymptoms'].every(
-                (field) => draft.answers[field] == null || typeof draft.answers[field] === 'string',
-              ) &&
-              ['weight', 'sleepQuality', 'stressLevel'].every(
-                (field) =>
-                  draft.answers[field] == null ||
-                  (typeof draft.answers[field] === 'number' &&
-                    Number.isFinite(draft.answers[field])),
-              )
-            ) {
-              setA(draft.answers);
-              const visible = getAssessmentSteps(draft.answers.takingMeds);
-              setStep(Math.max(0, visible.indexOf(draft.step)));
-            }
-          } catch {
-            /* A malformed local draft must not block onboarding. */
+        try {
+          const draft = raw ? normaliseDraft(JSON.parse(raw)) : null;
+          if (draft) {
+            setA({ ...freshAnswers(), ...Object.fromEntries(Object.entries(draft.answers).filter(([, v]) => v != null)) } as AssessmentAnswers);
+            const visible = getAssessmentSteps(draft.answers.takingMeds);
+            setStep(Math.max(0, draft.step ? visible.indexOf(draft.step) : 0));
           }
+        } catch {
+          /* A malformed local draft must not block onboarding. */
         }
         setDraftOwner(owner);
       })
@@ -861,64 +105,71 @@ export default function AssessmentScreen() {
     };
   }, [user?.id]);
 
+  // Save the draft after every change.
   useEffect(() => {
     if (!draftOwner || draftOwner !== user?.id || finishing.current) return;
-    const storageKey = userScopedKey('assessment:draft:v1', draftOwner);
     const value = JSON.stringify({ answers: a, step: getAssessmentSteps(a.takingMeds)[step] });
-    draftWrites.current = draftWrites.current
-      .then(() => AsyncStorage.setItem(storageKey, value))
-      .catch(() => {});
+    draftWrites.current = draftWrites.current.then(() => AsyncStorage.setItem(userScopedKey(DRAFT_KEY, draftOwner), value)).catch(() => {});
   }, [a, step, draftOwner, user?.id]);
 
-  const { startRecording, stopRecording, isRecording } = useRecorder();
-  const [recordingFor, setRecordingFor] = useState<null | 'sound' | 'expression'>(null);
-  const [draftTranscript, setDraftTranscript] = useState('');
-  const [highlightedWordIndex] = useState(-1);
-  const [medInput, setMedInput] = useState('');
-
   const steps = useMemo(() => getAssessmentSteps(a.takingMeds), [a.takingMeds]);
-  const key = steps[step];
+  const key: AssessmentStep = steps[Math.min(step, steps.length - 1)];
 
-  // Parse meds string into array for tag display
-  const medsArray = useMemo(() => {
-    if (!a.meds) return [];
-    return a.meds
-      .split(',')
-      .map((m) => m.trim())
-      .filter(Boolean);
-  }, [a.meds]);
-
-  const canContinue = useMemo(() => {
-    if (key === 'goal') return Boolean(a.goal?.trim());
-    if (key === 'mood') return Boolean(a.mood?.trim());
-    if (key === 'medsSpecify') return a.takingMeds !== 'Yes' || Boolean(a.meds?.trim());
-    return true;
-  }, [key, a]);
-
-  async function next() {
-    if (!canContinue) {
-      toast.warning(t('common.fillStepToContinue'));
-      return;
+  const canContinue = (() => {
+    switch (key) {
+      case 'goal':
+        return !!a.goal;
+      case 'gender':
+        return a.gender === 'Man' || a.gender === 'Woman';
+      case 'help':
+        return !!a.soughtHelpBefore;
+      case 'physical':
+        return !!a.physicalDistress;
+      case 'sleep':
+        return !!a.sleepQuality;
+      case 'meds':
+        return !!a.takingMeds;
+      case 'medsSpecify':
+        return (a.medications?.length ?? 0) > 0;
+      case 'stress':
+        return !!a.stressBand;
+      default:
+        return true;
     }
-    if (step === steps.length - 1) {
-      finishing.current = true;
-      try {
-        await saveAssessment(a);
-        const storageKey = userScopedKey('assessment:v1', user?.id);
-        await AsyncStorage.setItem(storageKey, JSON.stringify(a));
-        await draftWrites.current;
-        await AsyncStorage.removeItem(userScopedKey('assessment:draft:v1', user?.id));
-        router.replace('/(onboarding)/assessment-summary');
-      } catch {
-        finishing.current = false;
-        toast.error(
-          'Your assessment could not be saved. Please try again. Your answers are still here.',
-        );
-      }
+  })();
+
+  async function finish() {
+    finishing.current = true;
+    const medications = a.medications ?? [];
+    const payload = {
+      ...a,
+      medications: (steps.includes('medsSpecify') ? medications : []) as unknown,
+      meds: steps.includes('medsSpecify') ? medicationsText(medications) : null,
+      reflectionText: a.reflectionText?.trim() || null,
+    };
+    try {
+      await saveAssessment(payload);
+      await AsyncStorage.setItem(userScopedKey('assessment:v1', user?.id), JSON.stringify(payload));
+      await draftWrites.current;
+      await AsyncStorage.removeItem(userScopedKey(DRAFT_KEY, user?.id));
+      // The starting Glow score that profile setup shows on "You're all set". A failure here must not
+      // block onboarding; the score is recalculated from check-ins later.
+      await saveScore({ result: calculateInitialFreudScore(payload), generateSuggestions: true }).catch((err) =>
+        console.warn('[Assessment] Failed to save the starting score:', err),
+      );
+      router.replace('/(onboarding)/profile-setup');
+    } catch {
+      finishing.current = false;
+      toast.error(t('assessmentFlow.saveFailed'));
+    }
+  }
+
+  function next() {
+    if (step >= steps.length - 1) {
+      void finish();
       return;
     }
     setStep((s) => Math.min(s + 1, steps.length - 1));
-    setDraftTranscript('');
   }
 
   function back() {
@@ -927,721 +178,304 @@ export default function AssessmentScreen() {
       return;
     }
     setStep((s) => Math.max(s - 1, 0));
-    setDraftTranscript('');
   }
 
-  async function startRec(kind: 'sound' | 'expression') {
-    try {
-      setRecordingFor(kind);
-      await startRecording();
-    } catch (e) {
-      setRecordingFor(null);
-      toast.error(t('common.allowMicAccess'));
-      console.error('Recording start error:', e);
-    }
-  }
-
-  async function stopRec(target?: 'sound' | 'expression') {
-    const kind = target ?? recordingFor;
-    if (!isRecording && !kind) return;
-    try {
-      const { uri, durationMs } = await stopRecording();
-      const transcript = draftTranscript.trim() || SOUND_PHRASES[0].replace(',', '');
-      const metrics = computeVoiceMetrics(durationMs, transcript);
-      if (kind === 'sound') {
-        setA((prev) => ({ ...prev, soundCheck: { uri, durationMs, transcript, metrics } }));
-      } else {
-        const phrase = EXPRESSION_PHRASE.toLowerCase().replaceAll(/[^a-z\s]/g, '');
-        const said = transcript.toLowerCase().replaceAll(/[^a-z\s]/g, '');
-        const phraseWords = new Set(phrase.split(/\s+/).filter(Boolean));
-        const saidWords = new Set(said.split(/\s+/).filter(Boolean));
-        let hit = 0;
-        phraseWords.forEach((w) => {
-          if (saidWords.has(w)) hit += 1;
-        });
-        const matchScore = phraseWords.size ? Math.round((hit / phraseWords.size) * 100) : 0;
-        setA((prev) => ({
-          ...prev,
-          expressionCheck: { uri, durationMs, transcript, metrics, matchScore },
-        }));
-      }
-      setRecordingFor(null);
-      setDraftTranscript('');
-    } catch (e) {
-      setRecordingFor(null);
-      toast.error(t('common.couldNotSaveRecording'));
-      console.error('Recording stop error:', e);
-    }
-  }
-
-  function addMed() {
-    const med = medInput.trim();
-    if (!med) return;
-    const current = medsArray;
-    if (!current.includes(med)) {
-      setA((p) => ({ ...p, meds: [...current, med].join(', ') }));
-    }
-    setMedInput('');
-  }
-
-  function removeMed(index: number) {
-    const updated = medsArray.filter((_, i) => i !== index);
-    setA((p) => ({ ...p, meds: updated.length ? updated.join(', ') : null }));
-  }
-
-  /* ── Step renderer ── */
-  function renderStep() {
-    switch (key) {
-      case 'goal': {
-        const goalOpts = [
-          { label: t('assessment.goalOptions.reduceStress'), icon: '🧘' },
-          { label: t('assessment.goalOptions.tryAISupport'), icon: '🤖' },
-          { label: t('assessment.goalOptions.workThroughExperiences'), icon: '💭' },
-          { label: t('assessment.goalOptions.growAndUnderstand'), icon: '🌱' },
-          { label: t('assessment.goalOptions.justChecking'), icon: '👋' },
-        ];
-        return (
-          <>
-            <Text style={styles.h2}>{t('assessment.goalTitle')}</Text>
-            <Text style={styles.sub}>
-              {t('assessment.selectAll', { defaultValue: 'Select all that apply.' })}
-            </Text>
-            <View style={{ marginTop: 20 }}>
-              {goalOpts.map((opt) => (
-                <RadioOption
-                  key={opt.label}
-                  label={opt.label}
-                  icon={opt.icon}
-                  multiple
-                  selected={readAssessmentAnswer(
-                    a.goal,
-                    goalOpts.map((o) => o.label),
-                  ).selected.includes(opt.label)}
-                  onPress={() =>
-                    setA((p) => ({
-                      ...p,
-                      goal: toggleAssessmentAnswer(
-                        p.goal,
-                        opt.label,
-                        goalOpts.map((o) => o.label),
-                      ),
-                    }))
-                  }
-                />
-              ))}
-            </View>
-            <TextInput
-              value={
-                readAssessmentAnswer(
-                  a.goal,
-                  goalOpts.map((o) => o.label),
-                ).custom
-              }
-              onChangeText={(text) =>
-                setA((p) => ({
-                  ...p,
-                  goal: writeAssessmentAnswer(
-                    readAssessmentAnswer(
-                      p.goal,
-                      goalOpts.map((o) => o.label),
-                    ).selected,
-                    text,
-                  ),
-                }))
-              }
-              placeholder={t('assessment.goalPlaceholder')}
-              placeholderTextColor="rgba(0,0,0,0.25)"
-              style={styles.input}
-            />
-          </>
-        );
-      }
-
-      case 'gender':
-        return (
-          <>
-            <Text style={styles.h2}>{t('assessment.genderTitle')}</Text>
-            <View style={{ marginTop: 20 }}>
-              {GENDER.map((opt) => (
-                <RadioOption
-                  key={opt.value}
-                  label={opt.label}
-                  icon={opt.icon}
-                  selected={a.gender === opt.value}
-                  onPress={() => setA((p) => ({ ...p, gender: opt.value }))}
-                />
-              ))}
-            </View>
-          </>
-        );
-
-      case 'age':
-        return (
-          <>
-            <Text style={styles.h2}>{t('assessment.ageTitle')}</Text>
-            <View style={{ marginTop: 30 }}>
-              <HorizontalRuler
-                min={13}
-                max={100}
-                value={parseInt(a.age || '18', 10)}
-                onChange={(v) => setA((p) => ({ ...p, age: String(v) }))}
-              />
-            </View>
-          </>
-        );
-
-      case 'weight':
-        return (
-          <>
-            <Text style={styles.h2}>{t('assessment.weightTitle')}</Text>
-            <View style={{ marginTop: 24 }}>
-              <UnitToggle
-                value={a.weightUnit ?? 'kg'}
-                onChange={(v) => setA((p) => ({ ...p, weightUnit: v }))}
-              />
-              <HorizontalRuler
-                min={a.weightUnit === 'lbs' ? 80 : 40}
-                max={a.weightUnit === 'lbs' ? 400 : 200}
-                value={a.weight ?? 70}
-                unit={a.weightUnit ?? 'kg'}
-                onChange={(v) => setA((p) => ({ ...p, weight: v }))}
-              />
-            </View>
-          </>
-        );
-
-      case 'mood':
-        return (
-          <>
-            <Text style={styles.h2}>{t('assessment.moodTitle')}</Text>
-            <Text style={styles.sub}>
-              {t('assessment.selectAll', { defaultValue: 'Select all that apply.' })}
-            </Text>
-
-            <View
-              style={{
-                flexDirection: 'row',
-                flexWrap: 'wrap',
-                gap: 10,
-                marginTop: 20,
-                justifyContent: 'center',
-              }}
-            >
-              {MOOD_OPTIONS.map((opt) => (
-                <MoodChip
-                  key={opt.label}
-                  label={opt.label}
-                  emoji={opt.emoji}
-                  selected={readAssessmentAnswer(
-                    a.mood,
-                    MOOD_OPTIONS.map((o) => o.label),
-                  ).selected.includes(opt.label)}
-                  onPress={() =>
-                    setA((p) => ({
-                      ...p,
-                      mood: toggleAssessmentAnswer(
-                        p.mood,
-                        opt.label,
-                        MOOD_OPTIONS.map((o) => o.label),
-                      ),
-                    }))
-                  }
-                />
-              ))}
-            </View>
-
-            <TextInput
-              value={
-                readAssessmentAnswer(
-                  a.mood,
-                  MOOD_OPTIONS.map((o) => o.label),
-                ).custom
-              }
-              onChangeText={(text) =>
-                setA((p) => ({
-                  ...p,
-                  mood: writeAssessmentAnswer(
-                    readAssessmentAnswer(
-                      p.mood,
-                      MOOD_OPTIONS.map((o) => o.label),
-                    ).selected,
-                    text,
-                  ),
-                }))
-              }
-              placeholder={t('assessment.moodPlaceholder')}
-              placeholderTextColor="rgba(0,0,0,0.25)"
-              style={[styles.input, { marginTop: 16 }]}
-            />
-          </>
-        );
-
-      case 'help':
-        return (
-          <>
-            <Text style={styles.h2}>{t('assessment.helpTitle')}</Text>
-            <View style={{ marginTop: 20 }}>
-              {YESNO.map((opt) => (
-                <RadioOption
-                  key={opt.value}
-                  label={opt.label}
-                  selected={a.soughtHelpBefore === opt.value}
-                  onPress={() => setA((p) => ({ ...p, soughtHelpBefore: opt.value }))}
-                />
-              ))}
-            </View>
-          </>
-        );
-
-      case 'physical':
-        return (
-          <>
-            <Text style={styles.h2}>{t('assessment.physicalTitle')}</Text>
-            <View style={{ marginTop: 20 }}>
-              {PHYSICAL_OPTIONS.map((opt) => (
-                <RadioOption
-                  key={opt.value}
-                  label={opt.label}
-                  selected={a.physicalDistress === opt.value}
-                  onPress={() => setA((p) => ({ ...p, physicalDistress: opt.value }))}
-                />
-              ))}
-            </View>
-            {a.physicalDistress === 'Yes' && (
-              <TextInput
-                value={a.physicalDistressNotes ?? ''}
-                onChangeText={(t) => setA((p) => ({ ...p, physicalDistressNotes: t }))}
-                placeholder={t('assessment.physicalPlaceholder')}
-                placeholderTextColor="rgba(0,0,0,0.25)"
-                multiline
-                style={[styles.input, { height: 80, marginTop: 14 }]}
-              />
-            )}
-          </>
-        );
-
-      case 'sleep':
-        return (
-          <>
-            <Text style={styles.h2}>{t('assessment.sleepTitle')}</Text>
-            <View style={{ marginTop: 20 }}>
-              {SLEEP_OPTIONS.map((opt) => (
-                <SleepOption
-                  key={opt.value}
-                  label={opt.label}
-                  emoji={opt.emoji}
-                  selected={a.sleepQuality === opt.value}
-                  onPress={() =>
-                    setA((p) => ({ ...p, sleepQuality: opt.value as 1 | 2 | 3 | 4 | 5 }))
-                  }
-                />
-              ))}
-            </View>
-          </>
-        );
-
-      case 'meds':
-        return (
-          <>
-            <Text style={styles.h2}>{t('assessment.medsTitle')}</Text>
-            <View style={{ marginTop: 20 }}>
-              {YESNO.map((opt) => (
-                <RadioOption
-                  key={opt.value}
-                  label={opt.label}
-                  selected={a.takingMeds === opt.value}
-                  onPress={() => {
-                    setA((p) => ({
-                      ...p,
-                      takingMeds: opt.value,
-                      meds: opt.value === 'Yes' ? (p.meds ?? '') : null,
-                    }));
-                    if (opt.value !== 'Yes') setMedInput('');
-                  }}
-                />
-              ))}
-            </View>
-          </>
-        );
-
-      case 'medsSpecify':
-        return (
-          <>
-            <Text style={styles.h2}>{t('assessment.medsSpecifyTitle')}</Text>
-            <Text style={styles.sub}>{t('assessment.medsSpecifySubtitle')}</Text>
-
-            {/* Tag list */}
-            {medsArray.length > 0 && (
-              <View style={{ marginTop: 16 }}>
-                {medsArray.map((med, i) => (
-                  <MedTag key={`${med}-${i}`} label={med} onRemove={() => removeMed(i)} />
-                ))}
-              </View>
-            )}
-
-            {/* Input with add button */}
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                marginTop: 12,
-                gap: 8,
-              }}
-            >
-              <TextInput
-                value={medInput}
-                onChangeText={setMedInput}
-                placeholder={t('assessment.medsPlaceholder')}
-                placeholderTextColor="rgba(0,0,0,0.25)"
-                onSubmitEditing={addMed}
-                returnKeyType="done"
-                style={[styles.input, { flex: 1, marginTop: 0 }]}
-              />
-              <Pressable
-                onPress={addMed}
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 14,
-                  backgroundColor: C.olive,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <MaterialIcons name="add" size={22} color="white" />
-              </Pressable>
-            </View>
-          </>
-        );
-
-      case 'symptoms':
-        return (
-          <>
-            <Text style={styles.h2}>{t('assessment.symptomsTitle')}</Text>
-            <Text style={styles.sub}>{t('assessment.symptomsSubtitle')}</Text>
-            <TextInput
-              value={a.otherSymptoms ?? ''}
-              onChangeText={(t) => setA((p) => ({ ...p, otherSymptoms: t }))}
-              placeholder={t('assessment.symptomsPlaceholder')}
-              placeholderTextColor="rgba(0,0,0,0.25)"
-              multiline
-              style={[styles.input, { height: 120, marginTop: 16, textAlignVertical: 'top' }]}
-            />
-          </>
-        );
-
-      case 'stress':
-        return (
-          <>
-            <Text style={styles.h2}>{t('assessment.stressTitle')}</Text>
-            <View style={{ marginTop: 24 }}>
-              <StressDots
-                value={a.stressLevel ?? 5}
-                onChange={(v) => setA((p) => ({ ...p, stressLevel: v as MoodCheckIn['stress'] }))}
-              />
-            </View>
-          </>
-        );
-
-      case 'sound':
-        return (
-          <View style={{ alignItems: 'center', marginTop: 10 }}>
-            <Text style={[styles.h2, { marginBottom: 8 }]}>{t('assessment.soundTitle')}</Text>
-            <Text style={[styles.sub, { marginBottom: 30 }]}>{t('assessment.soundSubtitle')}</Text>
-
-            <Pressable
-              onPress={() =>
-                recordingFor === 'sound' || isRecording ? stopRec('sound') : startRec('sound')
-              }
-            >
-              <SoundPulse active={recordingFor === 'sound' || isRecording} />
-              {!isRecording && !a.soundCheck && (
-                <View
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                  }}
-                >
-                  <MaterialIcons name="mic" size={32} color="white" />
-                  <Text
-                    style={{
-                      fontFamily: Typography.family.body,
-                      color: 'white',
-                      fontWeight: Typography.weight.semibold,
-                      fontSize: 11,
-                      marginTop: 4,
-                      textTransform: 'uppercase',
-                      letterSpacing: 1,
-                    }}
-                  >
-                    {t('common.tapToStart', { defaultValue: 'Tap to start' })}
-                  </Text>
-                </View>
-              )}
-              {isRecording && (
-                <View
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                  }}
-                >
-                  <MaterialIcons name="stop" size={32} color="white" />
-                </View>
-              )}
-              {a.soundCheck && !isRecording && (
-                <View
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                  }}
-                >
-                  <MaterialIcons name="check" size={36} color="white" />
-                </View>
-              )}
-            </Pressable>
-
-            {a.soundCheck && !isRecording && <PlaybackButton uri={a.soundCheck.uri} />}
-
-            {/* Phrase display */}
-            <View
-              style={{
-                marginTop: 28,
-                padding: 20,
-                borderRadius: 20,
-                backgroundColor: C.inputBg,
-                width: '100%',
-              }}
-            >
-              <Text
-                style={{
-                  fontFamily: Typography.family.body,
-                  fontSize: 11,
-                  fontWeight: Typography.weight.semibold,
-                  color: C.brownText,
-                  textTransform: 'uppercase',
-                  letterSpacing: 1,
-                  marginBottom: 10,
-                  textAlign: 'center',
-                }}
-              >
-                {t('assessment.yourWords')}
-              </Text>
-              <View
-                style={{
-                  flexDirection: 'row',
-                  flexWrap: 'wrap',
-                  justifyContent: 'center',
-                  gap: 6,
-                }}
-              >
-                {SOUND_PHRASES[0].split(/\s+/).map((word, i) => {
-                  const isHighlighted = i === highlightedWordIndex;
-                  return (
-                    <View
-                      key={`${word}-${i}`}
-                      style={{
-                        backgroundColor: isHighlighted ? C.olive : 'transparent',
-                        paddingHorizontal: 6,
-                        paddingVertical: 3,
-                        borderRadius: 8,
-                      }}
-                    >
-                      <Text
-                        style={{
-                          fontFamily: Typography.family.body,
-                          fontSize: 20,
-                          fontWeight: Typography.weight.semibold,
-                          color: isHighlighted ? 'white' : C.brownLight,
-                        }}
-                      >
-                        {word}
-                      </Text>
-                    </View>
-                  );
-                })}
-              </View>
-            </View>
-          </View>
-        );
-
-      default:
-        return null;
-    }
-  }
-
-  /* ── Main render ── */
-  return (
-    <View
-      style={{
-        flex: 1,
-        backgroundColor: C.pageBg,
-        paddingHorizontal: 20,
-        paddingTop: insets.top + 16,
-      }}
-    >
-      {/* Header */}
-      <View
-        style={{
-          flexDirection: 'row',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 14,
-        }}
-      >
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <Pressable
-            onPress={back}
-            style={{
-              width: 42,
-              height: 42,
-              borderRadius: 21,
-              borderWidth: 1.5,
-              borderColor: 'rgba(150,120,78,0.3)',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: C.pageBg,
-            }}
-          >
-            <MaterialIcons name="arrow-back" size={20} color={C.brownText} />
-          </Pressable>
-          <Text style={{ ...Typography.heading, color: C.brownText }}>
-            {t('assessment.assessmentTitle')}
-          </Text>
-        </View>
-        <View
-          style={{
-            backgroundColor: C.tagBg,
-            paddingHorizontal: 12,
-            paddingVertical: 6,
-            borderRadius: 12,
-          }}
-        >
-          <Text
-            style={{
-              fontFamily: Typography.family.body,
-              color: C.brownText,
-              fontSize: 12,
-              fontWeight: Typography.weight.semibold,
-            }}
-          >
-            {t('assessment.stepCount', { current: step + 1, total: steps.length })}
-          </Text>
-        </View>
-      </View>
-
-      {/* Progress bar */}
-      <ProgressBar current={step} total={steps.length} />
-
-      {/* Scrollable content */}
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: 40 }}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        {/* Card */}
-        <View
-          style={{
-            paddingVertical: 24,
-            paddingHorizontal: 20,
-            backgroundColor: C.cardBg,
-            borderRadius: 28,
-            minHeight: 380,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.04,
-            shadowRadius: 12,
-            elevation: 2,
-          }}
-        >
-          {renderStep()}
-        </View>
-
-        {/* Continue button */}
-        <Pressable
-          onPress={next}
-          accessibilityRole="button"
-          accessibilityLabel={
-            step === steps.length - 1 ? t('assessment.complete') : t('assessment.next')
-          }
-          disabled={!canContinue || isSavingAssessment || (!!user?.id && draftOwner !== user.id)}
-          style={({ pressed }) => ({
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 10,
-            paddingVertical: 18,
-            borderRadius: 30,
-            backgroundColor: canContinue ? C.brown : 'rgba(160,123,85,0.4)',
-            marginTop: 20,
-            opacity: pressed ? 0.9 : 1,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.1,
-            shadowRadius: 10,
-            elevation: 4,
-          })}
-        >
-          <Text
-            style={{
-              fontFamily: Typography.family.body,
-              color: 'white',
-              fontWeight: Typography.weight.semibold,
-              fontSize: 17,
-            }}
-          >
-            {step === steps.length - 1 ? t('assessment.complete') : t('assessment.next')}
-          </Text>
-          <MaterialIcons name="arrow-forward" size={20} color="white" />
-        </Pressable>
-      </ScrollView>
-    </View>
+  const continueButton = (
+    <AppButton title={t('assessmentFlow.continue')} onPress={next} disabled={!canContinue} busy={isSavingAssessment && step === steps.length - 1} />
   );
-}
+  const rampGlow: GlowSpec = { color: stepGlow(step), opacity: step === 0 ? 0.28 : key === 'write' ? 0.18 : 0.14, x: 37, y: -20, width: 300, blur: 90 };
 
-/* ── Shared styles ── */
-const styles: any = {
-  h2: {
-    fontFamily: Typography.family.body,
-    fontSize: 24,
-    fontWeight: Typography.weight.semibold,
-    textAlign: 'center',
-    color: C.brownLight,
-    lineHeight: 32,
-  },
-  sub: {
-    fontFamily: Typography.family.body,
-    opacity: 0.6,
-    marginTop: 8,
-    textAlign: 'center',
-    color: C.brownLight,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  input: {
-    fontFamily: Typography.family.body,
-    marginTop: 14,
-    paddingHorizontal: 16,
-    paddingVertical: Platform.OS === 'ios' ? 14 : 10,
-    borderRadius: 16,
-    backgroundColor: C.inputBg,
-    fontSize: 15,
-    fontWeight: Typography.weight.medium,
-    color: C.brownLight,
-  },
-};
+  const shell = {
+    navTitle: t('assessmentFlow.title'),
+    backLabel: t('common.back'),
+    onBack: back,
+    stepLabel: t('assessmentFlow.stepTag', { current: step + 1, total: steps.length }),
+    glows: [rampGlow],
+    actions: continueButton,
+  };
+
+  switch (key) {
+    case 'goal':
+      return (
+        <AssessmentShell {...shell} title={t('assessmentFlow.goal.title')}>
+          <View style={{ gap: 12 }} accessibilityRole="radiogroup">
+            {GOAL_KEYS.map((k) => {
+              const value = en(`assessment.goalOptions.${k}`);
+              return <OptionRow key={k} label={t(`assessment.goalOptions.${k}`)} selected={a.goal === value} onPress={() => set({ goal: value })} />;
+            })}
+          </View>
+          <LegalNote text={t('assessmentFlow.goal.note')} style={{ marginTop: 16, marginHorizontal: 8 }} />
+        </AssessmentShell>
+      );
+
+    case 'gender':
+      return (
+        <AssessmentShell
+          {...shell}
+          title={t('assessmentFlow.gender.title')}
+          titleGap={40}
+          actions={
+            <>
+              <AppButton
+                variant="secondary"
+                title={t('assessmentFlow.gender.skip')}
+                onPress={() => {
+                  set({ gender: 'Prefer not to say' });
+                  next();
+                }}
+              />
+              {continueButton}
+            </>
+          }
+        >
+          <View style={{ gap: 8 }} accessibilityRole="radiogroup">
+            <GenderCard kind="male" label={t('assessmentFlow.gender.male')} selected={a.gender === 'Man'} onPress={() => set({ gender: 'Man' })} />
+            <GenderCard kind="female" label={t('assessmentFlow.gender.female')} selected={a.gender === 'Woman'} onPress={() => set({ gender: 'Woman' })} />
+          </View>
+        </AssessmentShell>
+      );
+
+    case 'age': {
+      const age = Number(a.age) || DEFAULT_AGE;
+      return (
+        <AssessmentShell
+          {...shell}
+          title={t('assessmentFlow.age.title')}
+          scroll={false}
+          background={
+            <View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }}>
+              <Glow color={palette.mustard} opacity={0.28} width={260} blur={50} style={{ position: 'absolute', left: 57.5 * sx, top: 306 + dy }} />
+              <Glow color={palette.lavenderSoft} opacity={0.25} width={170} blur={40} style={{ position: 'absolute', left: 152.5 * sx, top: 371 + dy }} />
+              <AgeAura width={264.8} height={247.1} style={{ position: 'absolute', left: 184.8 * sx - 132.4, top: 318.3 + dy }} />
+            </View>
+          }
+        >
+          <AgeWheel value={age} onChange={(v) => set({ age: String(v) })} accessibilityLabel={t('assessmentFlow.age.a11y')} />
+        </AssessmentShell>
+      );
+    }
+
+    case 'weight':
+      return (
+        <AssessmentShell {...shell} title={t('assessmentFlow.weight.title')}>
+          <WeightPicker
+            value={a.weight ?? 70}
+            unit={a.weightUnit ?? 'kg'}
+            onChange={(weight, weightUnit) => set({ weight, weightUnit })}
+            labels={{ kg: t('assessmentFlow.weight.kg'), lbs: t('assessmentFlow.weight.lbs'), a11y: t('assessmentFlow.weight.a11y') }}
+          />
+        </AssessmentShell>
+      );
+
+    case 'mood': {
+      const score = (a.moodScore ?? 3) as MoodScore;
+      return (
+        <AssessmentShell
+          {...shell}
+          title={t('assessmentFlow.mood.title')}
+          titleWidth={290}
+          titleGap={270}
+          scroll={false}
+          background={<MoodOrb score={score} style={{ position: 'absolute', left: (width - 320) / 2, top: 370 - 160 + dy }} />}
+        >
+          <Text style={[Type.titleXl, { letterSpacing: 0, color: palette.ink, textAlign: 'center' }]} accessibilityLiveRegion="polite">
+            {t(`moodScale.${moodStep(score).key}`)}
+          </Text>
+          <MoodSlider
+            size="full"
+            value={score}
+            onChange={(s) => set({ moodScore: s, mood: en(`moodScale.${moodStep(s).key}`) })}
+            startLabel={t(`moodScale.${MOOD_SCALE[0].key}`)}
+            endLabel={t(`moodScale.${MOOD_SCALE[4].key}`)}
+            accessibilityLabel={t('assessmentFlow.mood.a11y')}
+            style={{ marginTop: 26, marginHorizontal: 20 }}
+          />
+        </AssessmentShell>
+      );
+    }
+
+    case 'help':
+      return (
+        <AssessmentShell {...shell} title={t('assessmentFlow.help.title')}>
+          <View style={{ width: 286, height: 286, alignSelf: 'center' }} pointerEvents="none">
+            <Glow color={palette.mustard} opacity={0.28} width={240} blur={50} style={{ position: 'absolute', left: 23, top: 23 }} />
+            <Glow color={palette.lavenderSoft} opacity={0.25} width={160} blur={40} style={{ position: 'absolute', left: 113, top: 83 }} />
+            <ThoughtsToCalm width={286} height={286} style={{ position: 'absolute' }} />
+            <Glow color={palette.gold} opacity={1} width={22} blur={6} style={{ position: 'absolute', left: 142, top: 150 }} />
+          </View>
+          <View style={{ flexDirection: 'row', gap: 12, marginTop: 48 }} accessibilityRole="radiogroup">
+            <PairOption label={t('assessmentFlow.help.yes')} selected={a.soughtHelpBefore === 'Yes'} onPress={() => set({ soughtHelpBefore: 'Yes' })} />
+            <PairOption label={t('assessmentFlow.help.no')} selected={a.soughtHelpBefore === 'No'} onPress={() => set({ soughtHelpBefore: 'No' })} />
+          </View>
+        </AssessmentShell>
+      );
+
+    case 'physical':
+      return (
+        <AssessmentShell {...shell} title={t('assessmentFlow.physical.title')}>
+          <View style={{ gap: 12 }} accessibilityRole="radiogroup">
+            <DistressCard
+              icon="line/activity"
+              title={t('assessmentFlow.physical.yesTitle')}
+              body={t('assessmentFlow.physical.yesBody')}
+              selected={a.physicalDistress === 'Yes'}
+              onPress={() => set({ physicalDistress: 'Yes' })}
+            />
+            <DistressCard
+              icon="line/check"
+              title={t('assessmentFlow.physical.noTitle')}
+              body={t('assessmentFlow.physical.noBody')}
+              selected={a.physicalDistress === 'No'}
+              onPress={() => set({ physicalDistress: 'No' })}
+            />
+          </View>
+        </AssessmentShell>
+      );
+
+    case 'sleep':
+      return (
+        <AssessmentShell {...shell} title={t('assessmentFlow.sleep.title')} titleWidth={340} titleGap={110}>
+          <SleepMoons
+            value={a.sleepQuality}
+            onChange={(sleepQuality) => set({ sleepQuality })}
+            labels={[1, 2, 3, 4, 5].map((n) => t(`assessmentFlow.sleep.levels.${n}`))}
+            caption={a.sleepQuality ? t(`assessmentFlow.sleep.captions.${a.sleepQuality}`) : null}
+          />
+        </AssessmentShell>
+      );
+
+    case 'meds':
+      return (
+        <AssessmentShell {...shell} title={t('assessmentFlow.meds.title')} titleGap={40}>
+          <View style={{ gap: 8 }} accessibilityRole="radiogroup">
+            {TAKING_MEDS.map((k) => (
+              <OptionRow key={k} weight="medium" label={t(`assessmentFlow.meds.options.${k}`)} selected={a.takingMeds === k} onPress={() => set({ takingMeds: k })} />
+            ))}
+          </View>
+          <LegalNote text={t('assessmentFlow.meds.note')} style={{ marginTop: 16, marginHorizontal: 24 }} />
+        </AssessmentShell>
+      );
+
+    case 'medsSpecify':
+      return (
+        <AssessmentShell
+          {...shell}
+          title={t('assessmentFlow.medsSearch.title')}
+          titleGap={24}
+          glows={[
+            { color: palette.rose, opacity: 0.25, x: -70, y: -50, width: 280, blur: 90 },
+            { color: palette.mustard, opacity: 0.15, x: 200, y: 40, width: 220, blur: 90 },
+          ]}
+          compactActions
+          actions={
+            <>
+              {continueButton}
+              <AppButton
+                variant="ghost"
+                size="s"
+                title={t('assessmentFlow.skipQuestion')}
+                style={{ alignSelf: 'center' }}
+                onPress={() => {
+                  set({ medications: [] });
+                  next();
+                }}
+              />
+            </>
+          }
+          contentStyle={{ paddingHorizontal: 8 }}
+        >
+          <MedicationSearch
+            value={a.medications ?? []}
+            onChange={(medications) => set({ medications })}
+            labels={{
+              placeholder: t('assessmentFlow.medsSearch.placeholder'),
+              results: (count) => t('assessmentFlow.medsSearch.results', { count }),
+              selected: t('assessmentFlow.medsSearch.selected'),
+              remove: (name) => t('assessmentFlow.medsSearch.remove', { name }),
+              noMatchTitle: (query) => t('assessmentFlow.medsSearch.noMatchTitle', { query }),
+              noMatchBody: t('assessmentFlow.medsSearch.noMatchBody'),
+              addManually: (query) => t('assessmentFlow.medsSearch.addManually', { query }),
+              classLabel: (k: MedicationClassKey) => t(`assessmentFlow.medsSearch.classes.${k}`),
+              note: t('assessmentFlow.meds.note'),
+            }}
+          />
+        </AssessmentShell>
+      );
+
+    case 'symptoms': {
+      const suggestions = CONCERN_KEYS.map((k) => t(`assessmentFlow.symptoms.suggestions.${k}`));
+      const values = (a.otherSymptoms ?? '').split('\n').map((v) => v.trim()).filter(Boolean);
+      return (
+        <AssessmentShell {...shell} title={t('assessmentFlow.symptoms.title')} titleGap={32}>
+          <ConcernsInput
+            values={values}
+            onChange={(list) => set({ otherSymptoms: list.length ? writeAssessmentAnswer(list) : null })}
+            suggestions={suggestions}
+            labels={{
+              placeholder: t('assessmentFlow.symptoms.placeholder'),
+              mostCommon: t('assessmentFlow.symptoms.mostCommon'),
+              add: (name) => t('assessmentFlow.symptoms.add', { name }),
+              remove: (name) => t('assessmentFlow.symptoms.remove', { name }),
+            }}
+          />
+        </AssessmentShell>
+      );
+    }
+
+    case 'stress':
+      return (
+        <AssessmentShell {...shell} title={t('assessmentFlow.stress.title')} titleWidth={340} titleGap={85}>
+          <StressLights
+            value={a.stressBand}
+            onChange={(stressBand) => set({ stressBand })}
+            labels={[1, 2, 3, 4, 5].map((n) => t(`assessmentFlow.stress.levels.${n}`))}
+            caption={a.stressBand ? t(`assessmentFlow.stress.captions.${a.stressBand}`) : null}
+          />
+          <LegalNote text={t('assessmentFlow.stress.note')} style={{ marginTop: 24, marginHorizontal: 8 }} />
+        </AssessmentShell>
+      );
+
+    case 'sound':
+      return (
+        <AssessmentShell {...shell} title={t('assessmentFlow.voice.title')} titleGap={12}>
+          <Text style={[Type.bodyLg, { lineHeight: 19, color: palette.textMuted, textAlign: 'center' }]}>{t('assessmentFlow.voice.subtitle')}</Text>
+          <View style={{ marginTop: 32 }}>
+            <VoiceCheckIn
+              phrase={t('assessmentFlow.voice.phrase')}
+              value={a.soundCheck}
+              onRecorded={(soundCheck) => set({ soundCheck })}
+              labels={{
+                idle: t('assessmentFlow.voice.idle'),
+                recording: t('assessmentFlow.voice.recording'),
+                recorded: t('assessmentFlow.voice.recorded'),
+                start: t('assessmentFlow.voice.start'),
+                stop: t('assessmentFlow.voice.stop'),
+                play: t('assessmentFlow.voice.play'),
+                pause: t('assessmentFlow.voice.pause'),
+                micDenied: t('common.allowMicAccess'),
+                saveFailed: t('common.couldNotSaveRecording'),
+              }}
+            />
+          </View>
+        </AssessmentShell>
+      );
+
+    case 'write':
+    default:
+      return (
+        <AssessmentShell {...shell} title={t('assessmentFlow.write.title')} titleWidth={308} titleGap={12}>
+          <Text style={[Type.bodyLg, { lineHeight: 19, color: palette.textMuted, textAlign: 'center', width: 308, alignSelf: 'center' }]}>
+            {t('assessmentFlow.write.subtitle')}
+          </Text>
+          <View style={{ marginTop: 48 }}>
+            <ReflectionField
+              value={a.reflectionText ?? ''}
+              onChange={(reflectionText) => set({ reflectionText })}
+              onUseVoice={() => toast.info(t('assessmentFlow.write.dictationHint'))}
+              labels={{ placeholder: t('assessmentFlow.write.placeholder'), a11y: t('assessmentFlow.write.a11y'), useVoice: t('assessmentFlow.write.useVoice') }}
+            />
+          </View>
+        </AssessmentShell>
+      );
+  }
+}

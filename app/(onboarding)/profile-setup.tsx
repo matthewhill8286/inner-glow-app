@@ -1,406 +1,301 @@
-import { profileChoiceLabel } from '@/lib/profile-choices';
-import { Typography } from '@/constants/typography';
-import { UI } from '@/constants/theme';
-import { backTo } from '@/lib/navigation';
-import { WellnessIconText } from '@/components/WellnessIconText';
-import React, { useMemo, useState } from 'react';
-import { View, Text, Pressable, TextInput, ScrollView } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Platform, View } from 'react-native';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import ProfileProgressRing from '@/components/ProfileProgressRing';
-import Chips from '@/components/Chips';
+import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
+import { toast } from '@/components/Toast';
+import { AppButton } from '@/components/ui/AppButton';
+import { BottomSheet } from '@/components/ui/BottomSheet';
+import { ProfileShell } from '@/components/profile-setup/ProfileShell';
+import { AvatarPicker, CheckinScene, NotificationCard, PrivacyScene, ProfileField } from '@/components/profile-setup/steps';
 import { useProfile } from '@/hooks/useProfile';
-import { SUPPORTED_LANGUAGES, setLanguage, type LanguageCode } from '@/i18n';
+import { useUser } from '@/hooks/useUser';
+import { pickAvatar, uploadAvatar, useAvatarUrl } from '@/lib/avatar';
+import { authenticate, biometricSupport, setAppLockEnabled } from '@/lib/app-lock';
+import { registerForPushNotificationsAsync, setReminderEnabled } from '@/lib/notifications';
+import { profileChoiceValue } from '@/lib/profile-choices';
+import {
+  birthdayToInput,
+  CHECKIN_PRESETS,
+  DEFAULT_CHECKIN_TIME,
+  DEFAULT_NOTIFICATION_PREFS,
+  formatTime,
+  maskBirthday,
+  NOTIFICATION_CHOICES,
+  parseBirthday,
+  parseTime,
+  presetForTime,
+  profileSteps,
+  slotForTime,
+  type BiometricKind,
+  type CheckinSlot,
+  type NotificationChoice,
+} from '@/lib/profile-setup';
 
-type StepKey = 'intro' | 'language' | 'name' | 'intention' | 'routine' | 'finish';
-const STEPS: StepKey[] = ['intro', 'language', 'name', 'intention', 'routine', 'finish'];
+/**
+ * Profile setup (docs/design-handoff/02 §4–5, re-extracted from Figma section `4002:15061`, and 10 §3.3):
+ * P1 about you, P2 check-in time, P3 notifications, P4 app lock (only with biometrics), then P5 in
+ * `profile-completion`. Each step saves when its button is pressed; Skip and the text links move on
+ * without saving.
+ */
 
-export default function ProfileSetup() {
-  const { t, i18n } = useTranslation();
-  const insets = useSafeAreaInsets();
-  const { saveProfile, isSavingProfile: saving } = useProfile();
+const SLOTS: CheckinSlot[] = ['morning', 'afternoon', 'evening'];
+const ROUTINE_FOR_SLOT: Record<CheckinSlot, string> = {
+  morning: profileChoiceValue('routineMorning'),
+  afternoon: 'Afternoon',
+  evening: profileChoiceValue('routineEvening'),
+};
+const NOTIFICATION_ICONS = { glow_ai_messages: 'line/sparkle', journal_reminder: 'line/journal', weekly_summary: 'line/chart' } as const;
 
-  const [step, setStep] = useState(0);
-  const [selectedLanguage, setSelectedLanguage] = useState<LanguageCode>(
-    i18n.language as LanguageCode,
-  );
+export default function ProfileSetupScreen() {
+  const { t } = useTranslation();
+  const { profile, updateProfile } = useProfile();
+  const { data: user } = useUser();
+
+  const [biometric, setBiometric] = useState<BiometricKind | null>(null);
+  const steps = useMemo(() => profileSteps(!!biometric), [biometric]);
+  const [index, setIndex] = useState(0);
+  const step = steps[Math.min(index, steps.length - 1)];
+  const [busy, setBusy] = useState(false);
+
   const [name, setName] = useState('');
-  const [intention, setIntention] = useState<string | undefined>();
-  const [routine, setRoutine] = useState<string | undefined>();
+  const [birthday, setBirthday] = useState('');
+  const [birthdayError, setBirthdayError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [time, setTime] = useState(DEFAULT_CHECKIN_TIME);
+  const [picking, setPicking] = useState(false);
+  const [prefs, setPrefs] = useState<Record<NotificationChoice, boolean>>(DEFAULT_NOTIFICATION_PREFS);
+  const { data: photoUrl } = useAvatarUrl(profile?.avatarPath);
 
-  const progress = useMemo(() => Math.round(((step + 1) / STEPS.length) * 100), [step]);
-  const stepKey = STEPS[step];
+  useEffect(() => {
+    void biometricSupport().then((s) => setBiometric(s.available ? s.kind : null));
+  }, []);
 
-  async function next() {
-    if (stepKey === 'language') {
-      await setLanguage(selectedLanguage);
-    }
-    if (stepKey === 'finish') {
-      await saveProfile({
-        name: name.trim() || undefined,
-        intention: intention,
-        routine: routine,
-      });
-      router.replace('/(onboarding)/profile-completion');
-      return;
-    }
-    setStep((s) => Math.min(s + 1, STEPS.length - 1));
+  // Start from anything already saved, for people who come back to setup.
+  useEffect(() => {
+    if (!profile) return;
+    setName((n) => n || profile.name || '');
+    setBirthday((b) => b || birthdayToInput(profile.birthday));
+    if (profile.checkinTime) setTime(profile.checkinTime);
+    setPrefs((p) => ({ ...p, ...(profile.notificationPrefs ?? {}) }));
+  }, [profile]);
+
+  function next() {
+    if (index >= steps.length - 1) router.replace('/(onboarding)/profile-completion');
+    else setIndex((i) => i + 1);
   }
 
   function back() {
-    if (step === 0) {
-      backTo(undefined, '/(tabs)/home');
-      return;
-    }
-    setStep((s) => Math.max(s - 1, 0));
+    if (index > 0) setIndex((i) => i - 1);
+    else if (router.canGoBack()) router.back();
   }
 
-  return (
-    <View style={{ flex: 1, backgroundColor: '#6f6660', padding: 24, paddingTop: insets.top + 16 }}>
-      <View
-        style={{
-          flexDirection: 'row',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 20,
-        }}
-      >
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <Pressable
-            onPress={back}
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 22,
-              borderWidth: 1,
-              borderColor: 'rgba(255,255,255,0.2)',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: 'rgba(255,255,255,0.1)',
+  async function run(work: () => Promise<void>) {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await work();
+      next();
+    } catch {
+      toast.error(t('profileFlow.saveFailed'));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function choosePhoto() {
+    if (!user?.id) return;
+    const photo = await pickAvatar();
+    if (!photo) return;
+    setUploading(true);
+    try {
+      const path = await uploadAvatar(user.id, photo);
+      await updateProfile({ avatarPath: path });
+    } catch {
+      toast.error(t('profileFlow.about.photoFailed'));
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function openTimePicker() {
+    const { hour, minute } = parseTime(time);
+    const value = new Date(2000, 0, 1, hour, minute);
+    if (Platform.OS === 'android') {
+      DateTimePickerAndroid.open({
+        value,
+        mode: 'time',
+        is24Hour: true,
+        onChange: (event, date) => event.type === 'set' && date && setTime(formatTime(date.getHours(), date.getMinutes())),
+      });
+    } else setPicking(true);
+  }
+
+  const shell = {
+    step: index + 1,
+    total: steps.length,
+    onBack: back,
+    onSkip: next,
+    backLabel: t('common.back'),
+    skipLabel: t('profileFlow.skip'),
+  };
+
+  if (step === 'profile') {
+    return (
+      <ProfileShell
+        {...shell}
+        title={t('profileFlow.about.title')}
+        subtitle={t('profileFlow.about.subtitle')}
+        cta={
+          <AppButton
+            title={t('profileFlow.continue')}
+            busy={busy}
+            onPress={() => {
+              const parsed = birthday ? parseBirthday(birthday) : null;
+              if (birthday && !parsed) {
+                setBirthdayError(t('profileFlow.about.birthdayInvalid'));
+                return;
+              }
+              void run(() => updateProfile({ name: name.trim() || null, birthday: parsed }).then(() => undefined));
             }}
-          >
-            <Text style={{ fontFamily: Typography.family.body, color: 'white', fontSize: 24 }}>
-              ←
-            </Text>
-          </Pressable>
-          <Text style={{ ...Typography.section, color: 'white' }}>{t('profileSetup.title')}</Text>
-        </View>
-        <ProfileProgressRing progress={progress} />
-      </View>
-
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: 40 }}
-        showsVerticalScrollIndicator={false}
+          />
+        }
       >
-        <View
-          style={{
-            paddingVertical: 24,
-            paddingHorizontal: 20,
-            backgroundColor: 'white',
-            borderRadius: 32,
-            minHeight: 400,
-          }}
-        >
-          {stepKey === 'intro' && (
-            <>
-              <Text
-                style={{ ...Typography.heading, fontSize: 24, marginTop: 18, color: '#6a5e55' }}
-              >
-                {t('profileSetup.heading')}
-              </Text>
-              <Text
-                style={{
-                  fontFamily: Typography.family.body,
-                  opacity: 0.7,
-                  marginTop: 10,
-                  color: '#6a5e55',
-                  fontSize: 16,
-                }}
-              >
-                {t('profileSetup.subtitle')}
-              </Text>
-            </>
-          )}
-
-          {stepKey === 'language' && (
-            <>
-              <Text style={{ ...Typography.heading, marginTop: 18, color: '#6a5e55' }}>
-                {t('profileSetup.languageQuestion')}
-              </Text>
-              <Text style={{ opacity: 0.7, marginTop: 8, color: '#6a5e55' }}>
-                {t('profileSetup.languageSubtitle')}
-              </Text>
-              <View style={{ marginTop: 20, gap: 10 }}>
-                {SUPPORTED_LANGUAGES.map((lang) => {
-                  const isSelected = selectedLanguage === lang.code;
-                  return (
-                    <Pressable
-                      key={lang.code}
-                      onPress={() => setSelectedLanguage(lang.code)}
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        gap: 14,
-                        paddingVertical: 16,
-                        paddingHorizontal: 18,
-                        borderRadius: 16,
-                        backgroundColor: isSelected ? '#a07b5515' : '#f2f2f2',
-                        borderWidth: 2,
-                        borderColor: isSelected ? '#a07b55' : 'transparent',
-                      }}
-                    >
-                      <WellnessIconText
-                        style={{ fontFamily: Typography.family.body, fontSize: 26 }}
-                      >
-                        {lang.flag}
-                      </WellnessIconText>
-                      <Text
-                        style={{
-                          fontFamily: Typography.family.body,
-                          flex: 1,
-                          fontSize: 17,
-                          fontWeight: isSelected ? Typography.weight.bold : '600',
-                          color: '#6a5e55',
-                        }}
-                      >
-                        {lang.label}
-                      </Text>
-                      {isSelected && (
-                        <View
-                          style={{
-                            width: 24,
-                            height: 24,
-                            borderRadius: 12,
-                            backgroundColor: '#a07b55',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                          }}
-                        >
-                          <Text
-                            style={{
-                              fontFamily: Typography.family.body,
-                              color: 'white',
-                              fontSize: 14,
-                              fontWeight: Typography.weight.semibold,
-                            }}
-                          >
-                            ✓
-                          </Text>
-                        </View>
-                      )}
-                    </Pressable>
-                  );
-                })}
-              </View>
-            </>
-          )}
-
-          {stepKey === 'name' && (
-            <>
-              <Text style={{ ...Typography.heading, marginTop: 18, color: '#6a5e55' }}>
-                {t('profileSetup.nameQuestion')}
-              </Text>
-              <Text style={{ opacity: 0.7, marginTop: 8, color: '#6a5e55' }}>
-                {t('profileSetup.nameOptional')}
-              </Text>
-              <TextInput
-                value={name}
-                onChangeText={setName}
-                placeholder={t('profileSetup.namePlaceholder')}
-                style={{
-                  fontFamily: Typography.family.body,
-                  marginTop: 16,
-                  paddingVertical: 14,
-                  paddingHorizontal: 16,
-                  borderRadius: 16,
-                  backgroundColor: '#f2f2f2',
-                  fontSize: 16,
-                }}
-              />
-            </>
-          )}
-
-          {stepKey === 'intention' && (
-            <>
-              <Text style={{ ...Typography.heading, marginTop: 18, color: '#6a5e55' }}>
-                {t('profileSetup.intentionQuestion')}
-              </Text>
-              <Text style={{ opacity: 0.7, marginTop: 8, color: '#6a5e55' }}>
-                {t('profileSetup.pickOne')}
-              </Text>
-              <Chips
-                options={[
-                  t('profileSetup.goalCalm'),
-                  t('profileSetup.goalFocus'),
-                  t('profileSetup.goalSleep'),
-                  t('profileSetup.goalStress'),
-                  t('profileSetup.goalConfidence'),
-                  t('profileSetup.goalBalance'),
-                ]}
-                value={profileChoiceLabel(intention, 'goal', t) ?? undefined}
-                onChange={(v) => setIntention(v as string)}
-              />
-            </>
-          )}
-
-          {stepKey === 'routine' && (
-            <>
-              <Text style={{ ...Typography.heading, marginTop: 18, color: '#6a5e55' }}>
-                {t('profileSetup.routineQuestion')}
-              </Text>
-              <Text style={{ opacity: 0.7, marginTop: 8, color: '#6a5e55' }}>
-                {t('profileSetup.pickOne')}
-              </Text>
-              <Chips
-                options={[
-                  t('profileSetup.routineMorning'),
-                  t('profileSetup.routineEvening'),
-                  t('profileSetup.routineAnytime'),
-                ]}
-                value={profileChoiceLabel(routine, 'routine', t) ?? undefined}
-                onChange={(v) => setRoutine(v as string)}
-              />
-            </>
-          )}
-
-          {stepKey === 'finish' && (
-            <>
-              <Text style={{ ...Typography.heading, marginTop: 18, color: '#6a5e55' }}>
-                {t('profileSetup.allSet')}
-              </Text>
-              <Text style={{ opacity: 0.7, marginTop: 10, color: '#6a5e55' }}>
-                {t('profileSetup.nextSuggestion')}
-              </Text>
-
-              <View
-                style={{
-                  marginTop: 24,
-                  backgroundColor: '#f9f9f9',
-                  padding: 18,
-                  borderRadius: 20,
-                }}
-              >
-                <Text
-                  style={{
-                    fontFamily: Typography.family.body,
-                    fontWeight: Typography.weight.semibold,
-                    color: '#6a5e55',
-                  }}
-                >
-                  {t('profileSetup.language')}
-                </Text>
-                <Text style={{ opacity: 0.7, color: '#6a5e55' }}>
-                  {SUPPORTED_LANGUAGES.find((l) => l.code === selectedLanguage)?.label ??
-                    selectedLanguage}
-                </Text>
-
-                <Text
-                  style={{
-                    fontFamily: Typography.family.body,
-                    fontWeight: Typography.weight.semibold,
-                    marginTop: 12,
-                    color: '#6a5e55',
-                  }}
-                >
-                  {t('profileSetup.name')}
-                </Text>
-                <Text style={{ opacity: 0.7, color: '#6a5e55' }}>
-                  {name.trim() || t('common.notSet')}
-                </Text>
-
-                <Text
-                  style={{
-                    fontFamily: Typography.family.body,
-                    fontWeight: Typography.weight.semibold,
-                    marginTop: 12,
-                    color: '#6a5e55',
-                  }}
-                >
-                  {t('profileSetup.goal')}
-                </Text>
-                <Text style={{ opacity: 0.7, color: '#6a5e55' }}>
-                  {profileChoiceLabel(intention, 'goal', t) ?? t('common.notSet')}
-                </Text>
-
-                <Text
-                  style={{
-                    fontFamily: Typography.family.body,
-                    fontWeight: Typography.weight.semibold,
-                    marginTop: 12,
-                    color: '#6a5e55',
-                  }}
-                >
-                  {t('profileSetup.routine')}
-                </Text>
-                <Text style={{ opacity: 0.7, color: '#6a5e55' }}>
-                  {profileChoiceLabel(routine, 'routine', t) ?? t('common.notSet')}
-                </Text>
-              </View>
-            </>
-          )}
-        </View>
-
-        <View style={{ marginTop: 30 }}>
-          <Pressable
-            onPress={next}
-            disabled={saving}
-            style={{
-              paddingVertical: 20,
-              borderRadius: 35,
-              backgroundColor: '#a07b55',
-              alignItems: 'center',
-              flexDirection: 'row',
-              justifyContent: 'center',
-              gap: 10,
-              opacity: saving ? 0.7 : 1,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.1,
-              shadowRadius: 10,
-              elevation: 4,
-            }}
-          >
-            <Text
-              style={{
-                fontFamily: Typography.family.body,
-                color: 'white',
-                fontWeight: Typography.weight.semibold,
-                fontSize: 18,
+        <View style={{ marginTop: 56, gap: 28 }}>
+          <AvatarPicker photoUrl={photoUrl} busy={uploading} onPress={choosePhoto} caption={t('profileFlow.about.photo')} accessibilityLabel={t('profileFlow.about.photoA11y')} />
+          <View style={{ gap: 20 }}>
+            <ProfileField label={t('profileFlow.about.name')} value={name} onChangeText={setName} placeholder={t('profileFlow.about.namePlaceholder')} autoCapitalize="words" textContentType="givenName" returnKeyType="next" />
+            <ProfileField
+              label={t('profileFlow.about.birthday')}
+              value={birthday}
+              onChangeText={(v) => {
+                setBirthday(maskBirthday(v));
+                setBirthdayError(null);
               }}
-            >
-              {saving
-                ? t('profileSetup.saving')
-                : stepKey === 'finish'
-                  ? t('common.complete')
-                  : t('common.next')}
-            </Text>
-            {!saving && (
-              <Text style={{ fontFamily: Typography.family.body, color: 'white', fontSize: 20 }}>
-                →
-              </Text>
-            )}
-          </Pressable>
+              placeholder={t('profileFlow.about.birthdayPlaceholder')}
+              keyboardType="number-pad"
+              maxLength={14}
+              error={birthdayError}
+            />
+          </View>
         </View>
+      </ProfileShell>
+    );
+  }
 
-        <Pressable
-          onPress={() => router.replace('/(onboarding)/suggested-categories')}
-          style={{ marginTop: 20 }}
-        >
-          <Text
-            style={{
-              fontFamily: Typography.family.body,
-              color: 'white',
-              opacity: 0.65,
-              textAlign: 'center',
-              fontWeight: Typography.weight.semibold,
-            }}
-          >
-            {t('profileSetup.skipSetup')}
-          </Text>
-        </Pressable>
-      </ScrollView>
-    </View>
+  if (step === 'checkin') {
+    const slot = presetForTime(time);
+    return (
+      <ProfileShell
+        {...shell}
+        title={t('profileFlow.checkin.title')}
+        subtitle={t('profileFlow.checkin.subtitle')}
+        link={{ label: t('profileFlow.checkin.notNow'), onPress: next }}
+        cta={
+          <AppButton
+            title={t('profileFlow.checkin.setReminder')}
+            busy={busy}
+            onPress={() =>
+              run(async () => {
+                try {
+                  await setReminderEnabled('daily_checkin', true, parseTime(time));
+                } catch {
+                  // The time is still worth keeping; the reminder starts once notifications are allowed.
+                  toast.info(t('profileFlow.checkin.notificationsOff'));
+                }
+                await updateProfile({ checkinTime: time, routine: ROUTINE_FOR_SLOT[slotForTime(time)] });
+              })
+            }
+          />
+        }
+      >
+        <CheckinScene
+          time={time}
+          caption={t(`profileFlow.checkin.captions.${slotForTime(time)}`)}
+          slot={slot}
+          slots={SLOTS.map((key) => ({ key, label: t(`profileFlow.checkin.slots.${key}`) }))}
+          onPickSlot={(key) => setTime(CHECKIN_PRESETS[key])}
+          onPressTime={openTimePicker}
+          timeLabel={t('profileFlow.checkin.timeA11y')}
+        />
+        {Platform.OS === 'ios' && (
+          <BottomSheet visible={picking} onClose={() => setPicking(false)}>
+            <DateTimePicker
+              value={new Date(2000, 0, 1, parseTime(time).hour, parseTime(time).minute)}
+              mode="time"
+              display="spinner"
+              minuteInterval={5}
+              onChange={(_, date) => date && setTime(formatTime(date.getHours(), date.getMinutes()))}
+              accessibilityLabel={t('profileFlow.checkin.pickTime')}
+            />
+            <AppButton title={t('profileFlow.checkin.done')} onPress={() => setPicking(false)} style={{ alignSelf: 'stretch' }} />
+          </BottomSheet>
+        )}
+      </ProfileShell>
+    );
+  }
+
+  if (step === 'notifications') {
+    return (
+      <ProfileShell
+        {...shell}
+        title={t('profileFlow.notifications.title')}
+        subtitle={t('profileFlow.notifications.subtitle')}
+        link={{ label: t('profileFlow.notifications.later'), onPress: next }}
+        cta={
+          <AppButton
+            title={t('profileFlow.notifications.allow')}
+            busy={busy}
+            onPress={() =>
+              run(async () => {
+                if (await registerForPushNotificationsAsync()) {
+                  // Glow AI messages need server push, which is not built yet; the choice is saved for it.
+                  for (const key of ['journal_reminder', 'weekly_summary'] as const) {
+                    await setReminderEnabled(key, prefs[key]).catch(() => undefined);
+                  }
+                } else toast.info(t('profileFlow.notifications.denied'));
+                await updateProfile({ notificationPrefs: prefs });
+              })
+            }
+          />
+        }
+      >
+        <NotificationCard
+          rows={NOTIFICATION_CHOICES.map((key) => ({
+            key,
+            icon: NOTIFICATION_ICONS[key],
+            title: t(`profileFlow.notifications.rows.${key}.title`),
+            subtitle: t(`profileFlow.notifications.rows.${key}.subtitle`),
+          }))}
+          values={prefs}
+          onChange={(key, value) => setPrefs((p) => ({ ...p, [key]: value }))}
+        />
+      </ProfileShell>
+    );
+  }
+
+  const method = t(`profileFlow.biometric.${biometric ?? 'faceId'}`);
+  return (
+    <ProfileShell
+      {...shell}
+      title={t('profileFlow.privacy.title')}
+      subtitle={t('profileFlow.privacy.subtitle', { method })}
+      scroll={false}
+      link={{ label: t('profileFlow.privacy.notNow'), onPress: next }}
+      cta={
+        <AppButton
+          title={t('profileFlow.privacy.turnOn', { method })}
+          busy={busy}
+          onPress={() =>
+            run(async () => {
+              if (user?.id && (await authenticate(t('profileFlow.privacy.prompt'), t('common.cancel')))) await setAppLockEnabled(user.id, true);
+              else toast.info(t('profileFlow.privacy.failed'));
+            })
+          }
+        />
+      }
+    >
+      <PrivacyScene />
+    </ProfileShell>
   );
 }

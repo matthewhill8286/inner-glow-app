@@ -60,7 +60,7 @@ test('skipping optional profile answers does not restart completed onboarding', 
   assert.equal(nav.entryRouteForProfile(false, null), '/(onboarding)/assessment');
   assert.equal(
     nav.entryRouteForProfile(true, { intention: 'Calm', selected_issues: [] }),
-    '/(onboarding)/suggested-categories',
+    '/(tabs)/home',
   );
   assert.equal(nav.entryRouteForProfile(true, null), '/(onboarding)/profile-setup');
 });

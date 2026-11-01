@@ -4,6 +4,7 @@ import { isAppRoute } from '@/lib/navigation';
 import { Stack, router, useRootNavigationState } from 'expo-router';
 import { AlertModal } from '@/components/AlertModal';
 import { ToastContainer } from '@/components/Toast';
+import { AppLockGate } from '@/components/AppLockGate';
 
 import { useEffect, useRef } from 'react';
 import * as Notifications from 'expo-notifications';
@@ -217,6 +218,7 @@ export default function RootLayout() {
             </Stack>
           </View>
           {Platform.OS !== 'web' && <NativeNotificationResponses />}
+          {Platform.OS !== 'web' && <AppLockGate />}
           <AlertModal />
           <ToastContainer />
         </QueryClientProvider>

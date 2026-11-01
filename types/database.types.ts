@@ -137,14 +137,18 @@ export type Database = {
           expression_check: Json | null
           gender: string | null
           goal: string | null
+          medications: Json
           meds: string | null
           mood: string | null
+          mood_score: number | null
           other_symptoms: string | null
           physical_distress: string | null
           physical_distress_notes: string | null
+          reflection_text: string | null
           sleep_quality: number | null
           sought_help_before: string | null
           sound_check: Json | null
+          stress_band: number | null
           stress_level: number | null
           taking_meds: string | null
           updated_at: string
@@ -158,14 +162,18 @@ export type Database = {
           expression_check?: Json | null
           gender?: string | null
           goal?: string | null
+          medications?: Json
           meds?: string | null
           mood?: string | null
+          mood_score?: number | null
           other_symptoms?: string | null
           physical_distress?: string | null
           physical_distress_notes?: string | null
+          reflection_text?: string | null
           sleep_quality?: number | null
           sought_help_before?: string | null
           sound_check?: Json | null
+          stress_band?: number | null
           stress_level?: number | null
           taking_meds?: string | null
           updated_at?: string
@@ -179,14 +187,18 @@ export type Database = {
           expression_check?: Json | null
           gender?: string | null
           goal?: string | null
+          medications?: Json
           meds?: string | null
           mood?: string | null
+          mood_score?: number | null
           other_symptoms?: string | null
           physical_distress?: string | null
           physical_distress_notes?: string | null
+          reflection_text?: string | null
           sleep_quality?: number | null
           sought_help_before?: string | null
           sound_check?: Json | null
+          stress_band?: number | null
           stress_level?: number | null
           taking_meds?: string | null
           updated_at?: string
@@ -716,8 +728,12 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_path: string | null
+          birthday: string | null
+          checkin_time: string | null
           intention: string | null
           name: string | null
+          notification_prefs: Json
           routine: string | null
           selected_issues: Json | null
           subscription_expiry: string | null
@@ -726,8 +742,12 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          avatar_path?: string | null
+          birthday?: string | null
+          checkin_time?: string | null
           intention?: string | null
           name?: string | null
+          notification_prefs?: Json
           routine?: string | null
           selected_issues?: Json | null
           subscription_expiry?: string | null
@@ -736,8 +756,12 @@ export type Database = {
           user_id: string
         }
         Update: {
+          avatar_path?: string | null
+          birthday?: string | null
+          checkin_time?: string | null
           intention?: string | null
           name?: string | null
+          notification_prefs?: Json
           routine?: string | null
           selected_issues?: Json | null
           subscription_expiry?: string | null

@@ -1,281 +1,100 @@
-import { Typography } from '@/constants/typography';
-import { backTo } from '@/lib/navigation';
-import { WellnessIconText } from '@/components/WellnessIconText';
-import React from 'react';
-import { View, Text, Pressable, ScrollView, Platform } from 'react-native';
+import React, { useState } from 'react';
+import { Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
+import Svg, { Circle } from 'react-native-svg';
+import { palette } from '@/constants/theme';
+import { Type } from '@/constants/typography';
+import { GlowField } from '@/components/glow/Glow';
+import { AppButton } from '@/components/ui/AppButton';
+import { toast } from '@/components/Toast';
+import { SHELL_GLOWS } from '@/components/profile-setup/ProfileShell';
 import { useProfile } from '@/hooks/useProfile';
 import { useFreudScore } from '@/hooks/useFreudScore';
-import { getFreudColor } from '@/lib/freudScore';
-import { SkeletonRect } from '@/components/Skeleton';
-import { UI } from '@/constants/theme';
-import MaterialIcons from '@/components/AppIcon';
+import { suggestedIssues } from '@/lib/profile-setup';
+import AllSetAura from '@/assets/svg/illustrations/profile/all-set-aura.svg';
 
-const C = {
-  pageBg: '#6f6660',
-  cardBg: '#FFFFFF',
-  brown: '#a07b55',
-  brownLight: '#6a5e55',
-  brownText: '#96784E',
-  olive: '#828a6a',
-};
+const RING = 172;
+const STROKE = 3.5;
+/** The ring runs from the top clockwise; 100 fills it. */
+const RADIUS = (RING - STROKE) / 2;
+const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
-function BreakdownBar({
-  label,
-  value,
-  color,
-  icon,
-}: {
-  label: string;
-  value: number;
-  color: string;
-  icon: string;
-}) {
-  return (
-    <View style={{ marginBottom: 14 }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-        <WellnessIconText
-          style={{
-            fontFamily: Typography.family.body,
-            fontSize: 14,
-            fontWeight: Typography.weight.semibold,
-            color: C.brownLight,
-          }}
-        >
-          {icon} {label}
-        </WellnessIconText>
-        <Text
-          style={{
-            fontFamily: Typography.family.body,
-            fontSize: 14,
-            fontWeight: Typography.weight.semibold,
-            color,
-          }}
-        >
-          {value}
-        </Text>
-      </View>
-      <View
-        style={{
-          height: 8,
-          borderRadius: 4,
-          backgroundColor: '#f2ece6',
-          overflow: 'hidden',
-        }}
-      >
-        <View
-          style={{
-            height: '100%',
-            width: `${value}%`,
-            borderRadius: 4,
-            backgroundColor: color,
-          }}
-        />
-      </View>
-    </View>
-  );
-}
-
+/**
+ * P5 · You're all set (`6676:3226`). The starting Glow score in a 172 ring with "your starting glow",
+ * the named title and body, and "Go to my home". Finishing saves the assessment goal as the profile
+ * intention and the suggested topics, which is what marks setup as done (`entryRouteForProfile`).
+ * Figma draws the ring track at full plum, which hides the progress; the track here is plum @0.12.
+ */
 export default function ProfileCompletion() {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const { profile } = useProfile();
-  const { currentScore: freudScore, isDataLoading } = useFreudScore();
+  const { width } = useWindowDimensions();
+  const sx = width / 375;
+  const dy = insets.top - 44;
+  const { profile, assessment, updateProfile } = useProfile();
+  const { scoreHistory, currentScore } = useFreudScore();
+  const [busy, setBusy] = useState(false);
 
-  const name = profile?.name;
-  const score = freudScore?.score ?? 0;
-  const scoreColor = getFreudColor(score);
+  // The assessment saved the starting score; before it loads, fall back to the live estimate.
+  const score = Math.round(scoreHistory[0]?.score ?? currentScore?.score ?? 0);
+  const name = profile?.name?.trim();
+
+  async function finish() {
+    setBusy(true);
+    try {
+      const row = (assessment ?? null) as Record<string, any> | null;
+      await updateProfile({
+        intention: row?.goal || profile?.intention || 'Just checking things out',
+        selectedIssues: suggestedIssues(row ? { mood: row.mood, stressBand: row.stress_band, sleepQuality: row.sleep_quality } : null),
+      });
+      router.replace('/(tabs)/home');
+    } catch {
+      toast.error(t('profileFlow.saveFailed'));
+      setBusy(false);
+    }
+  }
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.pageBg, padding: 24, paddingTop: insets.top + 16 }}>
-      {/* Header */}
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          marginBottom: 20,
-          gap: 12,
-        }}
-      >
-        <Pressable
-          onPress={() => backTo(undefined, '/(tabs)/home')}
-          style={{
-            width: 44,
-            height: 44,
-            borderRadius: 22,
-            borderWidth: 1,
-            borderColor: 'rgba(255,255,255,0.2)',
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: 'rgba(255,255,255,0.1)',
-          }}
-        >
-          <MaterialIcons name="arrow-back" size={20} color="white" />
-        </Pressable>
-        <Text style={{ ...Typography.section, color: 'white' }}>
-          {t('profileCompletion.title')}
-        </Text>
-      </View>
-
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 40 }}
-      >
-        <View style={{ backgroundColor: C.cardBg, borderRadius: 28, padding: 24, minHeight: 400 }}>
-          {isDataLoading ? (
-            <View style={{ gap: 14 }}>
-              <SkeletonRect height={30} width={180} />
-              <SkeletonRect height={20} width={240} />
-              <View style={{ marginTop: 20, gap: 12 }}>
-                <SkeletonRect height={100} borderRadius={UI.radius.xl} />
-                <SkeletonRect height={60} borderRadius={12} />
-                <SkeletonRect height={60} borderRadius={12} />
-                <SkeletonRect height={60} borderRadius={12} />
-              </View>
-            </View>
-          ) : (
-            <>
-              <Text style={{ ...Typography.heading, color: C.brownLight }}>
-                {name
-                  ? t('profileCompletion.greeting', { name })
-                  : t('profileCompletion.profileComplete')}
-              </Text>
-              <Text
-                style={{
-                  fontFamily: Typography.family.body,
-                  opacity: 0.6,
-                  marginTop: 8,
-                  color: C.brownLight,
-                  fontSize: 15,
-                  lineHeight: 22,
-                }}
-              >
-                {t('profileCompletion.freudScoreIntro', {
-                  defaultValue: "Here's your initial Glow score based on your assessment.",
-                })}
-              </Text>
-
-              {/* Freud Score circle */}
-              <View style={{ alignItems: 'center', marginTop: 24, marginBottom: 24 }}>
-                <View
-                  style={{
-                    width: 120,
-                    height: 120,
-                    borderRadius: 60,
-                    borderWidth: 6,
-                    borderColor: scoreColor,
-                    backgroundColor: scoreColor + '15',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontFamily: Typography.family.body,
-                      fontSize: 36,
-                      fontWeight: Typography.weight.semibold,
-                      color: scoreColor,
-                    }}
-                  >
-                    {score}
-                  </Text>
-                </View>
-                <Text
-                  style={{
-                    fontFamily: Typography.family.body,
-                    marginTop: 12,
-                    fontSize: 18,
-                    fontWeight: Typography.weight.semibold,
-                    color: scoreColor,
-                  }}
-                >
-                  {freudScore?.label ?? ''}
-                </Text>
-                <Text
-                  style={{ ...Typography.section, marginTop: 4, color: C.brownLight, opacity: 0.6 }}
-                >
-                  {t('freudScore.title')}
-                </Text>
-              </View>
-
-              {/* Breakdown bars */}
-              <View style={{ marginTop: 8 }}>
-                <BreakdownBar
-                  label={t('freudScore.mood')}
-                  value={freudScore?.breakdown.mood ?? 0}
-                  color="#5AAF8B"
-                  icon="😊"
-                />
-                <BreakdownBar
-                  label={t('freudScore.sleep')}
-                  value={freudScore?.breakdown.sleep ?? 0}
-                  color="#7B6DC9"
-                  icon="😴"
-                />
-                <BreakdownBar
-                  label={t('freudScore.stress')}
-                  value={freudScore?.breakdown.stress ?? 0}
-                  color="#E8985A"
-                  icon="🧘"
-                />
-                <BreakdownBar
-                  label={t('freudScore.mindfulness')}
-                  value={freudScore?.breakdown.mindfulness ?? 0}
-                  color="#5B8A5A"
-                  icon="🧠"
-                />
-                <BreakdownBar
-                  label={t('freudScore.consistency')}
-                  value={freudScore?.breakdown.consistency ?? 0}
-                  color="#a07b55"
-                  icon="📅"
-                />
-                <BreakdownBar
-                  label={t('freudScore.journal')}
-                  value={freudScore?.breakdown.journal ?? 0}
-                  color="#C45B5B"
-                  icon="📝"
-                />
-              </View>
-            </>
-          )}
+    <View style={{ flex: 1, backgroundColor: palette.bg }}>
+      <GlowField
+        glows={[
+          ...SHELL_GLOWS,
+          { color: palette.mustard, opacity: 0.28, x: 27.5, y: 130 + dy, width: 320, blur: 70 },
+          { color: palette.lavenderSoft, opacity: 0.25, x: 157.5, y: 230 + dy, width: 200, blur: 60 },
+        ]}
+      />
+      <AllSetAura width={333.1} height={300.2} style={{ position: 'absolute', left: 179.25 * sx - 166.55, top: 144.6 + dy }} />
+      <View style={{ flex: 1, alignItems: 'center', paddingTop: 204 + dy }}>
+        <View style={{ width: RING, height: RING, alignItems: 'center', justifyContent: 'center' }} accessible accessibilityLabel={`${score}, ${t('profileFlow.done.score')}`}>
+          <Svg width={RING} height={RING} style={{ position: 'absolute' }}>
+            <Circle cx={RING / 2} cy={RING / 2} r={RADIUS} stroke={palette.plum} strokeOpacity={0.12} strokeWidth={STROKE} fill="none" />
+            <Circle
+              cx={RING / 2}
+              cy={RING / 2}
+              r={RADIUS}
+              stroke={palette.plum}
+              strokeWidth={STROKE}
+              strokeLinecap="round"
+              fill="none"
+              strokeDasharray={`${(CIRCUMFERENCE * Math.min(100, Math.max(0, score))) / 100} ${CIRCUMFERENCE}`}
+              transform={`rotate(-90 ${RING / 2} ${RING / 2})`}
+            />
+          </Svg>
+          <Text style={{ ...Type.display, fontWeight: '400', fontSize: 64, lineHeight: 77, color: palette.plum, marginTop: -6 }}>{score}</Text>
+          <Text style={[Type.chip, { color: palette.textMuted }]}>{t('profileFlow.done.score')}</Text>
         </View>
-
-        {/* Continue button */}
-        <Pressable
-          onPress={() => router.replace('/(onboarding)/suggested-categories')}
-          style={({ pressed }) => ({
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 10,
-            paddingVertical: 18,
-            borderRadius: 30,
-            backgroundColor: C.brown,
-            marginTop: 24,
-            opacity: pressed ? 0.9 : 1,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.1,
-            shadowRadius: 10,
-            elevation: 4,
-          })}
-        >
-          <Text
-            style={{
-              fontFamily: Typography.family.body,
-              color: 'white',
-              fontWeight: Typography.weight.semibold,
-              fontSize: 17,
-            }}
-          >
-            {t('common.continue')}
+        <View style={{ marginTop: 64, paddingHorizontal: 24, gap: 11, alignItems: 'center' }}>
+          <Text accessibilityRole="header" style={[Type.titleLg, { color: palette.ink, textAlign: 'center' }]}>
+            {name ? t('profileFlow.done.titleNamed', { name }) : t('profileFlow.done.title')}
           </Text>
-          <MaterialIcons name="arrow-forward" size={20} color="white" />
-        </Pressable>
-      </ScrollView>
+          <Text style={[Type.bodySm, { lineHeight: 17, color: palette.textMuted, textAlign: 'center', maxWidth: 287 }]}>{t('profileFlow.done.body')}</Text>
+        </View>
+      </View>
+      <View style={{ paddingHorizontal: 24, paddingBottom: insets.bottom + 48 }}>
+        <AppButton title={t('profileFlow.done.cta')} busy={busy} onPress={finish} />
+      </View>
     </View>
   );
 }

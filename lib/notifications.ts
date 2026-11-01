@@ -340,7 +340,8 @@ const REMINDERS: Record<
     weekday: 1,
   },
 };
-type SavedReminders = Record<string, { enabled: boolean; id?: string }>;
+type ReminderTime = { hour: number; minute: number };
+type SavedReminders = Record<string, { enabled: boolean; id?: string; time?: ReminderTime }>;
 async function savedReminders(): Promise<SavedReminders> {
   try {
     return JSON.parse((await AsyncStorage.getItem(PREFERENCES_KEY)) || '{}');
@@ -354,7 +355,11 @@ export async function loadReminderPreferences(): Promise<Record<string, boolean>
     Object.keys(REMINDERS).map((key) => [key, saved[key]?.enabled === true]),
   );
 }
-export async function setReminderEnabled(key: string, enabled: boolean) {
+/**
+ * Turns a reminder on or off. `time` overrides its default hour and minute (the daily check-in time
+ * from profile setup); a saved time is kept for later toggles.
+ */
+export async function setReminderEnabled(key: string, enabled: boolean, time?: ReminderTime) {
   if (Platform.OS === 'web')
     throw new Error(
       'Phone reminders are available in the iPhone app. Your activity notifications remain available here.',
@@ -363,24 +368,26 @@ export async function setReminderEnabled(key: string, enabled: boolean) {
   if (!reminder) throw new Error('Unknown reminder');
   if (enabled) await requireNotificationPermission();
   const saved = await savedReminders();
+  const at = time ?? saved[key]?.time ?? { hour: reminder.hour, minute: reminder.minute };
   const trigger: Notifications.NotificationTriggerInput = reminder.weekday
     ? {
         type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
-        hour: reminder.hour,
-        minute: reminder.minute,
+        hour: at.hour,
+        minute: at.minute,
         weekday: reminder.weekday,
       }
     : {
         type: Notifications.SchedulableTriggerInputTypes.DAILY,
-        hour: reminder.hour,
-        minute: reminder.minute,
+        hour: at.hour,
+        minute: at.minute,
       };
   const id = enabled
     ? await scheduleNotification(reminder.title, reminder.body, { route: reminder.route }, trigger)
     : undefined;
   try {
     if (saved[key]?.id) await Notifications.cancelScheduledNotificationAsync(saved[key].id!);
-    saved[key] = { enabled, ...(id ? { id } : {}) };
+    const keptTime = time ?? saved[key]?.time;
+    saved[key] = { enabled, ...(id ? { id } : {}), ...(keptTime ? { time: keptTime } : {}) };
     await AsyncStorage.setItem(PREFERENCES_KEY, JSON.stringify(saved));
   } catch (error) {
     if (id) await Notifications.cancelScheduledNotificationAsync(id);

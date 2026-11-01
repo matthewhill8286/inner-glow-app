@@ -5,6 +5,21 @@ import { UserProfile } from '@/lib/types';
 import { useUser } from './useUser';
 import { queryKeys, STALE } from '@/lib/queryKeys';
 
+/** Maps a `profiles` row to the app's profile. Times come back as "08:30:00"; the app uses "08:30". */
+function profileFromRow(data: Record<string, any>): UserProfile {
+  return {
+    name: data.name,
+    intention: normalizeProfileChoice(data.intention, 'goal'),
+    routine: normalizeProfileChoice(data.routine, 'routine'),
+    selectedIssues: data.selected_issues as string[] | undefined,
+    avatarPath: data.avatar_path ?? null,
+    birthday: data.birthday ?? null,
+    checkinTime: typeof data.checkin_time === 'string' ? data.checkin_time.slice(0, 5) : null,
+    notificationPrefs: (data.notification_prefs as Record<string, boolean> | null) ?? {},
+    updatedAt: data.updated_at,
+  };
+}
+
 export const useProfile = (opts?: { lazy?: boolean }) => {
   const lazy = opts?.lazy ?? false;
   const queryClient = useQueryClient();
@@ -27,15 +42,7 @@ export const useProfile = (opts?: { lazy?: boolean }) => {
 
       if (error) throw error;
 
-      const profile: UserProfile = {
-        name: data.name,
-        intention: normalizeProfileChoice(data.intention, 'goal'),
-        routine: normalizeProfileChoice(data.routine, 'routine'),
-        selectedIssues: data.selected_issues as string[] | undefined,
-        updatedAt: data.updated_at,
-      };
-
-      return profile;
+      return profileFromRow(data);
     },
   });
 
@@ -76,14 +83,7 @@ export const useProfile = (opts?: { lazy?: boolean }) => {
 
       if (error) throw error;
 
-      const updatedProfile: UserProfile = {
-        name: data.name,
-        intention: normalizeProfileChoice(data.intention, 'goal'),
-        routine: normalizeProfileChoice(data.routine, 'routine'),
-        selectedIssues: data.selected_issues as string[] | undefined,
-        updatedAt: data.updated_at,
-      };
-      return updatedProfile;
+      return profileFromRow(data);
     },
     onMutate: async (profile) => {
       await queryClient.cancelQueries({ queryKey: profileKey });
@@ -113,19 +113,16 @@ export const useProfile = (opts?: { lazy?: boolean }) => {
       if (updates.routine !== undefined)
         dbUpdates.routine = normalizeProfileChoice(updates.routine, 'routine');
       if (updates.selectedIssues !== undefined) dbUpdates.selected_issues = updates.selectedIssues;
+      if (updates.avatarPath !== undefined) dbUpdates.avatar_path = updates.avatarPath;
+      if (updates.birthday !== undefined) dbUpdates.birthday = updates.birthday;
+      if (updates.checkinTime !== undefined) dbUpdates.checkin_time = updates.checkinTime;
+      if (updates.notificationPrefs !== undefined) dbUpdates.notification_prefs = updates.notificationPrefs;
 
       const { data, error } = await supabase.from('profiles').upsert(dbUpdates).select().single();
 
       if (error) throw error;
 
-      const updatedProfile: UserProfile = {
-        name: data.name,
-        intention: normalizeProfileChoice(data.intention, 'goal'),
-        routine: normalizeProfileChoice(data.routine, 'routine'),
-        selectedIssues: data.selected_issues as string[] | undefined,
-        updatedAt: data.updated_at,
-      };
-      return updatedProfile;
+      return profileFromRow(data);
     },
     onMutate: async (updates) => {
       await queryClient.cancelQueries({ queryKey: profileKey });
@@ -169,6 +166,10 @@ export const useProfile = (opts?: { lazy?: boolean }) => {
       if (assessment.meds !== undefined) row.meds = assessment.meds;
       if (assessment.otherSymptoms !== undefined) row.other_symptoms = assessment.otherSymptoms;
       if (assessment.stressLevel !== undefined) row.stress_level = assessment.stressLevel;
+      if (assessment.moodScore !== undefined) row.mood_score = assessment.moodScore;
+      if (assessment.stressBand !== undefined) row.stress_band = assessment.stressBand;
+      if (assessment.medications !== undefined) row.medications = assessment.medications;
+      if (assessment.reflectionText !== undefined) row.reflection_text = assessment.reflectionText;
       if (assessment.soundCheck !== undefined) row.sound_check = assessment.soundCheck;
       if (assessment.expressionCheck !== undefined)
         row.expression_check = assessment.expressionCheck;
