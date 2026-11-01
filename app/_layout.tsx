@@ -16,6 +16,7 @@ import { supabase } from '@/supabase/supabase';
 import * as Linking from 'expo-linking';
 import { Platform, View, AppState } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import configureRevenueCat, { subscribeToPurchaseUpdates } from '@/lib/revenuecat';
 import { flushDiagnostics, installCrashDiagnostics, recordDiagnostic } from '@/lib/diagnostics';
 import { AppErrorBoundary } from '@/components/ui/AppErrorBoundary';
@@ -132,7 +133,8 @@ export default function RootLayout() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
       const nextIdentity = session?.user.id ?? null;
-      const identityChanged = authIdentity.current !== undefined && authIdentity.current !== nextIdentity;
+      const identityChanged =
+        authIdentity.current !== undefined && authIdentity.current !== nextIdentity;
       authIdentity.current = nextIdentity;
       if (event === 'PASSWORD_RECOVERY') {
         // Supabase detected a recovery token — navigate to reset password
@@ -197,33 +199,40 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <SafeAreaProvider>
-      <AppErrorBoundary>
-        <QueryClientProvider client={queryClient}>
-          <View
-            style={{
-              flex: 1,
-              width: '100%',
-              ...(Platform.OS === 'web' ? { maxWidth: 560, alignSelf: 'center' as const } : {}),
-            }}
-          >
-            <StatusBar style="dark" />
-            <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: palette.bg } }}>
-              <Stack.Screen name="(onboarding)" />
-              <Stack.Screen name="(auth)" />
-              <Stack.Screen name="(tabs)" />
-              <Stack.Screen name="(utils)" />
-              <Stack.Screen name="(legacy)" />
-              <Stack.Screen name="(suggestion-actions)" />
-            </Stack>
-          </View>
-          {Platform.OS !== 'web' && <NativeNotificationResponses />}
-          {Platform.OS !== 'web' && <AppLockGate />}
-          <AlertModal />
-          <ToastContainer />
-        </QueryClientProvider>
-      </AppErrorBoundary>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <AppErrorBoundary>
+          <QueryClientProvider client={queryClient}>
+            <View
+              style={{
+                flex: 1,
+                width: '100%',
+                ...(Platform.OS === 'web' ? { maxWidth: 560, alignSelf: 'center' as const } : {}),
+              }}
+            >
+              <StatusBar style="dark" />
+              <Stack
+                screenOptions={{
+                  headerShown: false,
+                  contentStyle: { backgroundColor: palette.bg },
+                }}
+              >
+                <Stack.Screen name="(onboarding)" />
+                <Stack.Screen name="(auth)" />
+                <Stack.Screen name="(tabs)" />
+                <Stack.Screen name="(utils)" />
+                <Stack.Screen name="(legacy)" />
+                <Stack.Screen name="(suggestion-actions)" />
+              </Stack>
+            </View>
+            {Platform.OS !== 'web' && <NativeNotificationResponses />}
+            {Platform.OS !== 'web' && <AppLockGate />}
+            <AlertModal />
+            <ToastContainer />
+          </QueryClientProvider>
+        </AppErrorBoundary>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
 
@@ -261,7 +270,8 @@ function NativeNotificationResponses() {
       },
     );
     const target = notification.request.content.data?.route;
-    if (isAppRoute(target)) router.push(canonicalRoute(target as string) as import('expo-router').Href);
+    if (isAppRoute(target))
+      router.push(canonicalRoute(target as string) as import('expo-router').Href);
     void Notifications.clearLastNotificationResponse();
   }, [navigationState?.key, lastResponse]);
 

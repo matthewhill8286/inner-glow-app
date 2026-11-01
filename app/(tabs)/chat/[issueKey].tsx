@@ -1,47 +1,36 @@
-import { useSubscription } from '@/hooks/useSubscription';
-import { AppCard } from '@/components/ui/AppCard';
-import { AppButton } from '@/components/ui/AppButton';
-import { prepareChatTurn } from '@/lib/conversation-display';
-import { StatusState } from '@/components/ui/StatusState';
-import { Typography } from '@/constants/typography';
-import { ServiceError } from '@/lib/function-errors';
-import { takeChatDraft } from '@/lib/chat-drafts';
-import { backTo } from '@/lib/navigation';
-import { WellnessIconText } from '@/components/WellnessIconText';
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   View,
   Text,
-  Pressable,
-  TextInput,
   FlatList,
   KeyboardAvoidingView,
   Platform,
-  StyleSheet,
   ActivityIndicator,
   Keyboard,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
+import { useSubscription } from '@/hooks/useSubscription';
+import { AppButton } from '@/components/ui/AppButton';
+import { StatusState } from '@/components/ui/StatusState';
+import { LegalNote } from '@/components/ui/controls';
+import { GlowField, GlowOrb } from '@/components/glow/Glow';
+import { ChatHeader, Composer, MessageBubble, StarterRow } from '@/components/chat/ChatParts';
+import { prepareChatTurn } from '@/lib/conversation-display';
+import { ServiceError } from '@/lib/function-errors';
+import { takeChatDraft } from '@/lib/chat-drafts';
+import { backTo } from '@/lib/navigation';
 import { showAlert } from '@/lib/state';
-import { toast } from '@/components/Toast';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors, UI } from '@/constants/theme';
-import MaterialIcons from '@/components/AppIcon';
+import { talkDate } from '@/lib/talks';
+import { palette } from '@/constants/theme';
+import { Type } from '@/constants/typography';
 import TypingBubble from '@/components/TypingBubble';
-import {
-  sendChatToAI,
-  getPersona,
-  getTopicKeyPrefix,
-  type PersonaId,
-  type PersonaMeta,
-} from '@/lib/chat';
+import { sendChatToAI, getPersona, getTopicKeyPrefix, type PersonaId } from '@/lib/chat';
 import { useChat } from '@/hooks/useChat';
 import { ChatMessage } from '@/lib/types';
 import { useTopics } from '@/hooks/useTopics';
 import { parseChatKey } from '@/lib/chatKeys';
-import CitationSection from '@/components/CitationSection';
 
 /* ── Helpers ────────────────────────────────────────── */
 
@@ -49,121 +38,24 @@ function goBack(from?: string) {
   backTo(from, '/(tabs)/chat');
 }
 
-/* ── Message Bubble ─────────────────────────────────── */
-
-type AppColors = (typeof Colors)['light'] | (typeof Colors)['dark'];
-
-function MessageBubble({
-  item,
-  persona,
-  colors,
-}: {
-  item: ChatMessage;
-  persona: PersonaMeta;
-  colors: AppColors;
-}) {
-  const isUser = item.role === 'user';
-  const hasCitations = !isUser && item.citations && item.citations.length > 0;
-
-  return (
-    <View style={[s.msgRow, { justifyContent: isUser ? 'flex-end' : 'flex-start' }]}>
-      {!isUser && (
-        <View style={[s.aiAvatar, { backgroundColor: persona.color + '18' }]}>
-          <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 16 }}>
-            {persona.emoji}
-          </WellnessIconText>
-        </View>
-      )}
-      <View
-        style={[
-          s.msgBubble,
-          isUser
-            ? [s.userBubble, { backgroundColor: persona.color }]
-            : [s.aiBubble, { backgroundColor: colors.card, borderColor: colors.border }],
-        ]}
-      >
-        <Text style={[s.msgText, { color: isUser ? '#FFF' : colors.text }]}>{item.content}</Text>
-
-        {hasCitations && (
-          <CitationSection
-            citations={item.citations!}
-            accentColor={persona.color}
-            colors={colors as any}
-            compact
-          />
-        )}
-
-        <Text style={[s.msgTime, { color: isUser ? 'rgba(255,255,255,0.6)' : colors.subtleText }]}>
-          {new Date(item.createdAt).toLocaleTimeString([], {
-            hour: '2-digit',
-            minute: '2-digit',
-          })}
-        </Text>
-      </View>
-    </View>
-  );
+function clock(iso: string) {
+  return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
-/* ── Empty State ────────────────────────────────────── */
-
-function EmptyState({
-  persona,
-  topicName,
-  suggestions,
-  colors,
-  onSuggestion,
-}: {
-  persona: PersonaMeta;
-  topicName: string;
-  suggestions: string[];
-  colors: AppColors;
-  onSuggestion: (text: string) => void;
-}) {
-  const { t } = useTranslation();
-  return (
-    <View style={s.emptyWrap}>
-      <View style={[s.emptyCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        <View style={[s.emptyAvatarWrap, { backgroundColor: persona.color + '15' }]}>
-          <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 36 }}>
-            {persona.emoji}
-          </WellnessIconText>
-        </View>
-        <Text style={[s.emptyTitle, { color: colors.text }]}>{t('chat.startConversation')}</Text>
-        <Text style={[s.emptySub, { color: colors.mutedText }]}>
-          {t('chat.startSubtitle', { topic: topicName.toLowerCase() })}
-        </Text>
-      </View>
-
-      <View style={s.emptySuggestions}>
-        {suggestions.map((sug, i) => (
-          <Pressable
-            key={i}
-            onPress={() => onSuggestion(sug)}
-            style={({ pressed }) => [
-              s.emptySugBtn,
-              {
-                backgroundColor: colors.card,
-                borderColor: colors.border,
-                transform: [{ scale: pressed ? 0.96 : 1 }],
-              },
-            ]}
-          >
-            <Text style={[s.emptySugText, { color: colors.text }]}>{sug}</Text>
-            <MaterialIcons name="arrow-forward-ios" size={11} color={colors.subtleText} />
-          </Pressable>
-        ))}
-      </View>
-    </View>
-  );
+function sameDay(a: string, b: string) {
+  return new Date(a).toDateString() === new Date(b).toDateString();
 }
 
 /* ── Main Screen ────────────────────────────────────── */
 
+/**
+ * Glow AI · Conversation (05 §3.3, 09 §3.2): the chat header, day stamps, plum and white bubbles, the
+ * typing bubble with its caption, the send receipt and the composer pill. Voice, quick replies and
+ * practice cards wait for voice mode and structured replies from the chat function.
+ */
 export default function Chat() {
   const insets = useSafeAreaInsets();
-  const { t } = useTranslation();
-  const theme = useColorScheme() ?? 'light';
-  const colors = Colors[theme];
+  const { t, i18n } = useTranslation();
 
   /* ── Route params ── */
   const {
@@ -187,7 +79,7 @@ export default function Chat() {
   const { hasFullAccess, isLoading: accessLoading } = useSubscription();
 
   /* ── Chat data ── */
-  const { history, saveMessages, clearHistory, isLoading: loading } = useChat();
+  const { history, saveMessages, isLoading: loading } = useChat();
 
   /* ── Local messages — syncs from DB, then managed locally ── */
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -362,80 +254,35 @@ export default function Chat() {
     void sendMessage(openingMessage, false, history[issueKey] || []);
   }, [initialMessage, issueKey, loading, accessLoading, history, sendMessage]);
 
-  /* ── Clear ── */
-  function handleClear() {
-    if (!issueKey) return;
-    showAlert(t('chat.clearTitle'), t('chat.clearMessage'), [
-      { text: t('common.cancel'), style: 'cancel' },
-      {
-        text: t('chat.clear'),
-        style: 'destructive',
-        onPress: async () => {
-          await clearHistory(issueKey);
-          setMessages([]);
-        },
-      },
-    ]);
-  }
-
   /* ── Render ── */
+
+  const header = (
+    <ChatHeader
+      title={t('glowAi.title')}
+      status={t('glowAi.chat.status')}
+      backLabel={t('common.back')}
+      onBack={() => goBack(from)}
+      style={{ marginTop: insets.top + 10, marginHorizontal: 24 }}
+    />
+  );
+  const glows = (
+    <GlowField
+      glows={[
+        { color: palette.mustard, opacity: 0.2, x: -50, y: -20, width: 280, blur: 80 },
+        { color: palette.lavenderSoft, opacity: 0.25, x: 180, y: 60, width: 220, blur: 80 },
+      ]}
+    />
+  );
 
   /* Show a loading screen while chat histories are being fetched */
   if (!historyReady || lastLoadedKey.current !== issueKey) {
     return (
-      <View
-        style={[
-          s.container,
-          {
-            backgroundColor: colors.background,
-            justifyContent: 'center',
-            alignItems: 'center',
-            paddingTop: insets.top + 8,
-          },
-        ]}
-      >
-        <View style={s.header}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Back to conversations"
-            onPress={() => goBack(from)}
-            style={({ pressed }) => [
-              s.backBtn,
-              {
-                backgroundColor: colors.card,
-                borderColor: colors.border,
-                opacity: pressed ? 0.7 : 1,
-              },
-            ]}
-          >
-            <MaterialIcons
-              name={Platform.OS === 'ios' ? 'arrow-back-ios-new' : 'arrow-back'}
-              size={18}
-              color={colors.text}
-            />
-          </Pressable>
-          <View style={[s.headerAvatarWrap, { backgroundColor: persona.color + '15' }]}>
-            <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 20 }}>
-              {persona.emoji}
-            </WellnessIconText>
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={[s.headerTitle, { color: colors.text }]} numberOfLines={2}>
-              {topicName}
-            </Text>
-            <Text style={[s.headerSub, { color: colors.mutedText }]}>{persona.name}</Text>
-          </View>
-        </View>
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color={persona.color} />
-          <Text
-            style={{
-              fontFamily: Typography.family.body,
-              color: colors.mutedText,
-              marginTop: 12,
-              fontSize: 14,
-            }}
-          >
+      <View style={{ flex: 1, backgroundColor: palette.bg }}>
+        {glows}
+        {header}
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 }}>
+          <ActivityIndicator size="large" color={palette.plum} />
+          <Text style={[Type.bodySm, { color: palette.textMuted }]}>
             {t('chat.loadingHistory') || 'Loading conversation...'}
           </Text>
         </View>
@@ -443,94 +290,83 @@ export default function Chat() {
     );
   }
 
+  const lastUser = [...messages].reverse().find((m) => m.role === 'user');
+  const lastUserSaved = !!lastUser && (history[issueKey] ?? []).some((m) => m.id === lastUser.id);
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={{ flex: 1, backgroundColor: colors.background }}
+      style={{ flex: 1, backgroundColor: palette.bg }}
     >
-      <View
-        style={[s.container, { backgroundColor: colors.background, paddingTop: insets.top + 8 }]}
-      >
-        {/* ── Header ── */}
-        <View style={s.header}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Back to conversations"
-            onPress={() => goBack(from)}
-            style={({ pressed }) => [
-              s.backBtn,
-              {
-                backgroundColor: colors.card,
-                borderColor: colors.border,
-                opacity: pressed ? 0.7 : 1,
-              },
-            ]}
-          >
-            <MaterialIcons
-              name={Platform.OS === 'ios' ? 'arrow-back-ios-new' : 'arrow-back'}
-              size={18}
-              color={colors.text}
-            />
-          </Pressable>
+      {glows}
+      {header}
 
-          <View style={[s.headerAvatarWrap, { backgroundColor: persona.color + '15' }]}>
-            <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 20 }}>
-              {persona.emoji}
-            </WellnessIconText>
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={[s.headerTitle, { color: colors.text }]} numberOfLines={2}>
-              {topicName}
-            </Text>
-            <Text style={[s.headerSub, { color: colors.mutedText }]}>{persona.name}</Text>
-          </View>
-
-          {messages.length > 0 && (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Clear conversation"
-              disabled={isAiTyping}
-              onPress={handleClear}
-              style={({ pressed }) => [
-                s.headerActionBtn,
-                {
-                  backgroundColor: theme === 'light' ? '#fee2e2' : '#442222',
-                  opacity: pressed ? 0.7 : 1,
-                },
-              ]}
-            >
-              <MaterialIcons
-                name="delete-outline"
-                size={18}
-                color={theme === 'light' ? '#ef4444' : '#f88'}
+      <FlatList
+        ref={flatListRef}
+        data={messages}
+        keyExtractor={(item) => item.id}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        style={{ flex: 1 }}
+        contentContainerStyle={{
+          paddingHorizontal: 24,
+          paddingTop: 20,
+          paddingBottom: 12,
+          gap: 12,
+        }}
+        showsVerticalScrollIndicator={false}
+        onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+        ListEmptyComponent={
+          <View style={{ gap: 8 }}>
+            <GlowOrb size={120} style={{ alignSelf: 'center', marginVertical: 24 }} />
+            {suggestions.map((sug) => (
+              <StarterRow
+                key={sug}
+                icon="line/chat"
+                label={sug}
+                onPress={() => void sendMessage(sug)}
               />
-            </Pressable>
-          )}
-        </View>
+            ))}
+          </View>
+        }
+        renderItem={({ item, index }) => (
+          <MessageBubble
+            item={item}
+            dayStamp={
+              index === 0 || !sameDay(messages[index - 1].createdAt, item.createdAt)
+                ? t('glowAi.chat.day', {
+                    day: talkDate(item.createdAt, i18n.language, t('glowAi.today')),
+                    time: clock(item.createdAt),
+                  })
+                : undefined
+            }
+            receipt={
+              item.id === lastUser?.id && lastUserSaved
+                ? t('glowAi.chat.sent', { time: clock(item.createdAt) })
+                : undefined
+            }
+          />
+        )}
+        ListFooterComponent={
+          isTyping ? (
+            <View style={{ gap: 6, marginTop: 12 }}>
+              <TypingBubble />
+              <Text style={[Type.micro, { lineHeight: 15, color: palette.textSubtle }]}>
+                {t('glowAi.chat.typing')}
+              </Text>
+            </View>
+          ) : null
+        }
+      />
 
-        {/* ── Messages ── */}
-        <FlatList
-          ref={flatListRef}
-          data={messages}
-          keyExtractor={(item) => item.id}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
-          style={{ flex: 1 }}
-          contentContainerStyle={s.messagesList}
-          showsVerticalScrollIndicator={false}
-          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-          ListEmptyComponent={
-            <EmptyState
-              persona={persona}
-              topicName={topicName}
-              suggestions={suggestions}
-              colors={colors}
-              onSuggestion={sendMessage}
-            />
-          }
-          renderItem={({ item }) => <MessageBubble item={item} persona={persona} colors={colors} />}
-        />
-
+      <View
+        style={{
+          paddingHorizontal: 24,
+          paddingBottom: keyboardVisible ? 8 : insets.bottom + 10,
+          paddingTop: 8,
+          gap: 12,
+        }}
+      >
         {failedMessage && (
           <StatusState
             title={
@@ -543,226 +379,29 @@ export default function Chat() {
             busy={isAiTyping}
           />
         )}
-        {/* ── Typing indicator ── */}
-        {isTyping && (
-          <View style={s.typingRow}>
-            <View style={[s.aiAvatar, { backgroundColor: persona.color + '18' }]}>
-              <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 14 }}>
-                {persona.emoji}
-              </WellnessIconText>
-            </View>
-            <View
-              style={[s.typingBubble, { backgroundColor: colors.card, borderColor: colors.border }]}
-            >
-              <TypingBubble />
-            </View>
-          </View>
-        )}
-
         {!accessLoading && !hasFullAccess && (
-          <AppCard>
-            <Text style={[Typography.caption, { color: colors.mutedText }]}>
+          <View style={{ backgroundColor: palette.white, borderRadius: 22, padding: 16, gap: 12 }}>
+            <Text style={[Type.captionM, { color: palette.textMuted }]}>
               Your conversations stay available to read. Trial or Premium access is needed to send
               AI messages.
             </Text>
             <AppButton
               title="View Premium plans"
+              size="s"
               onPress={() => router.push('/(utils)/trial-upgrade')}
             />
-          </AppCard>
+          </View>
         )}
-        {/* ── Input Bar ── */}
-        <View
-          style={[
-            s.inputBar,
-            {
-              borderTopColor: colors.border,
-              paddingBottom: keyboardVisible ? 8 : Math.max(insets.bottom, 12),
-            },
-          ]}
-        >
-          <TextInput
-            editable={hasFullAccess}
-            accessibilityLabel="Message"
-            value={inputText}
-            onChangeText={setInputText}
-            placeholder={t('chat.typePlaceholder')}
-            placeholderTextColor={colors.placeholder}
-            multiline
-            style={[
-              s.input,
-              { backgroundColor: colors.card, color: colors.text, borderColor: colors.border },
-            ]}
-          />
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Send message"
-            onPress={() => sendMessage()}
-            disabled={!inputText.trim() || isTyping || !hasFullAccess}
-            style={({ pressed }) => [
-              s.sendBtn,
-              {
-                backgroundColor: inputText.trim() && !isTyping ? persona.color : colors.divider,
-                opacity: pressed ? 0.7 : 1,
-              },
-            ]}
-          >
-            <MaterialIcons
-              name="send"
-              size={20}
-              color={inputText.trim() && !isTyping ? '#FFF' : colors.mutedText}
-            />
-          </Pressable>
-        </View>
+        <Composer
+          value={inputText}
+          onChangeText={setInputText}
+          onSend={() => void sendMessage()}
+          placeholder={t('glowAi.composer.placeholder')}
+          sendLabel={t('glowAi.composer.send')}
+          disabled={isTyping || !hasFullAccess}
+        />
+        {!keyboardVisible && <LegalNote text={t('glowAi.note')} />}
       </View>
     </KeyboardAvoidingView>
   );
 }
-
-/* ── Styles ──────────────────────────────────────────── */
-const s = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingHorizontal: UI.spacing.xl,
-    paddingTop: 0,
-  },
-
-  /* header */
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 4,
-  },
-  backBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-  },
-  headerAvatarWrap: {
-    width: 38,
-    height: 38,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerTitle: { ...Typography.heading, fontSize: 24 },
-  headerSub: {
-    fontFamily: Typography.family.body,
-    fontSize: 12,
-    fontWeight: Typography.weight.semibold,
-    marginTop: 1,
-  },
-  headerActionBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  /* messages */
-  messagesList: { paddingVertical: 16, gap: 12 },
-  msgRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
-  aiAvatar: {
-    width: 30,
-    height: 30,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  msgBubble: { maxWidth: '78%', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 20 },
-  userBubble: { borderBottomRightRadius: 4 },
-  aiBubble: { borderBottomLeftRadius: 4, borderWidth: 1 },
-  msgText: { ...Typography.body },
-  msgTime: {
-    fontFamily: Typography.family.body,
-    fontSize: 10,
-    fontWeight: Typography.weight.bold,
-    marginTop: 6,
-    alignSelf: 'flex-end',
-  },
-
-  /* typing */
-  typingRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginBottom: 8 },
-  typingBubble: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 20,
-    borderBottomLeftRadius: 4,
-    borderWidth: 1,
-  },
-
-  /* empty state */
-  emptyWrap: { gap: 14, paddingTop: 8 },
-  emptyCard: {
-    borderRadius: UI.radius.xxl,
-    padding: 24,
-    borderWidth: 1,
-    alignItems: 'center',
-    ...UI.shadow.sm,
-  },
-  emptyAvatarWrap: {
-    width: 64,
-    height: 64,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-  },
-  emptyTitle: { ...Typography.cardHeading, textAlign: 'center' },
-  emptySub: {
-    fontFamily: Typography.family.body,
-    fontSize: 14,
-    lineHeight: 21,
-    textAlign: 'center',
-    marginTop: 6,
-    paddingHorizontal: 8,
-  },
-  emptySuggestions: { gap: 8 },
-  emptySugBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 13,
-    borderRadius: UI.radius.lg,
-    borderWidth: 1,
-  },
-  emptySugText: {
-    fontFamily: Typography.family.body,
-    fontSize: 14,
-    fontWeight: Typography.weight.semibold,
-    flex: 1,
-  },
-
-  /* input bar */
-  inputBar: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 10,
-    paddingTop: 10,
-    paddingBottom: 10,
-    borderTopWidth: 1,
-  },
-  input: {
-    fontFamily: Typography.family.body,
-    flex: 1,
-    borderRadius: 22,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    maxHeight: 120,
-    fontSize: 15,
-    borderWidth: 1,
-  },
-  sendBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});

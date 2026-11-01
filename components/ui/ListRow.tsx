@@ -35,6 +35,8 @@ export type ListRowProps = {
   onPress?: () => void;
   accessibilityLabel?: string;
   style?: StyleProp<ViewStyle>;
+  /** Keeps the label and supporting text to one line each (talk lists). */
+  singleLine?: boolean;
   /** Set by `ListGroup`. */
   divider?: boolean;
   /** Set by `ListGroup`. */
@@ -53,6 +55,7 @@ export function ListRow({
   onPress,
   accessibilityLabel,
   style,
+  singleLine = false,
   divider = false,
   appearance = 'grouped',
 }: ListRowProps) {
@@ -90,8 +93,12 @@ export function ListRow({
         </View>
       )}
       <View style={{ flex: 1, gap: 2 }}>
-        <Text style={[Type.bodyMMedium, { color: palette.ink }]}>{label}</Text>
-        {supportingText ? <Text style={[Type.captionS, { color: palette.textMuted }]}>{supportingText}</Text> : null}
+        <Text numberOfLines={singleLine ? 1 : undefined} style={[Type.bodyMMedium, { color: palette.ink }]}>{label}</Text>
+        {supportingText ? (
+          <Text numberOfLines={singleLine ? 1 : undefined} style={[Type.captionS, { color: palette.textMuted }]}>
+            {supportingText}
+          </Text>
+        ) : null}
       </View>
       {(trailing === 'value' || trailing === 'chevron') && value ? <Text style={[Type.captionM, { color: palette.textMuted }]}>{value}</Text> : null}
       {trailing === 'chevron' && <Icon name="arrow/chevron-right" size={18} />}
