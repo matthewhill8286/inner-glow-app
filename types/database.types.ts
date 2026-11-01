@@ -728,8 +728,12 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_path: string | null
+          birthday: string | null
+          checkin_time: string | null
           intention: string | null
           name: string | null
+          notification_prefs: Json
           routine: string | null
           selected_issues: Json | null
           subscription_expiry: string | null
@@ -738,8 +742,12 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          avatar_path?: string | null
+          birthday?: string | null
+          checkin_time?: string | null
           intention?: string | null
           name?: string | null
+          notification_prefs?: Json
           routine?: string | null
           selected_issues?: Json | null
           subscription_expiry?: string | null
@@ -748,8 +756,12 @@ export type Database = {
           user_id: string
         }
         Update: {
+          avatar_path?: string | null
+          birthday?: string | null
+          checkin_time?: string | null
           intention?: string | null
           name?: string | null
+          notification_prefs?: Json
           routine?: string | null
           selected_issues?: Json | null
           subscription_expiry?: string | null
