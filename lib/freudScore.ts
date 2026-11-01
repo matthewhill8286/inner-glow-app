@@ -5,6 +5,7 @@ import type {
   MindfulEntry,
   StressCompletion,
 } from './types';
+import { stressBandScore } from './assessment-flow';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -267,8 +268,12 @@ const MOOD_SCORE_MAP: Record<string, number> = {
  */
 export function calculateInitialFreudScore(assessment: {
   mood?: string | null;
+  /** 1–5 mood scale from the redesigned assessment; preferred over the `mood` words. */
+  moodScore?: number | null;
   sleepQuality?: number | null;
   stressLevel?: number | null;
+  /** 1–5 stress lights from the redesigned assessment; preferred over `stressLevel`. */
+  stressBand?: number | null;
   soundCheck?: { metrics?: { wpm?: number } } | null;
   goal?: string | null;
 }): FreudScoreResult {
@@ -276,9 +281,11 @@ export function calculateInitialFreudScore(assessment: {
   const moodValues = [...new Set((assessment.mood ?? '').split('\n').map((mood) => mood.trim()))]
     .filter((mood) => Object.hasOwn(MOOD_SCORE_MAP, mood))
     .map((mood) => MOOD_SCORE_MAP[mood]);
-  const moodScore = clamp(moodValues.length
-    ? moodValues.reduce((sum, value) => sum + value, 0) / moodValues.length
-    : 50);
+  const moodScore = assessment.moodScore != null
+    ? clamp(assessment.moodScore * 20)
+    : clamp(moodValues.length
+      ? moodValues.reduce((sum, value) => sum + value, 0) / moodValues.length
+      : 50);
 
   // Sleep: quality is 1-5, map to 0-100  (1→20, 2→40, 3→60, 4→80, 5→100)
   const sleepScore = assessment.sleepQuality != null
@@ -286,9 +293,11 @@ export function calculateInitialFreudScore(assessment: {
     : 0;
 
   // Stress: stressLevel is 0-10 (0=none, 10=extreme), invert to 0-100
-  const stressScore = assessment.stressLevel != null
-    ? clamp(100 - assessment.stressLevel * 10)
-    : 40;
+  const stressScore = assessment.stressBand != null
+    ? clamp(stressBandScore(assessment.stressBand))
+    : assessment.stressLevel != null
+      ? clamp(100 - assessment.stressLevel * 10)
+      : 40;
 
   // Mindfulness: no sessions yet
   const mindfulnessScore = 0;

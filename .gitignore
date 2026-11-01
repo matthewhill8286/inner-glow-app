@@ -46,3 +46,6 @@ app-example
 
 # Supabase CLI cache
 supabase/.temp/
+
+# Medication class lookups cached by scripts/build-medication-catalogue.py
+scripts/.medication-classes.json

@@ -169,6 +169,10 @@ export const useProfile = (opts?: { lazy?: boolean }) => {
       if (assessment.meds !== undefined) row.meds = assessment.meds;
       if (assessment.otherSymptoms !== undefined) row.other_symptoms = assessment.otherSymptoms;
       if (assessment.stressLevel !== undefined) row.stress_level = assessment.stressLevel;
+      if (assessment.moodScore !== undefined) row.mood_score = assessment.moodScore;
+      if (assessment.stressBand !== undefined) row.stress_band = assessment.stressBand;
+      if (assessment.medications !== undefined) row.medications = assessment.medications;
+      if (assessment.reflectionText !== undefined) row.reflection_text = assessment.reflectionText;
       if (assessment.soundCheck !== undefined) row.sound_check = assessment.soundCheck;
       if (assessment.expressionCheck !== undefined)
         row.expression_check = assessment.expressionCheck;
