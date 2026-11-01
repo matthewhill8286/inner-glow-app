@@ -110,7 +110,7 @@ test('custom answer editing preserves trailing spaces while toggling choices', (
   value = answers.toggleAssessmentAnswer(value, 'Tired', options);
   assert.equal(answers.readAssessmentAnswer(value, options).custom, 'A custom ');
 });
-const score = load('lib/freudScore.ts');
+const score = load('lib/freudScore.ts', { './assessment-flow': load('lib/assessment-flow.ts') });
 test('mixed assessment feelings average existing labels without changing daily mood scores', () => {
   const calm = score.calculateInitialFreudScore({ mood: 'Calm' });
   const tired = score.calculateInitialFreudScore({ mood: 'Tired' });
@@ -120,6 +120,14 @@ test('mixed assessment feelings average existing labels without changing daily m
     score.calculateInitialFreudScore({ mood: 'Calm\nCalm' }).breakdown.mood,
     calm.breakdown.mood,
   );
+});
+
+test('the redesigned assessment scores its 1–5 mood and stress band ahead of the older fields', () => {
+  const calmBand = score.calculateInitialFreudScore({ stressBand: 1, stressLevel: 10 });
+  const intenseBand = score.calculateInitialFreudScore({ stressBand: 5 });
+  assert.equal(calmBand.breakdown.stress, 100);
+  assert.equal(intenseBand.breakdown.stress, 0);
+  assert.equal(score.calculateInitialFreudScore({ moodScore: 4, mood: 'Sad' }).breakdown.mood, 80);
 });
 
 const english = load('i18n/locales/en/translation.ts');
