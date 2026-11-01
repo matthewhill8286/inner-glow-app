@@ -61,6 +61,8 @@ export default function LogSleepScreen() {
         quality: quality as any,
         duration: hours,
         notes: note || undefined,
+        // Sleep mode and wake detection open this screen with the tracked duration filled in.
+        source: params.duration ? 'sleep_mode' : 'manual',
       } as any);
       toast.success(t('sleepLog.sleepSaved'));
       goBack(params.from);

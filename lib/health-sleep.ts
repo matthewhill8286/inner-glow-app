@@ -1,6 +1,6 @@
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { SleepEntry } from './types';
+import type { SleepEntry, SleepStage, SleepStageKind } from './types';
 
 /**
  * Sleep import from Apple Health (iOS) and Health Connect (Android).
@@ -26,9 +26,11 @@ export type HealthNight = {
   asleepHours: number;
   /** Count of awake periods between falling asleep and waking. Undefined when the source has no awake data. */
   awakenings?: number;
+  /** Stage periods in time order. Empty when the source only says "asleep" or "in bed". */
+  stages: { stage: SleepStageKind; startMs: number; endMs: number }[];
 };
 
-export type SleepEntryInput = Pick<SleepEntry, 'startISO' | 'endISO' | 'duration' | 'awakenings'>;
+export type SleepEntryInput = Pick<SleepEntry, 'startISO' | 'endISO' | 'duration' | 'awakenings'> & { stages: SleepStage[] };
 
 export type HealthProvider = 'apple_health' | 'health_connect';
 
@@ -42,6 +44,14 @@ export const IMPORT_DAYS = 30;
 type Interval = [number, number];
 
 const ASLEEP_KINDS: HealthSleepKind[] = ['asleep', 'core', 'deep', 'rem'];
+
+/** Health kinds that are real stages. Apple's "core" is what Health Connect and the design call light sleep. */
+const STAGE_FOR_KIND: Partial<Record<HealthSleepKind, SleepStageKind>> = {
+  awake: 'awake',
+  core: 'light',
+  deep: 'deep',
+  rem: 'rem',
+};
 
 function toMs(value: string | Date) {
   return typeof value === 'string' ? Date.parse(value) : value.getTime();
@@ -98,7 +108,16 @@ export function groupNights(samples: HealthSleepSample[]): HealthNight[] {
       awakenings = mergeIntervals(asleep, 5 * 60 * 1000).length - 1;
     }
 
-    nights.push({ startMs, endMs, asleepHours: asleepMs / 3_600_000, awakenings });
+    const stages: HealthNight['stages'] = [];
+    for (const stage of ['awake', 'light', 'deep', 'rem'] as SleepStageKind[]) {
+      const intervals = cluster.filter((s) => STAGE_FOR_KIND[s.kind] === stage).map((s) => [s.start, s.end] as Interval);
+      for (const [startMs, endMs] of mergeIntervals(intervals)) stages.push({ stage, startMs, endMs });
+    }
+    // Awake samples alone (no light, deep or REM) are not a stage breakdown.
+    const hasSleepStage = stages.some((s) => s.stage !== 'awake');
+    stages.sort((a, b) => a.startMs - b.startMs);
+
+    nights.push({ startMs, endMs, asleepHours: asleepMs / 3_600_000, awakenings, stages: hasSleepStage ? stages : [] });
   }
   return nights;
 }
@@ -110,6 +129,7 @@ export function toSleepEntryInputs(nights: HealthNight[]): SleepEntryInput[] {
     endISO: new Date(n.endMs).toISOString(),
     duration: Math.round(n.asleepHours * 100) / 100,
     awakenings: n.awakenings,
+    stages: n.stages.map((s) => ({ stage: s.stage, startISO: new Date(s.startMs).toISOString(), endISO: new Date(s.endMs).toISOString() })),
   }));
 }
 

@@ -1226,6 +1226,7 @@ export default {
     patternCore: 'Βασικός',
     patternIrregular: 'Ακανόνιστος',
     patternInsomniac: 'Αϋπνία',
+    stage: { light: 'Ελαφρύς', deep: 'Βαθύς', rem: 'REM', awake: 'Ξύπνιος' },
     startSleeping: 'Έναρξη Ύπνου',
     trackSleep: 'Παρακολούθηση ύπνου',
     schedule: 'Πρόγραμμα',
@@ -1316,6 +1317,8 @@ export default {
     orScheduleSleep: 'Ή προγραμματίστε την ώρα ύπνου σας',
   },
   sleepInsights: {
+    lightSleep: 'Ελαφρύς ύπνος',
+    deepSleep: 'Βαθύς ύπνος',
     title: 'Πληροφορίες Ύπνου',
     subtitle: 'Παρακολουθήστε μοτίβα και βελτιστοποιήστε την ανάκαμψη',
     aiSuggestions: 'Προτάσεις Sleep AI',

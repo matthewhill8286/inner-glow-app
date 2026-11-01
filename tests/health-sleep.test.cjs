@@ -30,8 +30,37 @@ test('Apple Watch stages become one night with asleep hours, bedtime, wake time 
     { start: at('21T04:10'), end: at('21T06:30'), kind: 'core' },
   ];
   assert.deepEqual(plain(api.toSleepEntryInputs(api.groupNights(samples))), [
-    { startISO: at('20T22:30'), endISO: at('21T06:40'), duration: 7.25, awakenings: 2 },
+    {
+      startISO: at('20T22:30'), endISO: at('21T06:40'), duration: 7.25, awakenings: 2,
+      stages: [
+        { stage: 'light', startISO: at('20T22:50'), endISO: at('21T01:00') },
+        { stage: 'deep', startISO: at('21T01:00'), endISO: at('21T02:00') },
+        { stage: 'awake', startISO: at('21T02:00'), endISO: at('21T02:15') },
+        { stage: 'rem', startISO: at('21T02:15'), endISO: at('21T04:00') },
+        { stage: 'awake', startISO: at('21T04:00'), endISO: at('21T04:10') },
+        { stage: 'light', startISO: at('21T04:10'), endISO: at('21T06:30') },
+      ],
+    },
   ]);
+});
+
+test('nights with only asleep or in-bed samples, or only awake samples, have no stages', () => {
+  const asleepOnly = api.groupNights([{ start: at('20T23:00'), end: at('21T07:00'), kind: 'asleep' }]);
+  assert.deepEqual(plain(asleepOnly[0].stages), []);
+  const awakeOnly = api.groupNights([
+    { start: at('20T23:00'), end: at('21T07:00'), kind: 'inBed' },
+    { start: at('21T02:00'), end: at('21T02:20'), kind: 'awake' },
+  ]);
+  assert.deepEqual(plain(awakeOnly[0].stages), []);
+});
+
+test('the same stage from two devices is merged', () => {
+  const [night] = api.groupNights([
+    { start: at('20T23:00'), end: at('21T01:00'), kind: 'deep' },
+    { start: at('21T00:30'), end: at('21T01:30'), kind: 'deep' },
+    { start: at('21T01:30'), end: at('21T06:00'), kind: 'core' },
+  ]);
+  assert.deepEqual(plain(night.stages).map((s) => [s.stage, s.endMs - s.startMs]), [['deep', 150 * 60000], ['light', 270 * 60000]]);
 });
 
 test('overlapping samples from phone and watch are counted once', () => {
@@ -97,7 +126,7 @@ test('planImport keeps only the last 30 nights and skips saved ones', () => {
   ];
   const existing = [{ startISO: at('30T23:10'), endISO: at('31T06:55') }];
   assert.deepEqual(plain(api.planImport(samples, existing, now)), [
-    { startISO: at('29T23:00'), endISO: at('30T07:00'), duration: 8, awakenings: undefined },
+    { startISO: at('29T23:00'), endISO: at('30T07:00'), duration: 8, awakenings: undefined, stages: [] },
   ].map(plain));
 });
 

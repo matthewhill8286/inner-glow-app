@@ -1252,6 +1252,7 @@ export default {
     patternCore: 'Core',
     patternIrregular: 'Irregular',
     patternInsomniac: 'Insomniac',
+    stage: { light: 'Light', deep: 'Deep', rem: 'REM', awake: 'Awake' },
     startSleeping: 'Start Sleeping',
     trackSleep: 'Track your sleep',
     schedule: 'Schedule',
@@ -1340,6 +1341,8 @@ export default {
     orScheduleSleep: 'Or schedule your sleep time',
   },
   sleepInsights: {
+    lightSleep: 'Light sleep',
+    deepSleep: 'Deep sleep',
     title: 'Sleep Insights',
     subtitle: 'Track patterns and optimize recovery',
     aiSuggestions: 'Sleep AI Suggestions',

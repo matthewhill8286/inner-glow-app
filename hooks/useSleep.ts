@@ -1,7 +1,7 @@
 import { notifySleepLogged } from '@/lib/notificationStore';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/supabase/supabase';
-import { SleepEntry } from '@/lib/types';
+import { SleepEntry, SleepSource, SleepStage } from '@/lib/types';
 import { useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useUser } from './useUser';
@@ -41,6 +41,14 @@ export const DEFAULT_SCHEDULE: SleepScheduleState = {
 };
 
 const SLEEP_MODE_STORAGE_KEY = 'sleep-mode-storage';
+
+/** Stages come back unsorted from the nested select; nights without any read as undefined. */
+function toStages(rows: { stage: string; start_at: string; end_at: string }[] | null | undefined): SleepStage[] | undefined {
+  if (!rows?.length) return undefined;
+  return rows
+    .map((r) => ({ stage: r.stage as SleepStage['stage'], startISO: r.start_at, endISO: r.end_at }))
+    .sort((a, b) => Date.parse(a.startISO) - Date.parse(b.startISO));
+}
 const SLEEP_SCHEDULE_STORAGE_KEY = 'sleep-schedule-storage';
 
 export const useSleep = () => {
@@ -108,7 +116,7 @@ export const useSleep = () => {
 
       const { data, error } = await supabase
         .from('sleep')
-        .select('*')
+        .select('*, sleep_stages(stage, start_at, end_at)')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
@@ -123,6 +131,9 @@ export const useSleep = () => {
         duration: d.duration || undefined,
         notes: d.notes || undefined,
         createdAtISO: d.created_at,
+        source: (d.source as SleepSource) || 'manual',
+        factors: d.factors ?? [],
+        stages: toStages(d.sleep_stages),
       }));
 
       return items;
@@ -147,6 +158,8 @@ export const useSleep = () => {
           // `sleep.duration` is an integer column read as hours, so 7.5 must not reach it unrounded.
           duration: input.duration == null ? input.duration : Math.round(input.duration),
           notes: input.notes,
+          source: input.source ?? 'manual',
+          factors: input.factors ?? [],
           created_at: input.createdAtISO || new Date().toISOString(),
         })
         .select()
@@ -163,6 +176,8 @@ export const useSleep = () => {
         duration: data.duration || undefined,
         notes: data.notes || undefined,
         createdAtISO: data.created_at,
+        source: (data.source as SleepSource) || 'manual',
+        factors: data.factors ?? [],
       };
 
       return item;

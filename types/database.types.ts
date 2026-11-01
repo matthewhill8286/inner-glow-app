@@ -774,9 +774,11 @@ export type Database = {
           created_at: string
           duration: number | null
           end_iso: string | null
+          factors: string[]
           id: string
           notes: string | null
           quality: number | null
+          source: string
           start_iso: string | null
           updated_at: string
           user_id: string
@@ -786,9 +788,11 @@ export type Database = {
           created_at?: string
           duration?: number | null
           end_iso?: string | null
+          factors?: string[]
           id?: string
           notes?: string | null
           quality?: number | null
+          source?: string
           start_iso?: string | null
           updated_at?: string
           user_id: string
@@ -798,14 +802,51 @@ export type Database = {
           created_at?: string
           duration?: number | null
           end_iso?: string | null
+          factors?: string[]
           id?: string
           notes?: string | null
           quality?: number | null
+          source?: string
           start_iso?: string | null
           updated_at?: string
           user_id?: string
         }
         Relationships: []
+      }
+      sleep_stages: {
+        Row: {
+          end_at: string
+          id: string
+          sleep_id: string
+          stage: string
+          start_at: string
+          user_id: string
+        }
+        Insert: {
+          end_at: string
+          id?: string
+          sleep_id: string
+          stage: string
+          start_at: string
+          user_id: string
+        }
+        Update: {
+          end_at?: string
+          id?: string
+          sleep_id?: string
+          stage?: string
+          start_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sleep_stages_sleep_id_fkey"
+            columns: ["sleep_id"]
+            isOneToOne: false
+            referencedRelation: "sleep"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       stress_histories: {
         Row: {
