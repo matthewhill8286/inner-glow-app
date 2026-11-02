@@ -573,6 +573,9 @@ export type Database = {
           mood_log_id: string | null
           prompt_id: string | null
           recording_duration_ms: number | null
+          reflection: string | null
+          reflection_at: string | null
+          reflection_practice_id: string | null
           tags: string[] | null
           title: string | null
           topic_context: string | null
@@ -588,6 +591,9 @@ export type Database = {
           mood_log_id?: string | null
           prompt_id?: string | null
           recording_duration_ms?: number | null
+          reflection?: string | null
+          reflection_at?: string | null
+          reflection_practice_id?: string | null
           tags?: string[] | null
           title?: string | null
           topic_context?: string | null
@@ -603,6 +609,9 @@ export type Database = {
           mood_log_id?: string | null
           prompt_id?: string | null
           recording_duration_ms?: number | null
+          reflection?: string | null
+          reflection_at?: string | null
+          reflection_practice_id?: string | null
           tags?: string[] | null
           title?: string | null
           topic_context?: string | null

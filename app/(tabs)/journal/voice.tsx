@@ -34,12 +34,18 @@ import { invokeAI } from '@/lib/ai-privacy';
 import { needsCrisisSupport } from '@/lib/journal-entry';
 import { MOOD_SCALE, moodStep, type MoodScore } from '@/lib/mood-scale';
 import { backTo } from '@/lib/navigation';
-import { usePlayer, useRecorder } from '@/lib/recorder';
+import { useRecorder } from '@/lib/recorder';
+import { uploadJournalAudio } from '@/lib/journal-audio';
+import { useUser } from '@/hooks/useUser';
+import { RecordingPill } from '@/components/journal/RecordingPill';
+import type { IconName } from '@/components/icons/iconData';
 import {
   WAVE_BARS,
   barHeight,
   clockFromMs,
+  highlightSegments,
   levelFromDb,
+  moodFromNoticed,
   pushLevel,
   titleFromTranscript,
 } from '@/lib/voice-entry';
@@ -187,19 +193,63 @@ function RoundButton({
   );
 }
 
+function MoodChip({
+  face,
+  label,
+  selected,
+  role,
+  onPress,
+}: {
+  face: IconName;
+  label: string;
+  selected: boolean;
+  role: 'radio' | 'checkbox';
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole={role}
+      accessibilityState={role === 'radio' ? { selected } : { checked: selected }}
+      onPress={onPress}
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingVertical: selected ? 7.5 : 8,
+        paddingLeft: selected ? 9.5 : 10,
+        paddingRight: selected ? 13.5 : 14,
+        borderRadius: 999,
+        backgroundColor: selected ? palette.selected : palette.white,
+        borderWidth: selected ? 1.5 : 1,
+        borderColor: selected ? palette.plum : palette.border,
+      }}
+    >
+      <Icon name={face} size={16} color={selected ? palette.plum : palette.textMuted} />
+      <Text
+        style={[
+          selected ? Type.chipSelected : Type.chip,
+          { color: selected ? palette.plum : palette.textMuted },
+        ]}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
 /**
  * Voice entry (04 J3 recording, J4 review). Recording starts on open; the waveform and the orb's
  * inner light follow the microphone. The centre button pauses and resumes; Done stops and
- * transcribes; Cancel leaves without saving. Review shows the editable transcript, a playback pill
- * and a mood choice on the five-step scale, then Save entry opens Saved. The AI highlights and the
- * "mood we noticed" words need a backend that does not exist yet, so the transcript is plain and the
- * mood is chosen. The recording stays on the phone: there is no upload yet.
+ * transcribes; Cancel leaves without saving. Review shows the editable transcript with Glow AI's
+ * highlighted phrases, a playback pill and the feelings Glow AI noticed (the five-step scale when it
+ * found none or is unavailable), then Save entry opens Saved. The recording uploads after saving.
  */
 export default function VoiceEntry() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const recorder = useRecorder(undefined, { metering: true, intervalMs: 100 });
-  const { createJournalEntry } = useJournal();
+  const { createJournalEntry, attachJournalAudio } = useJournal();
+  const { data: user } = useUser();
   const [step, setStep] = useState<Step>('recording');
   const [paused, setPaused] = useState(false);
   const [levels, setLevels] = useState<number[]>([]);
@@ -207,14 +257,17 @@ export default function VoiceEntry() {
   const [durationMs, setDurationMs] = useState(0);
   const [text, setText] = useState('');
   const [mood, setMood] = useState<MoodScore>(3);
+  const [highlights, setHighlights] = useState<string[]>([]);
+  const [noticed, setNoticed] = useState<{ word: string; score: number; on: boolean }[]>([]);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [crisisFor, setCrisisFor] = useState<string | null>(null);
   const started = useRef(false);
-  const player = usePlayer(uri);
 
   async function start() {
     setLevels([]);
+    setHighlights([]);
+    setNoticed([]);
     setPaused(false);
     setError('');
     setStep('recording');
@@ -254,11 +307,30 @@ export default function VoiceEntry() {
         body: { audioBase64: await base64Of(result.uri), mimeType: MIME[ext] ?? 'audio/m4a' },
       });
       if (aiError || !data?.text) throw new Error(aiError?.message);
-      setText(String(data.text).trim());
+      const transcript = String(data.text).trim();
+      setText(transcript);
       setStep('review');
+      void analyse(transcript);
     } catch (err) {
       setError((err as Error)?.message || t('journalVoice.transcriptionError'));
       setStep('error');
+    }
+  }
+
+  /** Highlights and noticed feelings arrive after the review opens; without them the review still works. */
+  async function analyse(transcript: string) {
+    try {
+      const { data } = await invokeAI('journal-reflection', {
+        body: { action: 'analyse', text: transcript, locale: i18n.language },
+      });
+      setHighlights(Array.isArray(data?.highlights) ? data.highlights : []);
+      setNoticed(
+        (Array.isArray(data?.moods) ? data.moods : []).map(
+          (m: { word: string; score: number }) => ({ ...m, on: true }),
+        ),
+      );
+    } catch {
+      // Plain transcript and the five-step scale.
     }
   }
 
@@ -275,10 +347,19 @@ export default function VoiceEntry() {
       const created = await createJournalEntry({
         title: titleFromTranscript(content) || t('journalVoice.title'),
         content,
-        mood: moodStep(mood).checkIn,
+        mood: moodStep(
+          noticed.length
+            ? (moodFromNoticed(noticed.filter((n) => n.on).map((n) => n.score)) ?? mood)
+            : mood,
+        ).checkIn,
         isVoiceEntry: true,
         recordingDurationMs: durationMs,
       });
+      // The recording uploads in the background; the entry is saved either way.
+      if (uri && user)
+        void uploadJournalAudio(user.id, created.id, uri)
+          .then((path) => attachJournalAudio({ id: created.id, path }))
+          .catch(() => toast.error(t('journalVoice.uploadError')));
       if (needsCrisisSupport(content)) setCrisisFor(created.id);
       else router.replace({ pathname: '/(tabs)/journal/saved', params: { id: created.id } });
     } catch {
@@ -339,87 +420,53 @@ export default function VoiceEntry() {
             }}
           >
             <TextInput
-              value={text}
               onChangeText={setText}
               multiline
               textAlignVertical="top"
               accessibilityLabel={t('journalVoice.transcriptLabel')}
               style={[Type.bodyLg, { lineHeight: 25.6, color: palette.ink, padding: 0 }]}
-            />
-            {uri && (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={
-                  player.isPlaying ? t('journalVoice.pause') : t('journalVoice.play')
-                }
-                onPress={() => (player.isPlaying ? player.pause() : player.play())}
-                style={{
-                  alignSelf: 'flex-start',
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 8,
-                  paddingVertical: 8,
-                  paddingLeft: 10,
-                  paddingRight: 14,
-                  borderRadius: 999,
-                  backgroundColor: palette.surfaceLilacSoft,
-                }}
-              >
-                <Icon
-                  name={player.isPlaying ? 'line/pause' : 'line/play'}
-                  size={12}
-                  color={palette.plum}
-                />
-                <Text style={[Type.caption, { color: palette.plum }]}>
-                  {t('journalVoice.recording', { time: clockFromMs(durationMs) })}
+            >
+              {highlightSegments(text, highlights).map((part, i) => (
+                <Text
+                  key={i}
+                  style={part.highlight ? { fontWeight: '600', color: palette.plum } : undefined}
+                >
+                  {part.text}
                 </Text>
-              </Pressable>
-            )}
+              ))}
+            </TextInput>
+            <RecordingPill uri={uri} durationMs={durationMs} />
           </View>
           <Text style={[Type.chipSelected, { color: palette.ink, marginTop: 24 }]}>
-            {t('journalVoice.moodLabel')}
+            {t(noticed.length ? 'journalVoice.noticedLabel' : 'journalVoice.moodLabel')}
           </Text>
           <View
-            accessibilityRole="radiogroup"
+            accessibilityRole={noticed.length ? undefined : 'radiogroup'}
             style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 }}
           >
-            {MOOD_SCALE.map((m) => {
-              const selected = m.score === mood;
-              return (
-                <Pressable
-                  key={m.key}
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected }}
-                  onPress={() => setMood(m.score)}
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 6,
-                    paddingVertical: selected ? 7.5 : 8,
-                    paddingLeft: selected ? 9.5 : 10,
-                    paddingRight: selected ? 13.5 : 14,
-                    borderRadius: 999,
-                    backgroundColor: selected ? palette.selected : palette.white,
-                    borderWidth: selected ? 1.5 : 1,
-                    borderColor: selected ? palette.plum : palette.border,
-                  }}
-                >
-                  <Icon
-                    name={m.face}
-                    size={16}
-                    color={selected ? palette.plum : palette.textMuted}
+            {noticed.length
+              ? noticed.map((n, i) => (
+                  <MoodChip
+                    key={n.word}
+                    face={moodStep(n.score).face}
+                    label={n.word}
+                    selected={n.on}
+                    role="checkbox"
+                    onPress={() =>
+                      setNoticed((all) => all.map((x, j) => (j === i ? { ...x, on: !x.on } : x)))
+                    }
                   />
-                  <Text
-                    style={[
-                      selected ? Type.chipSelected : Type.chip,
-                      { color: selected ? palette.plum : palette.textMuted },
-                    ]}
-                  >
-                    {t(`moodScale.${m.key}`)}
-                  </Text>
-                </Pressable>
-              );
-            })}
+                ))
+              : MOOD_SCALE.map((m) => (
+                  <MoodChip
+                    key={m.key}
+                    face={m.face}
+                    label={t(`moodScale.${m.key}`)}
+                    selected={m.score === mood}
+                    role="radio"
+                    onPress={() => setMood(m.score)}
+                  />
+                ))}
           </View>
           <View style={{ flex: 1, minHeight: 32 }} />
           <AppButton

@@ -10,6 +10,10 @@ import { Icon } from '@/components/icons/Icon';
 import type { IconName } from '@/components/icons/iconData';
 import { Glow, GlowField } from '@/components/glow/Glow';
 import { AppButton } from '@/components/ui/AppButton';
+import { LegalNote } from '@/components/ui/controls';
+import { RecordingPill } from '@/components/journal/RecordingPill';
+import { ReflectionCard } from '@/components/journal/ReflectionCard';
+import { isStoredAudio } from '@/lib/journal-audio';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { IconButton, NavBar } from '@/components/ui/IconButton';
 import { CrisisSheet } from '@/components/chat/CrisisSheet';
@@ -160,11 +164,20 @@ export default function JournalDetail() {
             ))}
           </View>
         )}
+        {isStoredAudio(entry.audioUrl) && (
+          <View style={{ marginTop: 20 }}>
+            <RecordingPill path={entry.audioUrl} durationMs={entry.recordingDurationMs} />
+          </View>
+        )}
+        <View style={{ marginTop: 28 }}>
+          <ReflectionCard entry={entry} />
+        </View>
+        <LegalNote text={t('journalReflection.legal')} style={{ marginTop: 18 }} />
         <AppButton
           title={t('journalDetail.talkItThrough')}
           size="lg"
           onPress={talk}
-          style={{ marginTop: 40 }}
+          style={{ marginTop: 28 }}
         />
       </ScrollView>
 

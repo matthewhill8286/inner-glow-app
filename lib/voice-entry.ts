@@ -41,3 +41,33 @@ export function titleFromTranscript(text: string, max = 60): string {
   const cut = first.slice(0, max);
   return `${cut.slice(0, Math.max(cut.lastIndexOf(' '), 20)).trim()}…`;
 }
+
+/** Splits the transcript around the highlighted phrases (04 J4), first match of each, in order. */
+export function highlightSegments(
+  text: string,
+  highlights: string[],
+): { text: string; highlight: boolean }[] {
+  const ranges: [number, number][] = [];
+  for (const h of highlights) {
+    const at = h ? text.indexOf(h) : -1;
+    if (at >= 0 && !ranges.some(([s, e]) => at < e && at + h.length > s))
+      ranges.push([at, at + h.length]);
+  }
+  ranges.sort((a, b) => a[0] - b[0]);
+  const out: { text: string; highlight: boolean }[] = [];
+  let i = 0;
+  for (const [s, e] of ranges) {
+    if (s > i) out.push({ text: text.slice(i, s), highlight: false });
+    out.push({ text: text.slice(s, e), highlight: true });
+    i = e;
+  }
+  if (i < text.length || !out.length) out.push({ text: text.slice(i), highlight: false });
+  return out;
+}
+
+/** The entry's mood from the noticed feelings that are still selected: their average on the 1–5 scale. */
+export function moodFromNoticed(scores: number[]): 1 | 2 | 3 | 4 | 5 | null {
+  if (!scores.length) return null;
+  const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+  return Math.min(5, Math.max(1, Math.round(avg))) as 1 | 2 | 3 | 4 | 5;
+}

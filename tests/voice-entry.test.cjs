@@ -48,3 +48,27 @@ test('the title is the first sentence, shortened at a word', () => {
   assert.ok(title.length <= 61);
   assert.ok(!title.includes('  '));
 });
+
+test('highlighted phrases split the transcript in order', () => {
+  const text = 'I was worried about making mistakes, then felt a bit lighter.';
+  const parts = v.highlightSegments(text, [
+    'a bit lighter',
+    'worried about making mistakes',
+    'not there',
+  ]);
+  assert.equal(parts.map((p) => p.text).join(''), text);
+  assert.deepEqual(
+    [...parts.filter((p) => p.highlight).map((p) => p.text)],
+    ['worried about making mistakes', 'a bit lighter'],
+  );
+  assert.deepEqual(
+    [...v.highlightSegments('', [])].map((p) => p.text),
+    [''],
+  );
+});
+
+test('the noticed feelings set the mood', () => {
+  assert.equal(v.moodFromNoticed([2, 4]), 3);
+  assert.equal(v.moodFromNoticed([2]), 2);
+  assert.equal(v.moodFromNoticed([]), null);
+});

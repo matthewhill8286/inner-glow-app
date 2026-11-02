@@ -30,6 +30,9 @@ export type JournalEntry = {
   recordingDurationMs?: number | null;
   /** The mood check-in this entry was written with (mood check-in note). */
   moodLogId?: string | null;
+  /** Glow AI's reflection and suggested practice id (04 J5); cleared when the entry is edited. */
+  reflection?: string | null;
+  reflectionPracticeId?: string | null;
 };
 
 export type StressKit = {

@@ -22,14 +22,20 @@ Deno.serve(async (req: Request) => {
     const body = await req.json();
     if (body.confirmation !== 'DELETE')
       return Response.json({ error: 'Deletion confirmation required' }, { status: 400, headers });
-    // Profile photos live in Storage, which the RPC refuses to orphan, so remove them first.
-    const { data: photos, error: listError } = await sb.storage.from('avatars').list(user.id);
-    if (listError) throw listError;
-    if (photos?.length) {
-      const { error: removeError } = await sb.storage
-        .from('avatars')
-        .remove(photos.map((photo) => `${user.id}/${photo.name}`));
-      if (removeError) throw removeError;
+    // Profile photos and voice entry recordings live in Storage, which the RPC refuses to orphan,
+    // so remove them first. Each user's files sit in a folder named with their id.
+    for (const bucket of ['avatars', 'journal-audio']) {
+      for (;;) {
+        const { data: files, error: listError } = await sb.storage
+          .from(bucket)
+          .list(user.id, { limit: 1000 });
+        if (listError) throw listError;
+        if (!files?.length) break;
+        const { error: removeError } = await sb.storage
+          .from(bucket)
+          .remove(files.map((file) => `${user.id}/${file.name}`));
+        if (removeError) throw removeError;
+      }
     }
     // The RPC deletes all app rows and the auth account in one transaction.
     // A failure rolls back rather than leaving a partially deleted account.
