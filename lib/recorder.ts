@@ -8,9 +8,13 @@ import {
   useAudioRecorderState,
 } from 'expo-audio';
 
-export function useRecorder(preset = RecordingPresets.HIGH_QUALITY) {
-  const recorder = useAudioRecorder(preset);
-  const state = useAudioRecorderState(recorder);
+/** `metering` adds the live microphone level (dBFS), read every `intervalMs`, for waveforms. */
+export function useRecorder(
+  preset = RecordingPresets.HIGH_QUALITY,
+  { metering = false, intervalMs = 500 } = {},
+) {
+  const recorder = useAudioRecorder(metering ? { ...preset, isMeteringEnabled: true } : preset);
+  const state = useAudioRecorderState(recorder, intervalMs);
 
   async function startRecording() {
     const perm = await AudioModule.requestRecordingPermissionsAsync();
@@ -37,8 +41,11 @@ export function useRecorder(preset = RecordingPresets.HIGH_QUALITY) {
     isRecording: state.isRecording,
     durationMs: state.durationMillis ?? 0,
     uri: recorder.uri ?? null,
+    metering: state.metering,
     startRecording,
     stopRecording,
+    pause: () => recorder.pause(),
+    resume: () => recorder.record(),
   };
 }
 
