@@ -171,6 +171,33 @@ export const useJournal = () => {
     },
   });
 
+  /** Change date on the entry options sheet (10 §3.11) moves `created_at`. */
+  const changeDateMutation = useMutation({
+    mutationFn: async ({ id, createdAt }: { id: string; createdAt: string }) => {
+      const { error } = await supabase
+        .from('journal_entries')
+        .update({ created_at: createdAt })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onMutate: async ({ id, createdAt }) => {
+      await queryClient.cancelQueries({ queryKey: key });
+      const previous = queryClient.getQueryData<JournalEntry[]>(key);
+      queryClient.setQueryData<JournalEntry[]>(key, (old) =>
+        (old || [])
+          .map((j) => (j.id === id ? { ...j, createdAt } : j))
+          .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)),
+      );
+      return { previous };
+    },
+    onError: (_err, _input, context) => {
+      if (context?.previous) queryClient.setQueryData(key, context.previous);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: key });
+    },
+  });
+
   const deleteJournalMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from('journal_entries').delete().eq('id', id);
@@ -202,6 +229,7 @@ export const useJournal = () => {
     createJournalEntry: createJournalMutation.mutateAsync,
     upsertJournalEntry: upsertJournalMutation.mutateAsync,
     deleteJournalEntry: deleteJournalMutation.mutateAsync,
+    changeJournalDate: changeDateMutation.mutateAsync,
     isCreating: createJournalMutation.isPending,
     isUpserting: upsertJournalMutation.isPending,
     isDeleting: deleteJournalMutation.isPending,

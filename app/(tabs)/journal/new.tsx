@@ -1,7 +1,7 @@
 import { backTo, finishTo } from '@/lib/navigation';
 import { Typography } from '@/constants/typography';
 import { WellnessIconText } from '@/components/WellnessIconText';
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { View, Text, Pressable, TextInput, ScrollView, KeyboardAvoidingView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -57,22 +57,38 @@ export default function NewJournalEntry() {
   const theme = useColorScheme() ?? 'light';
   const colors = Colors[theme];
   const insets = useSafeAreaInsets();
-  const { promptId, date } = useLocalSearchParams<{ promptId?: string; date?: string }>();
+  const { promptId, date, id } = useLocalSearchParams<{
+    promptId?: string;
+    date?: string;
+    id?: string;
+  }>();
   const prompt = useMemo(() => JOURNAL_PROMPTS.find((p) => p.id === promptId), [promptId]);
 
   /* Step: 'pick' = type picker, 'form' = text journal form */
-  const [step, setStep] = useState<'pick' | 'form'>(prompt ? 'form' : 'pick');
+  const [step, setStep] = useState<'pick' | 'form'>(prompt || id ? 'form' : 'pick');
 
   const [title, setTitle] = useState(prompt ? prompt.title : '');
   const [body, setBody] = useState(prompt ? prompt.prompt + '\n\n' : '');
   const [mood, setMood] = useState<string | null>(null);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
-  const { createJournalEntry } = useJournal();
+  const { createJournalEntry, upsertJournalEntry, journalEntries } = useJournal();
+  // Edit on the entry options sheet (10 §3.11) opens this screen prefilled with the entry.
+  const editing = id ? journalEntries.find((e) => e.id === id) : undefined;
+  const [prefilled, setPrefilled] = useState(false);
+  useEffect(() => {
+    if (!editing || prefilled) return;
+    setTitle(editing.title ?? '');
+    setBody(editing.content ?? '');
+    setMood(editing.mood || null);
+    setSelectedTags(editing.tags ?? []);
+    setPrefilled(true);
+  }, [editing, prefilled]);
   const wordCount = body.trim() ? body.trim().split(/\s+/).length : 0;
 
-  const displayDate = date
-    ? new Date(date).toLocaleDateString('en-US', {
+  const shownDate = editing?.createdAt ?? date;
+  const displayDate = shownDate
+    ? new Date(shownDate).toLocaleDateString('en-US', {
         weekday: 'long',
         month: 'long',
         day: 'numeric',
@@ -92,6 +108,23 @@ export default function NewJournalEntry() {
   }
 
   async function save() {
+    if (editing) {
+      try {
+        await upsertJournalEntry({
+          ...editing,
+          title: (title || 'Untitled').trim(),
+          content: body.trim(),
+          mood,
+          tags: selectedTags,
+        });
+        toast.success(t('toasts.journalSaved'));
+        backTo(undefined, '/(tabs)/journal');
+      } catch (err) {
+        console.error('Failed to save journal edit:', err);
+        toast.error(t('toasts.journalSaveError'));
+      }
+      return;
+    }
     const entryInput: Omit<JournalEntry, 'id' | 'createdAt' | 'updatedAt'> = {
       title: (title || 'Untitled').trim(),
       content: body.trim(),
@@ -269,7 +302,9 @@ export default function NewJournalEntry() {
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
             <Pressable
-              onPress={() => (prompt ? backTo(undefined, '/(tabs)/journal') : setStep('pick'))}
+              onPress={() =>
+                prompt || id ? backTo(undefined, '/(tabs)/journal') : setStep('pick')
+              }
               style={({ pressed }) => ({
                 width: 36,
                 height: 36,
@@ -291,7 +326,7 @@ export default function NewJournalEntry() {
               />
             </Pressable>
             <Text style={{ ...Typography.heading, fontSize: 24, color: colors.text }}>
-              Add New Journal
+              {editing ? t('journalDetail.editEntry') : 'Add New Journal'}
             </Text>
           </View>
 
@@ -593,7 +628,7 @@ export default function NewJournalEntry() {
             What&#39;s this about?
           </Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            {TAGS.map((tag) => {
+            {[...TAGS, ...selectedTags.filter((tag) => !TAGS.includes(tag))].map((tag) => {
               const active = selectedTags.includes(tag);
               return (
                 <Pressable
@@ -649,7 +684,7 @@ export default function NewJournalEntry() {
             color={canSave ? '#fff' : colors.placeholder}
           />
           <Text style={{ ...Typography.heading, color: canSave ? '#fff' : colors.placeholder }}>
-            Create Journal
+            {editing ? t('journalDetail.saveChanges') : 'Create Journal'}
           </Text>
         </Pressable>
       </ScrollView>
