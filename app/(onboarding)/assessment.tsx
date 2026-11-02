@@ -157,7 +157,8 @@ export default function AssessmentScreen() {
       await saveScore({ result: calculateInitialFreudScore(payload), generateSuggestions: true }).catch((err) =>
         console.warn('[Assessment] Failed to save the starting score:', err),
       );
-      router.replace('/(onboarding)/profile-setup');
+      // "Your plan is ready" (02 A15); closing it or buying continues to profile setup.
+      router.replace({ pathname: '/(utils)/trial-upgrade', params: { variant: 'plan' } });
     } catch {
       finishing.current = false;
       toast.error(t('assessmentFlow.saveFailed'));

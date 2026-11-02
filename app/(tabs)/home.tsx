@@ -455,7 +455,7 @@ function FreePlanCard() {
         {/* "3 of 10 AI chats left this week" and its progress bar wait for the quota backend (t172). */}
         <Text style={{ ...Type.captionS, color: palette.textMuted }}>{t('homeGlow.freePlanDetail')}</Text>
       </View>
-      <AppButton title={t('homeGlow.tryPro')} size="s" onPress={() => router.push('/(utils)/trial-upgrade')} />
+      <AppButton title={t('homeGlow.tryPro')} size="s" onPress={() => router.push({ pathname: '/(utils)/trial-upgrade', params: { variant: 'home' } })} />
     </View>
   );
 }
