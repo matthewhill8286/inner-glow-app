@@ -42,6 +42,7 @@ try {
     'supabase/migrations/20261103_profile_nickname.sql',
     'supabase/migrations/20261104_active_sessions.sql',
     'supabase/migrations/20261105_practices.sql',
+    'supabase/migrations/20261106_retire_server_trial.sql',
     'tests/submission.sql',
     'tests/sleep-stages.sql',
     'tests/mood-factors.sql',

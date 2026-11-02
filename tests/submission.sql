@@ -7,18 +7,24 @@ CREATE FUNCTION public.assert_true(value BOOLEAN, label TEXT) RETURNS VOID LANGU
 BEGIN IF value IS DISTINCT FROM true THEN RAISE EXCEPTION 'FAILED: %',label; END IF; END $$;
 SELECT set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000001',false);
 SELECT set_config('request.jwt.claim.role','authenticated',false);
+-- The free week is the store's intro offer now; a trial row from the old server trial still exists.
+INSERT INTO subscriptions(user_id, plan, status, provider, trial_end, current_period_end)
+  VALUES('00000000-0000-4000-8000-000000000001','trial','active','trial',now()+interval '7 days',now()+interval '7 days');
 SET ROLE authenticated;
-SELECT public.start_free_trial();
-SELECT public.assert_true((SELECT plan='trial' AND status='active' AND trial_end>now() FROM subscriptions),'trial activated on server');
+SELECT public.assert_true((SELECT plan='trial' AND status='active' FROM subscriptions),'an existing trial still reads as active');
+SELECT public.assert_true(to_regprocedure('public.start_free_trial()') IS NULL,'clients cannot start a server trial');
 DO $$ BEGIN
   UPDATE subscriptions SET plan='lifetime',status='active' WHERE user_id=auth.uid();
   IF FOUND THEN RAISE EXCEPTION 'client changed a paid plan'; END IF;
 END $$;
-RESET ROLE;
-UPDATE subscriptions SET trial_end=now()-interval '1 day',current_period_end=now()-interval '1 day' WHERE user_id='00000000-0000-4000-8000-000000000001';
-SET ROLE authenticated;
-SELECT public.start_free_trial();
-SELECT public.assert_true((SELECT trial_end<now() FROM subscriptions),'trial cannot be restarted');
+DO $$ BEGIN
+  BEGIN
+    INSERT INTO subscriptions(user_id, plan, status, provider, trial_end, current_period_end)
+      VALUES('00000000-0000-4000-8000-000000000002','trial','active','trial',now()+interval '7 days',now()+interval '7 days');
+    RAISE EXCEPTION 'client granted itself a trial';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+END $$;
 RESET ROLE;
 SELECT sync_revenuecat_subscription('00000000-0000-4000-8000-000000000001',jsonb_build_object('plan','monthly','status','canceling','product_id','innerglow_premium_monthly','environment','PRODUCTION','current_period_end',now()+interval '20 days'),now());
 SELECT public.assert_true((SELECT status='canceling' AND current_period_end>now() FROM subscriptions WHERE user_id='00000000-0000-4000-8000-000000000001'),'canceled subscription retains paid period');

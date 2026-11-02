@@ -549,7 +549,7 @@ export default function AISuggestionsScreen() {
             <Pressable
               onPress={() => hasFullAccess
                 ? void generateSuggestions({ maxSuggestions: 4 }).catch((error) => toast.error(error.message))
-                : router.push('/trial-upgrade')}
+                : router.push({ pathname: '/(utils)/trial-upgrade', params: { variant: 'home' } })}
               style={({ pressed }) => [
                 s.generateBtn,
                 {
