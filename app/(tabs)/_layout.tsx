@@ -23,7 +23,6 @@ export default function TabsLayout() {
     segments.includes('schedule') ||
     // The sleep flow from Wind down to Last night is full-screen (06 §S2–S7).
     (segments.includes('sleep') && ['start', 'mode', 'wake', 'log', '[id]'].some((s) => segments.includes(s))) ||
-    (segments.includes('community') && segments.includes('new-post')) ||
     // Grounding and the stress plan are forms built around their bottom button.
     (segments.includes('stress') && ['grounding', 'plan'].some((s) => segments.includes(s))) ||
     // The mood check-in and Mood logged are full-screen flows with no tab bar (04 §M2–M5).
@@ -62,7 +61,6 @@ export default function TabsLayout() {
         <Tabs.Screen name="search" options={{ href: null }} />
         <Tabs.Screen name="stress" options={{ href: null }} />
         <Tabs.Screen name="sleep" options={{ href: null }} />
-        <Tabs.Screen name="community" options={{ href: null }} />
         <Tabs.Screen name="notifications" options={{ href: null }} />
         <Tabs.Screen name="freud-score" options={{ href: null }} />
       </Tabs>

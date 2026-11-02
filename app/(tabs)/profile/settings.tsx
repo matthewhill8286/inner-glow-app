@@ -82,7 +82,7 @@ function LogOutSheet({ visible, onClose }: { visible: boolean; onClose: () => vo
 /**
  * Settings (06 P2, `6719:4516`): General, Your plan, Privacy & security, Support and Account, with
  * the app version below. Values are live: notification permission, language and the app lock's
- * biometric name. Community keeps its row under Support, since the design has no other way in.
+ * biometric name.
  */
 export default function Settings() {
   const { t, i18n } = useTranslation();
@@ -233,11 +233,6 @@ export default function Settings() {
             icon="line/chat"
             label={t('me.settings.help')}
             onPress={go('/(utils)/help-center')}
-          />
-          <ListRow
-            icon="line/users"
-            label={t('me.settings.community')}
-            onPress={go('/(tabs)/community')}
           />
           <ListRow
             icon="line/star"

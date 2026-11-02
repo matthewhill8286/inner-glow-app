@@ -172,38 +172,6 @@ export default {
     signInLink: 'Sign In.',
     disclaimer:
       'Inner Glow provides wellness support, not medical advice, diagnosis, or treatment. Consult a qualified healthcare professional for medical concerns.',
-    slides: {
-      0: {
-        step: 'Your daily pause',
-        title: 'A little space for yourself.',
-        text: 'Check in with yourself. Make room for calmer days.',
-      },
-      1: {
-        step: 'Notice',
-        title: 'Understand your patterns.',
-        text: 'Track your mood and sleep, and see how your days connect.',
-      },
-      2: {
-        step: 'Reflect',
-        title: 'A conversation, at your pace.',
-        text: 'Write things down or talk them through with guided wellness support.',
-      },
-      3: {
-        step: 'Grow',
-        title: 'Small steps. Steady progress.',
-        text: 'Find practical activities to help you build a routine that feels right.',
-      },
-      4: {
-        step: 'Practice',
-        title: 'Make room for calm.',
-        text: 'Explore breathing, mindfulness, and simple tools for everyday life.',
-      },
-      5: {
-        step: 'Connect',
-        title: 'Find your community.',
-        text: 'Share experiences and connect with people on their own wellness journey.',
-      },
-    },
   },
   auth: {
     signIn: 'Sign in',
@@ -1731,7 +1699,6 @@ export default {
       connected: 'Connected apps',
       support: 'Support',
       help: 'Help Centre',
-      community: 'Community',
       feedback: 'Send feedback',
       legal: 'Terms, privacy & disclaimer',
       account: 'Account',
@@ -2057,22 +2024,6 @@ export default {
     premium: 'Premium AI feature',
     unlock: 'Unlock personalised AI suggestions',
     failed: 'Unable to generate suggestions. Please try again.',
-  },
-  communityFixes: {
-    myPosts: 'My posts',
-    privatePost: 'Private · only you can see this',
-    emptyEarlier: 'No earlier notifications.',
-    recent: 'Recent',
-    earlier: 'Earlier',
-    actionFailed: 'Could not save this change. Please try again.',
-    follow: 'Follow',
-    following: 'Following',
-    writeComment: 'Write a comment',
-  },
-  communityDesign: {
-    applyFilters: 'Apply filters',
-    saveDraft: 'Save draft',
-    publishPost: 'Publish post',
   },
   common: {
     back: 'Back',
@@ -3387,72 +3338,6 @@ export default {
     empty: 'No check-ins in this period yet.',
     recent: 'Check-ins',
   },
-  community: {
-    entryDescription:
-      'Share experiences and support one another. Free for everyone with an account.',
-    entryButton: 'Open Community',
-    browseByLabel: 'Browse by',
-    communityGuidelines: 'Community Guidelines',
-    couldntLoadPosts: "Couldn't load posts",
-    headerSubtitle: 'Support and share with others',
-    headerTitle: 'Community',
-    loadingPosts: 'Loading posts…',
-    privacyPolicy: 'Privacy Policy',
-    startPostingButton: 'Start posting',
-    tabs: {
-      new: 'New',
-      popular: 'Popular',
-      today: 'Today',
-    },
-    tryAgainButton: 'Try again',
-    welcomeDescription: 'Share your story, support others, and find community.',
-    welcomeTitle: 'Welcome to the InnerGlow community',
-  },
-  communityFilter: {
-    applyButton: 'Filter posts ({{count}})',
-    postTypeLabel: 'Post type',
-    postTypes: {
-      audio: 'Audio',
-      story: 'Story',
-    },
-    resetButton: 'Reset',
-    subtitle: 'Refine your feed',
-    title: 'Filter',
-    topicsLabel: 'Topics',
-    videoToggleLabel: 'Include videos',
-    videoToggleSubtitle: 'Show posts with videos',
-  },
-  communityNewPost: {
-    chooseTopicLabel: 'Choose a topic',
-    draftSavedMessage: 'Your draft has been saved.',
-    draftSavedTitle: 'Draft saved',
-    errorAlertMessage: 'Something went wrong. Please try again.',
-    errorAlertTitle: 'Error',
-    stepCategorySubtitle: "What's your post about?",
-    stepCategoryTitle: 'Category',
-    stepContentSubtitle: 'Share your story or thoughts',
-    stepContentTitle: 'Content',
-  },
-  communityNotifs: {
-    emptyTitle: 'No notifications',
-    emptyTodayMessage: 'Check back later for updates',
-    emptyWeekMessage: 'No notifications this week',
-    searchPlaceholder: 'Search notifications…',
-    subtitle: 'Stay updated',
-    tabLastWeek: 'Last week',
-    tabToday: 'Today',
-    title: 'Notifications',
-  },
-  communityPostSuccess: {
-    seePostButton: 'See post',
-    subtitle: 'Your post has been shared with the community.',
-    title: 'Post published!',
-  },
-  communityProfile: {
-    profileCouldNotLoad: 'Profile could not load',
-    title: 'Profile',
-    userNotFound: 'User not found',
-  },
   quickActions: {
     chatSubtitle: 'Talk to the AI about a specific topic.',
     chatTitle: 'Chat',
@@ -3496,9 +3381,6 @@ export default {
     // Mood
     moodDeleted: 'Mood check-in deleted',
     moodDeleteError: 'Failed to delete mood check-in',
-    // Community
-    postError: 'Failed to create post. Please try again.',
-    draftSaved: 'Draft saved',
     // 2FA
     copiedToClipboard: 'Copied to clipboard',
     twoFactorSetupError: 'Failed to set up two-factor authentication',
@@ -3619,7 +3501,7 @@ export default {
       privacy: {
         question: 'Who can see my journal and chats?',
         answer:
-          'Your journal and chats are linked to your account and are not shown in the community feed. AI features require your permission to send relevant content through Supabase to OpenAI. You can review your AI data preferences in Settings. Avoid sharing your sign-in details with others.',
+          'Your journal and chats are linked to your account. AI features require your permission to send relevant content through Supabase to OpenAI. You can review your AI data preferences in Settings. Avoid sharing your sign-in details with others.',
       },
       cancel: {
         question: 'How do I cancel Pro?',
@@ -3706,8 +3588,6 @@ export default {
       journalSubtitle: 'In Journal & Writing',
       journalPromptsTitle: 'Journal Prompts',
       journalPromptsSubtitle: 'In Journal & Writing',
-      communityTitle: 'Community Support',
-      communitySubtitle: 'In Peer Support',
       chatbotTitle: 'AI Therapy Chatbot',
       chatbotSubtitle: 'In AI Chatbot',
       stressTitle: 'Stress Management',
@@ -3727,7 +3607,6 @@ export default {
       mood: 'Mood',
       meditation: 'Meditation',
       journal: 'Journal',
-      community: 'Community',
       home: 'Home',
       aiChatbot: 'AI Chatbot',
       resources: 'Resources',

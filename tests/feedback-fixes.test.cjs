@@ -156,32 +156,3 @@ test('legacy English and Greek profile choices render in the current language an
   }
 });
 
-const filterModel = load('lib/community-filters.ts');
-test('community filter parameters are validated and applied before the feed limit without a paywall', async () => {
-  const filters = filterModel.communityFilters({categories:'mindfulness,support,bogus,mindfulness', types:'story,unknown'});
-  assert.equal(filters.categories.join(','),'mindfulness,support');
-  assert.equal(filters.types.join(','),'story');
-  assert.equal(filterModel.communityFilters({categories:['mindfulness']}).categories.length,0);
-  const operations = [];
-  const query = {
-    select: () => query,
-    eq: (column,value) => {operations.push(['eq',column,value]); return query;},
-    in: (column,values) => {operations.push(['in',column,Array.from(values)]); return query;},
-    order: (column) => {operations.push(['order',column]); return query;},
-    limit: (count) => {operations.push(['limit',count]); return Promise.resolve({data:[],error:null});},
-  };
-  let config;
-  const community = load('hooks/useCommunity.ts', {
-    '@tanstack/react-query': {useQuery:(options) => {config=options; return options;}},
-    '@/supabase/supabase': {supabase:{from:(table) => {assert.equal(table,'community_posts');return query;}}},
-    './useUser': {useUser:() => ({data:{id:'free-user'}})},
-    '@/lib/community-safety': {publishCommunityContent:() => {throw Error('Unexpected publish');}},
-  });
-  community.useCommunityFeed({categories:filters.categories,types:filters.types,sortBy:'recent'});
-  await config.queryFn();
-  assert.equal(config.enabled,true);
-  assert.equal(JSON.stringify(operations), JSON.stringify([
-    ['eq','is_hidden',false],['in','category',['mindfulness','support']],['in','post_type',['story']],
-    ['order','created_at'],['limit',50],
-  ]));
-});

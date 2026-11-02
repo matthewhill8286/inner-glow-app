@@ -1,10 +1,4 @@
 export const LEGACY_ROUTES: Record<string, string> = {
-  '/(tabs)/community-new-post': '/(tabs)/community/new-post',
-  '/(tabs)/community-post-success': '/(tabs)/community/post-success',
-  '/(tabs)/community-post': '/(tabs)/community/post',
-  '/(tabs)/community-notifs': '/(tabs)/community/notifications',
-  '/(tabs)/community-filter': '/(tabs)/community/filter',
-  '/(tabs)/community-profile': '/(tabs)/community/profile',
   '/(tabs)/profile-edit': '/(tabs)/profile/edit',
   '/(tabs)/profile-overview': '/(tabs)/profile/overview',
   '/(tabs)/settings': '/(tabs)/profile/categories',
@@ -23,8 +17,6 @@ export function canonicalRoute(path: string): string {
 const FORWARDED_PARAMS = [
   'from',
   'inboxFrom',
-  'postId',
-  'userId',
   'type',
   'title',
   'body',
@@ -34,8 +26,6 @@ const FORWARDED_PARAMS = [
   'route',
   'category',
   'content',
-  'categories',
-  'types',
 ];
 export function legacyRouteParams(incoming: Record<string, unknown>): Record<string, string> {
   const params: Record<string, string> = {};

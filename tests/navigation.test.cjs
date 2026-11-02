@@ -125,8 +125,7 @@ test('legacy feature URLs resolve to real canonical feature screens and preserve
     assert.ok(fs.existsSync(target), target);
   }
   const params = legacy.legacyRouteParams({
-    postId: 'post-123',
-    from: '/(tabs)/community-post',
+    from: '/(tabs)/profile-edit',
     title: 'Sleep recorded',
     body: 'Good rest',
     screen: 'forged-screen',
@@ -136,8 +135,7 @@ test('legacy feature URLs resolve to real canonical feature screens and preserve
   assert.equal(
     JSON.stringify(params),
     JSON.stringify({
-      from: '/(tabs)/community/post',
-      postId: 'post-123',
+      from: '/(tabs)/profile/edit',
       title: 'Sleep recorded',
       body: 'Good rest',
     }),
@@ -150,9 +148,6 @@ test('direct secondary links fall back to their feature parent, including nested
     '/profile-edit': '/(tabs)/profile',
     '/notifications/detail': '/(tabs)/notifications',
     '/notification-detail': '/(tabs)/notifications',
-    '/community/post': '/(tabs)/community',
-    '/community/profile': '/(tabs)/community',
-    '/community/filter': '/(tabs)/community',
     '/journal/history': '/(tabs)/journal',
     '/journal/stats': '/(tabs)/journal',
     '/mood/stats': '/(tabs)/mood',
@@ -162,7 +157,6 @@ test('direct secondary links fall back to their feature parent, including nested
     '/stress/plan': '/(tabs)/stress',
     '/freud-score/ai-suggestion-category': '/(tabs)/freud-score/ai-suggestions',
     '/delete-account': '/(tabs)/profile',
-    '/community': '/(tabs)/home',
   };
   for (const [route, parent] of Object.entries(cases)) {
     assert.equal(parents.parentRouteForPath(route), parent, route);
@@ -198,7 +192,6 @@ test('legacy redirects live outside tabs and feature stacks seed their index par
   }
   for (const feature of [
     'profile',
-    'community',
     'notifications',
     'chat',
     'journal',
@@ -227,7 +220,6 @@ test('secondary features retain a visible parent tab and primary feature childre
     '/profile-edit': 'profile',
     '/stress': 'home',
     '/sleep/insights': 'home',
-    '/community/post': 'home',
     '/notifications/detail': 'home',
     '/freud-score': 'home',
   }))
