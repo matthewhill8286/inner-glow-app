@@ -20,6 +20,7 @@ import {
 import { practiceById } from '@/data/practices';
 import { VideoPlayer } from '@/components/practices/VideoPlayer';
 import { useMindfulness } from '@/hooks/useMindfulness';
+import { useStressHistory } from '@/hooks/useStressHistory';
 import { useDailyGoal } from '@/hooks/usePractices';
 import { useAccessibilityPrefs } from '@/lib/accessibility-prefs';
 import { breathAt, mmss, orbScale, totalBreaths, type Pace, type Phase } from '@/lib/practices';
@@ -66,6 +67,7 @@ function PracticePlayer() {
   const practice = practiceById(params.id);
   const text = usePracticeText();
   const { addSession } = useMindfulness();
+  const { addStressCompletion } = useStressHistory();
   const { today, goal, refreshNudge } = useDailyGoal();
   const a11yHaptics = useAccessibilityPrefs((s) => s.haptics);
 
@@ -116,12 +118,14 @@ function PracticePlayer() {
             options: { pace, sound: params.sound ?? 'silence', minutes },
           },
         });
+        // A finished breathing practice also counts towards stress relief in the Glow score.
+        if (completed && practice.kind === 'breathing') await addStressCompletion(practice.id, text(practice).title);
         await refreshNudge(today + Math.round(seconds / 60), goal);
       } catch {
         // The session stays unsaved; the player still closes.
       }
     },
-    [practice, total, addSession, text, pace, params.sound, minutes, refreshNudge, today, goal],
+    [practice, total, addSession, addStressCompletion, text, pace, params.sound, minutes, refreshNudge, today, goal],
   );
 
   // One frame loop drives time, phase, the orb and the fade.
