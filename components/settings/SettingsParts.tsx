@@ -27,6 +27,7 @@ export function SettingsScreen({
   cta,
   children,
   contentStyle,
+  scrollEnabled = true,
 }: {
   title: string;
   backLabel: string;
@@ -36,6 +37,8 @@ export function SettingsScreen({
   cta?: React.ReactNode;
   children: React.ReactNode;
   contentStyle?: StyleProp<ViewStyle>;
+  /** Turned off while a control inside is being dragged (the sleep dial). */
+  scrollEnabled?: boolean;
 }) {
   const insets = useSafeAreaInsets();
   return (
@@ -48,6 +51,7 @@ export function SettingsScreen({
         style={{ marginTop: insets.top + 10, marginHorizontal: 24 }}
       />
       <ScrollView
+        scrollEnabled={scrollEnabled}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={[
           {

@@ -17,6 +17,8 @@ export default function TabsLayout() {
     isChatDetail ||
     (segments.includes('profile') && segments.includes('edit')) ||
     segments.includes('schedule') ||
+    // The sleep flow from Wind down to Last night is full-screen (06 §S2–S7).
+    (segments.includes('sleep') && ['start', 'mode', 'wake', 'log', '[id]'].some((s) => segments.includes(s))) ||
     (segments.includes('community') && segments.includes('new-post')) ||
     // The mood check-in and Mood logged are full-screen flows with no tab bar (04 §M2–M5).
     (segments.includes('mood') && (segments.includes('check-in') || segments.includes('logged'))) ||

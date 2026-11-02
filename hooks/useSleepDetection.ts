@@ -5,7 +5,7 @@ import { showAlert } from '@/lib/state';
 import { useRouter } from 'expo-router';
 
 export function useSleepDetection() {
-  const { sleepMode, setSleepMode } = useSleep();
+  const { sleepMode } = useSleep();
   const router = useRouter();
   const appState = useRef(AppState.currentState);
 
@@ -35,13 +35,8 @@ export function useSleepDetection() {
               },
               {
                 text: 'Log Sleep',
-                onPress: async () => {
-                  await setSleepMode({ sleepModeStartISO: null });
-                  router.push({
-                    pathname: '/(tabs)/sleep/log',
-                    params: { duration: diffHrs.toString() },
-                  });
-                },
+                // Wake up (06 §S5) saves the night and opens the check-in.
+                onPress: () => router.push('/(tabs)/sleep/wake'),
               },
             ],
           );
@@ -54,5 +49,5 @@ export function useSleepDetection() {
     return () => {
       subscription.remove();
     };
-  }, [sleepMode.sleepModeStartISO, sleepMode.autoDetectionEnabled, setSleepMode, router]);
+  }, [sleepMode.sleepModeStartISO, sleepMode.autoDetectionEnabled, router]);
 }

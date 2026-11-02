@@ -1,369 +1,218 @@
-import { Typography } from '@/constants/typography';
-import { backTo } from '@/lib/navigation';
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  Pressable,
-  TextInput,
-  ScrollView,
-  Platform,
-  StyleSheet,
-  KeyboardAvoidingView,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors, UI } from '@/constants/theme';
-import MaterialIcons from '@/components/AppIcon';
 import { useTranslation } from 'react-i18next';
-import { useSleep } from '@/hooks/useSleep';
-import { showAlert } from '@/lib/state';
+import { StatusBar } from 'expo-status-bar';
+import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
+import { palette } from '@/constants/theme';
+import { Type } from '@/constants/typography';
+import { AppButton } from '@/components/ui/AppButton';
+import { BottomSheet } from '@/components/ui/BottomSheet';
+import { Icon } from '@/components/icons/Icon';
+import { SettingsScreen } from '@/components/settings/SettingsParts';
+import { MoonScale } from '@/components/sleep/MoonScale';
 import { toast } from '@/components/Toast';
+import { useSleep } from '@/hooks/useSleep';
+import { backTo } from '@/lib/navigation';
+import { clockFrom } from '@/lib/sleep-home';
+import { hourMinute, minuteOfDay, windowMinutes } from '@/lib/sleep-flow';
 
-/* ── helpers ──────────────────────────────────────── */
-function goBack(from?: string) {
-  backTo(from, '/(tabs)/sleep');
-}
+/** Keys allowed by the `sleep.factors` check constraint (06 §6 item 5), in the design's order. */
+const FACTORS = ['caffeine', 'screen_time', 'stress', 'exercise', 'late_meal', 'noise', 'wind_down', 'nap'];
 
-const QUALITY_KEYS = ['terrible', 'poor', 'fair', 'good', 'excellent'] as const;
-const QUALITY_EMOJIS = ['😫', '😟', '😐', '😊', '😴'];
-
-/* ── Main Screen ─────────────────────────────────── */
-export default function LogSleepScreen() {
+/**
+ * Sleep check-in (06 §S6): the moon scale, the quality word with a short line, what played a part,
+ * an optional note, and Save, which opens Last night. With a night id (from Wake up or Last night)
+ * it fills in that night; without one it logs a manual night with Bedtime and Wake up tiles.
+ */
+export default function SleepCheckInScreen() {
   const { t } = useTranslation();
-  const theme = useColorScheme() ?? 'light';
-  const colors = Colors[theme];
-  const insets = useSafeAreaInsets();
-  const params = useLocalSearchParams<{ duration?: string; from?: string }>();
-  const { addSleepEntry } = useSleep();
-
-  const [quality, setQuality] = useState(3);
-  const [duration, setDuration] = useState(params.duration || '8');
-  const [note, setNote] = useState('');
+  const { id, from } = useLocalSearchParams<{ id?: string; from?: string }>();
+  const { sleepEntries, schedule, addSleepEntry, updateSleepEntry } = useSleep();
+  const entry = useMemo(() => (id ? sleepEntries.find((e) => e.id === id) : undefined), [id, sleepEntries]);
+  const [quality, setQuality] = useState<number | null>(entry?.quality ?? null);
+  const [factors, setFactors] = useState<string[]>(entry?.factors ?? []);
+  const [note, setNote] = useState(entry?.notes ?? '');
+  const [bed, setBed] = useState(minuteOfDay(schedule.sleepHour, schedule.sleepMin));
+  const [wake, setWake] = useState(minuteOfDay(schedule.wakeHour, schedule.wakeMin));
+  const [picking, setPicking] = useState<null | 'bed' | 'wake'>(null);
   const [saving, setSaving] = useState(false);
 
-  // Bedtime / wake inputs
-  const [bedHour, setBedHour] = useState('22');
-  const [bedMin, setBedMin] = useState('00');
-  const [wakeHour, setWakeHour] = useState('06');
-  const [wakeMin, setWakeMin] = useState('00');
+  // The night loads after the first render when the list is not cached yet.
+  useEffect(() => {
+    if (!entry) return;
+    setQuality(entry.quality ?? null);
+    setFactors(entry.factors ?? []);
+    setNote(entry.notes ?? '');
+  }, [entry]);
 
-  const handleSave = async () => {
+  const qualityWords = [1, 2, 3, 4, 5].map((q) => t(`sleepNight.quality.${q}`));
+  const clock = (m: number) => clockFrom(hourMinute(m).hour, hourMinute(m).minute);
+
+  const openPicker = (which: 'bed' | 'wake') => {
+    const m = which === 'bed' ? bed : wake;
+    const value = new Date(2000, 0, 1, hourMinute(m).hour, hourMinute(m).minute);
+    const set = (d: Date) => (which === 'bed' ? setBed : setWake)(minuteOfDay(d.getHours(), d.getMinutes()));
+    if (Platform.OS === 'android') {
+      DateTimePickerAndroid.open({ value, mode: 'time', is24Hour: true, onChange: (e, d) => e.type === 'set' && d && set(d) });
+    } else setPicking(which);
+  };
+
+  const save = async () => {
+    if (!quality) {
+      toast.info(t('sleepFlow.checkIn.pickQuality'));
+      return;
+    }
     setSaving(true);
     try {
-      const hours = parseFloat(duration) || 0;
+      if (id) {
+        await updateSleepEntry({ id, quality: quality as 1 | 2 | 3 | 4 | 5, factors, notes: note.trim() || undefined });
+        router.replace({ pathname: '/(tabs)/sleep/[id]', params: { id } });
+        return;
+      }
+      // A manual night ends at the wake time this morning (or yesterday if that is still to come).
       const end = new Date();
-      const start = new Date(end.getTime() - hours * 60 * 60 * 1000);
-      await addSleepEntry({
+      end.setHours(hourMinute(wake).hour, hourMinute(wake).minute, 0, 0);
+      if (end.getTime() > Date.now()) end.setDate(end.getDate() - 1);
+      const start = new Date(end.getTime() - windowMinutes(bed, wake) * 60_000);
+      const saved = await addSleepEntry({
         startISO: start.toISOString(),
         endISO: end.toISOString(),
-        quality: quality as any,
-        duration: hours,
-        notes: note || undefined,
-        // Sleep mode and wake detection open this screen with the tracked duration filled in.
-        source: params.duration ? 'sleep_mode' : 'manual',
-      } as any);
-      toast.success(t('sleepLog.sleepSaved'));
-      goBack(params.from);
-    } catch (err) {
-      console.warn('[sleep-log] save failed', err);
-      toast.error(t('sleepLog.sleepSaveFailed'));
+        duration: windowMinutes(bed, wake) / 60,
+        quality: quality as 1 | 2 | 3 | 4 | 5,
+        factors,
+        notes: note.trim() || undefined,
+        source: 'manual',
+      });
+      router.replace({ pathname: '/(tabs)/sleep/[id]', params: { id: saved.id } });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('sleepFlow.saveError'));
     } finally {
       setSaving(false);
     }
   };
 
-  return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={{ flex: 1, backgroundColor: colors.background }}
+  const tile = (which: 'bed' | 'wake') => (
+    <Pressable
+      accessibilityRole="button"
+      onPress={() => openPicker(which)}
+      style={({ pressed }) => ({ flex: 1, minHeight: 76, borderRadius: 24, backgroundColor: palette.white, padding: 16, gap: 4, opacity: pressed ? 0.85 : 1 })}
     >
-      <View
-        style={[s.container, { backgroundColor: colors.background, paddingTop: insets.top + 6 }]}
-      >
-        {/* ── Header ──────────────────────────── */}
-        <View style={s.header}>
-          <Pressable
-            onPress={() => goBack(params.from)}
-            style={({ pressed }) => [
-              s.backBtn,
-              {
-                backgroundColor: colors.card,
-                borderColor: colors.border,
-                opacity: pressed ? 0.7 : 1,
-              },
-            ]}
-          >
-            <MaterialIcons
-              name={Platform.OS === 'ios' ? 'arrow-back-ios-new' : 'arrow-back'}
-              size={18}
-              color={colors.text}
-            />
-          </Pressable>
-          <View style={{ flex: 1 }}>
-            <Text style={[s.headerTitle, { color: colors.text }]}>{t('sleepLog.title')}</Text>
-            <Text style={[s.headerSub, { color: colors.mutedText }]}>{t('sleepLog.subtitle')}</Text>
-          </View>
-        </View>
-
-        <ScrollView
-          contentContainerStyle={s.scrollContent}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          {/* ── Quality Rating ────────────────── */}
-          <View style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={[s.cardLabel, { color: colors.mutedText }]}>
-              {t('sleepLog.sleepQuality')}
-            </Text>
-            <View style={s.qualityRow}>
-              {QUALITY_KEYS.map((key, idx) => {
-                const val = idx + 1;
-                return (
-                  <Pressable
-                    key={key}
-                    onPress={() => setQuality(val)}
-                    style={({ pressed }) => [
-                      s.qualityBtn,
-                      {
-                        backgroundColor: quality === val ? '#8B6B47' : colors.inputBg,
-                        transform: [{ scale: pressed ? 0.92 : quality === val ? 1.05 : 1 }],
-                      },
-                    ]}
-                  >
-                    <Text style={{ fontFamily: Typography.family.body, fontSize: 24 }}>
-                      {QUALITY_EMOJIS[idx]}
-                    </Text>
-                    <Text
-                      style={[
-                        s.qualityLabel,
-                        { color: quality === val ? '#FFF' : colors.mutedText },
-                      ]}
-                    >
-                      {t(`sleepLog.${key}`)}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-
-          {/* ── Duration ─────────────────────── */}
-          <View style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={[s.cardLabel, { color: colors.mutedText }]}>{t('sleepLog.duration')}</Text>
-            <View style={s.durationRow}>
-              {/* Quick buttons */}
-              {['4', '6', '7', '8', '9'].map((h) => (
-                <Pressable
-                  key={h}
-                  onPress={() => setDuration(h)}
-                  style={[
-                    s.durBtn,
-                    {
-                      backgroundColor: duration === h ? '#5B8A5A' : colors.inputBg,
-                    },
-                  ]}
-                >
-                  <Text style={[s.durBtnText, { color: duration === h ? '#FFF' : colors.text }]}>
-                    {h}h
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-            <TextInput
-              value={duration}
-              onChangeText={setDuration}
-              keyboardType="numeric"
-              placeholder={t('sleepLog.customHours')}
-              placeholderTextColor={colors.placeholder}
-              style={[
-                s.input,
-                {
-                  backgroundColor: colors.inputBg,
-                  color: colors.text,
-                  borderColor: colors.border,
-                },
-              ]}
-            />
-          </View>
-
-          {/* ── Notes ────────────────────────── */}
-          <View style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={[s.cardLabel, { color: colors.mutedText }]}>
-              {t('sleepLog.notesOptional')}
-            </Text>
-            <TextInput
-              value={note}
-              onChangeText={setNote}
-              multiline
-              numberOfLines={4}
-              placeholder={t('sleepLog.notesPlaceholder')}
-              placeholderTextColor={colors.placeholder}
-              style={[
-                s.input,
-                s.textArea,
-                {
-                  backgroundColor: colors.inputBg,
-                  color: colors.text,
-                  borderColor: colors.border,
-                },
-              ]}
-            />
-          </View>
-
-          {/* ── Tip Card ─────────────────────── */}
-          <View style={[s.tipCard, { backgroundColor: '#7B6DC915' }]}>
-            <MaterialIcons name="lightbulb-outline" size={18} color="#7B6DC9" />
-            <Text style={[s.tipText, { color: colors.mutedText }]}>{t('sleepLog.aiTip')}</Text>
-          </View>
-
-          {/* ── Save Button ──────────────────── */}
-          <Pressable
-            onPress={handleSave}
-            disabled={saving}
-            style={({ pressed }) => [
-              s.saveBtn,
-              {
-                backgroundColor: '#8B6B47',
-                opacity: saving ? 0.6 : pressed ? 0.85 : 1,
-                transform: [{ scale: pressed ? 0.97 : 1 }],
-              },
-            ]}
-          >
-            <MaterialIcons name="check-circle" size={20} color="#FFF" />
-            <Text style={s.saveBtnText}>
-              {saving ? t('sleepLog.saving') : t('sleepLog.saveSleepEntry')}
-            </Text>
-          </Pressable>
-        </ScrollView>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        <Icon name={which === 'bed' ? 'line/moon' : 'line/star'} size={16} />
+        <Text style={[Type.caption, { fontWeight: '500', color: palette.textSubtle }]}>
+          {t(which === 'bed' ? 'sleepFlow.schedule.bedtime' : 'sleepFlow.schedule.wakeUp')}
+        </Text>
       </View>
-    </KeyboardAvoidingView>
+      <Text style={[Type.titleMd, { lineHeight: 30, color: palette.ink }]}>{clock(which === 'bed' ? bed : wake)}</Text>
+    </Pressable>
+  );
+
+  return (
+    <SettingsScreen
+      title={t('sleepFlow.checkIn.header')}
+      backLabel={t('common.back')}
+      onBack={() => backTo(from, '/(tabs)/sleep')}
+      glows={[
+        { color: palette.lavenderSoft, opacity: 0.25, x: -60, y: -40, width: 280, blur: 90 },
+        { color: palette.sky, opacity: 0.18, x: 200, y: 40, width: 220, blur: 90 },
+        { color: palette.mustard, opacity: 0.22, x: 97.5, y: 180, width: 180, blur: 60 },
+      ]}
+      contentStyle={{ gap: 12 }}
+      cta={<AppButton title={t('sleepFlow.checkIn.save')} icon="line/check" iconPosition="left" busy={saving} onPress={save} />}
+    >
+      <StatusBar style="dark" />
+      <Text accessibilityRole="header" style={[Type.titleLg, { fontSize: 28, lineHeight: 34, color: palette.ink }]}>
+        {t('sleepFlow.checkIn.title')}
+      </Text>
+      <Text style={[Type.bodyS, { color: palette.textMuted, marginTop: -6 }]}>{t('sleepFlow.checkIn.subtitle')}</Text>
+
+      {!id && (
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+          {tile('bed')}
+          {tile('wake')}
+        </View>
+      )}
+
+      <MoonScale value={quality} onChange={setQuality} labels={qualityWords} />
+      <View style={{ alignItems: 'center', gap: 6, minHeight: 56 }}>
+        {quality ? (
+          <>
+            <Text style={[Type.titleLg, { fontSize: 24, lineHeight: 29, color: palette.plum }]}>{qualityWords[quality - 1]}</Text>
+            <Text style={[Type.captionM, { color: palette.textMuted, textAlign: 'center' }]}>{t(`sleepFlow.checkIn.lines.${quality}`)}</Text>
+          </>
+        ) : (
+          <Text style={[Type.captionM, { color: palette.textMuted }]}>{t('sleepFlow.checkIn.tapMoon')}</Text>
+        )}
+      </View>
+
+      <Text style={[Type.labelM, { color: palette.lavender, marginTop: 8 }]}>{t('sleepFlow.checkIn.factors')}</Text>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+        {FACTORS.map((f) => {
+          const on = factors.includes(f);
+          return (
+            <Pressable
+              key={f}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: on }}
+              onPress={() => setFactors((x) => (on ? x.filter((k) => k !== f) : [...x, f]))}
+              style={{
+                height: 34,
+                paddingHorizontal: 14,
+                borderRadius: 999,
+                justifyContent: 'center',
+                backgroundColor: on ? palette.selected : palette.white,
+                borderWidth: on ? 1.5 : 1,
+                borderColor: on ? palette.plum : palette.borderLilac,
+              }}
+            >
+              <Text style={[Type.chip, { fontWeight: on ? '600' : '500', color: on ? palette.plum : palette.plumDeep }]}>
+                {t(`sleepPeriods.factors.${f}`)}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      <TextInput
+        value={note}
+        onChangeText={setNote}
+        placeholder={t('sleepFlow.checkIn.note')}
+        placeholderTextColor={palette.textSubtle}
+        multiline
+        maxLength={500}
+        accessibilityLabel={t('sleepFlow.checkIn.note')}
+        style={[
+          Type.bodyS,
+          {
+            minHeight: 56,
+            marginTop: 8,
+            borderRadius: 20,
+            borderWidth: 1,
+            borderColor: palette.borderLilac,
+            backgroundColor: palette.white,
+            paddingHorizontal: 16,
+            paddingTop: 18,
+            paddingBottom: 14,
+            color: palette.ink,
+          },
+        ]}
+      />
+
+      {Platform.OS === 'ios' && (
+        <BottomSheet visible={picking !== null} onClose={() => setPicking(null)}>
+          {picking && (
+            <DateTimePicker
+              value={new Date(2000, 0, 1, hourMinute(picking === 'bed' ? bed : wake).hour, hourMinute(picking === 'bed' ? bed : wake).minute)}
+              mode="time"
+              display="spinner"
+              minuteInterval={5}
+              onChange={(_, d) => d && (picking === 'bed' ? setBed : setWake)(minuteOfDay(d.getHours(), d.getMinutes()))}
+            />
+          )}
+          <AppButton title={t('sleepFlow.done')} onPress={() => setPicking(null)} style={{ alignSelf: 'stretch' }} />
+        </BottomSheet>
+      )}
+    </SettingsScreen>
   );
 }
-
-/* ── Styles ──────────────────────────────────────── */
-const s = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingHorizontal: UI.spacing.xl,
-  } as any,
-
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    marginTop: 6,
-    marginBottom: 4,
-  } as any,
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-  },
-  headerTitle: { ...Typography.heading },
-  headerSub: { fontFamily: Typography.family.body, fontSize: 14, marginTop: 2 },
-
-  scrollContent: {
-    paddingTop: 16,
-    paddingBottom: 100,
-    gap: 14,
-  },
-
-  /* cards */
-  card: {
-    borderRadius: UI.radius.xxl,
-    padding: 18,
-    borderWidth: 1,
-    ...UI.shadow.sm,
-  },
-  cardLabel: {
-    fontFamily: Typography.family.body,
-    fontSize: 12,
-    fontWeight: Typography.weight.medium,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 14,
-  },
-
-  /* quality */
-  qualityRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 6,
-  },
-  qualityBtn: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderRadius: UI.radius.md,
-    gap: 4,
-  },
-  qualityLabel: {
-    fontFamily: Typography.family.body,
-    fontSize: 10,
-    fontWeight: Typography.weight.medium,
-  },
-
-  /* duration */
-  durationRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 12,
-  },
-  durBtn: {
-    flex: 1,
-    height: 40,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  durBtnText: {
-    fontFamily: Typography.family.body,
-    fontSize: 14,
-    fontWeight: Typography.weight.semibold,
-  },
-
-  /* inputs */
-  input: {
-    fontFamily: Typography.family.body,
-    padding: 14,
-    borderRadius: UI.radius.md,
-    borderWidth: 1,
-    fontSize: 15,
-  },
-  textArea: {
-    height: 100,
-    textAlignVertical: 'top',
-  },
-
-  /* tip */
-  tipCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    padding: 14,
-    borderRadius: UI.radius.lg,
-  },
-  tipText: { fontFamily: Typography.family.body, flex: 1, fontSize: 13, lineHeight: 19 },
-
-  /* save */
-  saveBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 16,
-    borderRadius: UI.radius.lg,
-    ...UI.shadow.md,
-  },
-  saveBtnText: {
-    fontFamily: Typography.family.body,
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: Typography.weight.semibold,
-  },
-});

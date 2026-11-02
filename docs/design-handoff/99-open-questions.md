@@ -61,6 +61,16 @@ Design added 35 screens, now placed in their area sections, and a new component 
 - Figma has no way into Insights, so a chart button sits at the right of the Glow score header. The Score history filter button is left out because Figma does not say what it filters.
 - "Suggested for you" also lists the category's own steps above the article, so people can see what they are marking as done. "Read article" expands the card in place.
 
+**Sleep flow decisions (2 Nov 2026, built on `feature/sleep-flow`; change them if design disagrees):**
+- Quality words keep the scale Sleep home already uses: Rough, Restless, Okay, Good, Restful. Figma's S6 mock calls 4 "Restful". The second line under the word is written per quality, because the design's awakenings line has no input.
+- The sleep goal is the schedule's window (06 §6 item 8). "92% of your goal" is time asleep over that window.
+- Wind down starts sleep mode at once. Breathing and Quiet mind open their practice on top of sleep mode, and Write it out opens a new journal entry. Rain plays here and stops after the chosen time with a 30-second fade.
+- Snooze 9 min is a one-off notification in nine minutes that returns to sleep mode. The ringing alarm still needs iOS 26.
+- The wake-up alarm keeps a row on Bedtime schedule, shown only where ringing alarms work. Figma has no alarm row.
+- The S7 Glow AI note comes from this month's factor impacts ("You slept 25 min longer on nights with Wind down"). Sleep latency is not captured, so "fell asleep 20 min faster" cannot be said.
+- Nights without Health stages show the time in bed as one bar. The tab bar is hidden from Wind down to Last night.
+- Not built: keeping the screen awake in sleep mode, and background audio while the phone is locked. Both need native config.
+
 **Still open product questions:** Do we show per-device detail, revoke and IP-based city names in Active sessions? What exactly do Larger text and Reduce motion change? (08)
 
 ## 1. Library and palette

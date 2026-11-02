@@ -92,7 +92,13 @@ export default function SleepScreen() {
           />
 
           {night && (
-            <View style={{ position: 'absolute', left: 24, right: 24, top: top(150) }}>
+            // The night summary opens Last night (06 §S7).
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`${eyebrowLead}, ${formatDuration(night.asleepMinutes)}`}
+              onPress={() => router.push({ pathname: '/(tabs)/sleep/[id]', params: { id: night.entry.id } })}
+              style={({ pressed }) => ({ position: 'absolute', left: 24, right: 24, top: top(150), opacity: pressed ? 0.8 : 1 })}
+            >
               <Text style={[Type.eyebrow, { color: 'rgba(255,255,255,0.60)', letterSpacing: 0.66 }]}>
                 {`${eyebrowLead} · ${formatClock(night.startMs)} → ${formatClock(night.endMs)}`.toUpperCase()}
               </Text>
@@ -121,7 +127,7 @@ export default function SleepScreen() {
                   <Text style={[Type.caption, { fontWeight: '700', color: palette.ink }]}>{pill}</Text>
                 </View>
               ) : null}
-            </View>
+            </Pressable>
           )}
 
           {night && (
@@ -209,7 +215,6 @@ export default function SleepScreen() {
             <Icon name="arrow/chevron-right" size={18} />
           </Pressable>
 
-          {/* Wind down (S3) is not built yet, so this opens sleep mode. */}
           <AppButton
             title={t('sleepNight.startWindDown')}
             icon="line/moon"

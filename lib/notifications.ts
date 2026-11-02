@@ -5,7 +5,7 @@ import { inQuietHours, triggerPlan, type ReminderSchedule } from './reminder-sch
 
 const BEDTIME_NOTIF_IDS_KEY = 'bedtime-notification-ids';
 const WAKEUP_NOTIF_IDS_KEY = 'wakeup-notification-ids';
-const BEDTIME_REMINDER_MINUTES = 30; // remind 30 min before bedtime
+export const BEDTIME_REMINDER_MINUTES = 30; // remind 30 min before bedtime
 const SNOOZE_INTERVAL_MINUTES = 5; // minutes between snooze alarms
 
 export function configureNotificationPresentation() {
