@@ -107,3 +107,52 @@ export function nextNudge(todayMinutes: number, goal: number, now = new Date(), 
   if (todayMinutes < goal && now.getTime() < today.getTime()) return today;
   return new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, hour);
 }
+
+/** Bar colour per category (07 §2.3): the day takes the category of its longest session. */
+export const CATEGORY_COLOR: Record<string, string> = {
+  breathing: '#7FC6F1',
+  'relax-body': '#E2CC40',
+  'relax-mind': '#E2CC40',
+  sleep: '#D8B4D8',
+  mindfulness: '#8E7FA6',
+};
+
+/**
+ * Your sessions week card: minutes and the longest session's category for each day Monday–Sunday,
+ * plus this week's total minutes and session count.
+ */
+export function practiceWeek(
+  sessions: { seconds: number; dateISO: string; category?: string | null }[],
+  now = new Date(),
+): { days: { minutes: number; category: string | null }[]; minutes: number; count: number } {
+  const monday = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate() - ((now.getDay() + 6) % 7),
+  );
+  const days = Array.from({ length: 7 }, () => ({
+    seconds: 0,
+    longest: 0,
+    category: null as string | null,
+  }));
+  let count = 0;
+  for (const s of sessions) {
+    const d = new Date(s.dateISO);
+    const i = Math.floor(
+      (new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() - monday.getTime()) /
+        86_400_000,
+    );
+    if (i < 0 || i > 6) continue;
+    count++;
+    days[i].seconds += s.seconds;
+    if (s.seconds > days[i].longest) {
+      days[i].longest = s.seconds;
+      days[i].category = s.category ?? null;
+    }
+  }
+  return {
+    days: days.map((d) => ({ minutes: Math.round(d.seconds / 60), category: d.category })),
+    minutes: Math.round(days.reduce((a, d) => a + d.seconds, 0) / 60),
+    count,
+  };
+}

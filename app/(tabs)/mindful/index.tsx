@@ -142,7 +142,10 @@ const CARDS: { kind: 'breathing' | 'relax' | 'mindfulness' | 'sleep'; href: Href
     kind: 'breathing',
     href: { pathname: '/(tabs)/mindful/category/[category]', params: { category: 'breathing' } },
   },
-  { kind: 'relax', href: '/(tabs)/stress' },
+  {
+    kind: 'relax',
+    href: { pathname: '/(tabs)/mindful/category/[category]', params: { category: 'relax' } },
+  },
   {
     kind: 'mindfulness',
     href: { pathname: '/(tabs)/mindful/category/[category]', params: { category: 'mindfulness' } },
@@ -201,7 +204,7 @@ export default function PracticesHub() {
             icon="line/chart"
             iconSize={20}
             accessibilityLabel={t('practices.hub.history')}
-            onPress={() => router.push('/(tabs)/mindful/stats')}
+            onPress={() => router.push('/(tabs)/mindful/history')}
           />
         </View>
 

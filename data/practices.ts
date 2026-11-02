@@ -35,6 +35,12 @@ export type Practice = {
     voice?: boolean;
     fadeOut?: boolean;
   };
+  /**
+   * Relax videos (07 §3.2–3.3). The design's INNER GLOW channel videos do not exist yet, so each
+   * practice uses the closest working YouTube video as a stand-in, with that video's length. Relax
+   * practices without a working video are left out of the lists until real videos exist.
+   */
+  video?: { youtubeId: string; seconds: number };
 };
 
 /** Bundled loops in `lib/soundscape.ts`, plus silence. */
@@ -66,7 +72,7 @@ export const SOUND_CHOICES: Record<
 
 const BREATH_DURATIONS = [1, 3, 5, 10];
 
-export const PRACTICES: Practice[] = [
+const CATALOGUE: Practice[] = [
   {
     id: 'box-breathing',
     category: 'breathing',
@@ -112,11 +118,39 @@ export const PRACTICES: Practice[] = [
     options: { pace: true, sound: 'zen', haptics: true },
   },
 
-  { id: 'shoulder-release', category: 'relax-body', kind: 'video', listMinutes: 2, options: {} },
+  {
+    id: 'shoulder-release',
+    category: 'relax-body',
+    kind: 'video',
+    listMinutes: 20,
+    options: {},
+    video: { youtubeId: 'sTANio_2E0Q', seconds: 1200 },
+  },
   { id: 'neck-tension-reset', category: 'relax-body', kind: 'video', listMinutes: 4, options: {} },
-  { id: 'full-body-relax', category: 'relax-body', kind: 'video', listMinutes: 8, options: {} },
-  { id: 'quiet-thoughts', category: 'relax-mind', kind: 'video', listMinutes: 4, options: {} },
-  { id: 'anxiety-reset', category: 'relax-mind', kind: 'video', listMinutes: 4, options: {} },
+  {
+    id: 'full-body-relax',
+    category: 'relax-body',
+    kind: 'video',
+    listMinutes: 15,
+    options: {},
+    video: { youtubeId: 'g_tea8ZNk5A', seconds: 900 },
+  },
+  {
+    id: 'quiet-thoughts',
+    category: 'relax-mind',
+    kind: 'video',
+    listMinutes: 10,
+    options: {},
+    video: { youtubeId: 'ZToicYcHIOU', seconds: 600 },
+  },
+  {
+    id: 'anxiety-reset',
+    category: 'relax-mind',
+    kind: 'video',
+    listMinutes: 10,
+    options: {},
+    video: { youtubeId: 'O-6f5wQXSu8', seconds: 600 },
+  },
   { id: 'grounding-practice', category: 'relax-mind', kind: 'video', listMinutes: 5, options: {} },
 
   {
@@ -204,6 +238,9 @@ export const PRACTICES: Practice[] = [
     options: { sound: 'ocean', fadeOut: true, voice: false },
   },
 ];
+
+/** Practices people can open: everything except Relax videos still waiting for a video. */
+export const PRACTICES = CATALOGUE.filter((p) => p.kind !== 'video' || !!p.video);
 
 export function practiceById(id: string | undefined): Practice | undefined {
   return PRACTICES.find((p) => p.id === id);

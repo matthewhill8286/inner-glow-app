@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, Modal, Pressable, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import Svg, { Circle } from 'react-native-svg';
+import Svg, { Circle, Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { palette } from '@/constants/theme';
 import { Type } from '@/constants/typography';
 import { Icon } from '@/components/icons/Icon';
@@ -422,19 +422,23 @@ export function EndEarlySheet({
   totalMinutes,
   onKeep,
   onEnd,
+  bodyText,
 }: {
   visible: boolean;
   elapsed: number;
   totalMinutes: number;
   onKeep: () => void;
   onEnd: () => void;
+  /** Replaces the minutes copy (videos say "watched", 10 §3.8). */
+  bodyText?: string;
 }) {
   const { t } = useTranslation();
   const total = t('practices.minutes', { count: totalMinutes });
   const body =
-    elapsed < 60
+    bodyText ??
+    (elapsed < 60
       ? t('practices.endEarly.bodySeconds', { count: Math.floor(elapsed), total })
-      : t('practices.endEarly.bodyMinutes', { count: Math.floor(elapsed / 60), total });
+      : t('practices.endEarly.bodyMinutes', { count: Math.floor(elapsed / 60), total }));
   return (
     <BottomSheet
       visible={visible}
@@ -538,5 +542,77 @@ export function CompleteModal({
         </View>
       </View>
     </Modal>
+  );
+}
+
+/** Bar heights from the audio player frame (07 §2.15), left to right, at a 257 tall frame. */
+const WAVE = [
+  6.8, 19.8, 26.5, 42.6, 56.3, 81.9, 94.6, 124.3, 128.4, 139, 148.6, 133.4, 122.7, 102.8, 86, 66.7,
+  40.6, 22, 11.5, 7.4, 15.4, 18.4, 40.4, 60.2, 81.8, 100.6, 119, 137.6, 140, 144.5, 129, 119.8,
+  100.9, 81.9, 51, 44.4, 24.6, 10.5, 8.9, 10.4,
+];
+const waveOpacity = (h: number) => (h < 23 ? 0.6 : h < 70 ? 0.7 : h < 120 ? 0.8 : 0.9);
+
+/**
+ * Waveform for the audio and sleep players (07 §2.15–2.16): 40 rounded bars, bottom-aligned, lavender
+ * to plum (mindfulness) or `#B98FC0` (sleep). While playing it breathes gently; Reduce motion stops it.
+ */
+export function Waveform({ running, tone }: { running: boolean; tone: 'mindful' | 'sleep' }) {
+  const reduceMotion = useAccessibilityPrefs((s) => s.reduceMotion);
+  const pulse = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    if (!running || reduceMotion) {
+      pulse.setValue(1);
+      return;
+    }
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, {
+          toValue: 0.82,
+          duration: 2400,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulse, {
+          toValue: 1,
+          duration: 2400,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [running, reduceMotion, pulse]);
+  const [top, bottom] =
+    tone === 'sleep' ? ['#B98FC0', '#B98FC0'] : [palette.lavender, palette.plum];
+  const pitch = (318 - 4) / (WAVE.length - 1);
+  return (
+    <Animated.View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={{ width: 318, height: 257, transform: [{ scaleY: pulse }], transformOrigin: 'bottom' }}
+    >
+      <Svg width={318} height={257}>
+        <Defs>
+          <LinearGradient id={`wave-${tone}`} x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0" stopColor={top} />
+            <Stop offset="1" stopColor={bottom} stopOpacity={0.7} />
+          </LinearGradient>
+        </Defs>
+        {WAVE.map((h, i) => (
+          <Rect
+            key={i}
+            x={i * pitch}
+            y={257 - h}
+            width={4}
+            height={h}
+            rx={2}
+            fill={`url(#wave-${tone})`}
+            opacity={waveOpacity(h)}
+          />
+        ))}
+      </Svg>
+    </Animated.View>
   );
 }
