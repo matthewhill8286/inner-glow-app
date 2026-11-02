@@ -4,7 +4,7 @@ import { supabase } from '@/supabase/supabase';
 
 /**
  * Voice entry recordings live in the private `journal-audio` bucket, at "<user id>/<entry id>.<ext>"
- * (20261107_journal_audio_bucket.sql). `journal_entries.audio_url` stores that path, and the app plays
+ * (20261108_journal_audio_bucket.sql). `journal_entries.audio_url` stores that path, and the app plays
  * it through a short-lived signed URL.
  */
 const BUCKET = 'journal-audio';
