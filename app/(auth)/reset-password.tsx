@@ -1,456 +1,193 @@
-import { Typography } from '@/constants/typography';
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  Pressable,
-  TextInput,
-  ScrollView,
-  Platform,
-  ActivityIndicator,
-  KeyboardAvoidingView,
-} from 'react-native';
+import { Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTranslation } from 'react-i18next';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
+import { palette } from '@/constants/theme';
+import { Type } from '@/constants/typography';
+import { Icon } from '@/components/icons/Icon';
+import { GlowField } from '@/components/glow/Glow';
+import { AppButton } from '@/components/ui/AppButton';
+import { AppField } from '@/components/ui/AppField';
+import { ResetShell } from '@/components/auth/ResetShell';
 import { supabase } from '@/supabase/supabase';
-import MaterialIcons from '@/components/AppIcon';
+import { backTo } from '@/lib/navigation';
+import { passwordRules } from '@/lib/password-reset';
 import { passwordMeetsPolicy } from '@/lib/password-policy';
 
-/* ── Design tokens ── */
-const C = {
-  pageBg: '#F7F4F2',
-  cardBg: '#FFFFFF',
-  brown: '#a07b55',
-  brownDark: '#3E2723',
-  brownText: '#96784E',
-  brownLight: '#6a5e55',
-  inputBg: '#f2ece6',
-  tagBg: '#E8DDD9',
-  red: '#C45B5B',
-  green: '#5B8A5A',
-};
+function Rule({ met, label }: { met: boolean; label: string }) {
+  return (
+    <View
+      accessible
+      accessibilityLabel={label}
+      accessibilityState={{ checked: met }}
+      style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}
+    >
+      {met ? (
+        <Icon name="line/check" size={16} color={palette.plum} />
+      ) : (
+        <View style={{ width: 16, height: 16, alignItems: 'center', justifyContent: 'center' }}>
+          <View
+            style={{
+              width: 13,
+              height: 13,
+              borderRadius: 7,
+              borderWidth: 1.5,
+              borderColor: palette.borderStrong,
+            }}
+          />
+        </View>
+      )}
+      <Text style={[Type.captionM, { color: met ? palette.plumDeep : palette.textMuted }]}>
+        {label}
+      </Text>
+    </View>
+  );
+}
 
+/**
+ * Sign in · New password `6787:4945` and Password updated `6787:5005` (08 §2.2–2.3). Reached with a
+ * recovery session from Enter code, or from the older reset link. The three rules update as the
+ * user types and Save stays off until they all pass. Back to sign in signs the recovery session out
+ * first, so the auth gate shows Sign in instead of the app.
+ */
 export default function ResetPassword() {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
+  const [done, setDone] = useState(false);
+  const rules = passwordRules(password, confirm);
+  // The same policy as Sign up, so a reset password always works there too.
+  const ready = passwordMeetsPolicy(password) && rules.match;
 
-  async function onUpdatePassword() {
-    if (!passwordMeetsPolicy(newPassword)) {
-      setError(t('auth.passwordMinLength'));
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setError(t('auth.passwordsDoNotMatch'));
-      return;
-    }
-
+  async function save() {
+    if (!ready) return;
     setLoading(true);
     setError(null);
     try {
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: newPassword,
-      });
+      const { error: updateError } = await supabase.auth.updateUser({ password });
       if (updateError) throw updateError;
-      setSuccess(true);
-    } catch (err: any) {
-      console.error('[ResetPassword] Error:', err);
-      setError(err?.message || t('auth.passwordUpdateFailed'));
+      setDone(true);
+    } catch (err) {
+      setError((err as Error).message || t('authReset.saveError'));
     } finally {
       setLoading(false);
     }
   }
 
-  if (success) {
+  async function backToSignIn() {
+    await supabase.auth.signOut().catch(() => undefined);
+    router.replace('/(auth)/sign-in');
+  }
+
+  if (done) {
     return (
       <View
         style={{
           flex: 1,
-          backgroundColor: C.pageBg,
-          alignItems: 'center',
-          justifyContent: 'center',
-          paddingHorizontal: 32,
+          backgroundColor: palette.bg,
+          paddingHorizontal: 24,
+          paddingBottom: Math.max(insets.bottom, 16) + 32,
         }}
       >
+        <GlowField
+          glows={[
+            { color: palette.lavenderSoft, opacity: 0.25, x: -70, y: -50, width: 280, blur: 90 },
+            { color: palette.mustard, opacity: 0.15, x: 200, y: 40, width: 220, blur: 90 },
+          ]}
+        />
         <View
           style={{
-            width: 100,
-            height: 100,
-            borderRadius: 50,
-            backgroundColor: C.green + '20',
+            flex: 1,
             alignItems: 'center',
             justifyContent: 'center',
-            marginBottom: 28,
+            gap: 24,
+            paddingTop: insets.top,
           }}
         >
-          <MaterialIcons name="check-circle" size={52} color={C.green} />
-        </View>
-        <Text
-          style={{
-            fontFamily: Typography.family.body,
-            fontSize: 26,
-            fontWeight: Typography.weight.semibold,
-            color: C.brownLight,
-            textAlign: 'center',
-            marginBottom: 12,
-          }}
-        >
-          {t('auth.passwordUpdated')}
-        </Text>
-        <Text
-          style={{
-            fontFamily: Typography.family.body,
-            fontSize: 15,
-            color: C.brownLight,
-            opacity: 0.6,
-            textAlign: 'center',
-            lineHeight: 22,
-            marginBottom: 36,
-            paddingHorizontal: 20,
-          }}
-        >
-          {t('auth.passwordUpdatedSubtitle')}
-        </Text>
-        <Pressable
-          onPress={() => router.replace('/(auth)/sign-in')}
-          style={({ pressed }) => ({
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 10,
-            paddingVertical: 20,
-            paddingHorizontal: 48,
-            borderRadius: 35,
-            backgroundColor: C.brownDark,
-            opacity: pressed ? 0.9 : 1,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.15,
-            shadowRadius: 10,
-            elevation: 4,
-          })}
-        >
-          <Text
+          <View
             style={{
-              fontFamily: Typography.family.body,
-              color: 'white',
-              fontWeight: Typography.weight.semibold,
-              fontSize: 17,
+              width: 120,
+              height: 120,
+              borderRadius: 60,
+              backgroundColor: palette.cream,
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0px 0px 40px 0px rgba(226,204,64,0.45)',
             }}
           >
-            {t('auth.signIn')}
-          </Text>
-          <MaterialIcons name="login" size={18} color="#fff" />
-        </Pressable>
+            <Icon name="line/lock" size={36} color={palette.plum} />
+          </View>
+          <View style={{ gap: 12, alignItems: 'center' }}>
+            <Text
+              accessibilityRole="header"
+              style={[Type.titleXl, { letterSpacing: 0, color: palette.ink, textAlign: 'center' }]}
+            >
+              {t('authReset.doneTitle')}
+            </Text>
+            <Text
+              style={[
+                Type.bodyM,
+                { lineHeight: 21, color: palette.textMuted, textAlign: 'center' },
+              ]}
+            >
+              {t('authReset.doneBody')}
+            </Text>
+          </View>
+        </View>
+        <AppButton title={t('authReset.backToSignIn')} size="lg" onPress={backToSignIn} />
       </View>
     );
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.pageBg }}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <ScrollView
-          contentContainerStyle={{
-            flexGrow: 1,
-            paddingHorizontal: 24,
-            paddingTop: insets.top + 40,
-            paddingBottom: 120,
-          }}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          {/* ── Icon ── */}
-          <View style={{ alignItems: 'center', marginBottom: 28 }}>
-            <View
-              style={{
-                width: 88,
-                height: 88,
-                borderRadius: 44,
-                backgroundColor: C.brown + '20',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: 20,
-              }}
-            >
-              <MaterialIcons name="lock-reset" size={44} color={C.brown} />
-            </View>
-            <Text
-              style={{
-                fontFamily: Typography.family.body,
-                fontSize: 28,
-                fontWeight: Typography.weight.semibold,
-                color: C.brownLight,
-                textAlign: 'center',
-              }}
-            >
-              {t('auth.setNewPassword')}
-            </Text>
-            <Text
-              style={{
-                fontFamily: Typography.family.body,
-                fontSize: 15,
-                color: C.brownLight,
-                opacity: 0.65,
-                marginTop: 8,
-                textAlign: 'center',
-                paddingHorizontal: 20,
-                lineHeight: 22,
-              }}
-            >
-              {t('auth.setNewPasswordSubtitle')}
-            </Text>
-          </View>
-
-          {/* ── Password fields ── */}
-          <View
-            style={{
-              backgroundColor: C.cardBg,
-              borderRadius: 32,
-              padding: 24,
-              gap: 16,
-            }}
-          >
-            {/* New password */}
-            <View>
-              <Text
-                style={{
-                  fontFamily: Typography.family.body,
-                  fontSize: 12,
-                  fontWeight: Typography.weight.semibold,
-                  color: C.brownLight,
-                  textTransform: 'uppercase',
-                  letterSpacing: 0.5,
-                  marginBottom: 8,
-                }}
-              >
-                {t('auth.newPassword')}
-              </Text>
-              <View style={{ position: 'relative' }}>
-                <TextInput
-                  value={newPassword}
-                  onChangeText={setNewPassword}
-                  placeholder={t('auth.newPasswordPlaceholder') ?? '••••••••'}
-                  placeholderTextColor="rgba(0,0,0,0.15)"
-                  secureTextEntry={!showPassword}
-                  autoFocus
-                  style={{
-                    fontFamily: Typography.family.body,
-                    backgroundColor: C.inputBg,
-                    borderRadius: 16,
-                    paddingHorizontal: 20,
-                    paddingVertical: Platform.OS === 'ios' ? 18 : 14,
-                    paddingRight: 52,
-                    fontSize: 16,
-                    fontWeight: Typography.weight.semibold,
-                    color: C.brownLight,
-                  }}
-                />
-                <Pressable
-                  onPress={() => setShowPassword(!showPassword)}
-                  style={{
-                    position: 'absolute',
-                    right: 14,
-                    top: 0,
-                    bottom: 0,
-                    justifyContent: 'center',
-                  }}
-                >
-                  <MaterialIcons
-                    name={showPassword ? 'visibility-off' : 'visibility'}
-                    size={22}
-                    color={C.brownText}
-                  />
-                </Pressable>
-              </View>
-              <Text
-                style={{
-                  fontFamily: Typography.family.body,
-                  fontSize: 12,
-                  color: C.brownText,
-                  opacity: 0.5,
-                  marginTop: 6,
-                  marginLeft: 4,
-                }}
-              >
-                {t('auth.passwordHint')}
-              </Text>
-            </View>
-
-            {/* Confirm password */}
-            <View>
-              <Text
-                style={{
-                  fontFamily: Typography.family.body,
-                  fontSize: 12,
-                  fontWeight: Typography.weight.semibold,
-                  color: C.brownLight,
-                  textTransform: 'uppercase',
-                  letterSpacing: 0.5,
-                  marginBottom: 8,
-                }}
-              >
-                {t('auth.confirmPassword')}
-              </Text>
-              <View style={{ position: 'relative' }}>
-                <TextInput
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                  placeholder={t('auth.confirmPasswordPlaceholder') ?? '••••••••'}
-                  placeholderTextColor="rgba(0,0,0,0.15)"
-                  secureTextEntry={!showConfirm}
-                  style={{
-                    fontFamily: Typography.family.body,
-                    backgroundColor: C.inputBg,
-                    borderRadius: 16,
-                    paddingHorizontal: 20,
-                    paddingVertical: Platform.OS === 'ios' ? 18 : 14,
-                    paddingRight: 52,
-                    fontSize: 16,
-                    fontWeight: Typography.weight.semibold,
-                    color: C.brownLight,
-                  }}
-                />
-                <Pressable
-                  onPress={() => setShowConfirm(!showConfirm)}
-                  style={{
-                    position: 'absolute',
-                    right: 14,
-                    top: 0,
-                    bottom: 0,
-                    justifyContent: 'center',
-                  }}
-                >
-                  <MaterialIcons
-                    name={showConfirm ? 'visibility-off' : 'visibility'}
-                    size={22}
-                    color={C.brownText}
-                  />
-                </Pressable>
-              </View>
-            </View>
-
-            {/* Password match indicator */}
-            {confirmPassword.length > 0 && (
-              <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 6,
-                  marginTop: 4,
-                }}
-              >
-                <MaterialIcons
-                  name={newPassword === confirmPassword ? 'check-circle' : 'cancel'}
-                  size={16}
-                  color={newPassword === confirmPassword ? C.green : C.red}
-                />
-                <Text
-                  style={{
-                    fontFamily: Typography.family.body,
-                    fontSize: 13,
-                    fontWeight: Typography.weight.semibold,
-                    color: newPassword === confirmPassword ? C.green : C.red,
-                  }}
-                >
-                  {newPassword === confirmPassword
-                    ? t('auth.passwordsMatch')
-                    : t('auth.passwordsDoNotMatch')}
-                </Text>
-              </View>
-            )}
-          </View>
-
-          {/* Error */}
-          {error && (
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 8,
-                backgroundColor: C.red + '12',
-                borderRadius: 16,
-                padding: 14,
-                marginTop: 20,
-              }}
-            >
-              <MaterialIcons name="error-outline" size={18} color={C.red} />
-              <Text
-                style={{
-                  fontFamily: Typography.family.body,
-                  flex: 1,
-                  fontSize: 13,
-                  fontWeight: Typography.weight.semibold,
-                  color: C.red,
-                }}
-              >
-                {error}
-              </Text>
-            </View>
-          )}
-        </ScrollView>
-      </KeyboardAvoidingView>
-
-      {/* ── Bottom CTA ── */}
-      <View
-        style={{
-          paddingHorizontal: 24,
-          paddingBottom: Platform.OS === 'ios' ? 40 : 24,
-          paddingTop: 16,
-          backgroundColor: C.pageBg,
-        }}
-      >
-        <Pressable
-          onPress={onUpdatePassword}
-          disabled={loading || !passwordMeetsPolicy(newPassword) || newPassword !== confirmPassword}
-          style={({ pressed }) => ({
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 10,
-            paddingVertical: 20,
-            borderRadius: 35,
-            backgroundColor:
-              loading || !passwordMeetsPolicy(newPassword) || newPassword !== confirmPassword
-                ? 'rgba(62,39,35,0.35)'
-                : C.brownDark,
-            opacity: pressed ? 0.9 : 1,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity:
-              loading || !passwordMeetsPolicy(newPassword) || newPassword !== confirmPassword
-                ? 0
-                : 0.15,
-            shadowRadius: 10,
-            elevation:
-              loading || !passwordMeetsPolicy(newPassword) || newPassword !== confirmPassword
-                ? 0
-                : 4,
-          })}
-        >
-          {loading ? <ActivityIndicator size="small" color="#fff" /> : null}
-          <Text
-            style={{
-              fontFamily: Typography.family.body,
-              color: 'white',
-              fontWeight: Typography.weight.semibold,
-              fontSize: 17,
-            }}
-          >
-            {t('auth.updatePassword')}
-          </Text>
-          <MaterialIcons name="lock" size={18} color="#fff" />
-        </Pressable>
+    <ResetShell
+      title={t('authReset.newTitle')}
+      body={t('authReset.newBody')}
+      onBack={() => backTo(undefined, '/(auth)/forgot-password')}
+      cta={
+        <AppButton
+          title={t('authReset.save')}
+          size="lg"
+          busy={loading}
+          disabled={loading || !ready}
+          onPress={save}
+        />
+      }
+    >
+      <View style={{ marginTop: 32, gap: 24 }}>
+        <AppField
+          variant="box"
+          label={t('authReset.newLabel')}
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          autoFocus
+          autoComplete="new-password"
+          textContentType="newPassword"
+          returnKeyType="next"
+        />
+        <AppField
+          variant="box"
+          label={t('authReset.confirmLabel')}
+          value={confirm}
+          onChangeText={setConfirm}
+          secureTextEntry
+          autoComplete="new-password"
+          textContentType="newPassword"
+          returnKeyType="done"
+          onSubmitEditing={save}
+          error={error ?? undefined}
+        />
+        <View style={{ gap: 8 }}>
+          <Rule met={rules.length} label={t('authReset.ruleLength')} />
+          <Rule met={rules.symbol} label={t('authReset.ruleSymbol')} />
+          <Rule met={rules.match} label={t('authReset.ruleMatch')} />
+        </View>
       </View>
-    </View>
+    </ResetShell>
   );
 }
