@@ -65,3 +65,18 @@ test('the saved screen counts days with an entry so far this month', () => {
   assert.equal(r.logged, 2);
   assert.equal(r.days, 30);
 });
+
+test('the month card has a dot per day so far, logged, missed or today', () => {
+  const now = new Date(2026, 9, 30, 18);
+  const at = (d) => new Date(2026, 9, d, 9).toISOString();
+  const r = j.monthDots([at(1), at(1), at(3), at(29), new Date(2026, 8, 30).toISOString()], now);
+  assert.equal(r.dots.length, 30);
+  assert.equal(r.logged, 3);
+  assert.equal(r.todayLogged, false);
+  assert.equal(r.dots[0].state, 'logged');
+  assert.equal(r.dots[1].state, 'missed');
+  assert.equal(r.dots[29].state, 'today');
+  assert.equal(r.perRow, 16);
+  assert.equal(j.monthDots([], new Date(2026, 10, 2)).perRow, 15);
+  assert.equal(j.monthDots([at(30)], now).dots[29].state, 'logged');
+});

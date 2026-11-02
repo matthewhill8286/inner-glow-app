@@ -112,3 +112,39 @@ export function journalDate(iso: string, lang: string): string {
   const month = d.toLocaleDateString(lang, { month: 'short' });
   return `${weekday}, ${day} ${month}`;
 }
+
+export type MonthDot = { day: number; state: 'logged' | 'missed' | 'today' };
+
+/**
+ * Journal home's month card (04 J1): one dot per day so far this month, logged, missed or today
+ * (today is "open" until an entry is written). The dots sit in two rows, 15 a row (16 for a
+ * 31-day month), in date order.
+ */
+export function monthDots(
+  isoDates: string[],
+  now = new Date(),
+): { dots: MonthDot[]; logged: number; todayLogged: boolean; perRow: number } {
+  const logged = new Set<number>();
+  for (const iso of isoDates) {
+    const d = new Date(iso);
+    if (
+      d.getFullYear() === now.getFullYear() &&
+      d.getMonth() === now.getMonth() &&
+      d.getDate() <= now.getDate()
+    )
+      logged.add(d.getDate());
+  }
+  const dots: MonthDot[] = [];
+  for (let day = 1; day <= now.getDate(); day++)
+    dots.push({
+      day,
+      state: logged.has(day) ? 'logged' : day === now.getDate() ? 'today' : 'missed',
+    });
+  const monthLength = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  return {
+    dots,
+    logged: logged.size,
+    todayLogged: logged.has(now.getDate()),
+    perRow: Math.max(15, Math.ceil(monthLength / 2)),
+  };
+}

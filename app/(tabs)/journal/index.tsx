@@ -1,32 +1,232 @@
-import { screenBottomPadding } from '@/lib/screen-layout';
-import { Typography } from '@/constants/typography';
-import { WellnessIconText } from '@/components/WellnessIconText';
-import React, { useCallback, useMemo, useRef } from 'react';
-import { View, Text, Pressable, ScrollView, Animated } from 'react-native';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors, UI } from '@/constants/theme';
-import { useJournal } from '@/hooks/useJournal';
-import { EmptyScreen } from '@/components/EmptyScreen';
+import Svg, { Circle, Defs, Polyline, RadialGradient, Stop } from 'react-native-svg';
 import { palette } from '@/constants/theme';
-import MaterialIcons from '@/components/AppIcon';
+import { Type } from '@/constants/typography';
+import { Icon } from '@/components/icons/Icon';
+import type { IconName } from '@/components/icons/iconData';
+import { Glow, GlowField } from '@/components/glow/Glow';
+import { IconButton } from '@/components/ui/IconButton';
+import { EmptyScreen } from '@/components/EmptyScreen';
+import { useJournal } from '@/hooks/useJournal';
+import { journalMoodScore, monthDots } from '@/lib/journal-entry';
+import { moodStep } from '@/lib/mood-scale';
+import { activeDays, streak } from '@/lib/profile-stats';
+import { screenBottomPadding } from '@/lib/screen-layout';
+import type { JournalEntry } from '@/lib/types';
 
-/* ── helpers ── */
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const DOT = 8;
+const ROW_GAP = 40;
+const HALO = 9;
+const RECENT = 3;
 
-function getDaysInYear(year: number) {
-  return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0 ? 366 : 365;
+/** The month constellation (04 J1 `6681:3233`): gold logged days with halos, open rings for the rest, joined in date order. */
+function MonthDots({ dots, perRow }: ReturnType<typeof monthDots>) {
+  const [width, setWidth] = useState(0);
+  // Early in the month there is only the first row. HALO leaves room for the glow round edge dots.
+  const height = (dots.length > perRow ? ROW_GAP : 0) + HALO * 2;
+  const step = perRow > 1 ? (width - HALO * 2) / (perRow - 1) : 0;
+  const centre = (i: number) => ({
+    x: HALO + (i % perRow) * step,
+    y: HALO + Math.floor(i / perRow) * ROW_GAP,
+  });
+  const line = dots
+    .map((d, i) => (d.state === 'logged' ? centre(i) : null))
+    .filter((p): p is { x: number; y: number } => !!p)
+    .map((p) => `${p.x},${p.y}`)
+    .join(' ');
+
+  return (
+    <View onLayout={(e) => setWidth(e.nativeEvent.layout.width)} style={{ height }}>
+      {width > 0 && (
+        <Svg width={width} height={height}>
+          <Defs>
+            <RadialGradient id="dayHalo" cx="50%" cy="50%" r="50%">
+              <Stop offset="0" stopColor={palette.mustard} stopOpacity={0.55} />
+              <Stop offset="1" stopColor={palette.mustard} stopOpacity={0} />
+            </RadialGradient>
+          </Defs>
+          {line.includes(' ') && (
+            <Polyline points={line} fill="none" stroke="rgba(226,204,64,0.55)" strokeWidth={1.2} />
+          )}
+          {dots.map((d, i) => {
+            const { x, y } = centre(i);
+            if (d.state === 'logged')
+              return (
+                <React.Fragment key={d.day}>
+                  <Circle cx={x} cy={y} r={HALO} fill="url(#dayHalo)" />
+                  <Circle cx={x} cy={y} r={DOT / 2} fill={palette.mustard} />
+                </React.Fragment>
+              );
+            return (
+              <Circle
+                key={d.day}
+                cx={x}
+                cy={y}
+                r={d.state === 'today' ? 3 : 3.4}
+                fill="none"
+                stroke={d.state === 'today' ? palette.plum : '#D6CCC0'}
+                strokeWidth={d.state === 'today' ? 2 : 1.2}
+              />
+            );
+          })}
+        </Svg>
+      )}
+    </View>
+  );
 }
 
-export default function JournalHome() {
-  const theme = useColorScheme() ?? 'light';
-  const colors = Colors[theme];
-  const { journalEntries, isLoading } = useJournal();
+function EntryTile({
+  icon,
+  title,
+  sub,
+  glow,
+  onPress,
+}: {
+  icon: IconName;
+  title: string;
+  sub: string;
+  glow: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${title}, ${sub}`}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        flex: 1,
+        height: 124,
+        borderRadius: 24,
+        backgroundColor: palette.white,
+        padding: 16,
+        overflow: 'hidden',
+        opacity: pressed ? 0.9 : 1,
+      })}
+    >
+      <Glow
+        color={glow}
+        opacity={0.45}
+        width={90}
+        blur={22}
+        style={{ position: 'absolute', left: 75, top: -15 }}
+      />
+      <View
+        style={{
+          width: 44,
+          height: 44,
+          borderRadius: 22,
+          backgroundColor: palette.plum,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Icon name={icon} size={20} color={palette.white} />
+      </View>
+      <Text
+        style={[
+          Type.bodyStrong,
+          { lineHeight: 22, letterSpacing: 0, color: palette.ink, marginTop: 12 },
+        ]}
+      >
+        {title}
+      </Text>
+      <Text style={[Type.captionS, { color: palette.textSubtle, marginTop: 2 }]}>{sub}</Text>
+    </Pressable>
+  );
+}
+
+function EntryCard({ entry, lang }: { entry: JournalEntry; lang: string }) {
   const { t } = useTranslation();
+  const date = new Date(entry.createdAt);
+  const score = journalMoodScore(entry.mood);
+  const title = entry.title?.trim() || t('journalDetail.untitledEntry');
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${title}, ${date.toLocaleDateString(lang, { day: 'numeric', month: 'long' })}`}
+      onPress={() => router.push({ pathname: '/(tabs)/journal/[id]', params: { id: entry.id } })}
+      style={({ pressed }) => ({
+        flexDirection: 'row',
+        gap: 12,
+        borderRadius: 24,
+        backgroundColor: palette.white,
+        padding: 16,
+        opacity: pressed ? 0.9 : 1,
+      })}
+    >
+      <View
+        style={{
+          width: 44,
+          height: 52,
+          borderRadius: 16,
+          backgroundColor: palette.surfaceLilacSoft,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Text style={[Type.micro, { fontSize: 10, lineHeight: 14, color: palette.textSubtle }]}>
+          {date.toLocaleDateString(lang, { month: 'short' }).toUpperCase()}
+        </Text>
+        <Text style={[Type.headline, { fontSize: 17, lineHeight: 24, color: palette.ink }]}>
+          {date.getDate()}
+        </Text>
+      </View>
+      <View style={{ flex: 1, gap: 6 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          {score && <Icon name={moodStep(score).face} size={18} color={palette.plum} />}
+          <Text
+            numberOfLines={1}
+            style={[Type.bodyMSemi, { flex: 1, lineHeight: 21, color: palette.ink }]}
+          >
+            {title}
+          </Text>
+        </View>
+        {!!entry.content?.trim() && (
+          <Text
+            numberOfLines={2}
+            style={[Type.captionS, { lineHeight: 17, color: palette.textMuted }]}
+          >
+            {entry.content.trim()}
+          </Text>
+        )}
+        {(entry.tags ?? []).length > 0 && (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+            {(entry.tags ?? []).slice(0, 3).map((tag) => (
+              <View
+                key={tag}
+                style={{
+                  backgroundColor: palette.selected,
+                  borderRadius: 999,
+                  paddingVertical: 2,
+                  paddingHorizontal: 8,
+                }}
+              >
+                <Text style={[Type.tag, { fontSize: 11, lineHeight: 15, color: palette.plum }]}>
+                  {tag}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
+      </View>
+    </Pressable>
+  );
+}
+
+/**
+ * Journal home (04 J1): the title with Search and Stats, the month constellation with the journal
+ * streak, the Write and Speak tiles, and the three most recent entries. Before the first entry the
+ * whole screen is the empty state (09 §3.11).
+ */
+export default function JournalHome() {
+  const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
+  const { journalEntries, isLoading } = useJournal();
   const scrollRef = useRef<ScrollView>(null);
 
   useFocusEffect(
@@ -35,581 +235,174 @@ export default function JournalHome() {
     }, []),
   );
 
-  const now = new Date();
-  const year = now.getFullYear();
+  const dates = useMemo(() => journalEntries.map((e) => e.createdAt), [journalEntries]);
+  const month = useMemo(() => monthDots(dates), [dates]);
+  const days = useMemo(() => streak(activeDays(dates)).count, [dates]);
+  const monthName = new Intl.DateTimeFormat(i18n.language, { month: 'long' })
+    .format(new Date())
+    .toUpperCase();
 
-  /* ── Compute stats ── */
-  const stats = useMemo(() => {
-    const entries = journalEntries ?? [];
-    const thisYear = entries.filter((e) => new Date(e.createdAt).getFullYear() === year);
-    const positive = thisYear.filter(
-      (e) => e.mood && ['Calm', 'Okay', 'Great', 'Good', 'Happy'].includes(e.mood),
-    ).length;
-    const negative = thisYear.filter(
-      (e) => e.mood && ['Anxious', 'Sad', 'Angry', 'Overwhelmed', 'Bad', 'Low'].includes(e.mood),
-    ).length;
-    const noMood = thisYear.length - positive - negative;
-
-    return {
-      total: thisYear.length,
-      positive,
-      negative,
-      skipped: noMood,
-    };
-  }, [journalEntries, year]);
-
-  /* ── Contribution map: classify each day by mood ── */
-  const POSITIVE_MOODS = useMemo(() => ['Calm', 'Okay', 'Great', 'Good', 'Happy'], []);
-  const NEGATIVE_MOODS = useMemo(
-    () => ['Anxious', 'Sad', 'Angry', 'Overwhelmed', 'Bad', 'Low'],
-    [],
-  );
-
-  // 'positive' | 'negative' | 'noMood' per day index
-  const dayMap = useMemo(() => {
-    const map = new Map<number, 'positive' | 'negative' | 'noMood'>();
-    (journalEntries ?? []).forEach((e) => {
-      const d = new Date(e.createdAt);
-      if (d.getFullYear() !== year) return;
-      const start = new Date(year, 0, 1);
-      const dayIdx = Math.floor((d.getTime() - start.getTime()) / 86400000);
-
-      // Prioritise: if any entry that day is positive or negative, use that
-      const existing = map.get(dayIdx);
-      if (e.mood && POSITIVE_MOODS.includes(e.mood)) {
-        if (existing !== 'negative') map.set(dayIdx, 'positive');
-      } else if (e.mood && NEGATIVE_MOODS.includes(e.mood)) {
-        map.set(dayIdx, 'negative');
-      } else if (!existing) {
-        map.set(dayIdx, 'noMood');
-      }
-    });
-    return map;
-  }, [NEGATIVE_MOODS, POSITIVE_MOODS, journalEntries, year]);
-
-  const DOT_COLORS = {
-    positive: '#5B8A5A',
-    negative: '#E8985A',
-    noMood: '#7B6DC9',
-  };
-
-  const totalDays = getDaysInYear(year);
-  const cols = Math.ceil(totalDays / 7);
-
-  /* ── Quick actions ── */
-  const actions = [
-    {
-      label: t('journalHome.createJournal'),
-      icon: 'add-circle-outline',
-      path: '/(tabs)/journal/new',
-      color: '#8B6B47',
-    },
-    {
-      // The write screen no longer starts with a Voice or Text choice, so voice entry starts here.
-      label: t('journalHome.voiceEntry'),
-      icon: 'mic',
-      path: '/(tabs)/journal/voice',
-      color: '#7B6DC9',
-    },
-    {
-      label: t('journalHome.myJournals'),
-      icon: 'menu-book',
-      path: '/(tabs)/journal/history',
-      color: '#5B8A5A',
-    },
-    {
-      label: t('journalHome.journalStats'),
-      icon: 'bar-chart',
-      path: '/(tabs)/journal/stats',
-      color: '#E8985A',
-    },
-    {
-      label: t('journalHome.prompts'),
-      icon: 'lightbulb',
-      path: '/(tabs)/journal/prompts',
-      color: '#7B6DC9',
-    },
-  ];
-
-
-  // Journal · Empty (09 §3.11): the whole screen becomes the empty state until the first entry.
-  if (!isLoading && (journalEntries ?? []).length === 0) {
+  if (!isLoading && journalEntries.length === 0) {
     return (
       <EmptyScreen
         header={{ kind: 'title', title: t('emptyStates.journal.title') }}
         glowColor={palette.lavenderSoft}
         title={t('emptyStates.journal.emptyTitle')}
         body={t('emptyStates.journal.body')}
-        action={{ label: t('emptyStates.journal.action'), onPress: () => router.push('/(tabs)/journal/new') }}
+        action={{
+          label: t('emptyStates.journal.action'),
+          onPress: () => router.push('/(tabs)/journal/new'),
+        }}
       />
     );
   }
+
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
-      {/* ── Standard Header ── */}
-      <View
-        style={{
-          paddingHorizontal: UI.spacing.xl,
-          paddingTop: insets.top + 6,
-          paddingBottom: 8,
-          backgroundColor: colors.background,
+    <View style={{ flex: 1, backgroundColor: palette.bg }}>
+      <GlowField
+        glows={[
+          { color: palette.mustard, opacity: 0.3, x: -50, y: -20, width: 280, blur: 80 },
+          { color: palette.lavenderSoft, opacity: 0.25, x: 180, y: 60, width: 220, blur: 80 },
+        ]}
+      />
+      <ScrollView
+        ref={scrollRef}
+        contentContainerStyle={{
+          paddingTop: insets.top + 12,
+          paddingHorizontal: 24,
+          paddingBottom: screenBottomPadding(insets.bottom),
         }}
+        showsVerticalScrollIndicator={false}
       >
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Text
+            accessibilityRole="header"
+            style={[
+              Type.titleXl,
+              { flex: 1, lineHeight: 42, letterSpacing: 0, color: palette.ink },
+            ]}
+          >
+            {t('journalHome.title')}
+          </Text>
+          <IconButton
+            icon="line/search"
+            variant="solid"
+            iconSize={20}
+            accessibilityLabel={t('journalHome.search')}
+            onPress={() => router.push('/(tabs)/search')}
+          />
+          <IconButton
+            icon="line/chart"
+            variant="solid"
+            iconSize={20}
+            accessibilityLabel={t('journalHome.journalStats')}
+            onPress={() => router.push('/(tabs)/journal/stats')}
+          />
+        </View>
+
+        <View
+          accessible
+          accessibilityLabel={`${t('journalHome.daysOf', { logged: month.logged, total: month.dots.length })}${days > 1 ? `, ${t('journalSaved.streak', { count: days })}` : ''}`}
+          style={{
+            marginTop: 20,
+            backgroundColor: palette.white,
+            borderRadius: 24,
+            padding: 20,
+            paddingTop: 18,
+          }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+            <View style={{ flex: 1 }}>
+              <Text style={[Type.microBold, { lineHeight: 15, color: palette.lavender }]}>
+                {monthName}
+              </Text>
+              <Text style={[Type.titleMd, { lineHeight: 31, color: palette.ink, marginTop: 1 }]}>
+                {t('journalHome.daysOf', { logged: month.logged, total: month.dots.length })}
+              </Text>
+            </View>
+            {days > 1 && (
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 4,
+                  marginTop: 4,
+                  paddingVertical: 4,
+                  paddingLeft: 8,
+                  paddingRight: 10,
+                  borderRadius: 999,
+                  backgroundColor: palette.selected,
+                }}
+              >
+                <Icon name="line/flame" size={14} color={palette.plum} />
+                <Text style={[Type.caption, { color: palette.plum }]}>
+                  {t('journalSaved.streak', { count: days })}
+                </Text>
+              </View>
+            )}
+          </View>
+          <View style={{ marginTop: 24 }}>
+            <MonthDots {...month} />
+          </View>
+          {!month.todayLogged && (
+            <Text
+              style={[Type.caption, { fontWeight: '500', color: palette.textMuted, marginTop: 16 }]}
+            >
+              {t('journalHome.tonightOpen')}
+            </Text>
+          )}
+        </View>
+
+        <Text
+          style={[
+            Type.bodyStrong,
+            { lineHeight: 22, letterSpacing: 0, color: palette.ink, marginTop: 24 },
+          ]}
+        >
+          {t('journalHome.newEntry')}
+        </Text>
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+          <EntryTile
+            icon="line/note"
+            title={t('journalHome.write')}
+            sub={t('journalHome.writeSub')}
+            glow={palette.mustard}
+            onPress={() => router.push('/(tabs)/journal/new')}
+          />
+          <EntryTile
+            icon="line/mic"
+            title={t('journalHome.speak')}
+            sub={t('journalHome.speakSub')}
+            glow={palette.lavenderSoft}
+            onPress={() => router.push('/(tabs)/journal/voice')}
+          />
+        </View>
+
         <View
           style={{
             flexDirection: 'row',
+            alignItems: 'baseline',
             justifyContent: 'space-between',
-            alignItems: 'center',
+            marginTop: 26,
           }}
         >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
-            <Text
-              style={{
-                ...Typography.heading,
-                color: colors.text,
-                flexShrink: 1,
-              }}
-              numberOfLines={1}
-            >
-              {t('journalHome.title')}
-            </Text>
-          </View>
-          <Pressable
-            onPress={() => router.push('/(tabs)/journal/new')}
-            style={({ pressed }) => ({
-              width: 40,
-              height: 40,
-              borderRadius: 12,
-              backgroundColor: colors.card,
-              borderWidth: 1,
-              borderColor: colors.border,
-              alignItems: 'center',
-              justifyContent: 'center',
-              opacity: pressed ? 0.7 : 1,
-            })}
-          >
-            <MaterialIcons name="add" size={22} color={colors.text} />
-          </Pressable>
-        </View>
-      </View>
-
-      <ScrollView
-        ref={scrollRef}
-        contentContainerStyle={{ paddingBottom: screenBottomPadding(insets.bottom) }}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* ═══ Stats Card ═══ */}
-        <View
-          style={{
-            backgroundColor: '#526651',
-            marginHorizontal: UI.spacing.xl,
-            marginTop: 12,
-            padding: 20,
-            borderRadius: UI.radius.xxl,
-          }}
-        >
-          {/* Big number */}
-          <Text
-            style={{
-              fontFamily: Typography.family.body,
-              fontSize: 42,
-              fontWeight: Typography.weight.semibold,
-              color: '#fff',
-              lineHeight: 50,
-              marginBottom: 4,
-            }}
-          >
-            {isLoading ? '--' : stats.total}
+          <Text style={[Type.bodyStrong, { lineHeight: 22, letterSpacing: 0, color: palette.ink }]}>
+            {t('journalHome.recent')}
           </Text>
           <Text
-            style={{
-              fontFamily: Typography.family.body,
-              fontSize: 15,
-              color: 'rgba(255,255,255,0.8)',
-              marginBottom: 20,
-            }}
+            accessibilityRole="link"
+            onPress={() => router.push('/(tabs)/journal/history')}
+            style={[Type.label, { color: palette.lavender }]}
           >
-            {t('journalHome.journalsThisYear')}
+            {t('journalHome.seeAll')}
           </Text>
-
-          {/* Contribution grid */}
-          <View style={{ marginBottom: 16 }}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View style={{ flexDirection: 'row', gap: 3 }}>
-                {Array.from({ length: cols }, (_, col) => (
-                  <View key={col} style={{ gap: 3 }}>
-                    {Array.from({ length: 7 }, (_, row) => {
-                      const dayIdx = col * 7 + row;
-                      if (dayIdx >= totalDays)
-                        return <View key={row} style={{ width: 12, height: 12 }} />;
-                      const moodType = dayMap.get(dayIdx);
-                      return (
-                        <View
-                          key={row}
-                          style={{
-                            width: 12,
-                            height: 12,
-                            borderRadius: 3,
-                            backgroundColor: moodType
-                              ? DOT_COLORS[moodType]
-                              : 'rgba(255,255,255,0.15)',
-                          }}
-                        />
-                      );
-                    })}
-                  </View>
-                ))}
-              </View>
-            </ScrollView>
-          </View>
-
-          {/* Legend */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-            {[
-              { label: t('journalHome.positive'), color: DOT_COLORS.positive },
-              { label: t('journalHome.negative'), color: DOT_COLORS.negative },
-              { label: t('journalHome.noMood'), color: DOT_COLORS.noMood },
-            ].map((item) => (
-              <View key={item.label} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <View
-                  style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: item.color }}
-                />
-                <Text
-                  style={{
-                    fontFamily: Typography.family.body,
-                    fontSize: 11,
-                    color: 'rgba(255,255,255,0.7)',
-                  }}
-                >
-                  {item.label}
-                </Text>
-              </View>
-            ))}
-          </View>
         </View>
-
-        {/* ═══ Journal Statistics link ═══ */}
-        <View style={{ paddingHorizontal: UI.spacing.xl, marginTop: 20 }}>
-          <Pressable
-            onPress={() => router.push('/(tabs)/journal/stats')}
-            style={({ pressed }) => ({
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              backgroundColor: colors.card,
-              borderRadius: UI.radius.xl,
-              padding: 18,
-              borderWidth: 1,
-              borderColor: colors.border,
-              opacity: pressed ? 0.8 : 1,
-              ...UI.shadow.sm,
-            })}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-              <View
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 22,
-                  backgroundColor: '#E8985A',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <MaterialIcons name="bar-chart" size={24} color="#fff" />
-              </View>
-              <View>
-                <Text style={{ ...Typography.cardHeading, color: colors.text }}>
-                  {t('journalHome.journalStatistics')}
-                </Text>
-                <Text
-                  style={{
-                    fontFamily: Typography.family.body,
-                    fontSize: 12,
-                    color: colors.mutedText,
-                    marginTop: 2,
-                  }}
-                >
-                  {t('journalHome.journalTrend', { year })}
-                </Text>
-              </View>
-            </View>
-            <MaterialIcons name="chevron-right" size={22} color={colors.mutedText} />
-          </Pressable>
-        </View>
-
-        {/* ═══ Quick Actions ═══ */}
-        <View style={{ paddingHorizontal: UI.spacing.xl, marginTop: 20 }}>
-          <Text style={{ ...Typography.section, color: colors.text, marginBottom: 12 }}>
-            {t('journalHome.quickActions')}
-          </Text>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-            {actions.map((a) => (
-              <Pressable
-                key={a.label}
-                onPress={() => router.push(a.path as any)}
-                style={({ pressed }) => ({
-                  width: '48%' as any,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 10,
-                  backgroundColor: colors.card,
-                  borderRadius: UI.radius.lg,
-                  padding: 14,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                  opacity: pressed ? 0.8 : 1,
-                  ...UI.shadow.sm,
-                })}
-              >
-                <View
-                  style={{
-                    width: 38,
-                    height: 38,
-                    borderRadius: 19,
-                    backgroundColor: a.color,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <MaterialIcons name={a.icon as any} size={20} color="#fff" />
-                </View>
-                <Text
-                  style={{
-                    fontFamily: Typography.family.body,
-                    fontSize: 13,
-                    fontWeight: Typography.weight.semibold,
-                    color: colors.text,
-                    flex: 1,
-                  }}
-                  numberOfLines={2}
-                >
-                  {a.label}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
-
-        {/* ═══ Recent Entries ═══ */}
-        <View style={{ paddingHorizontal: UI.spacing.xl, marginTop: 24 }}>
-          <View
-            style={{
-              flexDirection: 'row',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: 12,
-            }}
-          >
-            <Text style={{ ...Typography.section, color: colors.text }}>
-              {t('journalHome.recentJournals')}
-            </Text>
-            <Pressable onPress={() => router.push('/(tabs)/journal/history')}>
-              <Text
-                style={{
-                  fontFamily: Typography.family.body,
-                  fontSize: 13,
-                  fontWeight: Typography.weight.semibold,
-                  color: '#8B6B47',
-                }}
-              >
-                {t('journalHome.seeAll')}
-              </Text>
-            </Pressable>
-          </View>
-
-          {/* No-mood nudge */}
-          {!isLoading && stats.skipped > 0 && (
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 10,
-                backgroundColor: '#7B6DC9' + '12',
-                borderRadius: UI.radius.lg,
-                padding: 14,
-                marginBottom: 12,
-              }}
-            >
-              <MaterialIcons name="mood" size={22} color="#7B6DC9" />
-              <View style={{ flex: 1 }}>
-                <Text
-                  style={{
-                    fontFamily: Typography.family.body,
-                    fontSize: 13,
-                    fontWeight: Typography.weight.semibold,
-                    color: '#7B6DC9',
-                  }}
-                >
-                  {t('journalHome.noMoodNudge', { count: stats.skipped })}
-                </Text>
-                <Text
-                  style={{
-                    fontFamily: Typography.family.body,
-                    fontSize: 12,
-                    color: colors.mutedText,
-                    marginTop: 2,
-                  }}
-                >
-                  {t('journalHome.noMoodNudgeSubtitle')}
-                </Text>
-              </View>
-            </View>
-          )}
-
-          {isLoading ? (
-            <View
-              style={{
-                height: 80,
-                backgroundColor: colors.card,
-                borderRadius: UI.radius.lg,
-                marginBottom: 10,
-              }}
-            />
-          ) : (journalEntries ?? []).length === 0 ? (
-            <View
-              style={{
-                alignItems: 'center',
-                padding: 30,
-                backgroundColor: colors.card,
-                borderRadius: UI.radius.xl,
-                borderWidth: 1,
-                borderColor: colors.border,
-              }}
-            >
-              <MaterialIcons name="edit-note" size={40} color={colors.mutedText} />
-              <Text
-                style={{
-                  fontFamily: Typography.family.body,
-                  fontSize: 15,
-                  fontWeight: Typography.weight.semibold,
-                  color: colors.mutedText,
-                  marginTop: 8,
-                }}
-              >
-                {t('journalHome.noJournalsYet')}
-              </Text>
-              <Text
-                style={{
-                  fontFamily: Typography.family.body,
-                  fontSize: 13,
-                  color: colors.subtleText,
-                  marginTop: 4,
-                }}
-              >
-                {t('journalHome.startWriting')}
-              </Text>
-            </View>
-          ) : (
-            (journalEntries ?? []).slice(0, 5).map((entry) => {
-              const d = new Date(entry.createdAt);
-              const moodEmoji = getMoodEmoji(entry.mood);
-              return (
-                <Pressable
-                  key={entry.id}
-                  onPress={() =>
-                    router.push({ pathname: '/(tabs)/journal/[id]', params: { id: entry.id } })
-                  }
-                  style={({ pressed }) => ({
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 12,
-                    paddingVertical: 14,
-                    borderBottomWidth: 1,
-                    borderBottomColor: colors.divider,
-                    opacity: pressed ? 0.7 : 1,
-                  })}
-                >
-                  <View
-                    style={{
-                      width: 44,
-                      height: 44,
-                      borderRadius: 22,
-                      backgroundColor: getMoodColor(entry.mood),
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 20 }}>
-                      {moodEmoji}
-                    </WellnessIconText>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text
-                      style={{
-                        fontFamily: Typography.family.body,
-                        fontSize: 15,
-                        fontWeight: Typography.weight.semibold,
-                        color: colors.text,
-                      }}
-                      numberOfLines={1}
-                    >
-                      {entry.title || t('journalHome.untitledEntry')}
-                    </Text>
-                    <Text
-                      style={{
-                        fontFamily: Typography.family.body,
-                        fontSize: 12,
-                        color: colors.mutedText,
-                        marginTop: 2,
-                      }}
-                      numberOfLines={1}
-                    >
-                      {entry.content}
-                    </Text>
-                  </View>
-                  <View style={{ alignItems: 'flex-end' }}>
-                    <Text
-                      style={{
-                        fontFamily: Typography.family.body,
-                        fontSize: 11,
-                        color: colors.subtleText,
-                      }}
-                    >
-                      {d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                    </Text>
-                    <Text
-                      style={{
-                        fontFamily: Typography.family.body,
-                        fontSize: 10,
-                        color: colors.subtleText,
-                        marginTop: 2,
-                      }}
-                    >
-                      {d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
-                    </Text>
-                  </View>
-                </Pressable>
-              );
-            })
-          )}
+        <View style={{ gap: 10, marginTop: 12 }}>
+          {journalEntries.slice(0, RECENT).map((entry) => (
+            <EntryCard key={entry.id} entry={entry} lang={i18n.language} />
+          ))}
         </View>
       </ScrollView>
     </View>
   );
-}
-
-/* ── Mood helpers ── */
-function getMoodEmoji(mood?: string | null): string {
-  const map: Record<string, string> = {
-    Calm: '\uD83D\uDE0C',
-    Okay: '\uD83D\uDE42',
-    Good: '\uD83D\uDE0A',
-    Great: '\uD83D\uDE04',
-    Happy: '\uD83D\uDE01',
-    Anxious: '\uD83D\uDE1F',
-    Sad: '\uD83D\uDE22',
-    Angry: '\uD83D\uDE21',
-    Overwhelmed: '\uD83E\uDD2F',
-    Bad: '\uD83D\uDE14',
-    Low: '\uD83D\uDE1E',
-  };
-  return map[mood ?? ''] ?? '\uD83D\uDCDD';
-}
-
-function getMoodColor(mood?: string | null): string {
-  if (!mood) return 'rgba(139,107,71,0.12)';
-  const positive = ['Calm', 'Okay', 'Good', 'Great', 'Happy'];
-  if (positive.includes(mood)) return 'rgba(91,138,90,0.15)';
-  return 'rgba(232,152,90,0.15)';
 }
