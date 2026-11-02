@@ -56,7 +56,7 @@ export default function NotificationsScreen() {
         key: 'score',
         value: delta ? t('notificationFeed.score', { delta: signed(delta) }) : t('notificationFeed.scoreValue', { score: days[0].score }),
         caption: t(delta > 0 ? 'notificationFeed.rising' : delta < 0 ? 'notificationFeed.dipping' : 'notificationFeed.steady'),
-        route: '/(tabs)/freud-score',
+        route: '/(moments)/glow',
         art: <ScoreArt score={days[0].score} />,
       });
     }
@@ -66,7 +66,7 @@ export default function NotificationsScreen() {
         key: 'journal',
         value: `${journal.written.size}/${journal.days}`,
         caption: t('notificationFeed.journalDays'),
-        route: '/(tabs)/journal/stats',
+        route: '/(moments)/constellation',
         art: <JournalArt written={journal.written} days={journal.days} />,
       });
     }
@@ -76,7 +76,7 @@ export default function NotificationsScreen() {
         key: 'sleep',
         value: formatDuration(night.asleepMinutes),
         caption: t(isBestThisMonth(night, sleepEntries) ? 'notificationFeed.bestNight' : 'notificationFeed.lastNight'),
-        route: `/(tabs)/sleep/${night.entry.id}`,
+        route: '/(moments)/night',
         art: <SleepArt />,
         dark: true,
       });

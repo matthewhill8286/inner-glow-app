@@ -223,6 +223,7 @@ export default function RootLayout() {
                 <Stack.Screen name="(auth)" />
                 <Stack.Screen name="(tabs)" />
                 <Stack.Screen name="(utils)" />
+                <Stack.Screen name="(moments)" options={{ presentation: 'fullScreenModal' }} />
                 <Stack.Screen name="(legacy)" />
                 <Stack.Screen name="(suggestion-actions)" />
               </Stack>

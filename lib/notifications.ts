@@ -325,7 +325,7 @@ const REMINDERS: Record<
   daily_checkin: {
     title: 'Your daily check-in',
     body: 'Take a moment to notice how you feel.',
-    route: '/(tabs)/mood/check-in',
+    route: '/(moments)/checkin',
     hour: 20,
     minute: 0,
     weekdays: EVERY_DAY,
@@ -349,7 +349,7 @@ const REMINDERS: Record<
   journal_reminder: {
     title: 'A little space to reflect',
     body: 'Write a few words about your day.',
-    route: '/(tabs)/journal/new',
+    route: '/(moments)/constellation',
     hour: 20,
     minute: 30,
     weekdays: [1],
@@ -365,7 +365,7 @@ const REMINDERS: Record<
   stress_alert: {
     title: 'A moment to reset',
     body: 'Try a short breathing or grounding exercise.',
-    route: '/(tabs)/stress',
+    route: '/(moments)/sunset',
     hour: 18,
     minute: 0,
     weekdays: EVERY_DAY,
