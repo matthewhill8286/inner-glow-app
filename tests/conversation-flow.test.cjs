@@ -54,7 +54,7 @@ test('retry keeps one copy of the failed user turn and rejects retrying an answe
 test('scroll clearance always reserves the floating navigation and safe area', () => {
   for (const inset of [0, 20, 34, 60])
     assert.ok(
-      layout.screenBottomPadding(inset) >= layout.TAB_BAR_HEIGHT + layout.tabBarOffset(inset) + 24,
+      layout.screenBottomPadding(inset) >= layout.TAB_BAR_HEIGHT + layout.tabBarOffset(inset) + layout.TAB_BAR_RAISE + 8,
     );
   assert.equal(layout.screenBottomPadding(34, false), 50);
   assert.equal(layout.screenBottomPadding(0, false), 32);

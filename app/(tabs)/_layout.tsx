@@ -1,6 +1,7 @@
 import { primaryTabForPath } from '@/lib/route-parents';
 import { SessionGate } from '@/components/SessionGate';
 import { GlowTabBar, type GlowTab } from '@/components/navigation/GlowTabBar';
+import { TabBarVisibleContext } from '@/components/navigation/TabBarContext';
 import { useHealthSleepAutoSync } from '@/hooks/useHealthSleep';
 import { Tabs, useSegments, usePathname } from 'expo-router';
 import React from 'react';
@@ -15,7 +16,10 @@ export default function TabsLayout() {
     segments.includes('chat') && segments.length > 2 && segments.at(-1) !== 'index';
   const hidden =
     isChatDetail ||
-    (segments.includes('profile') && segments.includes('edit')) ||
+    // Profile forms built around a Save button are full-screen, like Personal information.
+    (segments.includes('profile') && ['edit', 'language', 'password', 'sessions', 'two-step'].some((s) => segments.includes(s))) ||
+    // Writing, recording and the Saved screen keep their main action clear of the tab bar.
+    (segments.includes('journal') && ['new', 'voice', 'saved'].some((s) => segments.includes(s))) ||
     segments.includes('schedule') ||
     // The sleep flow from Wind down to Last night is full-screen (06 §S2–S7).
     (segments.includes('sleep') && ['start', 'mode', 'wake', 'log', '[id]'].some((s) => segments.includes(s))) ||
@@ -39,6 +43,7 @@ export default function TabsLayout() {
 
   return (
     <SessionGate>
+      <TabBarVisibleContext.Provider value={!hidden}>
       <Tabs
         backBehavior="history"
         screenOptions={{ headerShown: false }}
@@ -59,6 +64,7 @@ export default function TabsLayout() {
         <Tabs.Screen name="notifications" options={{ href: null }} />
         <Tabs.Screen name="freud-score" options={{ href: null }} />
       </Tabs>
+      </TabBarVisibleContext.Provider>
     </SessionGate>
   );
 }

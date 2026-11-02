@@ -3,6 +3,7 @@ import { Typography } from '@/constants/typography';
 import React from 'react';
 import { View, Text, Pressable, Platform, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useBottomSpace } from '@/components/navigation/TabBarContext';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -22,6 +23,7 @@ export default function ExerciseCompleted() {
   const theme = useColorScheme() ?? 'light';
   const colors = Colors[theme];
   const insets = useSafeAreaInsets();
+  const bottomSpace = useBottomSpace();
   const { minutes = '25', goal = 'focus' } = useLocalSearchParams<{
     minutes: string;
     goal: string;
@@ -47,7 +49,7 @@ export default function ExerciseCompleted() {
           alignItems: 'center',
           paddingHorizontal: UI.spacing.xl,
           paddingTop: insets.top + 54,
-          paddingBottom: insets.bottom + 100,
+          paddingBottom: bottomSpace,
         }}
         showsVerticalScrollIndicator={false}
       >

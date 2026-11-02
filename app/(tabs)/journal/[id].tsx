@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Platform, Pressable, ScrollView, Share, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useBottomSpace } from '@/components/navigation/TabBarContext';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
@@ -51,6 +52,7 @@ export default function JournalDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
+  const bottomSpace = useBottomSpace();
   const { journalEntries, isLoading, deleteJournalEntry, changeJournalDate } = useJournal();
   const entry = journalEntries.find((e) => e.id === id);
   const [optionsOpen, setOptionsOpen] = useState(false);
@@ -125,7 +127,7 @@ export default function JournalDetail() {
         contentContainerStyle={{
           paddingHorizontal: 24,
           paddingTop: 22,
-          paddingBottom: insets.bottom + 32,
+          paddingBottom: bottomSpace,
         }}
         showsVerticalScrollIndicator={false}
       >

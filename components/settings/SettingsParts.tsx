@@ -6,6 +6,7 @@ import { palette } from '@/constants/theme';
 import { Type } from '@/constants/typography';
 import { GlowField, type GlowSpec } from '@/components/glow/Glow';
 import { NavBar } from '@/components/ui/IconButton';
+import { useBottomSpace } from '@/components/navigation/TabBarContext';
 
 /** 08 §1.2 default glows for settings screens. */
 export const SETTINGS_GLOWS: GlowSpec[] = [
@@ -41,6 +42,8 @@ export function SettingsScreen({
   scrollEnabled?: boolean;
 }) {
   const insets = useSafeAreaInsets();
+  // Clears the tab bar when the screen shows it, else the home indicator.
+  const bottom = useBottomSpace();
   return (
     <View style={{ flex: 1, backgroundColor: palette.bg }}>
       <GlowField glows={glows} />
@@ -57,7 +60,7 @@ export function SettingsScreen({
           {
             paddingTop: 18,
             paddingHorizontal: 24,
-            paddingBottom: cta ? 24 : insets.bottom + 32,
+            paddingBottom: cta ? 24 : bottom + 16,
             gap: 28,
           },
           contentStyle,
@@ -77,7 +80,7 @@ export function SettingsScreen({
         {children}
       </ScrollView>
       {cta ? (
-        <View style={{ paddingHorizontal: 24, paddingTop: 8, paddingBottom: insets.bottom + 14 }}>
+        <View style={{ paddingHorizontal: 24, paddingTop: 8, paddingBottom: bottom }}>
           {cta}
         </View>
       ) : null}

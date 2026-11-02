@@ -5,9 +5,14 @@ export const TAB_BAR_RAISE = 28;
 export function tabBarOffset(bottomInset: number): number {
   return Math.max(0, bottomInset - 34);
 }
+/**
+ * Space to leave under the last thing on a screen, scrolled or pinned. With the tab bar showing it
+ * clears the bar and the raised Glow AI button (28pt above it) with a 12pt gap; without it, the
+ * home indicator.
+ */
 export function screenBottomPadding(bottomInset: number, tabBarVisible = true): number {
   return tabBarVisible
-    ? TAB_BAR_HEIGHT + tabBarOffset(bottomInset) + 24
+    ? TAB_BAR_HEIGHT + tabBarOffset(bottomInset) + TAB_BAR_RAISE + 12
     : Math.max(bottomInset, 16) + 16;
 }
 
