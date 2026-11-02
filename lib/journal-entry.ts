@@ -85,3 +85,30 @@ export function needsCrisisSupport(content?: string | null): boolean {
   const lower = (content ?? '').toLowerCase();
   return CRISIS_WORDS.some((w) => lower.includes(w));
 }
+
+/** Saved (04 J6): "That's 22 of 30 days in October" counts days with an entry so far this month. */
+export function monthProgress(
+  isoDates: string[],
+  now = new Date(),
+): { logged: number; days: number } {
+  const days = new Set<number>();
+  for (const iso of isoDates) {
+    const d = new Date(iso);
+    if (
+      d.getFullYear() === now.getFullYear() &&
+      d.getMonth() === now.getMonth() &&
+      d.getTime() <= now.getTime()
+    )
+      days.add(d.getDate());
+  }
+  return { logged: days.size, days: now.getDate() };
+}
+
+/** "Fri, 30 Oct" in the app language, the date title on the journal screens (04 J2, J5). */
+export function journalDate(iso: string, lang: string): string {
+  const d = new Date(iso);
+  const weekday = d.toLocaleDateString(lang, { weekday: 'short' });
+  const day = d.toLocaleDateString(lang, { day: 'numeric' });
+  const month = d.toLocaleDateString(lang, { month: 'short' });
+  return `${weekday}, ${day} ${month}`;
+}

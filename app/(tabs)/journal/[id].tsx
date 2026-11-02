@@ -17,6 +17,7 @@ import { toast } from '@/components/Toast';
 import { useJournal } from '@/hooks/useJournal';
 import {
   entryExportText,
+  journalDate,
   journalMoodScore,
   movedDate,
   needsCrisisSupport,
@@ -25,15 +26,6 @@ import { moodStep } from '@/lib/mood-scale';
 import { backTo } from '@/lib/navigation';
 import { showAlert } from '@/lib/state';
 import type { JournalEntry } from '@/lib/types';
-
-/** "Fri, 30 Oct" in the app language. */
-function navDate(iso: string, lang: string) {
-  const d = new Date(iso);
-  const weekday = d.toLocaleDateString(lang, { weekday: 'short' });
-  const day = d.toLocaleDateString(lang, { day: 'numeric' });
-  const month = d.toLocaleDateString(lang, { month: 'short' });
-  return `${weekday}, ${day} ${month}`;
-}
 
 function clock(iso: string, lang: string) {
   return new Date(iso).toLocaleTimeString(lang, {
@@ -89,7 +81,7 @@ export default function JournalDetail() {
   const step = score ? moodStep(score) : null;
   const moodLabel = step ? t(`moodScale.${step.key}`) : null;
   const time = clock(entry.createdAt, i18n.language);
-  const date = navDate(entry.createdAt, i18n.language);
+  const date = journalDate(entry.createdAt, i18n.language);
   const title = entry.title?.trim() || t('journalDetail.untitledEntry');
 
   const talk = () =>

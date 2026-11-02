@@ -64,6 +64,7 @@ export const ROUTE_PATHS = [
   '/(tabs)/journal/history',
   '/(tabs)/journal',
   '/(tabs)/journal/new',
+  '/(tabs)/journal/saved',
   '/(tabs)/journal/prompts',
   '/(tabs)/journal/stats',
   '/(tabs)/journal/voice',

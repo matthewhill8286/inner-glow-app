@@ -1,61 +1,77 @@
-import { backTo, finishTo } from '@/lib/navigation';
-import { Typography } from '@/constants/typography';
-import { WellnessIconText } from '@/components/WellnessIconText';
-import React, { useEffect, useState, useMemo } from 'react';
-import { View, Text, Pressable, TextInput, ScrollView, KeyboardAvoidingView } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors, UI } from '@/constants/theme';
-import { useJournal } from '@/hooks/useJournal';
-import { JournalEntry } from '@/lib/types';
-import { JOURNAL_PROMPTS } from '@/data/journalPrompts';
+import { palette } from '@/constants/theme';
+import { Type } from '@/constants/typography';
+import { Icon } from '@/components/icons/Icon';
+import { GlowField } from '@/components/glow/Glow';
+import { MoodSlider } from '@/components/mood/MoodSlider';
+import { AppButton } from '@/components/ui/AppButton';
+import { NavBar } from '@/components/ui/IconButton';
+import { CrisisSheet } from '@/components/chat/CrisisSheet';
 import { toast } from '@/components/Toast';
-import MaterialIcons from '@/components/AppIcon';
+import { JOURNAL_PROMPTS } from '@/data/journalPrompts';
+import { useJournal } from '@/hooks/useJournal';
+import { journalDate, journalMoodScore, movedDate, needsCrisisSupport } from '@/lib/journal-entry';
+import { moodStep, type MoodScore } from '@/lib/mood-scale';
+import { backTo } from '@/lib/navigation';
 
-/* ── Emotions grid ── */
-const EMOTIONS: { label: string; emoji: string; color: string }[] = [
-  { label: 'Angry', emoji: '😡', color: '#C45B5B' },
-  { label: 'Sad', emoji: '😢', color: '#5A8FB5' },
-  { label: 'Anxious', emoji: '😟', color: '#7B6DC9' },
-  { label: 'Okay', emoji: '🙂', color: '#E8985A' },
-  { label: 'Calm', emoji: '😌', color: '#5B8A5A' },
-  { label: 'Happy', emoji: '😄', color: '#8B6B47' },
-  { label: 'Grateful', emoji: '🥰', color: '#D4A76A' },
-  { label: 'Excited', emoji: '🤩', color: '#E07A5F' },
-  { label: 'Proud', emoji: '💪', color: '#6B8E6B' },
-  { label: 'Loved', emoji: '💕', color: '#C77B8B' },
-  { label: 'Hopeful', emoji: '🌟', color: '#D4A843' },
-  { label: 'Peaceful', emoji: '🧘', color: '#7BA7A7' },
-];
+const TAG_KEYS = ['work', 'breathing', 'sleep', 'family', 'friends'] as const;
 
-/* ── Disease / tag chips ── */
-const TAGS = [
-  'Loneliness',
-  'Money Issue',
-  'Family',
-  'Work',
-  'Relationships',
-  'Health',
-  'Self-esteem',
-  'Grief',
-  'Burnout',
-  'Sleep',
-  'Gratitude',
-  'Achievement',
-  'Friendship',
-  'Adventure',
-  'Personal Growth',
-  'Creativity',
-  'Good Day',
-  'Milestone',
-];
+function Tag({
+  label,
+  selected,
+  onPress,
+}: {
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked: selected }}
+      onPress={onPress}
+      style={{
+        paddingVertical: selected ? 7.5 : 8,
+        paddingHorizontal: selected ? 13.5 : 14,
+        borderRadius: 999,
+        backgroundColor: selected ? palette.selected : palette.white,
+        borderWidth: selected ? 1.5 : 1,
+        borderColor: selected ? palette.plum : palette.border,
+      }}
+    >
+      <Text
+        style={[
+          selected ? Type.chipSelected : Type.chip,
+          { color: selected ? palette.plum : palette.textMuted },
+        ]}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
 
-export default function NewJournalEntry() {
-  const { t } = useTranslation();
-  const theme = useColorScheme() ?? 'light';
-  const colors = Colors[theme];
+/**
+ * Write entry (04 J2): the date title with a Save text button, the compact mood card, the editor card
+ * with a follow-up prompt chip, the design's tags with "+ Add", and Save entry. A new entry goes to
+ * Saved (J6); an edit from the entry options sheet saves over the entry and returns to it. Crisis
+ * language opens the crisis sheet after saving (04 §C). The follow-up prompts are a fixed list: the
+ * AI follow-up needs a backend that does not exist yet.
+ */
+export default function WriteEntry() {
+  const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const { promptId, date, id } = useLocalSearchParams<{
     promptId?: string;
@@ -63,631 +79,283 @@ export default function NewJournalEntry() {
     id?: string;
   }>();
   const prompt = useMemo(() => JOURNAL_PROMPTS.find((p) => p.id === promptId), [promptId]);
-
-  /* Step: 'pick' = type picker, 'form' = text journal form */
-  const [step, setStep] = useState<'pick' | 'form'>(prompt || id ? 'form' : 'pick');
-
-  const [title, setTitle] = useState(prompt ? prompt.title : '');
-  const [body, setBody] = useState(prompt ? prompt.prompt + '\n\n' : '');
-  const [mood, setMood] = useState<string | null>(null);
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-
   const { createJournalEntry, upsertJournalEntry, journalEntries } = useJournal();
-  // Edit on the entry options sheet (10 §3.11) opens this screen prefilled with the entry.
   const editing = id ? journalEntries.find((e) => e.id === id) : undefined;
+
+  const [mood, setMood] = useState<MoodScore>(3);
+  const [title, setTitle] = useState(prompt?.title ?? '');
+  const [body, setBody] = useState(prompt ? `${prompt.prompt}\n\n` : '');
+  const [tags, setTags] = useState<string[]>([]);
+  const [adding, setAdding] = useState(false);
+  const [newTag, setNewTag] = useState('');
+  const [followUp, setFollowUp] = useState(0);
+  const [saving, setSaving] = useState(false);
+  const [crisisFor, setCrisisFor] = useState<string | null>(null);
   const [prefilled, setPrefilled] = useState(false);
+
+  // Edit (10 §3.11) opens this screen prefilled with the entry.
   useEffect(() => {
     if (!editing || prefilled) return;
     setTitle(editing.title ?? '');
     setBody(editing.content ?? '');
-    setMood(editing.mood || null);
-    setSelectedTags(editing.tags ?? []);
+    setMood((journalMoodScore(editing.mood) ?? 3) as MoodScore);
+    setTags(editing.tags ?? []);
     setPrefilled(true);
   }, [editing, prefilled]);
-  const wordCount = body.trim() ? body.trim().split(/\s+/).length : 0;
 
-  const shownDate = editing?.createdAt ?? date;
-  const displayDate = shownDate
-    ? new Date(shownDate).toLocaleDateString('en-US', {
-        weekday: 'long',
-        month: 'long',
-        day: 'numeric',
-        year: 'numeric',
-      })
-    : new Date().toLocaleDateString('en-US', {
-        weekday: 'long',
-        month: 'long',
-        day: 'numeric',
-        year: 'numeric',
-      });
+  const followUps = t('journalWrite.followUps', { returnObjects: true }) as string[];
+  const shownDate = editing?.createdAt ?? date ?? new Date().toISOString();
+  const navDate = journalDate(shownDate, i18n.language);
+  const step = moodStep(mood);
+  const designTags = TAG_KEYS.map((k) => t(`journalWrite.tags.${k}`));
+  const tagOptions = [...designTags, ...tags.filter((tag) => !designTags.includes(tag))];
+  const canSave = !saving && (title.trim().length > 0 || body.trim().length > 0);
 
-  function toggleTag(tag: string) {
-    setSelectedTags((prev) =>
-      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag],
-    );
-  }
+  const toggle = (tag: string) =>
+    setTags((prev) => (prev.includes(tag) ? prev.filter((x) => x !== tag) : [...prev, tag]));
+  const addTag = () => {
+    const tag = newTag.trim();
+    if (tag && !tags.includes(tag)) setTags((prev) => [...prev, tag]);
+    setNewTag('');
+    setAdding(false);
+  };
+  const insertFollowUp = () => {
+    const line = followUps[followUp % followUps.length];
+    setBody((prev) => `${prev.trimEnd()}${prev.trim() ? '\n\n' : ''}${line}\n`);
+    setFollowUp((n) => n + 1);
+  };
 
   async function save() {
-    if (editing) {
-      try {
-        await upsertJournalEntry({
-          ...editing,
-          title: (title || 'Untitled').trim(),
-          content: body.trim(),
-          mood,
-          tags: selectedTags,
-        });
-        toast.success(t('toasts.journalSaved'));
-        backTo(undefined, '/(tabs)/journal');
-      } catch (err) {
-        console.error('Failed to save journal edit:', err);
-        toast.error(t('toasts.journalSaveError'));
-      }
-      return;
-    }
-    const entryInput: Omit<JournalEntry, 'id' | 'createdAt' | 'updatedAt'> = {
-      title: (title || 'Untitled').trim(),
+    if (!canSave) return;
+    setSaving(true);
+    const fields = {
+      title: title.trim() || t('journalDetail.untitledEntry'),
       content: body.trim(),
-      mood,
-      tags: selectedTags,
+      mood: step.checkIn,
+      tags,
     };
     try {
-      await createJournalEntry(entryInput as any);
-      toast.success(t('toasts.journalCreated'));
-      finishTo('/(tabs)/journal');
-    } catch (err) {
-      console.error('Failed to create journal entry:', err);
-      toast.error(t('toasts.journalCreateError'));
+      if (editing) {
+        await upsertJournalEntry({ ...editing, ...fields });
+        toast.success(t('toasts.journalSaved'));
+        backTo(undefined, '/(tabs)/journal');
+        return;
+      }
+      // An entry started from a past day in history is dated that day, at the current time.
+      const created = await createJournalEntry({
+        ...fields,
+        ...(date ? { createdAt: movedDate(new Date().toISOString(), new Date(date)) } : {}),
+      });
+      if (needsCrisisSupport(fields.content)) setCrisisFor(created.id);
+      else router.replace({ pathname: '/(tabs)/journal/saved', params: { id: created.id } });
+    } catch {
+      toast.error(t(editing ? 'toasts.journalSaveError' : 'toasts.journalCreateError'));
+    } finally {
+      setSaving(false);
     }
   }
 
-  const canSave = title.trim().length > 0 || body.trim().length > 0;
-
-  /* ═══════════════════════════════════════════════
-     STEP 1 — Type Picker (Voice vs Text)
-     ═══════════════════════════════════════════════ */
-  if (step === 'pick') {
-    return (
-      <View style={{ flex: 1, backgroundColor: colors.background }}>
-        {/* Header */}
-        <View
-          style={{
-            paddingTop: insets.top + 6,
-            paddingHorizontal: UI.spacing.xl,
-            paddingBottom: UI.spacing.md,
-          }}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <Pressable
-              onPress={() => backTo(undefined, '/(tabs)/journal')}
-              style={({ pressed }) => ({
-                width: 36,
-                height: 36,
-                borderRadius: 18,
-                backgroundColor: colors.card,
-                borderWidth: 1,
-                borderColor: colors.border,
-                alignItems: 'center',
-                justifyContent: 'center',
-                opacity: pressed ? 0.7 : 1,
-                ...UI.shadow.sm,
-              })}
-            >
-              <MaterialIcons
-                name="arrow-back-ios"
-                size={16}
-                color={colors.text}
-                style={{ marginLeft: 4 }}
-              />
-            </Pressable>
-            <Text style={{ ...Typography.heading, fontSize: 24, color: colors.text }}>
-              New Journal
-            </Text>
-          </View>
-          <Text
-            style={{
-              fontFamily: Typography.family.body,
-              fontSize: 13,
-              color: colors.mutedText,
-              marginTop: 4,
-              marginLeft: 46,
-            }}
-          >
-            Choose how you&#39;d like to journal
-          </Text>
-        </View>
-
-        {/* Cards */}
-        <View
-          style={{ flex: 1, justifyContent: 'center', paddingHorizontal: UI.spacing.xl, gap: 16 }}
-        >
-          {/* Voice Journal */}
-          <Pressable
-            onPress={() => router.push('/(tabs)/journal/voice')}
-            style={({ pressed }) => ({
-              backgroundColor: '#7B6DC9',
-              borderRadius: UI.radius.xxl,
-              padding: 28,
-              alignItems: 'center',
-              gap: 14,
-              opacity: pressed ? 0.9 : 1,
-              ...UI.shadow.md,
-            })}
-          >
-            <View
-              style={{
-                width: 72,
-                height: 72,
-                borderRadius: 36,
-                backgroundColor: 'rgba(255,255,255,0.2)',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <MaterialIcons name="mic" size={36} color="#fff" />
-            </View>
-            <Text style={{ ...Typography.section, color: '#fff' }}>Voice Journal</Text>
-            <Text
-              style={{
-                fontFamily: Typography.family.body,
-                fontSize: 13,
-                color: 'rgba(255,255,255,0.8)',
-                textAlign: 'center',
-              }}
-            >
-              Record your thoughts and we&#39;ll transcribe them for you
-            </Text>
-          </Pressable>
-
-          {/* Text Journal */}
-          <Pressable
-            onPress={() => setStep('form')}
-            style={({ pressed }) => ({
-              backgroundColor: '#5B8A5A',
-              borderRadius: UI.radius.xxl,
-              padding: 28,
-              alignItems: 'center',
-              gap: 14,
-              opacity: pressed ? 0.9 : 1,
-              ...UI.shadow.md,
-            })}
-          >
-            <View
-              style={{
-                width: 72,
-                height: 72,
-                borderRadius: 36,
-                backgroundColor: 'rgba(255,255,255,0.2)',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <MaterialIcons name="edit-note" size={36} color="#fff" />
-            </View>
-            <Text style={{ ...Typography.section, color: '#fff' }}>Text Journal</Text>
-            <Text
-              style={{
-                fontFamily: Typography.family.body,
-                fontSize: 13,
-                color: 'rgba(255,255,255,0.8)',
-                textAlign: 'center',
-              }}
-            >
-              Write your thoughts down at your own pace
-            </Text>
-          </Pressable>
-        </View>
-      </View>
-    );
-  }
-
-  /* ═══════════════════════════════════════════════
-     STEP 2 — Text Journal Form
-     ═══════════════════════════════════════════════ */
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: colors.background }}
-      behavior={'padding'}
+      style={{ flex: 1, backgroundColor: palette.bg }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      {/* Header */}
-      <View
-        style={{
-          paddingTop: insets.top + 6,
-          paddingHorizontal: UI.spacing.xl,
-          paddingBottom: UI.spacing.sm,
-        }}
-      >
-        <View
-          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <Pressable
-              onPress={() =>
-                prompt || id ? backTo(undefined, '/(tabs)/journal') : setStep('pick')
-              }
-              style={({ pressed }) => ({
-                width: 36,
-                height: 36,
-                borderRadius: 18,
-                backgroundColor: colors.card,
-                borderWidth: 1,
-                borderColor: colors.border,
-                alignItems: 'center',
-                justifyContent: 'center',
-                opacity: pressed ? 0.7 : 1,
-                ...UI.shadow.sm,
-              })}
+      <GlowField
+        glows={[
+          { color: palette.mustard, opacity: 0.3, x: -50, y: -20, width: 280, blur: 80 },
+          { color: palette.lavenderSoft, opacity: 0.25, x: 180, y: 60, width: 220, blur: 80 },
+        ]}
+      />
+      <View style={{ paddingTop: insets.top + 6, paddingHorizontal: 24 }}>
+        <NavBar
+          backLabel={t('common.back')}
+          onBack={() => backTo(undefined, '/(tabs)/journal')}
+          title={navDate}
+          trailing={
+            <Text
+              accessibilityRole="button"
+              onPress={save}
+              suppressHighlighting
+              style={[Type.bodyMSemi, { color: canSave ? palette.plum : palette.textSubtle }]}
             >
-              <MaterialIcons
-                name="arrow-back-ios"
-                size={16}
-                color={colors.text}
-                style={{ marginLeft: 4 }}
-              />
-            </Pressable>
-            <Text style={{ ...Typography.heading, fontSize: 24, color: colors.text }}>
-              {editing ? t('journalDetail.editEntry') : 'Add New Journal'}
+              {t('journalWrite.save')}
             </Text>
-          </View>
-
-          {/* Feeling indicator */}
-          {mood && (
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 4,
-                paddingHorizontal: 10,
-                paddingVertical: 5,
-                borderRadius: UI.radius.pill,
-                backgroundColor:
-                  (EMOTIONS.find((e) => e.label === mood)?.color ?? '#8B6B47') + '15',
-              }}
-            >
-              <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 14 }}>
-                {EMOTIONS.find((e) => e.label === mood)?.emoji}
-              </WellnessIconText>
-              <Text
-                style={{
-                  fontFamily: Typography.family.body,
-                  fontSize: 12,
-                  fontWeight: Typography.weight.semibold,
-                  color: EMOTIONS.find((e) => e.label === mood)?.color ?? colors.text,
-                }}
-              >
-                Feeling {mood}
-              </Text>
-            </View>
-          )}
-        </View>
+          }
+        />
       </View>
-
       <ScrollView
-        contentContainerStyle={{ paddingHorizontal: UI.spacing.xl, paddingBottom: 100, gap: 20 }}
-        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 24, flexGrow: 1 }}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        {/* Prompt banner */}
-        {prompt && (
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 10,
-              padding: 12,
-              borderRadius: UI.radius.lg,
-              backgroundColor: '#7B6DC9' + '12',
-              borderWidth: 1,
-              borderColor: '#7B6DC9' + '25',
-            }}
-          >
-            <Text style={{ fontFamily: Typography.family.body, fontSize: 14 }}>
-              {'\uD83D\uDCA1'}
-            </Text>
-            <Text
-              style={{
-                fontFamily: Typography.family.body,
-                flex: 1,
-                fontSize: 13,
-                fontWeight: Typography.weight.semibold,
-                color: '#7B6DC9',
-                fontStyle: 'italic',
-              }}
-              numberOfLines={2}
-            >
-              {prompt.prompt}
-            </Text>
-          </View>
-        )}
-
-        {/* Title */}
         <View
           style={{
-            backgroundColor: colors.card,
-            borderRadius: UI.radius.xl,
-            padding: 16,
-            borderWidth: 1,
-            borderColor: colors.border,
-            ...UI.shadow.sm,
-          }}
-        >
-          <Text
-            style={{
-              fontFamily: Typography.family.body,
-              fontSize: 12,
-              fontWeight: Typography.weight.semibold,
-              color: colors.mutedText,
-              textTransform: 'uppercase',
-              letterSpacing: 0.5,
-              marginBottom: 8,
-            }}
-          >
-            Title
-          </Text>
-          <TextInput
-            value={title}
-            onChangeText={setTitle}
-            placeholder="Give your journal a title..."
-            placeholderTextColor={colors.placeholder}
-            style={{
-              fontFamily: Typography.family.body,
-              fontSize: 18,
-              fontWeight: Typography.weight.semibold,
-              color: colors.text,
-              paddingVertical: 4,
-            }}
-          />
-        </View>
-
-        {/* Timeline / Date */}
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 10,
-            backgroundColor: colors.card,
-            borderRadius: UI.radius.xl,
-            padding: 16,
-            borderWidth: 1,
-            borderColor: colors.border,
-            ...UI.shadow.sm,
-          }}
-        >
-          <View
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 20,
-              backgroundColor: '#8B6B47' + '15',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <MaterialIcons name="today" size={20} color="#8B6B47" />
-          </View>
-          <View>
-            <Text
-              style={{
-                fontFamily: Typography.family.body,
-                fontSize: 12,
-                fontWeight: Typography.weight.semibold,
-                color: colors.mutedText,
-                textTransform: 'uppercase',
-                letterSpacing: 0.5,
-              }}
-            >
-              Timeline
-            </Text>
-            <Text
-              style={{
-                fontFamily: Typography.family.body,
-                fontSize: 14,
-                fontWeight: Typography.weight.semibold,
-                color: colors.text,
-                marginTop: 2,
-              }}
-            >
-              {displayDate}
-            </Text>
-          </View>
-        </View>
-
-        {/* Content */}
-        <View
-          style={{
-            backgroundColor: colors.card,
-            borderRadius: UI.radius.xl,
-            padding: 16,
-            borderWidth: 1,
-            borderColor: colors.border,
-            ...UI.shadow.sm,
+            backgroundColor: palette.white,
+            borderRadius: 28,
+            padding: 20,
+            paddingTop: 18,
+            marginHorizontal: 16,
+            marginTop: 8,
           }}
         >
           <View
             style={{
               flexDirection: 'row',
               justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: 8,
+              alignItems: 'baseline',
             }}
           >
-            <Text
-              style={{
-                fontFamily: Typography.family.body,
-                fontSize: 12,
-                fontWeight: Typography.weight.semibold,
-                color: colors.mutedText,
-                textTransform: 'uppercase',
-                letterSpacing: 0.5,
-              }}
-            >
-              Your Thoughts
+            <Text style={[Type.bodyStrong, { color: palette.ink }]}>{t('homeGlow.howAreYou')}</Text>
+            <Text style={[Type.caption, { fontWeight: '500', color: palette.textSubtle }]}>
+              {navDate}
             </Text>
-            {wordCount > 0 && (
-              <Text
-                style={{
-                  fontFamily: Typography.family.body,
-                  fontSize: 12,
-                  fontWeight: Typography.weight.semibold,
-                  color: colors.subtleText,
-                }}
-              >
-                {wordCount} {wordCount === 1 ? 'word' : 'words'}
-              </Text>
-            )}
           </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12 }}>
+            <Icon name={step.face} size={26} />
+            <Text style={[Type.titleMd, { color: palette.plum }]}>
+              {t(`moodScale.${step.key}`)}
+            </Text>
+            <Text
+              style={[Type.captionS, { color: palette.textSubtle, marginLeft: 4, marginTop: 4 }]}
+            >
+              {t('homeGlow.slideToAdjust')}
+            </Text>
+          </View>
+          <MoodSlider
+            value={mood}
+            onChange={setMood}
+            startLabel={t('moodScale.tense')}
+            endLabel={t('moodScale.great')}
+            accessibilityLabel={t('homeGlow.howAreYou')}
+            style={{ marginTop: 10 }}
+          />
+        </View>
+
+        <View
+          style={{
+            backgroundColor: palette.white,
+            borderRadius: 24,
+            padding: 20,
+            marginHorizontal: 24,
+            marginTop: 12,
+            gap: 14,
+          }}
+        >
+          <TextInput
+            value={title}
+            onChangeText={setTitle}
+            placeholder={t('journalWrite.titlePlaceholder')}
+            placeholderTextColor={palette.textSubtle}
+            accessibilityLabel={t('journalWrite.titleLabel')}
+            style={[
+              Type.titleSm,
+              { lineHeight: 28, letterSpacing: 0, color: palette.ink, padding: 0 },
+            ]}
+          />
           <TextInput
             value={body}
             onChangeText={setBody}
-            placeholder="Start writing — no judgement, just you..."
-            placeholderTextColor={colors.placeholder}
+            placeholder={t('journalWrite.bodyPlaceholder')}
+            placeholderTextColor={palette.textSubtle}
+            accessibilityLabel={t('journalWrite.bodyLabel')}
             multiline
             textAlignVertical="top"
-            style={{
-              fontFamily: Typography.family.body,
-              fontSize: 15,
-              lineHeight: 24,
-              color: colors.text,
-              minHeight: 160,
-              paddingVertical: 4,
-            }}
+            style={[Type.bodyM, { lineHeight: 23, color: palette.ink, minHeight: 92, padding: 0 }]}
           />
-        </View>
-
-        {/* Emotion Selector */}
-        <View>
-          <Text
-            style={{
-              fontFamily: Typography.family.body,
-              fontSize: 12,
-              fontWeight: Typography.weight.semibold,
-              color: colors.mutedText,
-              textTransform: 'uppercase',
-              letterSpacing: 0.5,
-              marginBottom: 12,
-            }}
-          >
-            How are you feeling?
-          </Text>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-            {EMOTIONS.map((e) => {
-              const active = mood === e.label;
-              return (
-                <Pressable
-                  key={e.label}
-                  onPress={() => setMood(active ? null : e.label)}
-                  style={({ pressed }) => ({
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 4,
-                    paddingVertical: 12,
-                    paddingHorizontal: 6,
-                    borderRadius: UI.radius.lg,
-                    borderWidth: 1.5,
-                    width: '30%' as any,
-                    flexGrow: 1,
-                    backgroundColor: active ? e.color + '15' : colors.card,
-                    borderColor: active ? e.color + '40' : colors.border,
-                    transform: [{ scale: pressed ? 0.94 : 1 }],
-                  })}
-                >
-                  <WellnessIconText
-                    style={{ fontFamily: Typography.family.body, fontSize: 28, color: e.color }}
-                  >
-                    {e.emoji}
-                  </WellnessIconText>
-                  <Text
-                    style={{
-                      fontFamily: Typography.family.body,
-                      fontSize: 12,
-                      fontWeight: Typography.weight.semibold,
-                      color: active ? e.color : colors.mutedText,
-                    }}
-                  >
-                    {e.label}
-                  </Text>
-                </Pressable>
-              );
+          <Pressable
+            accessibilityRole="button"
+            accessibilityHint={t('journalWrite.followUpHint')}
+            onPress={insertFollowUp}
+            style={({ pressed }) => ({
+              alignSelf: 'flex-start',
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 8,
+              height: 38,
+              paddingLeft: 12,
+              paddingRight: 14,
+              borderRadius: 16,
+              backgroundColor: palette.surfaceLilacSoft,
+              opacity: pressed ? 0.8 : 1,
             })}
-          </View>
+          >
+            <Icon name="line/sparkle" size={16} color={palette.plum} />
+            <Text style={[Type.chip, { color: palette.plum }]}>
+              {followUps[followUp % followUps.length]}
+            </Text>
+          </Pressable>
         </View>
 
-        {/* Disease / Tag Selector */}
-        <View>
-          <Text
-            style={{
-              fontFamily: Typography.family.body,
-              fontSize: 12,
-              fontWeight: Typography.weight.semibold,
-              color: colors.mutedText,
-              textTransform: 'uppercase',
-              letterSpacing: 0.5,
-              marginBottom: 12,
-            }}
-          >
-            What&#39;s this about?
+        <View style={{ marginHorizontal: 24, marginTop: 24, gap: 12 }}>
+          <Text style={[Type.chipSelected, { color: palette.ink }]}>
+            {t('journalWrite.tagsLabel')}
           </Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            {[...TAGS, ...selectedTags.filter((tag) => !TAGS.includes(tag))].map((tag) => {
-              const active = selectedTags.includes(tag);
-              return (
-                <Pressable
-                  key={tag}
-                  onPress={() => toggleTag(tag)}
-                  style={({ pressed }) => ({
+            {tagOptions.map((tag) => (
+              <Tag
+                key={tag}
+                label={tag}
+                selected={tags.includes(tag)}
+                onPress={() => toggle(tag)}
+              />
+            ))}
+            {adding ? (
+              <TextInput
+                value={newTag}
+                onChangeText={setNewTag}
+                onSubmitEditing={addTag}
+                onBlur={addTag}
+                autoFocus
+                maxLength={24}
+                returnKeyType="done"
+                placeholder={t('journalWrite.newTag')}
+                placeholderTextColor={palette.textSubtle}
+                accessibilityLabel={t('journalWrite.newTag')}
+                style={[
+                  Type.chip,
+                  {
+                    minWidth: 90,
+                    paddingVertical: 8,
                     paddingHorizontal: 14,
-                    paddingVertical: 9,
-                    borderRadius: UI.radius.pill,
+                    borderRadius: 999,
                     borderWidth: 1.5,
-                    backgroundColor: active ? '#8B6B47' + '12' : colors.card,
-                    borderColor: active ? '#8B6B47' + '40' : colors.border,
-                    transform: [{ scale: pressed ? 0.95 : 1 }],
-                  })}
-                >
-                  <Text
-                    style={{
-                      fontFamily: Typography.family.body,
-                      fontSize: 13,
-                      fontWeight: Typography.weight.semibold,
-                      color: active ? '#8B6B47' : colors.mutedText,
-                    }}
-                  >
-                    {tag}
-                  </Text>
-                </Pressable>
-              );
-            })}
+                    borderColor: palette.plum,
+                    backgroundColor: palette.white,
+                    color: palette.ink,
+                  },
+                ]}
+              />
+            ) : (
+              <Tag
+                label={t('journalWrite.addTag')}
+                selected={false}
+                onPress={() => setAdding(true)}
+              />
+            )}
           </View>
         </View>
 
-        {/* Create Journal CTA */}
-        <Pressable
-          onPress={canSave ? save : undefined}
-          style={({ pressed }) => ({
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
-            backgroundColor: canSave ? '#5B8A5A' : colors.card,
-            borderRadius: UI.radius.xl,
-            paddingVertical: 18,
-            marginTop: 8,
-            opacity: pressed && canSave ? 0.9 : 1,
-            borderWidth: canSave ? 0 : 1,
-            borderColor: colors.border,
-            ...UI.shadow.md,
-          })}
-        >
-          <MaterialIcons
-            name="check-circle"
-            size={22}
-            color={canSave ? '#fff' : colors.placeholder}
-          />
-          <Text style={{ ...Typography.heading, color: canSave ? '#fff' : colors.placeholder }}>
-            {editing ? t('journalDetail.saveChanges') : 'Create Journal'}
-          </Text>
-        </Pressable>
+        <View style={{ flex: 1, minHeight: 32 }} />
+        <AppButton
+          title={t('journalWrite.saveEntry')}
+          size="lg"
+          icon="line/check"
+          iconPosition="left"
+          busy={saving}
+          disabled={!canSave}
+          onPress={save}
+          style={{ marginHorizontal: 24 }}
+        />
       </ScrollView>
+      <CrisisSheet
+        visible={crisisFor !== null}
+        onClose={() => {
+          const created = crisisFor;
+          setCrisisFor(null);
+          if (created)
+            router.replace({ pathname: '/(tabs)/journal/saved', params: { id: created } });
+        }}
+      />
     </KeyboardAvoidingView>
   );
 }

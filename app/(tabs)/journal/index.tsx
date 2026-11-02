@@ -105,6 +105,13 @@ export default function JournalHome() {
       color: '#8B6B47',
     },
     {
+      // The write screen no longer starts with a Voice or Text choice, so voice entry starts here.
+      label: t('journalHome.voiceEntry'),
+      icon: 'mic',
+      path: '/(tabs)/journal/voice',
+      color: '#7B6DC9',
+    },
+    {
       label: t('journalHome.myJournals'),
       icon: 'menu-book',
       path: '/(tabs)/journal/history',
