@@ -1,545 +1,41 @@
-import { screenBottomPadding } from '@/lib/screen-layout';
-import { Typography } from '@/constants/typography';
-import { WellnessIconText } from '@/components/WellnessIconText';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  View,
-  Text,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Modal,
-  Switch,
-  ActivityIndicator,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTranslation } from 'react-i18next';
+import React, { useCallback, useEffect, useRef } from 'react';
+import { ActivityIndicator, Pressable, Text, View, useWindowDimensions } from 'react-native';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useFocusEffect } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
-import { queryKeys } from '@/lib/queryKeys';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors, UI, palette } from '@/constants/theme';
+import { palette } from '@/constants/theme';
+import { Type } from '@/constants/typography';
 import { EmptyScreen } from '@/components/EmptyScreen';
+import { LegalNote } from '@/components/ui/controls';
+import { IconButton } from '@/components/ui/IconButton';
+import { DateTile, MiniRing, PillChip, ScoreNav, ScoreRing, ScoreScreen } from '@/components/score/ScoreParts';
+import AuraArt from '@/assets/svg/illustrations/score/aura.svg';
+import { useFreudScore } from '@/hooks/useFreudScore';
+import { useScoreDays, type ScoreDay } from '@/hooks/useScoreDays';
 import { useMood } from '@/hooks/useMood';
 import { checkInDays, SCORE_HISTORY_MIN_DAYS } from '@/lib/home';
+import { labelKey, scoreColor, scoreRange, dayKey } from '@/lib/glow-score';
+import { moodScoreOf, moodStep } from '@/lib/mood-scale';
 import { backTo } from '@/lib/navigation';
-import { useFreudScore } from '@/hooks/useFreudScore';
-import { getFreudColor } from '@/lib/freudScore';
-import type { FreudScoreRecord } from '@/lib/freudScore';
-import ScreenHeader from '@/components/ScreenHeader';
-import MaterialIcons from '@/components/AppIcon';
-import Svg, {
-  Circle,
-  Defs,
-  LinearGradient,
-  Stop,
-  Line,
-  Polyline,
-  Text as SvgText,
-} from 'react-native-svg';
+import { queryKeys } from '@/lib/queryKeys';
+import type { AISuggestion } from '@/lib/freudScore';
 
-/* ── Design tokens ── */
-const BROWN = '#8B6B47';
-const SAGE = '#5AAF8B';
-
-/* ── Metric config ── */
-const BREAKDOWN_METRICS = [
-  { key: 'mood', emoji: '😊', color: '#5AAF8B' },
-  { key: 'sleep', emoji: '🌙', color: '#7E57C2' },
-  { key: 'stress', emoji: '⚡', color: '#FF9800' },
-  { key: 'mindfulness', emoji: '🧘', color: '#42A5F5' },
-  { key: 'consistency', emoji: '🔥', color: '#EC407A' },
-  { key: 'journal', emoji: '📝', color: '#8BC34A' },
-] as const;
-
-/* ------------------------------------------------------------------ */
-/*  Big score ring — premium feel with glow                            */
-/* ------------------------------------------------------------------ */
-
-function BigScoreRing({
-  score,
-  color,
-  label,
-  colors,
-}: {
-  score: number;
-  color: string;
-  label: string;
-  colors: (typeof Colors)['light'] | (typeof Colors)['dark'];
-}) {
-  const size = 200;
-  const strokeWidth = 12;
-  const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const progress = Math.max(0, Math.min(100, score));
-  const strokeDashoffset = circumference - (progress / 100) * circumference;
-
-  // Decorative tick marks
-  const tickCount = 40;
-  const ticks = Array.from({ length: tickCount }, (_, i) => {
-    const angle = (i / tickCount) * 360 - 90;
-    const rad = (angle * Math.PI) / 180;
-    const outerR = radius + strokeWidth / 2 + 6;
-    const innerR = radius + strokeWidth / 2 + 2;
-    return {
-      x1: size / 2 + Math.cos(rad) * innerR,
-      y1: size / 2 + Math.sin(rad) * innerR,
-      x2: size / 2 + Math.cos(rad) * outerR,
-      y2: size / 2 + Math.sin(rad) * outerR,
-      active: (i / tickCount) * 100 <= progress,
-    };
-  });
-
-  return (
-    <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-      <View
-        style={{
-          width: size + 24,
-          height: size + 24,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <Svg width={size + 24} height={size + 24}>
-          <Defs>
-            <LinearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <Stop offset="0%" stopColor={color} stopOpacity="1" />
-              <Stop offset="100%" stopColor={color} stopOpacity="0.6" />
-            </LinearGradient>
-          </Defs>
-
-          {/* Decorative tick marks */}
-          {ticks.map((tick, i) => (
-            <Line
-              key={i}
-              x1={tick.x1 + 12}
-              y1={tick.y1 + 12}
-              x2={tick.x2 + 12}
-              y2={tick.y2 + 12}
-              stroke={tick.active ? color : colors.border}
-              strokeWidth={1.5}
-              strokeLinecap="round"
-              opacity={tick.active ? 0.6 : 0.3}
-            />
-          ))}
-
-          {/* Background circle */}
-          <Circle
-            cx={(size + 24) / 2}
-            cy={(size + 24) / 2}
-            r={radius}
-            stroke={color}
-            strokeWidth={strokeWidth}
-            fill="none"
-            opacity={0.1}
-          />
-          {/* Progress arc */}
-          <Circle
-            cx={(size + 24) / 2}
-            cy={(size + 24) / 2}
-            r={radius}
-            stroke="url(#ringGrad)"
-            strokeWidth={strokeWidth}
-            fill="none"
-            strokeDasharray={`${circumference} ${circumference}`}
-            strokeDashoffset={strokeDashoffset}
-            strokeLinecap="round"
-            rotation="-90"
-            origin={`${(size + 24) / 2}, ${(size + 24) / 2}`}
-          />
-        </Svg>
-
-        {/* Center content */}
-        <View style={{ position: 'absolute', alignItems: 'center' }}>
-          <Text
-            style={{
-              fontFamily: Typography.family.body,
-              fontSize: 52,
-              fontWeight: Typography.weight.semibold,
-              color,
-              letterSpacing: -2,
-            }}
-          >
-            {score}
-          </Text>
-          <Text
-            style={{
-              fontFamily: Typography.family.body,
-              fontSize: 12,
-              fontWeight: Typography.weight.semibold,
-              color: colors.mutedText,
-              marginTop: -2,
-              letterSpacing: 1.5,
-              textTransform: 'uppercase',
-            }}
-          >
-            {label}
-          </Text>
-        </View>
-      </View>
-    </View>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/*  Metric breakdown card — rich mini cards instead of bars             */
-/* ------------------------------------------------------------------ */
-
-function MetricCard({
-  emoji,
-  label,
-  value,
-  color,
-  colors,
-}: {
-  emoji: string;
-  label: string;
-  value: number;
-  color: string;
-  colors: (typeof Colors)['light'] | (typeof Colors)['dark'];
-}) {
-  const normalized = Math.max(0, Math.min(100, Number.isFinite(value) ? value : 0));
-  return (
-    <View
-      style={{
-        paddingVertical: 14,
-        gap: 10,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.border,
-      }}
-    >
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        <View
-          style={{
-            width: 36,
-            height: 36,
-            borderRadius: 10,
-            backgroundColor: color + '12',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <WellnessIconText style={{ fontSize: 18 }}>{emoji}</WellnessIconText>
-        </View>
-        <Text style={[Typography.body, { flex: 1, color: colors.text }]}>{label}</Text>
-        <Text style={[Typography.cardHeading, { color: colors.text }]}>
-          {normalized}
-          <Text style={[Typography.caption, { color: colors.mutedText }]}> / 100</Text>
-        </Text>
-      </View>
-      <View
-        accessibilityRole="progressbar"
-        accessibilityLabel={label}
-        accessibilityValue={{ min: 0, max: 100, now: normalized }}
-        style={{ height: 5, borderRadius: 3, backgroundColor: colors.divider, overflow: 'hidden' }}
-      >
-        <View
-          style={{
-            height: '100%',
-            width: `${normalized}%`,
-            backgroundColor: color,
-            borderRadius: 3,
-          }}
-        />
-      </View>
-    </View>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/*  Score Chart — polished with area fill                              */
-/* ------------------------------------------------------------------ */
-
-const CHART_H = 180;
-const CHART_PAD_L = 38;
-const CHART_PAD_R = 12;
-const CHART_PAD_T = 12;
-const CHART_PAD_B = 28;
-
-function ScoreChart({
-  records,
-  textColor,
-  mutedColor,
-}: {
-  records: FreudScoreRecord[];
-  textColor: string;
-  mutedColor: string;
-}) {
-  const [chartW, setChartW] = useState(280);
-  const plotW = Math.max(1, chartW - CHART_PAD_L - CHART_PAD_R);
-  const plotH = CHART_H - CHART_PAD_T - CHART_PAD_B;
-
-  const sorted = useMemo(
-    () => [...records].sort((a, b) => a.createdAt.localeCompare(b.createdAt)).slice(-14),
-    [records],
-  );
-
-  if (sorted.length < 2) return null;
-
-  const yTicks = [0, 25, 50, 75, 100];
-  const lastColor = getFreudColor(sorted[sorted.length - 1].score);
-
-  const points = sorted.map((r, i) => {
-    const x = CHART_PAD_L + (i / (sorted.length - 1)) * plotW;
-    const y = CHART_PAD_T + plotH - (r.score / 100) * plotH;
-    return { x, y, score: r.score, date: r.createdAt };
-  });
-
-  const polylineStr = points.map((p) => `${p.x},${p.y}`).join(' ');
-  const areaStr = `${points[0].x},${CHART_PAD_T + plotH} ${polylineStr} ${points[points.length - 1].x},${CHART_PAD_T + plotH}`;
-
-  return (
-    <View
-      onLayout={(event) => setChartW(Math.max(1, event.nativeEvent.layout.width))}
-      style={{ width: '100%' }}
-    >
-      <Svg width={chartW} height={CHART_H}>
-        <Defs>
-          <LinearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0%" stopColor={lastColor} stopOpacity="0.2" />
-            <Stop offset="100%" stopColor={lastColor} stopOpacity="0.02" />
-          </LinearGradient>
-        </Defs>
-
-        {yTicks.map((tick) => {
-          const y = CHART_PAD_T + plotH - (tick / 100) * plotH;
-          return (
-            <React.Fragment key={tick}>
-              <Line
-                x1={CHART_PAD_L}
-                y1={y}
-                x2={CHART_PAD_L + plotW}
-                y2={y}
-                stroke={mutedColor}
-                strokeWidth={0.5}
-                opacity={0.2}
-              />
-              <SvgText
-                x={CHART_PAD_L - 6}
-                y={y + 4}
-                fontSize={10}
-                fill={mutedColor}
-                textAnchor="end"
-              >
-                {tick}
-              </SvgText>
-            </React.Fragment>
-          );
-        })}
-
-        <Polyline points={areaStr} fill="url(#chartFill)" />
-        <Polyline
-          points={polylineStr}
-          fill="none"
-          stroke={lastColor}
-          strokeWidth={2.5}
-          strokeLinejoin="round"
-          strokeLinecap="round"
-        />
-
-        {points.map((p, i) => (
-          <React.Fragment key={i}>
-            {/* Glow behind dot */}
-            <Circle cx={p.x} cy={p.y} r={6} fill={getFreudColor(p.score)} opacity={0.15} />
-            <Circle cx={p.x} cy={p.y} r={3.5} fill={getFreudColor(p.score)} />
-          </React.Fragment>
-        ))}
-
-        <SvgText x={points[0].x} y={CHART_H - 4} fontSize={9} fill={mutedColor} textAnchor="start">
-          {new Date(sorted[0].createdAt).toLocaleDateString(undefined, {
-            month: 'short',
-            day: 'numeric',
-          })}
-        </SvgText>
-        <SvgText
-          x={points[points.length - 1].x}
-          y={CHART_H - 4}
-          fontSize={9}
-          fill={mutedColor}
-          textAnchor="end"
-        >
-          {new Date(sorted[sorted.length - 1].createdAt).toLocaleDateString(undefined, {
-            month: 'short',
-            day: 'numeric',
-          })}
-        </SvgText>
-      </Svg>
-    </View>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/*  Filter Modal                                                       */
-/* ------------------------------------------------------------------ */
-
-function FilterModal({
-  visible,
-  onClose,
-  onApply,
-  colors,
-}: {
-  visible: boolean;
-  onClose: () => void;
-  onApply: (filters: FilterState) => void;
-  colors: (typeof Colors)['light'] | (typeof Colors)['dark'];
-}) {
-  const { t } = useTranslation();
-  const [range, setRange] = useState<[number, number]>([0, 100]);
-  const [includeAI, setIncludeAI] = useState(true);
-  const [period, setPeriod] = useState<'week' | 'month' | 'all'>('month');
-
-  const periods = [
-    { key: 'week' as const, label: '7d' },
-    { key: 'month' as const, label: '30d' },
-    { key: 'all' as const, label: t('common.all') ?? 'All' },
-  ];
-
-  const scoreRanges = [
-    { min: 0, max: 40, label: t('freudScore.negative') },
-    { min: 0, max: 100, label: t('common.all') ?? 'All' },
-    { min: 60, max: 100, label: t('freudScore.positive') },
-  ];
-
-  return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={filterStyles.overlay}>
-        <View style={[filterStyles.sheet, { backgroundColor: colors.card }]}>
-          <View style={filterStyles.handle} />
-
-          <Text style={[filterStyles.title, { color: colors.text }]}>
-            {t('freudScore.filterScore')}
-          </Text>
-
-          <Text style={[filterStyles.label, { color: colors.mutedText }]}>
-            {t('freudScore.moodHistory')}
-          </Text>
-          <View style={filterStyles.chipRow}>
-            {periods.map((p) => (
-              <Pressable
-                key={p.key}
-                onPress={() => setPeriod(p.key)}
-                style={[
-                  filterStyles.chip,
-                  {
-                    backgroundColor: period === p.key ? BROWN : 'transparent',
-                    borderColor: period === p.key ? BROWN : colors.border,
-                  },
-                ]}
-              >
-                <Text
-                  style={{
-                    fontFamily: Typography.family.body,
-                    color: period === p.key ? '#fff' : colors.mutedText,
-                    fontWeight: Typography.weight.semibold,
-                    fontSize: 13,
-                  }}
-                >
-                  {p.label}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-
-          <Text style={[filterStyles.label, { color: colors.mutedText, marginTop: 20 }]}>
-            {t('freudScore.scoreRange')}
-          </Text>
-          <View style={filterStyles.chipRow}>
-            {scoreRanges.map((sr, idx) => {
-              const active = range[0] === sr.min && range[1] === sr.max;
-              return (
-                <Pressable
-                  key={idx}
-                  onPress={() => setRange([sr.min, sr.max])}
-                  style={[
-                    filterStyles.chip,
-                    {
-                      backgroundColor: active ? BROWN : 'transparent',
-                      borderColor: active ? BROWN : colors.border,
-                    },
-                  ]}
-                >
-                  <Text
-                    style={{
-                      fontFamily: Typography.family.body,
-                      color: active ? '#fff' : colors.mutedText,
-                      fontWeight: Typography.weight.semibold,
-                      fontSize: 13,
-                    }}
-                  >
-                    {sr.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-
-          <View style={[filterStyles.toggleRow, { borderColor: colors.border }]}>
-            <Text
-              style={{
-                fontFamily: Typography.family.body,
-                color: colors.text,
-                fontWeight: Typography.weight.semibold,
-                fontSize: 14,
-              }}
-            >
-              {t('freudScore.includeAI')}
-            </Text>
-            <Switch value={includeAI} onValueChange={setIncludeAI} trackColor={{ true: SAGE }} />
-          </View>
-
-          <Pressable
-            onPress={() => {
-              onApply({ scoreMin: range[0], scoreMax: range[1], includeAI, period });
-              onClose();
-            }}
-            style={({ pressed }) => [filterStyles.applyBtn, { opacity: pressed ? 0.8 : 1 }]}
-          >
-            <Text style={filterStyles.applyBtnText}>{t('freudScore.filterButton')}</Text>
-          </Pressable>
-
-          <Pressable onPress={onClose} style={{ alignSelf: 'center', marginTop: 14 }}>
-            <Text
-              style={{
-                fontFamily: Typography.family.body,
-                color: colors.mutedText,
-                fontSize: 14,
-                fontWeight: Typography.weight.semibold,
-              }}
-            >
-              {t('common.close')}
-            </Text>
-          </Pressable>
-        </View>
-      </View>
-    </Modal>
-  );
-}
-
-type FilterState = {
-  scoreMin: number;
-  scoreMax: number;
-  includeAI: boolean;
-  period: 'week' | 'month' | 'all';
-};
-
-/* ------------------------------------------------------------------ */
-/*  Screen                                                             */
-/* ------------------------------------------------------------------ */
-
-export default function FreudScoreScreen() {
-  const { t } = useTranslation();
-  const theme = useColorScheme() ?? 'light';
-  const colors = Colors[theme];
-  const insets = useSafeAreaInsets();
+/**
+ * Glow score (03 §2.2): the 176 ring over the aura art, the score's label, the range chip and
+ * "Ask Glow AI why", the last three days and the legal note. The chart and filters moved to
+ * Insights and Score history.
+ */
+export default function GlowScoreScreen() {
+  const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
-  const { currentScore, scoreHistory, isLoadingHistory, isDataLoading, saveScore } =
-    useFreudScore();
+  const { width } = useWindowDimensions();
+  const { currentScore, isDataLoading, isLoadingHistory, saveScore, suggestions } = useFreudScore();
   const { moodCheckIns, isLoading: moodLoading } = useMood();
+  const { days } = useScoreDays();
   const hasSavedRef = useRef(false);
-  const [showFilter, setShowFilter] = useState(false);
 
-  /* ── Invalidate all source data on screen focus so score recalculates ── */
+  // Refresh the sources on focus so the live score recalculates.
   useFocusEffect(
     useCallback(() => {
       hasSavedRef.current = false;
@@ -553,53 +49,13 @@ export default function FreudScoreScreen() {
     }, [queryClient]),
   );
 
-  /* ── Auto-save today's score snapshot once all data has settled ── */
+  // Save today's snapshot once the data has settled; history and Insights read these.
   useEffect(() => {
     if (!isDataLoading && !isLoadingHistory && currentScore.score > 0 && !hasSavedRef.current) {
       hasSavedRef.current = true;
       saveScore({ result: currentScore, generateSuggestions: false }).catch(() => {});
     }
   }, [isDataLoading, isLoadingHistory, currentScore, saveScore]);
-  const [filters, setFilters] = useState<FilterState>({
-    scoreMin: 0,
-    scoreMax: 100,
-    includeAI: true,
-    period: 'month',
-  });
-  const [chartView, setChartView] = useState<'chart' | 'list'>('chart');
-
-  const scoreColor = getFreudColor(currentScore.score);
-
-  const filteredHistory = useMemo(() => {
-    let result = [...scoreHistory];
-    if (filters.period !== 'all') {
-      const now = new Date();
-      const cutoff = new Date();
-      cutoff.setDate(now.getDate() - (filters.period === 'week' ? 7 : 30));
-      result = result.filter((r) => new Date(r.createdAt) >= cutoff);
-    }
-    result = result.filter((r) => r.score >= filters.scoreMin && r.score <= filters.scoreMax);
-    if (!filters.includeAI) {
-      result = result.filter((r) => r.source !== 'ai');
-    }
-    return result;
-  }, [scoreHistory, filters]);
-
-  const labelKey = useMemo(() => {
-    const map: Record<string, string> = {
-      'Critically Low': 'criticallyLow',
-      'Very Low': 'veryLow',
-      Low: 'low',
-      'Below Average': 'belowAverage',
-      Average: 'average',
-      'Above Average': 'aboveAverage',
-      Good: 'good',
-      'Very Good': 'veryGood',
-      'Mentally Stable': 'mentallyStable',
-      Excellent: 'excellent',
-    };
-    return map[currentScore.label] ?? 'average';
-  }, [currentScore.label]);
 
   // Glow score · History empty (09 §3.10): history appears after check-ins on three different days.
   if (!moodLoading && checkInDays(moodCheckIns) < SCORE_HISTORY_MIN_DAYS) {
@@ -614,449 +70,117 @@ export default function FreudScoreScreen() {
     );
   }
 
+  const score = currentScore.score;
+  const label = t(`freudScore.${labelKey(currentScore.label)}`, { defaultValue: currentScore.label });
+  const range = scoreRange(score);
+
+  const askWhy = () =>
+    router.push({
+      pathname: '/(tabs)/chat/new-conversation',
+      params: {
+        initialMessage: t('glowScore.askWhyPrompt', { score, label }),
+        from: '/(tabs)/freud-score',
+      },
+    });
+
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <ScrollView
-        contentContainerStyle={[
-          styles.scroll,
-          { paddingBottom: screenBottomPadding(insets.bottom) },
-        ]}
-        showsVerticalScrollIndicator={false}
-      >
-        <ScreenHeader
-          title={t('freudScore.title')}
-          subtitle={t('freudScore.subtitle')}
-          rightElement={
-            <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
-              <Pressable
-                onPress={() => setShowFilter(true)}
-                style={({ pressed }) => [
-                  styles.headerBtn,
-                  {
-                    backgroundColor: colors.card,
-                    borderColor: colors.border,
-                    opacity: pressed ? 0.7 : 1,
-                  },
-                ]}
-              >
-                <MaterialIcons name="tune" size={18} color={colors.mutedText} />
-              </Pressable>
-              <Pressable
-                onPress={() => router.push('/(tabs)/freud-score/ai-suggestions' as any)}
-                style={({ pressed }) => [
-                  styles.headerBtn,
-                  {
-                    backgroundColor: SAGE + '15',
-                    borderColor: SAGE + '30',
-                    opacity: pressed ? 0.7 : 1,
-                  },
-                ]}
-              >
-                <MaterialIcons name="auto-awesome" size={18} color={SAGE} />
-              </Pressable>
-            </View>
+    <ScoreScreen
+      tabBar
+      glows={[
+        { color: palette.mustard, opacity: 0.4, x: 37.5, y: 62, width: 300, blur: 80 },
+        { color: palette.lavenderSoft, opacity: 0.3, x: 167.5, y: 142, width: 200, blur: 70 },
+      ]}
+      art={<AuraArt width={width} height={(460 * width) / 375} />}
+      nav={
+        <ScoreNav
+          label={t('glowScore.title')}
+          backLabel={t('common.back')}
+          onBack={() => backTo(undefined, '/(tabs)/home')}
+          // Figma has no way into Insights; this button is the entry point.
+          trailing={
+            <IconButton
+              size={44}
+              variant="solid"
+              icon="line/chart"
+              iconSize={20}
+              accessibilityLabel={t('glowScore.insights')}
+              onPress={() => router.push('/(tabs)/freud-score/insights')}
+            />
           }
         />
-
-        {/* ── Main score card ── */}
-        <View
-          style={[
-            styles.scoreCard,
-            {
-              backgroundColor: theme === 'light' ? '#F8F5F0' : colors.card,
-              borderColor: colors.border,
-            },
-          ]}
-        >
+      }
+    >
+      <View style={{ alignItems: 'center', marginTop: 23 }}>
+        <ScoreRing size={176} thickness={3} value={isDataLoading ? 0 : score} knob={!isDataLoading}>
           {isDataLoading ? (
-            <View style={{ alignItems: 'center', paddingVertical: 40 }}>
-              <ActivityIndicator size="large" color={colors.primary} />
-              <Text
-                style={{
-                  fontFamily: Typography.family.body,
-                  color: colors.mutedText,
-                  marginTop: 12,
-                  fontSize: 14,
-                }}
-              >
-                {t('freudScore.calculatingScore') || 'Calculating your score...'}
-              </Text>
-            </View>
+            <ActivityIndicator color={palette.plum} accessibilityLabel={t('freudScore.calculatingScore')} />
           ) : (
-            <>
-              <BigScoreRing
-                score={currentScore.score}
-                color={scoreColor}
-                label={t(`freudScore.${labelKey}`)}
-                colors={colors}
-              />
-
-              {/* AI Suggestions CTA */}
-              <Pressable
-                onPress={() => router.push('/(tabs)/freud-score/ai-suggestions' as any)}
-                style={({ pressed }) => [
-                  styles.suggestionCta,
-                  {
-                    backgroundColor: SAGE + '12',
-                    borderColor: SAGE + '25',
-                    opacity: pressed ? 0.8 : 1,
-                    transform: [{ scale: pressed ? 0.98 : 1 }],
-                  },
-                ]}
-              >
-                <MaterialIcons name="auto-awesome" size={16} color={SAGE} />
-                <Text
-                  style={{
-                    fontFamily: Typography.family.body,
-                    fontSize: 13,
-                    color: SAGE,
-                    fontWeight: Typography.weight.semibold,
-                    flex: 1,
-                  }}
-                >
-                  View AI suggestions
-                </Text>
-                <MaterialIcons name="chevron-right" size={18} color={SAGE} />
-              </Pressable>
-            </>
-          )}
-        </View>
-
-        {/* ── Metric breakdown grid ── */}
-        <View style={{ marginTop: 20 }}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            {t('freudScore.breakdown')}
-          </Text>
-
-          {isDataLoading ? (
-            <View style={{ alignItems: 'center', paddingVertical: 16 }}>
-              <ActivityIndicator size="small" color={colors.mutedText} />
-            </View>
-          ) : (
-            <View
-              style={{
-                paddingHorizontal: 16,
-                paddingVertical: 2,
-                borderWidth: 1,
-                borderColor: colors.border,
-                borderRadius: UI.radius.lg,
-                backgroundColor: colors.card,
-              }}
-            >
-              {BREAKDOWN_METRICS.map((m) => (
-                <MetricCard
-                  key={m.key}
-                  emoji={m.emoji}
-                  label={t(`freudScore.${m.key}`)}
-                  value={currentScore.breakdown[m.key as keyof typeof currentScore.breakdown] ?? 0}
-                  color={m.color}
-                  colors={colors}
-                />
-              ))}
+            <View accessible accessibilityLabel={t('glowScore.ringLabel', { score })} style={{ alignItems: 'center' }}>
+              <Text style={[Type.display, { fontSize: 64, lineHeight: 76, color: palette.plumDeep }]}>{score}</Text>
+              <Text style={[Type.chip, { color: palette.textMuted }]}>{t('glowScore.outOf')}</Text>
             </View>
           )}
-        </View>
+        </ScoreRing>
+      </View>
 
-        {/* ── Score history ── */}
-        <View
-          style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}
-        >
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { marginBottom: 0, color: colors.text }]}>
-              {t('freudScore.scoreHistory')}
-            </Text>
-            <View style={[styles.toggleGroup, { backgroundColor: colors.background }]}>
-              <Pressable
-                onPress={() => setChartView('chart')}
-                style={[
-                  styles.viewToggle,
-                  {
-                    backgroundColor: chartView === 'chart' ? colors.card : 'transparent',
-                  },
-                  chartView === 'chart' && UI.shadow.sm,
-                ]}
-              >
-                <MaterialIcons
-                  name="show-chart"
-                  size={16}
-                  color={chartView === 'chart' ? colors.text : colors.mutedText}
-                />
-              </Pressable>
-              <Pressable
-                onPress={() => setChartView('list')}
-                style={[
-                  styles.viewToggle,
-                  {
-                    backgroundColor: chartView === 'list' ? colors.card : 'transparent',
-                  },
-                  chartView === 'list' && UI.shadow.sm,
-                ]}
-              >
-                <MaterialIcons
-                  name="format-list-bulleted"
-                  size={16}
-                  color={chartView === 'list' ? colors.text : colors.mutedText}
-                />
-              </Pressable>
-            </View>
-          </View>
+      <Text accessibilityRole="header" style={[Type.titleLg, { fontSize: 24, lineHeight: 29, color: palette.plumDeep, textAlign: 'center', marginTop: 32 }]}>
+        {isDataLoading ? ' ' : label}
+      </Text>
+      <View style={{ flexDirection: 'row', justifyContent: 'center', flexWrap: 'wrap', gap: 8, marginTop: 9 }}>
+        <PillChip icon={range.face} label={t(`glowScore.range.${range.key}`)} />
+        <PillChip icon="line/sparkle" label={t('glowScore.askWhy')} outlined onPress={askWhy} />
+      </View>
 
-          {filteredHistory.length === 0 ? (
-            <View style={styles.emptyHistory}>
-              <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 32 }}>
-                📊
-              </WellnessIconText>
-              <Text
-                style={{
-                  fontFamily: Typography.family.body,
-                  color: colors.mutedText,
-                  fontSize: 14,
-                  marginTop: 8,
-                  textAlign: 'center',
-                }}
-              >
-                {t('freudScore.noHistory')}
-              </Text>
-            </View>
-          ) : chartView === 'chart' ? (
-            <ScoreChart
-              records={filteredHistory}
-              textColor={colors.text}
-              mutedColor={colors.mutedText}
-            />
-          ) : (
-            filteredHistory.slice(0, 10).map((record, idx) => {
-              const recordColor = getFreudColor(record.score);
-              const date = new Date(record.createdAt);
-              return (
-                <View
-                  key={record.id}
-                  style={[
-                    styles.historyRow,
-                    idx < Math.min(9, filteredHistory.length - 1) && {
-                      borderBottomWidth: StyleSheet.hairlineWidth,
-                      borderBottomColor: colors.border,
-                    },
-                  ]}
-                >
-                  <View style={[styles.historyScoreBadge, { backgroundColor: recordColor + '14' }]}>
-                    <Text style={[styles.historyScoreNum, { color: recordColor }]}>
-                      {record.score}
-                    </Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.historyLabel, { color: colors.text }]}>
-                      {record.label}
-                    </Text>
-                    <Text
-                      style={{
-                        fontFamily: Typography.family.body,
-                        fontSize: 12,
-                        color: colors.mutedText,
-                      }}
-                    >
-                      {date.toLocaleDateString(undefined, {
-                        weekday: 'short',
-                        month: 'short',
-                        day: 'numeric',
-                      })}
-                    </Text>
-                  </View>
-                  <View style={[styles.historyTrend, { backgroundColor: recordColor + '10' }]}>
-                    <MaterialIcons
-                      name={record.score >= 50 ? 'trending-up' : 'trending-down'}
-                      size={16}
-                      color={recordColor}
-                    />
-                  </View>
-                </View>
-              );
-            })
-          )}
-        </View>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8, minHeight: 44 }}>
+        <Text accessibilityRole="header" style={[Type.titleSm, { color: palette.plumDeep }]}>
+          {t('glowScore.history')}
+        </Text>
+        <Pressable accessibilityRole="link" hitSlop={12} onPress={() => router.push('/(tabs)/freud-score/history')}>
+          <Text style={[Type.label, { fontWeight: '700', color: palette.lavender }]}>{t('glowScore.seeAll')}</Text>
+        </Pressable>
+      </View>
 
-        <View style={{ height: 40 }} />
-      </ScrollView>
+      <View style={{ gap: 10, marginTop: 2, marginHorizontal: -8 }}>
+        {days.slice(0, 3).map((d) => (
+          <HistoryRow key={d.key} day={d} suggestions={suggestions} locale={i18n.language} />
+        ))}
+      </View>
 
-      <FilterModal
-        visible={showFilter}
-        onClose={() => setShowFilter(false)}
-        onApply={setFilters}
-        colors={colors}
-      />
-    </View>
+      <LegalNote text={t('glowScore.legal')} style={{ marginTop: 20 }} />
+    </ScoreScreen>
   );
 }
 
-/* ------------------------------------------------------------------ */
-/*  Styles                                                             */
-/* ------------------------------------------------------------------ */
-
-const styles = StyleSheet.create({
-  container: { flex: 1, paddingHorizontal: 20 },
-  scroll: { paddingBottom: 120 },
-
-  headerBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-  },
-
-  scoreCard: {
-    borderRadius: 28,
-    padding: 24,
-    marginTop: 20,
-    alignItems: 'center',
-    borderWidth: 1,
-    ...UI.shadow.md,
-  },
-
-  suggestionCta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 16,
-    borderWidth: 1,
-    width: '100%',
-  },
-
-  sectionTitle: { ...Typography.section, fontSize: 20, marginBottom: 14 },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-
-  metricsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-
-  section: {
-    borderRadius: 22,
-    padding: 20,
-    marginTop: 16,
-    borderWidth: 1,
-    ...UI.shadow.sm,
-  },
-
-  toggleGroup: {
-    flexDirection: 'row',
-    borderRadius: 10,
-    padding: 3,
-    gap: 2,
-  },
-  viewToggle: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  emptyHistory: {
-    alignItems: 'center',
-    paddingVertical: 30,
-  },
-
-  historyRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    gap: 14,
-  },
-  historyScoreBadge: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  historyScoreNum: {
-    fontFamily: Typography.family.body,
-    fontSize: 18,
-    fontWeight: Typography.weight.bold,
-  },
-  historyLabel: {
-    fontFamily: Typography.family.body,
-    fontSize: 15,
-    fontWeight: Typography.weight.medium,
-  },
-  historyTrend: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
-
-/* ------------------------------------------------------------------ */
-/*  Filter modal styles                                                */
-/* ------------------------------------------------------------------ */
-
-const filterStyles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.35)',
-  },
-  sheet: {
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    padding: 24,
-    paddingBottom: 40,
-    ...UI.shadow.lg,
-  },
-  handle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: 'rgba(128,128,128,0.3)',
-    alignSelf: 'center',
-    marginBottom: 20,
-  },
-  title: { ...Typography.heading, fontSize: 20, marginBottom: 20 },
-  label: {
-    fontFamily: Typography.family.body,
-    fontSize: 13,
-    fontWeight: Typography.weight.medium,
-    marginBottom: 10,
-  },
-  chipRow: { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
-  chip: {
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
-  toggleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 22,
-    paddingTop: 18,
-    borderTopWidth: 1,
-  },
-  applyBtn: {
-    marginTop: 24,
-    backgroundColor: BROWN,
-    paddingVertical: 16,
-    borderRadius: 16,
-    alignItems: 'center',
-  },
-  applyBtnText: {
-    fontFamily: Typography.family.body,
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: Typography.weight.semibold,
-  },
-});
+function HistoryRow({ day, suggestions, locale }: { day: ScoreDay; suggestions: AISuggestion[]; locale: string }) {
+  const { t } = useTranslation();
+  const mood = day.checkIn ? t(`moodScale.${moodStep(moodScoreOf(day.checkIn.mood)).key}`) : t('glowScore.noCheckIn');
+  // The day's recommendation is the first suggestion made that day (03 §2.2).
+  const suggestion = suggestions.find((s) => dayKey(new Date(s.createdAt)) === day.key);
+  const sub = suggestion?.title ?? t('glowScore.noRecommendation');
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${day.date.toLocaleDateString(locale, { day: 'numeric', month: 'long' })}, ${mood}, ${sub}, ${day.score}`}
+      onPress={() => router.push('/(tabs)/freud-score/history')}
+      style={({ pressed }) => ({
+        minHeight: 62,
+        borderRadius: 999,
+        backgroundColor: palette.white,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 14,
+        paddingVertical: 8,
+        paddingLeft: 8,
+        paddingRight: 12,
+        opacity: pressed ? 0.85 : 1,
+      })}
+    >
+      <DateTile date={day.date} locale={locale} />
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text numberOfLines={1} style={[Type.bodyStrong, { color: palette.plumDeep }]}>{mood}</Text>
+        <Text numberOfLines={1} style={[Type.captionS, { color: palette.textSubtle }]}>{sub}</Text>
+      </View>
+      <MiniRing value={day.score} color={scoreColor(day.score)} />
+    </Pressable>
+  );
+}

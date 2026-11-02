@@ -1,919 +1,137 @@
-import { useSubscription } from '@/hooks/useSubscription';
-import { toast } from '@/components/Toast';
-import { backTo } from '@/lib/navigation';
-import { Typography } from '@/constants/typography';
-import { WellnessIconText } from '@/components/WellnessIconText';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  View,
-  Text,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Modal,
-  ActivityIndicator,
-  Platform,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import React, { useEffect, useMemo, useRef } from 'react';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { router } from 'expo-router';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors, UI } from '@/constants/theme';
+import { palette } from '@/constants/theme';
+import { Type } from '@/constants/typography';
+import { AppButton } from '@/components/ui/AppButton';
+import { Icon } from '@/components/icons/Icon';
+import { toast } from '@/components/Toast';
+import { CATEGORY_ICON, ScoreNav, ScoreScreen } from '@/components/score/ScoreParts';
 import { useFreudScore } from '@/hooks/useFreudScore';
-import type { AISuggestion } from '@/lib/freudScore';
-import MoodCheckInModal from '@/components/MoodCheckInModal';
-import type { MoodValue } from '@/components/MoodCheckInModal';
-import MaterialIcons from '@/components/AppIcon';
-import CitationSection from '@/components/CitationSection';
-import { MEDICAL_SOURCES } from '@/lib/citations';
+import { useSubscription } from '@/hooks/useSubscription';
+import { formatMinutes, planCategories, planItems, type PlanCategory } from '@/lib/glow-score';
+import { backTo } from '@/lib/navigation';
 
-const BROWN = '#8B6B47';
-
-/* ------------------------------------------------------------------ */
-/*  Category config                                                    */
-/* ------------------------------------------------------------------ */
-
-type CategoryConfig = {
-  key: 'mindfulness' | 'physical' | 'social' | 'professional';
-  label: string;
-  fallbackSubtitle: string;
-  color: string;
-  icons: { emoji: string; bg: string }[];
-};
-
-const CATEGORIES: CategoryConfig[] = [
-  {
-    key: 'mindfulness',
-    label: 'Mindfulness Activities',
-    fallbackSubtitle: 'Breathing, Relax',
-    color: '#5AAF8B',
-    icons: [
-      { emoji: '🧘', bg: '#5AAF8B' },
-      { emoji: '🌬️', bg: '#7DC8A8' },
-      { emoji: '🎵', bg: '#A3D9C0' },
-    ],
-  },
-  {
-    key: 'physical',
-    label: 'Physical Activities',
-    fallbackSubtitle: 'Jogging, Running, Swimming',
-    color: '#FF9800',
-    icons: [
-      { emoji: '🏃', bg: '#FF9800' },
-      { emoji: '🏋️', bg: '#FFB74D' },
-      { emoji: '🏊', bg: '#FFCC80' },
-    ],
-  },
-  {
-    key: 'social',
-    label: 'Social Connection',
-    fallbackSubtitle: 'Party, Binge Watching',
-    color: '#7E57C2',
-    icons: [
-      { emoji: '💬', bg: '#7E57C2' },
-      { emoji: '🤝', bg: '#9575CD' },
-      { emoji: '📱', bg: '#B39DDB' },
-    ],
-  },
-  {
-    key: 'professional',
-    label: 'Professional Support',
-    fallbackSubtitle: 'Psychiatrist, Hotline',
-    color: '#FF9800',
-    icons: [
-      { emoji: '🩺', bg: '#5AAF8B' },
-      { emoji: '📋', bg: '#FF9800' },
-      { emoji: '📞', bg: '#FF9800' },
-    ],
-  },
-];
-
-/* ── Helpers to derive dynamic subtitle + duration from real data ── */
-
-/** Extract short keywords from suggestion titles (first word of each, up to 3) */
-function deriveCategorySubtitle(items: AISuggestion[], fallback: string): string {
-  if (items.length === 0) return fallback;
-  const keywords = items
-    .slice(0, 3)
-    .map((s) => {
-      // Take the first meaningful word (skip very short ones)
-      const words = s.title.split(/\s+/).filter((w) => w.length > 2);
-      return words[0] ?? s.title.split(/\s+/)[0];
-    })
-    .filter(Boolean);
-  const unique = [...new Set(keywords)];
-  return unique.length > 0 ? unique.join(', ') : fallback;
+/** First word of each suggestion title, up to two ("Breathing, relax"). */
+function keywords(titles: string[]) {
+  const words = titles.map((title) => title.split(/\s+/).find((w) => w.length > 2) ?? title.split(/\s+/)[0]);
+  const unique = [...new Set(words.filter(Boolean))].slice(0, 2);
+  return unique.map((w, i) => (i ? w.toLowerCase() : w)).join(', ').replace(/[.,:;]+$/, '');
 }
 
-/** Parse a duration string like "15 min" or "1 hour" into minutes */
-function parseDurationMinutes(d: string | null): number | null {
-  if (!d) return null;
-  const lower = d.toLowerCase();
-  const hourMatch = lower.match(/(\d+(?:\.\d+)?)\s*h/);
-  const minMatch = lower.match(/(\d+)\s*m/);
-  let mins = 0;
-  if (hourMatch) mins += parseFloat(hourMatch[1]) * 60;
-  if (minMatch) mins += parseInt(minMatch[1], 10);
-  if (mins === 0 && /\d/.test(lower)) {
-    const num = parseInt(lower.replace(/\D/g, ''), 10);
-    if (num > 0) return num;
-  }
-  return mins > 0 ? mins : null;
-}
-
-/** Build a human-readable duration range from suggestion durations */
-function deriveDurationRange(items: AISuggestion[]): string {
-  const mins = items
-    .map((s) => parseDurationMinutes(s.duration))
-    .filter((m): m is number => m !== null);
-  if (mins.length === 0) return '';
-  const minVal = Math.min(...mins);
-  const maxVal = Math.max(...mins);
-  const fmt = (m: number) => (m >= 60 ? `${Math.round(m / 60)}hr` : `${m}min`);
-  return minVal === maxVal ? fmt(minVal) : `${fmt(minVal)}-${fmt(maxVal)}`;
-}
-
-/* ------------------------------------------------------------------ */
-/*  Overlapping icon circles                                           */
-/* ------------------------------------------------------------------ */
-
-function OverlappingIcons({
-  icons,
-  count,
-}: {
-  icons: { emoji: string; bg: string }[];
-  count: number;
-}) {
-  return (
-    <View style={iconStyles.row}>
-      {icons.map((ic, i) => (
-        <View
-          key={i}
-          style={[
-            iconStyles.circle,
-            {
-              backgroundColor: ic.bg,
-              zIndex: icons.length - i,
-              marginLeft: i > 0 ? -10 : 0,
-            },
-          ]}
-        >
-          <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 16 }}>
-            {ic.emoji}
-          </WellnessIconText>
-        </View>
-      ))}
-      {count > 0 && (
-        <View style={[iconStyles.countBadge, { marginLeft: -6, zIndex: 0 }]}>
-          <Text style={iconStyles.countText}>{count}+</Text>
-        </View>
-      )}
-    </View>
-  );
-}
-
-const iconStyles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center' },
-  circle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2.5,
-    borderColor: '#FFF',
-  },
-  countBadge: {
-    height: 26,
-    minWidth: 26,
-    borderRadius: 13,
-    backgroundColor: '#EF4444',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 6,
-    borderWidth: 2,
-    borderColor: '#FFF',
-  },
-  countText: {
-    fontFamily: Typography.family.body,
-    color: '#FFF',
-    fontSize: 10,
-    fontWeight: Typography.weight.bold,
-  },
-});
-
-/* ------------------------------------------------------------------ */
-/*  Category list card                                                 */
-/* ------------------------------------------------------------------ */
-
-function CategoryListCard({
-  category,
-  count,
-  subtitle,
-  duration,
-  colors,
-  onPress,
-}: {
-  category: CategoryConfig;
-  count: number;
-  subtitle: string;
-  duration: string;
-  colors: (typeof Colors)['light'] | (typeof Colors)['dark'];
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [
-        s.catCard,
-        {
-          backgroundColor: colors.card,
-          borderColor: colors.border,
-          transform: [{ scale: pressed ? 0.98 : 1 }],
-          opacity: pressed ? 0.9 : 1,
-        },
-      ]}
-    >
-      <OverlappingIcons icons={category.icons} count={count} />
-
-      <View style={s.catInfo}>
-        <Text style={[s.catLabel, { color: colors.text }]}>{category.label}</Text>
-        <Text style={[s.catSub, { color: colors.mutedText }]}>
-          {subtitle}
-          {duration ? `  ·  ${duration}` : ''}
-        </Text>
-      </View>
-
-      <View style={[s.catChevron, { backgroundColor: colors.background }]}>
-        <MaterialIcons name="chevron-right" size={20} color={colors.mutedText} />
-      </View>
-    </Pressable>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/*  Completion celebration modal                                       */
-/* ------------------------------------------------------------------ */
-
-function CompletionModal({
-  visible,
-  onClose,
-  points,
-  newScore,
-  colors,
-}: {
-  visible: boolean;
-  onClose: () => void;
-  points: number;
-  newScore: number;
-  colors: (typeof Colors)['light'] | (typeof Colors)['dark'];
-}) {
+/**
+ * Your plan for today (03 §2.5): the plan's categories with their summed time, the AI count badge
+ * and Start my plan, which opens the first category with something left to do. Free users get the
+ * "Your glow, fully lit" paywall instead of a plan.
+ */
+export default function PlanScreen() {
   const { t } = useTranslation();
-
-  return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={s.modalOverlay}>
-        <View style={[s.completionCard, { backgroundColor: colors.card }]}>
-          <View style={s.celebrationEmoji}>
-            <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 48 }}>
-              🎉
-            </WellnessIconText>
-          </View>
-          <Text style={[s.completionTitle, { color: colors.text }]}>
-            {t('aiSuggestions.suggestionCompleted')}
-          </Text>
-          <View style={s.pointsBadge}>
-            <MaterialIcons name="star" size={18} color="#F59E0B" />
-            <Text style={s.pointsBadgeText}>+{points} points</Text>
-          </View>
-          <Text style={[s.completionSubtext, { color: colors.mutedText }]}>
-            {t('aiSuggestions.scoreIncreased', { score: newScore })}
-          </Text>
-          <Pressable
-            onPress={onClose}
-            style={({ pressed }) => [s.completionBtn, { opacity: pressed ? 0.8 : 1 }]}
-          >
-            <Text style={s.completionBtnText}>{t('aiSuggestions.greatThanks')}</Text>
-          </Pressable>
-        </View>
-      </View>
-    </Modal>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/*  Screen                                                             */
-/* ------------------------------------------------------------------ */
-
-export default function AISuggestionsScreen() {
-  const { t } = useTranslation();
-  const { hasFullAccess, isTrialActive } = useSubscription();
-  const theme = useColorScheme() ?? 'light';
-  const colors = Colors[theme];
-  const insets = useSafeAreaInsets();
-  const {
-    currentScore,
-    suggestions,
-    isLoadingSuggestions,
-    completeSuggestion,
-    isCompleting,
-    generateSuggestions,
-    isGenerating,
-  } = useFreudScore();
-
-  const [sortBy, setSortBy] = useState<'all' | 'newest'>('newest');
-  const [showSortMenu, setShowSortMenu] = useState(false);
-  const [showCompletion, setShowCompletion] = useState(false);
-  const [showMoodCheckIn, setShowMoodCheckIn] = useState(false);
-  const [completedPoints, setCompletedPoints] = useState(5);
-  const [pendingSuggestion, setPendingSuggestion] = useState<AISuggestion | null>(null);
+  const { from } = useLocalSearchParams<{ from?: string }>();
+  const { hasFullAccess } = useSubscription();
+  const { currentScore, suggestions, isLoadingSuggestions, generateSuggestions, isGenerating } = useFreudScore();
   const autoGenerated = useRef(false);
 
   useEffect(() => {
-    if (
-      hasFullAccess &&
-      !isLoadingSuggestions &&
-      suggestions.length === 0 &&
-      !autoGenerated.current &&
-      !isGenerating
-    ) {
+    if (hasFullAccess && !isLoadingSuggestions && suggestions.length === 0 && !autoGenerated.current && !isGenerating) {
       autoGenerated.current = true;
-      generateSuggestions({ maxSuggestions: 6 }).catch((error) => toast.error(error.message));
+      generateSuggestions({ maxSuggestions: 4 }).catch((error) => toast.error(error.message));
     }
-  }, [hasFullAccess, isLoadingSuggestions, suggestions.length, isGenerating]);
+  }, [hasFullAccess, isLoadingSuggestions, suggestions.length, isGenerating, generateSuggestions]);
 
-  const totalSuggestions = suggestions.filter((s) => !s.completed).length;
+  const now = useMemo(() => new Date(), []);
+  const rows = useMemo(() => planCategories(planItems(suggestions, now)), [suggestions, now]);
+  const pending = rows.reduce((a, r) => a + r.pending, 0);
+  const next = rows.find((r) => r.pending > 0);
 
-  const grouped = useMemo(() => {
-    const result: Record<string, AISuggestion[]> = {
-      mindfulness: [],
-      physical: [],
-      social: [],
-      professional: [],
-    };
-    const list =
-      sortBy === 'newest'
-        ? [...suggestions].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-        : suggestions;
-    for (const s of list) {
-      if (result[s.category]) {
-        result[s.category].push(s);
-      }
-    }
-    return result;
-  }, [suggestions, sortBy]);
+  const open = (category: PlanCategory) =>
+    router.push({ pathname: '/(tabs)/freud-score/ai-suggestion-category', params: { category } });
+  const paywall = () => router.push({ pathname: '/(utils)/trial-upgrade', params: { variant: 'home' } });
+  const regenerate = () => generateSuggestions({ maxSuggestions: 4 }).catch((error) => toast.error(error.message));
 
-  const handleComplete = (suggestion: AISuggestion) => {
-    if (suggestion.completed || isCompleting) return;
-    setPendingSuggestion(suggestion);
-    setShowMoodCheckIn(true);
-  };
-
-  const [newScoreValue, setNewScoreValue] = useState(0);
-
-  const handleMoodComplete = async (moods: { moodBefore: MoodValue; moodAfter: MoodValue }) => {
-    if (!pendingSuggestion) return;
-    setShowMoodCheckIn(false);
-    try {
-      const result = await completeSuggestion({
-        suggestionId: pendingSuggestion.id,
-        moodBefore: moods.moodBefore,
-        moodAfter: moods.moodAfter,
-      });
-      setCompletedPoints(pendingSuggestion.points);
-      setNewScoreValue(result.newScore);
-      setShowCompletion(true);
-    } catch (e) {
-      console.warn('[AISuggestions] Failed to complete suggestion:', e);
-    }
-    setPendingSuggestion(null);
-  };
-
-  const handleMoodSkip = async () => {
-    if (!pendingSuggestion) return;
-    setShowMoodCheckIn(false);
-    try {
-      const result = await completeSuggestion({ suggestionId: pendingSuggestion.id });
-      setCompletedPoints(pendingSuggestion.points);
-      setNewScoreValue(result.newScore);
-      setShowCompletion(true);
-    } catch (e) {
-      console.warn('[AISuggestions] Failed to complete suggestion:', e);
-    }
-    setPendingSuggestion(null);
-  };
+  const busy = isLoadingSuggestions || isGenerating;
+  const cta = !hasFullAccess && rows.length === 0
+    ? { title: t('aiAccess.unlock'), onPress: paywall }
+    : next
+      ? { title: t('glowScore.startPlan'), onPress: () => open(next.category) }
+      : rows.length
+        ? { title: t('glowScore.newPlan'), onPress: regenerate }
+        : null;
 
   return (
-    <View style={[s.container, { backgroundColor: colors.background }]}>
-      <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
-        {/* ── Brown hero header ────────────────────── */}
-        <View style={[s.hero, { paddingTop: insets.top + 12 }]}>
-          {/* Decorative circles */}
-          <View style={[s.heroCircle1, { backgroundColor: 'rgba(255,255,255,0.06)' }]} />
-          <View style={[s.heroCircle2, { backgroundColor: 'rgba(255,255,255,0.04)' }]} />
-
-          {/* Back button */}
-          <Pressable
-            onPress={() => backTo(undefined, '/(tabs)/freud-score')}
-            style={({ pressed }) => [s.heroBackBtn, { opacity: pressed ? 0.7 : 1 }]}
-          >
-            <MaterialIcons
-              name={Platform.OS === 'ios' ? 'arrow-back-ios-new' : 'arrow-back'}
-              size={18}
-              color="#FFF"
-            />
-          </Pressable>
-
-          {/* Title */}
-          <Text style={s.heroTitle}>{t('aiSuggestions.title')}</Text>
-
-          {/* Meta row */}
-          <View style={s.heroMeta}>
-            <View style={s.heroMetaPill}>
-              <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 12 }}>
-                💡
-              </WellnessIconText>
-              <Text style={s.heroMetaText}>{totalSuggestions} Total</Text>
-            </View>
-            <Text style={s.heroMetaDot}>·</Text>
-            <View style={s.heroMetaPill}>
-              <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 12 }}>
-                🤖
-              </WellnessIconText>
-              <Text style={s.heroMetaText}>{t(isTrialActive ? 'aiAccess.trial' : 'aiAccess.premium')}</Text>
-            </View>
-          </View>
+    <ScoreScreen
+      glows={[
+        { color: palette.mustard, opacity: 0.22, x: -50, y: 0, width: 260, blur: 90 },
+        { color: palette.lavenderSoft, opacity: 0.25, x: 180, y: 30, width: 240, blur: 90 },
+      ]}
+      nav={<ScoreNav label={t('glowScore.aiSuggestions')} backLabel={t('common.back')} onBack={() => backTo(from, '/(tabs)/freud-score')} />}
+    >
+      <Text accessibilityRole="header" style={[Type.titleXl, { color: palette.plumDeep, textAlign: 'center', marginTop: 25, letterSpacing: 0 }]}>
+        {t('glowScore.planTitle')}
+      </Text>
+      <Text style={[Type.body, { fontWeight: '400', lineHeight: 22.5, color: palette.textMuted, textAlign: 'center', marginTop: 6, marginHorizontal: 16 }]}>
+        {t('glowScore.planSubtitle', { score: currentScore.score })}
+      </Text>
+      {pending > 0 && (
+        <View style={{ alignSelf: 'center', marginTop: 10, backgroundColor: palette.lavender, borderRadius: 999, paddingVertical: 4, paddingHorizontal: 10 }}>
+          <Text style={[Type.labelM, { color: palette.white }]}>{t('glowScore.aiCount', { count: pending })}</Text>
         </View>
+      )}
 
-        {/* ── Content area ──────────────────────────── */}
-        <View style={s.content}>
-          {/* All Suggestions + Sort */}
-          <View style={s.sectionHeader}>
-            <Text style={[s.sectionTitle, { color: colors.text }]}>
-              {t('aiSuggestions.allSuggestions')}
-            </Text>
-
-            <Pressable
-              onPress={() => setShowSortMenu(!showSortMenu)}
-              style={[s.sortBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
-            >
-              <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 12 }}>
-                🔽
-              </WellnessIconText>
-              <Text style={[s.sortBtnText, { color: colors.text }]}>
-                {sortBy === 'newest'
-                  ? t('aiSuggestions.newest')
-                  : t('aiSuggestions.allSuggestions')}
-              </Text>
-              <MaterialIcons name="expand-more" size={16} color={colors.mutedText} />
-            </Pressable>
-          </View>
-
-          {/* Sort dropdown */}
-          {showSortMenu && (
-            <View
-              style={[s.sortDropdown, { backgroundColor: colors.card, borderColor: colors.border }]}
-            >
-              {(['newest', 'all'] as const).map((opt) => (
-                <Pressable
-                  key={opt}
-                  onPress={() => {
-                    setSortBy(opt);
-                    setShowSortMenu(false);
-                  }}
-                  style={[s.sortOption, sortBy === opt && { backgroundColor: BROWN + '10' }]}
-                >
-                  <Text style={[s.sortOptionText, { color: sortBy === opt ? BROWN : colors.text }]}>
-                    {opt === 'newest'
-                      ? t('aiSuggestions.newest')
-                      : t('aiSuggestions.allSuggestions')}
-                  </Text>
-                  {sortBy === opt && <MaterialIcons name="check" size={16} color={BROWN} />}
-                </Pressable>
-              ))}
-            </View>
-          )}
-
-          {/* Loading */}
-          {(isGenerating || isLoadingSuggestions) && (
-            <View style={s.loadingWrap}>
-              <View
-                style={[
-                  s.loadingCard,
-                  { backgroundColor: colors.card, borderColor: colors.border },
-                ]}
+      {busy && rows.length === 0 ? (
+        <View style={{ alignItems: 'center', gap: 12, marginTop: 48 }}>
+          <ActivityIndicator color={palette.plum} />
+          <Text style={[Type.captionM, { color: palette.textMuted }]}>
+            {t(isGenerating ? 'aiSuggestions.generating' : 'aiSuggestions.loading')}
+          </Text>
+        </View>
+      ) : rows.length === 0 ? (
+        <Text style={[Type.bodyS, { color: palette.textMuted, textAlign: 'center', marginTop: 32, marginHorizontal: 12 }]}>
+          {t(hasFullAccess ? 'glowScore.noPlan' : 'glowScore.planLocked')}
+        </Text>
+      ) : (
+        <View style={{ gap: 12, marginTop: 24, marginHorizontal: -8 }}>
+          {rows.map((r) => {
+            const done = r.pending === 0;
+            const sub = done
+              ? t('glowScore.done')
+              : [keywords(r.items.map((s) => s.title)), r.minutes ? formatMinutes(r.minutes) : null].filter(Boolean).join(' · ');
+            return (
+              <Pressable
+                key={r.category}
+                accessibilityRole="button"
+                accessibilityLabel={`${t(`glowScore.categories.${r.category}`)}, ${sub}`}
+                onPress={() => open(r.category)}
+                style={({ pressed }) => ({
+                  minHeight: 80,
+                  borderRadius: 28,
+                  backgroundColor: palette.white,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 14,
+                  paddingVertical: 14,
+                  paddingLeft: 12,
+                  paddingRight: 16,
+                  opacity: pressed ? 0.85 : 1,
+                })}
               >
-                <ActivityIndicator size="small" color={BROWN} />
-                <Text
-                  style={{
-                    fontFamily: Typography.family.body,
-                    color: colors.mutedText,
-                    fontSize: 13,
-                    marginLeft: 10,
-                  }}
-                >
-                  {isGenerating ? t('aiSuggestions.generating') : t('aiSuggestions.loading')}
-                </Text>
-              </View>
-            </View>
-          )}
-
-          {/* ── Category list cards ──────────────────── */}
-          <View style={s.catList}>
-            {CATEGORIES.map((cat) => {
-              const items = grouped[cat.key] ?? [];
-              const pendingCount = items.filter((x) => !x.completed).length;
-              const dynamicSub = deriveCategorySubtitle(items, cat.fallbackSubtitle);
-              const dynamicDur = deriveDurationRange(items);
-              return (
-                <CategoryListCard
-                  key={cat.key}
-                  category={cat}
-                  count={pendingCount}
-                  subtitle={dynamicSub}
-                  duration={dynamicDur}
-                  colors={colors}
-                  onPress={() =>
-                    router.push({
-                      pathname: '/(tabs)/freud-score/ai-suggestion-category' as any,
-                      params: { category: cat.key },
-                    })
-                  }
-                />
-              );
-            })}
-          </View>
-
-          {/* ── Generate more button ──────────────────── */}
-          {!isLoadingSuggestions && !isGenerating && (
-            <Pressable
-              onPress={() => hasFullAccess
-                ? void generateSuggestions({ maxSuggestions: 4 }).catch((error) => toast.error(error.message))
-                : router.push({ pathname: '/(utils)/trial-upgrade', params: { variant: 'home' } })}
-              style={({ pressed }) => [
-                s.generateBtn,
-                {
-                  backgroundColor: BROWN,
-                  opacity: pressed ? 0.8 : 1,
-                  transform: [{ scale: pressed ? 0.98 : 1 }],
-                },
-              ]}
-            >
-              <MaterialIcons name="auto-awesome" size={20} color="#fff" />
-              <Text style={s.generateBtnText}>{t(hasFullAccess ? 'aiSuggestions.generateMore' : 'aiAccess.unlock')}</Text>
-            </Pressable>
-          )}
-
-          {/* Why mindful section */}
-          <View
-            style={[s.whySection, { backgroundColor: colors.card, borderColor: colors.border }]}
-          >
-            <View style={s.whyHeader}>
-              <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 20 }}>
-                🌿
-              </WellnessIconText>
-              <Text style={[s.whyTitle, { color: colors.text }]}>
-                {t('aiSuggestions.whyMindful')}
-              </Text>
-            </View>
-            <Text style={[s.whyBody, { color: colors.mutedText }]}>
-              {t('aiSuggestions.whyMindfulBody')}
-            </Text>
-            <View style={s.tagRow}>
-              <View style={[s.tag, { backgroundColor: '#5AAF8B14' }]}>
-                <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 12 }}>
-                  🌿
-                </WellnessIconText>
-                <Text
-                  style={{
-                    fontFamily: Typography.family.body,
-                    color: '#5AAF8B',
-                    fontSize: 12,
-                    fontWeight: Typography.weight.semibold,
-                  }}
-                >
-                  {t('aiSuggestions.reduceStress')}
-                </Text>
-              </View>
-              <View style={[s.tag, { backgroundColor: '#42A5F514' }]}>
-                <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 12 }}>
-                  💚
-                </WellnessIconText>
-                <Text
-                  style={{
-                    fontFamily: Typography.family.body,
-                    color: '#42A5F5',
-                    fontSize: 12,
-                    fontWeight: Typography.weight.semibold,
-                  }}
-                >
-                  {t('aiSuggestions.improveHealth')}
-                </Text>
-              </View>
-              <View style={[s.tag, { backgroundColor: '#7E57C214' }]}>
-                <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 12 }}>
-                  🧠
-                </WellnessIconText>
-                <Text
-                  style={{
-                    fontFamily: Typography.family.body,
-                    color: '#7E57C2',
-                    fontSize: 12,
-                    fontWeight: Typography.weight.semibold,
-                  }}
-                >
-                  Focus
-                </Text>
-              </View>
-            </View>
-
-            <CitationSection
-              citations={[
-                ...MEDICAL_SOURCES.mindfulness,
-                ...MEDICAL_SOURCES.exercise_mental_health.slice(0, 1),
-              ]}
-              accentColor={BROWN}
-              colors={colors as any}
-            />
-          </View>
-
-          <View style={{ height: 40 }} />
+                <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: 'rgba(142,127,166,0.14)', alignItems: 'center', justifyContent: 'center' }}>
+                  <Icon name={CATEGORY_ICON[r.category]} size={28} />
+                </View>
+                <View style={{ flex: 1, gap: 3 }}>
+                  <Text style={[Type.bodyStrong, { color: palette.plumDeep }]}>{t(`glowScore.categories.${r.category}`)}</Text>
+                  <Text numberOfLines={1} style={[Type.captionS, { color: palette.textSubtle }]}>{sub}</Text>
+                </View>
+                <Icon name={done ? 'line/check' : 'arrow/chevron-right'} size={20} color={done ? palette.lavender : palette.plum} />
+              </Pressable>
+            );
+          })}
         </View>
-      </ScrollView>
+      )}
 
-      <MoodCheckInModal
-        visible={showMoodCheckIn}
-        accentColor="#5AAF8B"
-        activityTitle={pendingSuggestion?.title ?? ''}
-        onComplete={handleMoodComplete}
-        onSkip={handleMoodSkip}
-      />
-
-      <CompletionModal
-        visible={showCompletion}
-        onClose={() => setShowCompletion(false)}
-        points={completedPoints}
-        newScore={newScoreValue || Math.min(100, currentScore.score + completedPoints)}
-        colors={colors}
-      />
-    </View>
+      {cta && (
+        <AppButton title={cta.title} busy={isGenerating && !!rows.length} onPress={cta.onPress} style={{ marginTop: 32 }} />
+      )}
+    </ScoreScreen>
   );
 }
-
-/* ------------------------------------------------------------------ */
-/*  Styles                                                             */
-/* ------------------------------------------------------------------ */
-const s = StyleSheet.create({
-  container: { flex: 1 },
-  scroll: { paddingBottom: 120 },
-
-  /* ── Hero header ── */
-  hero: {
-    backgroundColor: BROWN,
-    paddingHorizontal: 20,
-    paddingBottom: 28,
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
-    overflow: 'hidden',
-  },
-  heroCircle1: {
-    position: 'absolute',
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    top: -60,
-    right: -40,
-  },
-  heroCircle2: {
-    position: 'absolute',
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    bottom: -40,
-    left: -20,
-  },
-  heroBackBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 20,
-  },
-  heroTitle: { ...Typography.heading, color: '#FFF', fontSize: 24 },
-  heroMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 10,
-  },
-  heroMetaPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  heroMetaText: {
-    fontFamily: Typography.family.body,
-    color: 'rgba(255,255,255,0.85)',
-    fontSize: 14,
-    fontWeight: Typography.weight.medium,
-  },
-  heroMetaDot: { fontFamily: Typography.family.body, color: 'rgba(255,255,255,0.4)', fontSize: 14 },
-
-  /* ── Content ── */
-  content: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-  },
-
-  /* Section header */
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  sectionTitle: { ...Typography.section, fontSize: 20 },
-
-  /* Sort */
-  sortBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  sortBtnText: {
-    fontFamily: Typography.family.body,
-    fontSize: 13,
-    fontWeight: Typography.weight.semibold,
-  },
-  sortDropdown: {
-    position: 'absolute',
-    right: 20,
-    top: 52,
-    zIndex: 10,
-    borderRadius: 14,
-    borderWidth: 1,
-    overflow: 'hidden',
-    ...UI.shadow.md,
-  },
-  sortOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    minWidth: 140,
-  },
-  sortOptionText: {
-    fontFamily: Typography.family.body,
-    fontSize: 14,
-    fontWeight: Typography.weight.semibold,
-  },
-
-  /* ── Category list cards ── */
-  catList: { gap: 12, zIndex: -1 },
-  catCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 20,
-    borderWidth: 1,
-    gap: 14,
-    ...UI.shadow.sm,
-  },
-  catInfo: { flex: 1 },
-  catLabel: {
-    fontFamily: Typography.family.body,
-    fontSize: 16,
-    fontWeight: Typography.weight.medium,
-    marginBottom: 3,
-  },
-  catSub: { fontFamily: Typography.family.body, fontSize: 13 },
-  catChevron: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  /* ── Generate button ── */
-  generateBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderRadius: 18,
-    marginTop: 20,
-    ...UI.shadow.sm,
-  },
-  generateBtnText: {
-    fontFamily: Typography.family.body,
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: Typography.weight.semibold,
-  },
-
-  /* ── Loading ── */
-  loadingWrap: { alignItems: 'center', marginBottom: 16, zIndex: -1 },
-  loadingCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderRadius: 16,
-    borderWidth: 1,
-  },
-
-  /* ── Why section ── */
-  whySection: {
-    borderRadius: 22,
-    padding: 20,
-    marginTop: 24,
-    borderWidth: 1,
-    ...UI.shadow.sm,
-  },
-  whyHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  whyTitle: { ...Typography.section, fontSize: 20, fontWeight: Typography.weight.regular, flex: 1 },
-  whyBody: { fontFamily: Typography.family.body, fontSize: 14, lineHeight: 22, marginTop: 12 },
-  tagRow: { flexDirection: 'row', gap: 8, marginTop: 14, flexWrap: 'wrap' },
-  tag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 12,
-  },
-
-  /* ── Completion modal ── */
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 30,
-  },
-  completionCard: {
-    width: '100%',
-    borderRadius: 28,
-    padding: 32,
-    alignItems: 'center',
-    ...UI.shadow.lg,
-  },
-  celebrationEmoji: { marginBottom: 16 },
-  completionTitle: {
-    ...Typography.section,
-    fontSize: 24,
-    fontWeight: Typography.weight.regular,
-    textAlign: 'center',
-  },
-  pointsBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#F59E0B18',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 14,
-    marginTop: 14,
-  },
-  pointsBadgeText: {
-    fontFamily: Typography.family.body,
-    color: '#F59E0B',
-    fontSize: 16,
-    fontWeight: Typography.weight.medium,
-  },
-  completionSubtext: {
-    fontFamily: Typography.family.body,
-    fontSize: 14,
-    marginTop: 12,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  completionBtn: {
-    marginTop: 24,
-    backgroundColor: BROWN,
-    paddingHorizontal: 32,
-    paddingVertical: 16,
-    borderRadius: 18,
-    ...UI.shadow.sm,
-  },
-  completionBtnText: {
-    fontFamily: Typography.family.body,
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: Typography.weight.semibold,
-  },
-});

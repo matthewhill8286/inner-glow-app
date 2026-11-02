@@ -1,921 +1,228 @@
-import { useSubscription } from '@/hooks/useSubscription';
-import { toast } from '@/components/Toast';
-import { Typography } from '@/constants/typography';
-import { WellnessIconText } from '@/components/WellnessIconText';
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  ActivityIndicator,
-  Modal,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTranslation } from 'react-i18next';
+import React, { useMemo, useState } from 'react';
+import { Pressable, Text, View, useWindowDimensions } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors, UI } from '@/constants/theme';
+import { useTranslation } from 'react-i18next';
+import Svg, { Defs, Line, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
+import { palette } from '@/constants/theme';
+import { Type } from '@/constants/typography';
+import { AppButton } from '@/components/ui/AppButton';
+import { Icon } from '@/components/icons/Icon';
+import { Glow } from '@/components/glow/Glow';
+import { toast } from '@/components/Toast';
+import { ScoreCard, ScoreNav, ScoreScreen } from '@/components/score/ScoreParts';
+import { practiceById, type Practice } from '@/data/practices';
+import { openPractice } from '@/lib/practice-routes';
 import { useFreudScore } from '@/hooks/useFreudScore';
-import type { AISuggestion } from '@/lib/freudScore';
-import ScreenHeader from '@/components/ScreenHeader';
-import MoodCheckInModal from '@/components/MoodCheckInModal';
-import type { MoodValue } from '@/components/MoodCheckInModal';
-import MaterialIcons from '@/components/AppIcon';
-import CitationSection from '@/components/CitationSection';
-import { extractCitations } from '@/lib/citations';
+import {
+  durationMinutes,
+  formatMinutes,
+  planItems,
+  PLAN_CATEGORIES,
+  suggestionBonus,
+  type PlanCategory,
+} from '@/lib/glow-score';
+import { backTo } from '@/lib/navigation';
 
-/* ------------------------------------------------------------------ */
-/*  Category config                                                    */
-/* ------------------------------------------------------------------ */
-
-const CATEGORY_CONFIG: Record<
-  string,
-  { emoji: string; color: string; icon: string; bgEmoji: string }
-> = {
-  mindfulness: { emoji: '🧘', color: '#5AAF8B', icon: 'self-improvement', bgEmoji: '🌿' },
-  physical: { emoji: '🏃', color: '#FF9800', icon: 'directions-run', bgEmoji: '💪' },
-  social: { emoji: '💬', color: '#42A5F5', icon: 'forum', bgEmoji: '🤝' },
-  professional: { emoji: '🩺', color: '#7E57C2', icon: 'medical-services', bgEmoji: '🧠' },
+/** Two practices per category stand in for the design's content cards (03 §2.6). */
+const CONTENT: Record<PlanCategory, string[]> = {
+  mindfulness: ['soothing-melodies', 'quiet-mind'],
+  physical: ['full-body-relax', 'shoulder-release'],
+  social: ['grounding', 'sigh-reset'],
+  professional: ['anxiety-reset', 'box-breathing'],
 };
+const FALLBACK = ['box-breathing', 'sleep-sounds'];
 
-/* ------------------------------------------------------------------ */
-/*  Completion celebration modal                                       */
-/* ------------------------------------------------------------------ */
-
-function CompletionModal({
-  visible,
-  onClose,
-  suggestion,
-  accentColor,
-  colors,
-}: {
-  visible: boolean;
-  onClose: () => void;
-  suggestion: AISuggestion | null;
-  accentColor: string;
-  colors: (typeof Colors)['light'] | (typeof Colors)['dark'];
-}) {
-  const { t } = useTranslation();
-  if (!suggestion) return null;
-
-  return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={styles.modalOverlay}>
-        <View style={[styles.completionCard, { backgroundColor: colors.card }]}>
-          <View style={[styles.completionIconWrap, { backgroundColor: accentColor + '15' }]}>
-            <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 40 }}>
-              🎉
-            </WellnessIconText>
-          </View>
-          <Text style={[styles.completionTitle, { color: colors.text }]}>
-            {t('aiSuggestions.suggestionCompleted')}
-          </Text>
-          <Text style={[styles.completionActivityName, { color: accentColor }]}>
-            {suggestion.title}
-          </Text>
-
-          {/* Points earned */}
-          <View style={[styles.pointsEarned, { backgroundColor: '#F59E0B18' }]}>
-            <MaterialIcons name="star" size={16} color="#F59E0B" />
-            <Text style={styles.pointsEarnedText}>
-              +{suggestion.points} {t('aiSuggestions.points')}
-            </Text>
-          </View>
-
-          <Text style={[styles.completionSubtext, { color: colors.mutedText }]}>
-            {t('aiSuggestions.activityCompletedBody')}
-          </Text>
-          <Pressable
-            onPress={onClose}
-            style={({ pressed }) => [
-              styles.completionBtn,
-              { backgroundColor: accentColor, opacity: pressed ? 0.8 : 1 },
-            ]}
-          >
-            <Text style={styles.completionBtnText}>{t('aiSuggestions.greatThanks')}</Text>
-          </Pressable>
-        </View>
-      </View>
-    </Modal>
-  );
+function contentFor(category: PlanCategory): Practice[] {
+  const picks: Practice[] = [];
+  for (const id of [...CONTENT[category], ...FALLBACK]) {
+    const p = practiceById(id);
+    if (p && !picks.includes(p)) picks.push(p);
+    if (picks.length === 2) break;
+  }
+  return picks;
 }
 
-/* ------------------------------------------------------------------ */
-/*  Rich suggestion card                                               */
-/* ------------------------------------------------------------------ */
-
-function SuggestionCard({
-  suggestion,
-  accentColor,
-  colors,
-  onComplete,
-  isCompleting,
-}: {
-  suggestion: AISuggestion;
-  accentColor: string;
-  colors: (typeof Colors)['light'] | (typeof Colors)['dark'];
-  onComplete: () => void;
-  isCompleting: boolean;
-}) {
+/**
+ * Suggested for you (03 §2.6): two practices for the category, the category's steps, a short read
+ * and Mark as done, which completes what is left in the category. Finishing the last category opens
+ * "You did it".
+ */
+export default function SuggestedScreen() {
   const { t } = useTranslation();
-  const isDone = suggestion.completed;
-
-  return (
-    <View
-      style={[
-        styles.card,
-        {
-          backgroundColor: colors.card,
-          borderColor: isDone ? accentColor + '30' : colors.border,
-        },
-        isDone && { opacity: 0.75 },
-      ]}
-    >
-      {/* Top row: icon + title + action */}
-      <View style={styles.cardHeader}>
-        <View style={[styles.cardBadge, { backgroundColor: accentColor + '14' }]}>
-          <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 22 }}>
-            {CATEGORY_CONFIG[suggestion.category]?.emoji ?? '✨'}
-          </WellnessIconText>
-        </View>
-        <View style={{ flex: 1 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Text
-              style={[
-                styles.cardTitle,
-                { color: colors.text, flex: 1 },
-                isDone && { textDecorationLine: 'line-through', opacity: 0.7 },
-              ]}
-              numberOfLines={2}
-            >
-              {suggestion.title}
-            </Text>
-          </View>
-          {/* Meta row */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
-            {suggestion.duration && (
-              <View style={[styles.metaChip, { backgroundColor: colors.background }]}>
-                <WellnessIconText
-                  style={{
-                    fontFamily: Typography.family.body,
-                    color: colors.mutedText,
-                    fontSize: 11,
-                  }}
-                >
-                  ⏱ {suggestion.duration}
-                </WellnessIconText>
-              </View>
-            )}
-            {suggestion.difficulty && (
-              <View
-                style={[
-                  styles.metaChip,
-                  {
-                    backgroundColor:
-                      suggestion.difficulty === 'easy'
-                        ? '#5AAF8B12'
-                        : suggestion.difficulty === 'hard'
-                          ? '#EF444412'
-                          : colors.background,
-                  },
-                ]}
-              >
-                <Text
-                  style={{
-                    fontFamily: Typography.family.body,
-                    color:
-                      suggestion.difficulty === 'easy'
-                        ? '#5AAF8B'
-                        : suggestion.difficulty === 'hard'
-                          ? '#EF4444'
-                          : colors.mutedText,
-                    fontSize: 11,
-                    fontWeight: Typography.weight.semibold,
-                  }}
-                >
-                  {suggestion.difficulty.charAt(0).toUpperCase() + suggestion.difficulty.slice(1)}
-                </Text>
-              </View>
-            )}
-            {!suggestion.templateId && (
-              <View style={styles.aiBadge}>
-                <MaterialIcons name="auto-awesome" size={10} color="#8B5CF6" />
-                <Text style={styles.aiBadgeText}>AI</Text>
-              </View>
-            )}
-          </View>
-        </View>
-
-        {/* Action button */}
-        {!isDone ? (
-          <Pressable
-            onPress={onComplete}
-            disabled={isCompleting}
-            style={({ pressed }) => [
-              styles.completeBtn,
-              { backgroundColor: accentColor, opacity: pressed ? 0.7 : 1 },
-            ]}
-          >
-            {isCompleting ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <MaterialIcons name="check" size={20} color="#fff" />
-            )}
-          </Pressable>
-        ) : (
-          <View style={[styles.completedBadge, { backgroundColor: accentColor + '15' }]}>
-            <MaterialIcons name="check-circle" size={16} color={accentColor} />
-          </View>
-        )}
-      </View>
-
-      {/* Description */}
-      {suggestion.description ? (
-        <Text
-          style={{
-            fontFamily: Typography.family.body,
-            color: colors.mutedText,
-            fontSize: 13,
-            lineHeight: 20,
-            marginTop: 12,
-          }}
-        >
-          {suggestion.description}
-        </Text>
-      ) : null}
-
-      {/* Citations — extracted from title + description */}
-      {(() => {
-        const text = `${suggestion.title} ${suggestion.description ?? ''}`;
-        const citations = extractCitations(text, 3);
-        return citations.length > 0 ? (
-          <CitationSection
-            citations={citations}
-            accentColor={accentColor}
-            colors={colors as any}
-            compact
-          />
-        ) : null;
-      })()}
-
-      {/* Footer */}
-      <View style={[styles.cardFooter, { borderTopColor: colors.border }]}>
-        <View style={[styles.pointsTag, { backgroundColor: accentColor + '12' }]}>
-          <MaterialIcons name="star" size={12} color={accentColor} />
-          <Text
-            style={{
-              fontFamily: Typography.family.body,
-              color: accentColor,
-              fontSize: 12,
-              fontWeight: Typography.weight.semibold,
-            }}
-          >
-            +{suggestion.points} pts
-          </Text>
-        </View>
-        {suggestion.completedAt && (
-          <Text
-            style={{ fontFamily: Typography.family.body, color: colors.mutedText, fontSize: 11 }}
-          >
-            {new Date(suggestion.completedAt).toLocaleDateString(undefined, {
-              month: 'short',
-              day: 'numeric',
-            })}
-          </Text>
-        )}
-      </View>
-    </View>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/*  Screen                                                             */
-/* ------------------------------------------------------------------ */
-
-export default function AISuggestionCategoryScreen() {
-  const { t } = useTranslation();
-  const theme = useColorScheme() ?? 'light';
-  const colors = Colors[theme];
-  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ category: string }>();
-  const category = params.category ?? 'mindfulness';
+  const category = (PLAN_CATEGORIES.includes(params.category as PlanCategory) ? params.category : 'mindfulness') as PlanCategory;
+  const { width } = useWindowDimensions();
+  const { currentScore, suggestions, completeSuggestion } = useFreudScore();
+  const [busy, setBusy] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const now = useMemo(() => new Date(), []);
 
-  const config = CATEGORY_CONFIG[category] ?? CATEGORY_CONFIG.mindfulness;
+  const plan = useMemo(() => planItems(suggestions, now), [suggestions, now]);
+  const steps = plan.filter((s) => s.category === category);
+  const pending = steps.filter((s) => !s.completed);
+  const content = useMemo(() => contentFor(category), [category]);
+  const cardW = (width - 32 - 11) / 2;
 
-  const {
-    suggestions,
-    isLoadingSuggestions,
-    completeSuggestion,
-    isCompleting,
-    generateSuggestions,
-    isGenerating,
-    activityStats,
-  } = useFreudScore();
-
-  const [showCompletion, setShowCompletion] = useState(false);
-  const [showMoodCheckIn, setShowMoodCheckIn] = useState(false);
-  const [completedSuggestion, setCompletedSuggestion] = useState<AISuggestion | null>(null);
-  const [pendingSuggestion, setPendingSuggestion] = useState<AISuggestion | null>(null);
-
-  const categorySuggestions = suggestions.filter((s) => s.category === category);
-  const pending = categorySuggestions.filter((s) => !s.completed);
-  const completed = categorySuggestions.filter((s) => s.completed);
-
-  const catStats = activityStats?.byCategory[category];
-  const totalCatPoints = catStats?.points ?? 0;
-  const totalCatActivities = catStats?.count ?? 0;
-  const streak = activityStats?.streak ?? 0;
-
-  const handleComplete = (suggestion: AISuggestion) => {
-    if (suggestion.completed || isCompleting) return;
-    setPendingSuggestion(suggestion);
-    setShowMoodCheckIn(true);
-  };
-
-  const handleMoodComplete = async (moods: { moodBefore: MoodValue; moodAfter: MoodValue }) => {
-    if (!pendingSuggestion) return;
-    setShowMoodCheckIn(false);
+  const markDone = async () => {
+    if (!pending.length || busy) return;
+    setBusy(true);
+    const start = currentScore.score;
+    let added = 0;
     try {
-      const result = await completeSuggestion({
-        suggestionId: pendingSuggestion.id,
-        moodBefore: moods.moodBefore,
-        moodAfter: moods.moodAfter,
-      });
-      setCompletedSuggestion(pendingSuggestion);
-      setShowCompletion(true);
+      for (const s of pending) {
+        await completeSuggestion({ suggestionId: s.id });
+        added += suggestionBonus(s.points);
+      }
     } catch (e) {
-      console.warn('[AISuggestionCategory] Failed to complete:', e);
+      toast.error(e instanceof Error ? e.message : t('glowScore.error'));
+      setBusy(false);
+      return;
     }
-    setPendingSuggestion(null);
-  };
-
-  const handleMoodSkip = async () => {
-    if (!pendingSuggestion) return;
-    setShowMoodCheckIn(false);
-    try {
-      const result = await completeSuggestion({ suggestionId: pendingSuggestion.id });
-      setCompletedSuggestion(pendingSuggestion);
-      setShowCompletion(true);
-    } catch (e) {
-      console.warn('[AISuggestionCategory] Failed to complete:', e);
+    setBusy(false);
+    const doneIds = new Set(pending.map((s) => s.id));
+    const left = plan.filter((s) => !s.completed && !doneIds.has(s.id)).length;
+    if (left > 0) {
+      toast.success(t('glowScore.categoryDone', { points: added }));
+      backTo(undefined, '/(tabs)/freud-score/ai-suggestions');
+      return;
     }
-    setPendingSuggestion(null);
-  };
-
-  const { hasFullAccess } = useSubscription();
-  const handleGenerate = async () => {
-    if (!hasFullAccess) { router.push('/trial-upgrade'); return; }
-    try {
-      await generateSuggestions({ maxSuggestions: 4, category });
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('aiAccess.failed'));
-    }
+    // The whole plan is done: the gain is every step finished today.
+    const to = Math.min(100, start + added);
+    const gain = plan.reduce((a, s) => a + suggestionBonus(s.points), 0);
+    const minutes = plan.reduce((a, s) => a + (durationMinutes(s.duration) ?? 0), 0);
+    router.replace({
+      pathname: '/(tabs)/freud-score/completed',
+      params: { from: String(Math.max(0, to - gain)), to: String(to), done: String(plan.length), total: String(plan.length), minutes: String(minutes) },
+    });
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <ScreenHeader title={t(`aiSuggestions.${category}`)} subtitle={t('aiSuggestions.title')} />
+    <ScoreScreen
+      glows={[
+        { color: palette.sky, opacity: 0.2, x: -40, y: 40, width: 260, blur: 90 },
+        // Figma uses the old teal here (03 §8); lilac keeps it in the palette.
+        { color: palette.lavenderSoft, opacity: 0.25, x: 170, y: 120, width: 240, blur: 90 },
+      ]}
+      nav={<ScoreNav label={t(`glowScore.categoryShort.${category}`)} backLabel={t('common.back')} onBack={() => backTo(undefined, '/(tabs)/freud-score/ai-suggestions')} />}
+    >
+      <Text accessibilityRole="header" style={[Type.titleXl, { color: palette.plumDeep, textAlign: 'center', marginTop: 25, letterSpacing: 0 }]}>
+        {t('glowScore.suggestedTitle')}
+      </Text>
 
-        {/* ── Hero card ── */}
-        <View
-          style={[
-            styles.hero,
-            { backgroundColor: config.color + '0A', borderColor: config.color + '20' },
-          ]}
-        >
-          {/* Background decorative emoji */}
-          <WellnessIconText style={styles.heroBgEmoji}>{config.bgEmoji}</WellnessIconText>
-
-          <View style={[styles.heroIcon, { backgroundColor: config.color + '18' }]}>
-            <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 40 }}>
-              {config.emoji}
-            </WellnessIconText>
-          </View>
-          <Text style={[styles.heroTitle, { color: colors.text }]}>
-            {t(`aiSuggestions.${category}`)}
-          </Text>
-
-          {/* Count pills */}
-          <View style={styles.heroCounts}>
-            <View style={[styles.heroCountPill, { backgroundColor: config.color + '18' }]}>
-              <View style={[styles.countDot, { backgroundColor: config.color }]} />
-              <Text
-                style={{
-                  fontFamily: Typography.family.body,
-                  color: config.color,
-                  fontSize: 13,
-                  fontWeight: Typography.weight.semibold,
-                }}
-              >
-                {pending.length} {t('aiSuggestions.pendingLabel')}
-              </Text>
-            </View>
-            <View style={[styles.heroCountPill, { backgroundColor: colors.text + '08' }]}>
-              <MaterialIcons name="check-circle" size={13} color={colors.mutedText} />
-              <Text
-                style={{
-                  fontFamily: Typography.family.body,
-                  color: colors.mutedText,
-                  fontSize: 13,
-                  fontWeight: Typography.weight.semibold,
-                }}
-              >
-                {completed.length} {t('aiSuggestions.completedLabel')}
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* ── Stats row ── */}
-        <View
-          style={[styles.statsRow, { backgroundColor: colors.card, borderColor: colors.border }]}
-        >
-          <View style={styles.statItem}>
-            <View style={[styles.statIconWrap, { backgroundColor: config.color + '12' }]}>
-              <MaterialIcons name="check-circle-outline" size={18} color={config.color} />
-            </View>
-            <Text style={[styles.statValue, { color: colors.text }]}>{totalCatActivities}</Text>
-            <Text style={[styles.statLabel, { color: colors.mutedText }]}>
-              {t('aiSuggestions.activitiesDone')}
-            </Text>
-          </View>
-          <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
-          <View style={styles.statItem}>
-            <View style={[styles.statIconWrap, { backgroundColor: '#F59E0B12' }]}>
-              <MaterialIcons name="star" size={18} color="#F59E0B" />
-            </View>
-            <Text style={[styles.statValue, { color: colors.text }]}>{totalCatPoints}</Text>
-            <Text style={[styles.statLabel, { color: colors.mutedText }]}>
-              {t('aiSuggestions.pointsEarned')}
-            </Text>
-          </View>
-          <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
-          <View style={styles.statItem}>
-            <View style={[styles.statIconWrap, { backgroundColor: '#EC407A12' }]}>
-              <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 14 }}>
-                🔥
-              </WellnessIconText>
-            </View>
-            <Text style={[styles.statValue, { color: colors.text }]}>{streak}</Text>
-            <Text style={[styles.statLabel, { color: colors.mutedText }]}>
-              {t('aiSuggestions.dayStreak')}
-            </Text>
-          </View>
-        </View>
-
-        {isLoadingSuggestions && (
-          <ActivityIndicator size="small" color={config.color} style={{ marginTop: 24 }} />
-        )}
-
-        {/* ── Pending suggestions ── */}
-        {pending.length > 0 && (
-          <View style={{ marginTop: 24 }}>
-            <View style={styles.sectionHeaderRow}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                {t('aiSuggestions.suggestedActivity')}
-              </Text>
-              <View style={[styles.sectionCount, { backgroundColor: config.color + '14' }]}>
-                <Text
-                  style={{
-                    fontFamily: Typography.family.body,
-                    color: config.color,
-                    fontSize: 12,
-                    fontWeight: Typography.weight.semibold,
-                  }}
-                >
-                  {pending.length}
-                </Text>
-              </View>
-            </View>
-            {pending.map((s) => (
-              <SuggestionCard
-                key={s.id}
-                suggestion={s}
-                accentColor={config.color}
-                colors={colors}
-                onComplete={() => handleComplete(s)}
-                isCompleting={isCompleting}
-              />
-            ))}
-          </View>
-        )}
-
-        {/* Generate more */}
-        {!isLoadingSuggestions && pending.length < 3 && (
+      <View style={{ flexDirection: 'row', gap: 11, marginTop: 22, marginHorizontal: -8 }}>
+        {content.map((p) => (
           <Pressable
-            onPress={handleGenerate}
-            disabled={isGenerating}
-            style={({ pressed }) => [
-              styles.generateBtn,
-              {
-                backgroundColor: config.color,
-                opacity: pressed ? 0.8 : 1,
-                transform: [{ scale: pressed ? 0.98 : 1 }],
-              },
-            ]}
+            key={p.id}
+            accessibilityRole="button"
+            accessibilityLabel={`${t(`practices.items.${p.id}.title`)}, ${t(`glowScore.kind.${p.kind}`)}, ${p.listMinutes} min`}
+            onPress={() => openPractice(p)}
+            style={({ pressed }) => ({ width: cardW, minHeight: 206, borderRadius: 28, backgroundColor: palette.white, padding: 8, opacity: pressed ? 0.85 : 1 })}
           >
-            {isGenerating ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <MaterialIcons name="auto-awesome" size={20} color="#fff" />
-            )}
-            <Text
-              style={{
-                fontFamily: Typography.family.body,
-                color: '#fff',
-                fontSize: 14,
-                fontWeight: Typography.weight.semibold,
-                marginLeft: 8,
-              }}
-            >
-              {t('aiSuggestions.generateMore')}
-            </Text>
+            <View style={{ height: 124, borderRadius: 20, backgroundColor: '#FBF8F5', overflow: 'hidden' }}>
+              {p.kind === 'sleep' ? <SunsetCover width={cardW - 16} /> : <WavesCover width={cardW - 16} />}
+            </View>
+            <View style={{ paddingHorizontal: 6, paddingTop: 12, gap: 4 }}>
+              <Text numberOfLines={1} style={[Type.bodyStrong, { color: palette.plumDeep }]}>{t(`practices.items.${p.id}.title`)}</Text>
+              <Text style={[Type.captionS, { color: palette.textSubtle }]}>
+                {t('glowScore.contentMeta', { kind: t(`glowScore.kind.${p.kind}`), minutes: p.listMinutes })}
+              </Text>
+            </View>
           </Pressable>
-        )}
+        ))}
+      </View>
 
-        {/* ── Completed suggestions ── */}
-        {completed.length > 0 && (
-          <View style={{ marginTop: 28 }}>
-            <View style={styles.sectionHeaderRow}>
-              <Text style={[styles.sectionTitle, { color: colors.mutedText }]}>
-                {t('aiSuggestions.completed')}
-              </Text>
-              <View style={[styles.sectionCount, { backgroundColor: colors.text + '0A' }]}>
-                <Text
-                  style={{
-                    fontFamily: Typography.family.body,
-                    color: colors.mutedText,
-                    fontSize: 12,
-                    fontWeight: Typography.weight.semibold,
-                  }}
-                >
-                  {completed.length}
-                </Text>
+      {steps.length > 0 && (
+        <ScoreCard style={{ marginTop: 16, paddingVertical: 8, paddingHorizontal: 18, marginHorizontal: -8 }}>
+          {steps.map((s, i) => (
+            <View
+              key={s.id}
+              accessible
+              accessibilityLabel={`${s.title}${s.completed ? `, ${t('glowScore.done')}` : ''}`}
+              style={{ minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 12, borderTopWidth: i ? 1 : 0, borderTopColor: palette.surfaceLilac }}
+            >
+              <View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: s.completed ? 0 : 1.5, borderColor: palette.borderStrong, backgroundColor: s.completed ? palette.lavender : 'transparent', alignItems: 'center', justifyContent: 'center' }}>
+                {s.completed && <Icon name="line/check" size={14} color={palette.white} />}
               </View>
+              <Text style={[Type.bodyMMedium, { flex: 1, color: s.completed ? palette.textSubtle : palette.ink }]}>{s.title}</Text>
+              {durationMinutes(s.duration) ? (
+                <Text style={[Type.captionM, { color: palette.textSubtle }]}>{formatMinutes(durationMinutes(s.duration)!)}</Text>
+              ) : null}
             </View>
-            {completed.map((s) => (
-              <SuggestionCard
-                key={s.id}
-                suggestion={s}
-                accentColor={config.color}
-                colors={colors}
-                onComplete={() => {}}
-                isCompleting={false}
-              />
-            ))}
-          </View>
+          ))}
+        </ScoreCard>
+      )}
+
+      <ScoreCard style={{ marginTop: 16, marginHorizontal: -8, gap: 10 }}>
+        <View style={{ alignSelf: 'flex-start', backgroundColor: palette.border, borderRadius: 999, paddingVertical: 3, paddingHorizontal: 10 }}>
+          <Text style={[Type.micro, { color: palette.plumDeep }]}>{t('glowScore.readTime')}</Text>
+        </View>
+        <Text style={[Type.titleSm, { color: palette.plumDeep }]}>{t(`glowScore.articles.${category}.title`)}</Text>
+        <Text style={[Type.bodyS, { lineHeight: 21, color: palette.textMuted }]}>{t(`glowScore.articles.${category}.body`)}</Text>
+        {expanded && (
+          <Text style={[Type.bodyS, { lineHeight: 21, color: palette.textMuted }]}>{t(`glowScore.articles.${category}.more`)}</Text>
         )}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ expanded }}
+          onPress={() => setExpanded((v) => !v)}
+          hitSlop={4}
+          style={({ pressed }) => ({ alignSelf: 'flex-start', borderWidth: 1, borderColor: palette.lavender, borderRadius: 999, paddingVertical: 8, paddingHorizontal: 16, marginTop: 4, opacity: pressed ? 0.75 : 1 })}
+        >
+          <Text style={[Type.label, { fontWeight: '700', color: palette.lavender }]}>
+            {t(expanded ? 'glowScore.readLess' : 'glowScore.readArticle')}
+          </Text>
+        </Pressable>
+      </ScoreCard>
 
-        {/* ── Empty state ── */}
-        {!isLoadingSuggestions && categorySuggestions.length === 0 && (
-          <View style={styles.emptyState}>
-            <View style={[styles.emptyIconWrap, { backgroundColor: config.color + '12' }]}>
-              <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 48 }}>
-                {config.emoji}
-              </WellnessIconText>
-            </View>
-            <Text style={[styles.emptyTitle, { color: colors.text }]}>No suggestions yet</Text>
-            <Text
-              style={{
-                fontFamily: Typography.family.body,
-                color: colors.mutedText,
-                fontSize: 14,
-                marginTop: 6,
-                textAlign: 'center',
-                lineHeight: 20,
-              }}
-            >
-              {t('aiSuggestions.noCategorySuggestions')}
-            </Text>
-            <Pressable
-              onPress={handleGenerate}
-              disabled={isGenerating}
-              style={({ pressed }) => [
-                styles.generateBtn,
-                {
-                  backgroundColor: config.color,
-                  opacity: pressed ? 0.8 : 1,
-                  marginTop: 20,
-                },
-              ]}
-            >
-              {isGenerating ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <MaterialIcons name="auto-awesome" size={20} color="#fff" />
-              )}
-              <Text
-                style={{
-                  fontFamily: Typography.family.body,
-                  color: '#fff',
-                  fontSize: 14,
-                  fontWeight: Typography.weight.semibold,
-                  marginLeft: 8,
-                }}
-              >
-                {t(hasFullAccess ? 'aiSuggestions.generateSuggestions' : 'aiAccess.unlock')}
-              </Text>
-            </Pressable>
-          </View>
-        )}
-
-        <View style={{ height: 40 }} />
-      </ScrollView>
-
-      <MoodCheckInModal
-        visible={showMoodCheckIn}
-        accentColor={config.color}
-        activityTitle={pendingSuggestion?.title ?? ''}
-        onComplete={handleMoodComplete}
-        onSkip={handleMoodSkip}
+      <AppButton
+        title={t(pending.length ? 'glowScore.markDone' : 'glowScore.backToPlan')}
+        busy={busy}
+        onPress={pending.length ? markDone : () => backTo(undefined, '/(tabs)/freud-score/ai-suggestions')}
+        style={{ marginTop: 32 }}
       />
-
-      <CompletionModal
-        visible={showCompletion}
-        onClose={() => setShowCompletion(false)}
-        suggestion={completedSuggestion}
-        accentColor={config.color}
-        colors={colors}
-      />
-    </View>
+    </ScoreScreen>
   );
 }
 
-/* ------------------------------------------------------------------ */
-/*  Styles                                                             */
-/* ------------------------------------------------------------------ */
+/** Calm sounds cover (03 §2.6): a lilac glow behind six fading sound waves. */
+function WavesCover({ width }: { width: number }) {
+  const sx = width / 150;
+  const wave = (y: number, amp: number) => {
+    let d = `M0,${y}`;
+    for (let x = 0; x <= 150; x += 5) d += ` L${x * sx},${y + Math.sin((x / 150) * Math.PI * 3) * amp}`;
+    return d;
+  };
+  return (
+    <>
+      <Glow color={palette.lavenderSoft} opacity={0.45} width={140} blur={30} style={{ position: 'absolute', left: (width - 140) / 2, top: -8 }} />
+      <Svg width={width} height={124} style={{ position: 'absolute' }}>
+        {[0.35, 0.3, 0.25, 0.2, 0.15, 0.1].map((o, i) => (
+          <Path key={i} d={wave(40 + i * 9, 10 - i)} stroke={palette.plum} strokeOpacity={o} strokeWidth={1.5} fill="none" />
+        ))}
+      </Svg>
+    </>
+  );
+}
 
-const styles = StyleSheet.create({
-  container: { flex: 1, paddingHorizontal: 20 },
-  scroll: { paddingBottom: 120 },
-
-  /* Hero */
-  hero: {
-    borderRadius: 28,
-    padding: 28,
-    marginTop: 20,
-    alignItems: 'center',
-    borderWidth: 1,
-    overflow: 'hidden',
-    ...UI.shadow.sm,
-  },
-  heroBgEmoji: {
-    fontFamily: Typography.family.body,
-    position: 'absolute',
-    top: -10,
-    right: -10,
-    fontSize: 100,
-    opacity: 0.06,
-  },
-  heroIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 14,
-  },
-  heroTitle: { ...Typography.heading, fontSize: 24 },
-  heroCounts: { flexDirection: 'row', gap: 10, marginTop: 16 },
-  heroCountPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 14,
-  },
-  countDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-  },
-
-  /* Stats */
-  statsRow: {
-    flexDirection: 'row',
-    borderRadius: 22,
-    padding: 18,
-    marginTop: 14,
-    borderWidth: 1,
-    ...UI.shadow.sm,
-  },
-  statItem: { flex: 1, alignItems: 'center' },
-  statIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 6,
-  },
-  statValue: {
-    fontFamily: Typography.family.body,
-    fontSize: 20,
-    fontWeight: Typography.weight.bold,
-  },
-  statLabel: {
-    fontFamily: Typography.family.body,
-    fontSize: 10,
-    marginTop: 2,
-    fontWeight: Typography.weight.bold,
-    textTransform: 'uppercase',
-    letterSpacing: 0.3,
-  },
-  statDivider: { width: 1, height: '70%', alignSelf: 'center' },
-
-  /* Section headers */
-  sectionTitle: { ...Typography.section, fontSize: 20, marginBottom: 14 },
-  sectionHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 14,
-  },
-  sectionCount: {
-    width: 24,
-    height: 24,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  /* Suggestion cards */
-  card: {
-    borderRadius: 20,
-    padding: 18,
-    marginBottom: 12,
-    borderWidth: 1,
-    ...UI.shadow.sm,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  cardBadge: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cardTitle: { ...Typography.cardHeading,  lineHeight: 20 },
-  metaChip: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  aiBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#8B5CF618',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-    gap: 3,
-  },
-  aiBadgeText: {
-    fontFamily: Typography.family.body,
-    color: '#8B5CF6',
-    fontSize: 10,
-    fontWeight: Typography.weight.medium,
-  },
-  cardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 14,
-    paddingTop: 12,
-    borderTopWidth: StyleSheet.hairlineWidth,
-  },
-  pointsTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  completeBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...UI.shadow.sm,
-  },
-  completedBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  /* Generate button */
-  generateBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderRadius: 18,
-    marginTop: 16,
-    ...UI.shadow.sm,
-  },
-
-  /* Empty state */
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 50,
-  },
-  emptyIconWrap: {
-    width: 100,
-    height: 100,
-    borderRadius: 30,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  emptyTitle: { ...Typography.cardHeading, },
-
-  /* Completion modal */
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 30,
-  },
-  completionCard: {
-    width: '100%',
-    borderRadius: 28,
-    padding: 32,
-    alignItems: 'center',
-    ...UI.shadow.lg,
-  },
-  completionIconWrap: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  completionTitle: {
-    ...Typography.section,
-    fontSize: 24,
-    fontWeight: Typography.weight.regular,
-    textAlign: 'center',
-  },
-  completionActivityName: {
-    fontFamily: Typography.family.body,
-    fontSize: 15,
-    fontWeight: Typography.weight.semibold,
-    marginTop: 8,
-    textAlign: 'center',
-  },
-  pointsEarned: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 14,
-    marginTop: 14,
-  },
-  pointsEarnedText: {
-    fontFamily: Typography.family.body,
-    color: '#F59E0B',
-    fontSize: 16,
-    fontWeight: Typography.weight.semibold,
-  },
-  completionSubtext: {
-    fontFamily: Typography.family.body,
-    fontSize: 14,
-    marginTop: 12,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  completionBtn: {
-    marginTop: 24,
-    paddingHorizontal: 32,
-    paddingVertical: 16,
-    borderRadius: 18,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    ...UI.shadow.sm,
-  },
-  completionBtnText: {
-    fontFamily: Typography.family.body,
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: Typography.weight.semibold,
-  },
-});
+/** Wind down cover (03 §2.6): dusk gradient, sun halo, half sun on the horizon. */
+function SunsetCover({ width }: { width: number }) {
+  const cx = width / 2;
+  return (
+    <>
+      <Svg width={width} height={124} style={{ position: 'absolute' }}>
+        <Defs>
+          <LinearGradient id="duskCover" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0" stopColor="#E6E1EE" />
+            <Stop offset="1" stopColor="#F6E7D2" />
+          </LinearGradient>
+        </Defs>
+        <Rect x={0} y={0} width={width} height={124} fill="url(#duskCover)" />
+      </Svg>
+      <Glow color={palette.mustard} opacity={0.55} width={130} blur={26} style={{ position: 'absolute', left: cx - 65, top: 32 }} />
+      <Svg width={width} height={124} style={{ position: 'absolute' }}>
+        <Path d={`M${cx - 30},96.7 A30,30 0 0 1 ${cx + 30},96.7 Z`} fill="#F0C77A" />
+        <Line x1={0} x2={width} y1={96.7} y2={96.7} stroke={palette.plum} strokeOpacity={0.35} strokeWidth={1} />
+      </Svg>
+    </>
+  );
+}
