@@ -5,8 +5,12 @@ import { Redirect } from 'expo-router';
 import { supabase } from '@/supabase/supabase';
 
 type GateState = 'loading' | 'ready' | 'sign-in' | 'mfa' | 'offline';
-/** Protects direct links as well as normal navigation into account-only screens. */
-export function SessionGate({ children }: { children: React.ReactNode }) {
+/**
+ * Protects direct links as well as normal navigation into account-only screens. With
+ * `enforce={false}` it renders its children unchanged; layouts that gate only some screens keep it
+ * mounted so their stack is never remounted when a link moves between open and gated screens.
+ */
+export function SessionGate({ children, enforce = true }: { children: React.ReactNode; enforce?: boolean }) {
   const [state, setState] = useState<GateState>('loading');
   const identity = useRef<string | null | undefined>(undefined);
   useEffect(() => {
@@ -52,6 +56,7 @@ export function SessionGate({ children }: { children: React.ReactNode }) {
       subscription.unsubscribe();
     };
   }, []);
+  if (!enforce) return <>{children}</>;
   if (state === 'sign-in') return <Redirect href="/(auth)/sign-in" />;
   if (state === 'mfa') return <Redirect href="/(auth)/two-factor-verify" />;
   if (state === 'offline') return <Redirect href="/(utils)/offline" />;
