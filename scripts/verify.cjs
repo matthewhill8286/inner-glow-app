@@ -12,6 +12,7 @@ setTimeout(() => {
         '--test',
         'tests/payments.test.cjs',
         'tests/navigation.test.cjs',
+        'tests/video-player.test.cjs',
         'tests/conversation-flow.test.cjs',
         'tests/notifications.test.cjs',
         'tests/alarms.test.cjs',
