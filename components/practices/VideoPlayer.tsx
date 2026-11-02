@@ -2,11 +2,13 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   BackHandler,
+  Image,
   Pressable,
   Text,
   View,
   useWindowDimensions,
 } from 'react-native';
+import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -25,6 +27,7 @@ import type { Practice } from '@/data/practices';
 import { useMindfulness } from '@/hooks/useMindfulness';
 import { useDailyGoal } from '@/hooks/usePractices';
 import { mmss } from '@/lib/practices';
+import { thumbnailUrl } from '@/components/practices/VideoDetails';
 
 /** Leaving after this share of the video counts as finished (07 §5.10). */
 const DONE_SHARE = 0.9;
@@ -46,8 +49,10 @@ export function VideoPlayer({ practice }: { practice: Practice }) {
   const ref = useRef<YoutubeIframeRef>(null);
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
-  // iOS web views ignore a scripted play until the video has been tapped once, so the first tap passes
-  // through the card's play button to the frame; after that the button drives the player.
+  // iOS ignores a scripted play until the video itself has been tapped once. Until then only the centre
+  // of the card lets a tap through to the frame, which starts the video; the rest of the card blocks
+  // YouTube's title, share and "Watch on YouTube" links. Once started, the card's button drives the
+  // player and the frame gets no taps at all.
   const [playing, setPlaying] = useState(false);
   const [started, setStarted] = useState(false);
   const [position, setPosition] = useState(0);
@@ -57,6 +62,10 @@ export function VideoPlayer({ practice }: { practice: Practice }) {
   const watched = useRef(0);
   const saved = useRef(false);
   const cardW = width - 32;
+
+  const togglePlay = () => {
+    setPlaying((p) => !p);
+  };
 
   useEffect(() => {
     if (!ready) return;
@@ -169,85 +178,128 @@ export function VideoPlayer({ practice }: { practice: Practice }) {
           boxShadow: '0px 0px 0px 4px rgba(107,82,121,0.25)',
         }}
       >
+        {/* A playing iOS web view can draw above its siblings, so the overlays below carry zIndex and,
+            once started, the frame takes no touches. */}
         {!failed && (
-          <YoutubePlayer
-            ref={ref}
-            height={212}
-            width={cardW}
-            videoId={practice.video!.youtubeId}
-            play={playing}
-            initialPlayerParams={{
-              controls: false,
-              modestbranding: true,
-              rel: false,
-              iv_load_policy: 3,
-            }}
-            onReady={() => setReady(true)}
-            onError={() => setFailed(true)}
-            onChangeState={(state: string) => {
-              if (state === 'playing') {
-                setStarted(true);
-                setPlaying(true);
-              } else if (state === 'paused') setPlaying(false);
-              else if (state === 'ended') finish();
-            }}
-          />
-        )}
-        {(!ready || failed) && (
-          <View
-            style={{
-              position: 'absolute',
-              inset: 0,
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 10,
-              padding: 24,
-            }}
-          >
-            {failed ? (
-              <Text style={[Type.bodySm, { color: palette.white, textAlign: 'center' }]}>
-                {t('practices.video.error')}
-              </Text>
-            ) : (
-              <>
-                <ActivityIndicator color={palette.white} />
-                <Text style={[Type.captionM, { color: palette.white }]}>
-                  {t('practices.video.loading')}
-                </Text>
-              </>
-            )}
+          <View pointerEvents={started ? 'none' : 'auto'} style={{ zIndex: 0 }}>
+            <YoutubePlayer
+              ref={ref}
+              height={212}
+              width={cardW}
+              videoId={practice.video!.youtubeId}
+              play={playing}
+              initialPlayerParams={{
+                controls: false,
+                modestbranding: true,
+                rel: false,
+                iv_load_policy: 3,
+              }}
+              onReady={() => setReady(true)}
+              onError={() => setFailed(true)}
+              onChangeState={(state: string) => {
+                if (state === 'playing') {
+                  setStarted(true);
+                  setPlaying(true);
+                } else if (state === 'paused') setPlaying(false);
+                else if (state === 'ended') finish();
+              }}
+            />
           </View>
         )}
-        {ready && !failed && (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={playing ? t('practices.player.pause') : t('practices.player.play')}
-            onPress={() => setPlaying((p) => !p)}
-            pointerEvents={started ? 'auto' : 'none'}
-            style={{
-              position: 'absolute',
-              inset: 0,
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: playing ? 'transparent' : 'rgba(36,26,46,0.25)',
-            }}
-          >
-            {!playing && (
-              <View
-                style={{
-                  width: 60,
-                  height: 60,
-                  borderRadius: 30,
-                  backgroundColor: palette.white,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Icon name="line/play" size={24} color={palette.plum} />
-              </View>
-            )}
-          </Pressable>
+        {/* Video (10 §3.8): the thumbnail with the shade stands in for the video whenever it is not
+            playing, which also hides YouTube's paused overlay. */}
+        {!playing && (
+          <View pointerEvents="none" style={{ position: 'absolute', inset: 0, zIndex: 1 }}>
+            {/* hqdefault is 4:3 with the 16:9 frame letterboxed; the slight zoom hides the bars. */}
+            <Image
+              source={{ uri: thumbnailUrl(practice.video!.youtubeId) }}
+              resizeMode="cover"
+              style={{ position: 'absolute', inset: 0, transform: [{ scale: 1.06 }] }}
+            />
+            <Svg style={{ position: 'absolute', inset: 0 }} width="100%" height="100%">
+              <Defs>
+                <LinearGradient id="videoShade" x1="0" y1="0" x2="0" y2="1">
+                  <Stop offset="0.5" stopColor={palette.ink} stopOpacity={0} />
+                  <Stop offset="1" stopColor={palette.ink} stopOpacity={0.35} />
+                </LinearGradient>
+              </Defs>
+              <Rect x={0} y={0} width="100%" height="100%" fill="url(#videoShade)" />
+            </Svg>
+          </View>
         )}
+        {ready && !failed && !started && (
+          // Blockers around a centre gap: a tap in the gap reaches the video and starts it.
+          <>
+            <View
+              style={{ position: 'absolute', left: 0, right: 0, top: 0, height: 56, zIndex: 1 }}
+            />
+            <View
+              style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 56, zIndex: 1 }}
+            />
+            <View
+              style={{
+                position: 'absolute',
+                left: 0,
+                top: 56,
+                bottom: 56,
+                width: cardW / 2 - 60,
+                zIndex: 1,
+              }}
+            />
+            <View
+              style={{
+                position: 'absolute',
+                right: 0,
+                top: 56,
+                bottom: 56,
+                width: cardW / 2 - 60,
+                zIndex: 1,
+              }}
+            />
+          </>
+        )}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={playing ? t('practices.player.pause') : t('practices.player.play')}
+          disabled={!ready || failed}
+          onPress={togglePlay}
+          pointerEvents={started || !ready || failed ? 'auto' : 'none'}
+          style={{
+            position: 'absolute',
+            inset: 0,
+            zIndex: 2,
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 10,
+            padding: 24,
+          }}
+        >
+          {failed ? (
+            <Text style={[Type.bodySm, { color: palette.white, textAlign: 'center' }]}>
+              {t('practices.video.error')}
+            </Text>
+          ) : !ready ? (
+            <>
+              <ActivityIndicator color={palette.white} />
+              <Text style={[Type.captionM, { color: palette.white }]}>
+                {t('practices.video.loading')}
+              </Text>
+            </>
+          ) : (
+            <View
+              style={{
+                width: 60,
+                height: 60,
+                borderRadius: 30,
+                backgroundColor: palette.white,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Icon name={playing ? 'line/pause' : 'line/play'} size={24} color={palette.plum} />
+            </View>
+          )}
+        </Pressable>
       </View>
 
       <View

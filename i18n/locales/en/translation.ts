@@ -664,7 +664,8 @@ export default {
     askWhyPrompt: 'My Glow score is {{score}} ({{label}}). Can you help me understand why?',
     history: 'Score history',
     seeAll: 'See all',
-    legal: 'Your Glow score is for self-reflection only. It is not a medical assessment or diagnosis.',
+    legal:
+      'Your Glow score is for self-reflection only. It is not a medical assessment or diagnosis.',
     noCheckIn: 'No check-in',
     noRecommendation: 'No recommendation',
     insights: 'Insights',
@@ -686,7 +687,11 @@ export default {
     nothingToExport: 'There are no scores in this period yet.',
     emptyPeriod: 'No scores in this period yet. Check in to start one.',
     checkInNow: 'Check in now',
-    tags: { breathing: 'Breathing {{minutes}}m', practice: 'Practice {{minutes}}m', sleep: 'Sleep {{hours}}h' },
+    tags: {
+      breathing: 'Breathing {{minutes}}m',
+      practice: 'Practice {{minutes}}m',
+      sleep: 'Sleep {{hours}}h',
+    },
     insightsTitle: 'Your insights',
     insightsSubtitle: 'What shaped your Glow score, and what to do next.',
     eyebrow: 'GLOW SCORE',
@@ -696,7 +701,8 @@ export default {
     needMoreDays: 'Your trend shows once this period has two days of scores.',
     helps: 'What helps',
     pullsDown: 'What pulls it down',
-    needMoreFactors: 'Keep checking in, practising and logging sleep. Patterns show after a few days.',
+    needMoreFactors:
+      'Keep checking in, practising and logging sleep. Patterns show after a few days.',
     factors: {
       breathing: 'Breathing practice',
       practice: 'Mindful practice',
@@ -734,7 +740,12 @@ export default {
       social: 'Social connection',
       professional: 'Professional support',
     },
-    categoryShort: { mindfulness: 'Mindfulness', physical: 'Physical', social: 'Social', professional: 'Support' },
+    categoryShort: {
+      mindfulness: 'Mindfulness',
+      physical: 'Physical',
+      social: 'Social',
+      professional: 'Support',
+    },
     suggestedTitle: 'Suggested for you',
     kind: { breathing: 'Breathing', video: 'Video', audio: 'Sound', sleep: 'Sleep' },
     contentMeta: '{{kind}} · {{minutes}} min',
@@ -3215,10 +3226,58 @@ export default {
 
   /* ── Help Center & Resources ── */
   helpCenter: {
-    title: 'Help Center',
-    subtitle: 'FAQs, contact, policies (placeholder).',
+    title: 'Help Centre',
+    subtitle: 'Find answers and contact our team.',
+    heading: 'How can we help?',
+    search: 'Search questions',
+    faq: 'FAQ',
+    contact: 'Contact us',
     backToProfile: 'Back to Profile',
-    resources: 'Resources',
+    resources: 'Get support now',
+    stillNeedHelp: 'Still need help?',
+    writeToUs: 'Write to our team',
+    noResults: 'No matching questions',
+    tryAgain: 'Try another search or choose a different category.',
+    reset: 'Show all questions',
+    categories: {
+      all: 'All',
+      glow: 'Glow AI',
+      privacy: 'Privacy',
+      plans: 'Plans',
+      sleep: 'Sleep',
+    },
+    questions: {
+      therapist: {
+        question: 'Is Glow AI a therapist?',
+        answer:
+          'No. Glow AI is a supportive companion that helps you reflect and notice patterns. It cannot diagnose or treat, and it is not a replacement for a doctor, therapist or emergency help.',
+      },
+      score: {
+        question: 'How is my Glow score calculated?',
+        answer:
+          'Your Glow score combines your mood check-ins, sleep, stress, mindful practice, journaling and consistency. It uses the information you have recorded, so it can change as you add entries. It is a wellbeing indicator, not a diagnosis.',
+      },
+      privacy: {
+        question: 'Who can see my journal and chats?',
+        answer:
+          'Your journal and chats are linked to your account and are not shown in the community feed. AI features require your permission to send relevant content through Supabase to OpenAI. You can review your AI data preferences in Settings. Avoid sharing your sign-in details with others.',
+      },
+      cancel: {
+        question: 'How do I cancel Pro?',
+        answer:
+          'Open Profile, then My plan, and choose Manage subscription. Apple subscriptions are managed through Apple, and web subscriptions through the billing portal. Cancel there to stop the next renewal. Access continues until the end of the paid period.',
+      },
+      offline: {
+        question: 'Can I use Inner Glow offline?',
+        answer:
+          'Inner Glow needs an internet connection to sign in, load and save account data, use Glow AI and play YouTube videos. Some content already loaded on your device may remain available, but do not rely on entries being saved while offline. Reconnect before saving.',
+      },
+      reminders: {
+        question: 'How do I change my reminders?',
+        answer:
+          'Open Profile, then Settings, then Notifications to change your reminder preferences and times. Manage your wake-up alarm in Sleep. If reminders do not arrive, check that notifications are allowed for Inner Glow in your device settings.',
+      },
+    },
   },
   resourcesScreen: {
     title: 'Get support now',
