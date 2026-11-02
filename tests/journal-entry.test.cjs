@@ -57,3 +57,11 @@ test('crisis language opens support', () => {
   assert.equal(j.needsCrisisSupport('A long day at work'), false);
   assert.equal(j.needsCrisisSupport(undefined), false);
 });
+
+test('the saved screen counts days with an entry so far this month', () => {
+  const now = new Date(2026, 9, 30, 9);
+  const at = (m, d, h = 8) => new Date(2026, m, d, h).toISOString();
+  const r = j.monthProgress([at(9, 30), at(9, 30, 7), at(9, 2), at(8, 29), at(9, 31)], now);
+  assert.equal(r.logged, 2);
+  assert.equal(r.days, 30);
+});
