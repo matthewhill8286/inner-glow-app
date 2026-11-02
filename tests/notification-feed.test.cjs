@@ -29,7 +29,7 @@ test('every type has an icon, a glow colour node and an in-app route', () => {
   for (const look of Object.values(f.FEED_LOOK)) {
     assert.ok(look.icon.startsWith('line/'));
     assert.ok(glow.has(look.node));
-    assert.ok(look.route.startsWith('/(tabs)/'));
+    assert.ok(/^\/\((tabs|moments)\)\//.test(look.route));
   }
   assert.equal(f.feedLook('unknown').icon, 'line/bell');
 });
@@ -37,7 +37,7 @@ test('every type has an icon, a glow colour node and an in-app route', () => {
 test('a reminder follows its own in-app route, never an outside link', () => {
   assert.equal(f.feedRoute({ type: 'reminder', meta: { route: '/(tabs)/sleep' } }), '/(tabs)/sleep');
   assert.equal(f.feedRoute({ type: 'reminder', meta: { route: 'https://example.com' } }), '/(tabs)/home');
-  assert.equal(f.feedRoute({ type: 'journal_entry' }), '/(tabs)/journal');
+  assert.equal(f.feedRoute({ type: 'journal_entry' }), '/(moments)/constellation');
 });
 
 test('the journal grid counts this month only and places days six per row', () => {

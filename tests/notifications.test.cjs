@@ -44,7 +44,7 @@ test('enabled reminders persist and turning them off cancels the scheduled notif
  await api.setReminderEnabled('daily_checkin',true);
  assert.equal((await api.loadReminderPreferences()).daily_checkin,true);
  assert.equal(requests[0].trigger.hour,20);
- assert.equal(requests[0].content.data.route,'/(tabs)/mood/check-in');
+ assert.equal(requests[0].content.data.route,'/(moments)/checkin');
  await api.setReminderEnabled('daily_checkin',false);
  assert.equal((await api.loadReminderPreferences()).daily_checkin,false);
  assert.deepEqual(canceled,['reminder-1']);
