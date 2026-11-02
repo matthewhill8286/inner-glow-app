@@ -8,6 +8,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { AppButton } from '@/components/ui/AppButton';
 import { NavBar } from '@/components/ui/IconButton';
 import { screenBottomPadding } from '@/lib/screen-layout';
+import { useTabBarVisible } from '@/components/navigation/TabBarContext';
 
 /**
  * A whole screen that has nothing to show yet (09 §2.4, §3.5, §3.10–3.12): the corner glows
@@ -24,7 +25,7 @@ export function EmptyScreen({
   title,
   body,
   action,
-  tabBarVisible = true,
+  tabBarVisible: tabBarProp,
 }: {
   header: { kind: 'title'; title: string } | { kind: 'nav'; title: string; onBack: () => void; backLabel: string };
   glowColor: string;
@@ -34,6 +35,9 @@ export function EmptyScreen({
   tabBarVisible?: boolean;
 }) {
   const insets = useSafeAreaInsets();
+  // Follows the tab bar the screen actually shows unless the caller says otherwise.
+  const contextVisible = useTabBarVisible();
+  const tabBarVisible = tabBarProp ?? contextVisible;
   const bottom = screenBottomPadding(insets.bottom, tabBarVisible);
   const button = <AppButton title={action.label} onPress={action.onPress} />;
   return (

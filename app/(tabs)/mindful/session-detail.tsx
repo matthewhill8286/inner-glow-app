@@ -3,6 +3,7 @@ import { backTo } from '@/lib/navigation';
 import React, { useMemo } from 'react';
 import { View, Text, Pressable, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useBottomSpace } from '@/components/navigation/TabBarContext';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useMindfulness } from '@/hooks/useMindfulness';
@@ -59,6 +60,7 @@ export default function SessionDetail() {
   const theme = useColorScheme() ?? 'light';
   const colors = Colors[theme];
   const insets = useSafeAreaInsets();
+  const bottomSpace = useBottomSpace();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { mindfulnessHistory } = useMindfulness();
 
@@ -104,7 +106,7 @@ export default function SessionDetail() {
       <ScrollView
         contentContainerStyle={{
           paddingHorizontal: UI.spacing.xl,
-          paddingBottom: insets.bottom + 100,
+          paddingBottom: bottomSpace,
         }}
         showsVerticalScrollIndicator={false}
       >
