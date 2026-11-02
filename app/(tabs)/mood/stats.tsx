@@ -1,613 +1,285 @@
-import { averageOf } from '@/lib/mood-scale';
-import { Typography } from '@/constants/typography';
-import { backTo } from '@/lib/navigation';
-import { WellnessIconText } from '@/components/WellnessIconText';
 import React, { useMemo, useState } from 'react';
-import { View, Text, Pressable, ScrollView } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { Pressable, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { palette } from '@/constants/theme';
+import { Type } from '@/constants/typography';
+import { Icon } from '@/components/icons/Icon';
+import { SegmentedControl } from '@/components/ui/controls';
+import { DayDetailsSheet } from '@/components/mood/DayDetailsSheet';
+import { SettingsScreen } from '@/components/settings/SettingsParts';
 import { useMood } from '@/hooks/useMood';
-import { MoodCheckIn } from '@/lib/types';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors, UI } from '@/constants/theme';
-import MaterialIcons from '@/components/AppIcon';
+import { moodScoreOf, moodStep } from '@/lib/mood-scale';
+import { inPeriod, moodBuckets, moodSummary, type MoodPeriod } from '@/lib/mood-stats';
+import { backTo } from '@/lib/navigation';
+import type { MoodCheckIn } from '@/lib/types';
 
-/* ── Mood config ── */
-const MOOD_META: Record<string, { emoji: string; color: string; label: string }> = {
-  Great: { emoji: '😄', color: '#5B8A5A', label: 'Great' },
-  Good: { emoji: '😊', color: '#7EAD7E', label: 'Good' },
-  Okay: { emoji: '😐', color: '#E8985A', label: 'Okay' },
-  Low: { emoji: '😔', color: '#C47A5A', label: 'Low' },
-  Bad: { emoji: '😢', color: '#C45B5B', label: 'Bad' },
-};
+const BAR_H = 110;
+const RECENT = 10;
 
-function moodScore(m: string) {
-  if (m === 'Great') return 5;
-  if (m === 'Good') return 4;
-  if (m === 'Okay') return 3;
-  if (m === 'Low') return 2;
-  return 1;
+function Stat({
+  value,
+  label,
+  face,
+}: {
+  value: string;
+  label: string;
+  face?: ReturnType<typeof moodStep>['face'];
+}) {
+  return (
+    <View accessible accessibilityLabel={`${value} ${label}`} style={{ flex: 1, gap: 4 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        {face && <Icon name={face} size={20} color={palette.plum} />}
+        <Text
+          numberOfLines={1}
+          style={[
+            Type.titleMd,
+            { fontSize: 22, lineHeight: 28, color: palette.ink, flexShrink: 1 },
+          ]}
+        >
+          {value}
+        </Text>
+      </View>
+      <Text style={[Type.micro, { fontSize: 12, lineHeight: 15, color: palette.textMuted }]}>
+        {label}
+      </Text>
+    </View>
+  );
 }
 
-type Period = '1D' | '1W' | '1M';
-
+/**
+ * Mood stats. There is no frame for this screen, so it uses the library shell, cards and segmented
+ * control: a chart of the mood on the five-step scale for today, the week or the last four weeks; the
+ * average, the most common mood, what came up most, and the older energy and stress where present;
+ * then the latest check-ins, which open the Day details sheet like mood history.
+ */
 export default function MoodStats() {
-  const theme = useColorScheme() ?? 'light';
-  const colors = Colors[theme];
-  const { t } = useTranslation();
-  const { moodCheckIns: items, isLoading: loading } = useMood();
-  const insets = useSafeAreaInsets();
+  const { t, i18n } = useTranslation();
+  const { moodCheckIns } = useMood();
+  const [period, setPeriod] = useState<MoodPeriod>('week');
+  const [open, setOpen] = useState<MoodCheckIn | null>(null);
 
-  const [period, setPeriod] = useState<Period>('1W');
-
-  /* ── Filter items by period ── */
-  const filtered = useMemo(() => {
-    const now = new Date();
-    let cutoff: Date;
-    if (period === '1D') {
-      cutoff = new Date(now);
-      cutoff.setHours(0, 0, 0, 0);
-    } else if (period === '1W') {
-      cutoff = new Date(now);
-      cutoff.setDate(now.getDate() - 7);
-    } else {
-      cutoff = new Date(now);
-      cutoff.setMonth(now.getMonth() - 1);
-    }
-    return items.filter((i) => new Date(i.createdAt) >= cutoff);
-  }, [items, period]);
-
-  /* ── Bar chart data ── */
-  const barData = useMemo(() => {
-    if (period === '1D') {
-      // Group by hour
-      const hours: { label: string; items: MoodCheckIn[] }[] = [];
-      for (let h = 6; h <= 23; h += 3) {
-        const label = h <= 12 ? `${h}AM` : `${h - 12}PM`;
-        const hourItems = filtered.filter((i) => {
-          const hr = new Date(i.createdAt).getHours();
-          return hr >= h && hr < h + 3;
-        });
-        hours.push({ label, items: hourItems });
-      }
-      return hours.map((h) => ({
-        label: h.label,
-        avg:
-          h.items.length > 0
-            ? h.items.reduce((a, x) => a + moodScore(x.mood), 0) / h.items.length
-            : null,
-        count: h.items.length,
-        mood: h.items.length > 0 ? h.items[0].mood : null,
-      }));
-    } else if (period === '1W') {
-      const today = new Date();
-      return Array.from({ length: 7 }, (_, i) => {
-        const d = new Date(today);
-        d.setDate(today.getDate() - (6 - i));
-        const iso = d.toISOString().split('T')[0];
-        const dayItems = filtered.filter((it) => it.createdAt.split('T')[0] === iso);
-        return {
-          label: i === 6 ? 'Today' : d.toLocaleDateString('en-US', { weekday: 'short' }),
-          avg:
-            dayItems.length > 0
-              ? dayItems.reduce((a, x) => a + moodScore(x.mood), 0) / dayItems.length
-              : null,
-          count: dayItems.length,
-          mood: dayItems.length > 0 ? dayItems[0].mood : null,
-        };
-      });
-    } else {
-      // Monthly — group by week
-      const today = new Date();
-      const weeks: { label: string; items: MoodCheckIn[] }[] = [];
-      for (let w = 3; w >= 0; w--) {
-        const start = new Date(today);
-        start.setDate(today.getDate() - (w + 1) * 7);
-        const end = new Date(today);
-        end.setDate(today.getDate() - w * 7);
-        const weekItems = filtered.filter((i) => {
-          const d = new Date(i.createdAt);
-          return d >= start && d < end;
-        });
-        weeks.push({
-          label: `W${4 - w}`,
-          items: weekItems,
-        });
-      }
-      return weeks.map((w) => ({
-        label: w.label,
-        avg:
-          w.items.length > 0
-            ? w.items.reduce((a, x) => a + moodScore(x.mood), 0) / w.items.length
-            : null,
-        count: w.items.length,
-        mood: w.items.length > 0 ? w.items[0].mood : null,
-      }));
-    }
-  }, [filtered, period]);
-
-  /* ── Summary stats ── */
-  const summary = useMemo(() => {
-    if (filtered.length === 0) return null;
-    const avgMood = filtered.reduce((a, x) => a + moodScore(x.mood), 0) / filtered.length;
-    const avgEnergy = averageOf(filtered.map((x) => x.energy));
-    const avgStress = averageOf(filtered.map((x) => x.stress));
-
-    // Most common mood
-    const counts: Record<string, number> = {};
-    filtered.forEach((i) => {
-      counts[i.mood] = (counts[i.mood] || 0) + 1;
-    });
-    let topMood = 'Okay';
-    let topCount = 0;
-    Object.entries(counts).forEach(([m, c]) => {
-      if (c > topCount) {
-        topMood = m;
-        topCount = c;
-      }
-    });
-
-    return { avgMood, avgEnergy, avgStress, total: filtered.length, topMood, topCount };
-  }, [filtered]);
-
-  const maxBarH = 100;
+  const logs = useMemo(() => inPeriod(moodCheckIns, period), [moodCheckIns, period]);
+  const buckets = useMemo(() => moodBuckets(moodCheckIns, period), [moodCheckIns, period]);
+  const summary = useMemo(() => moodSummary(logs), [logs]);
+  const fmt = (o: Intl.DateTimeFormatOptions, d: Date) =>
+    new Intl.DateTimeFormat(i18n.language, o).format(d);
+  const label = (start: Date, i: number) =>
+    period === 'day'
+      ? fmt({ hour: 'numeric' }, start)
+      : period === 'week'
+        ? i === 6
+          ? t('moodStats.today')
+          : fmt({ weekday: 'short' }, start)
+        : fmt({ day: 'numeric', month: 'short' }, start);
+  const avgStep = summary ? moodStep(summary.avgMood) : null;
+  const topStep = summary ? moodStep(moodScoreOf(summary.topMood as MoodCheckIn['mood'])) : null;
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
-      {/* Header */}
-      <View
-        style={{
-          paddingTop: insets.top + 6,
-          paddingHorizontal: UI.spacing.xl,
-          paddingBottom: UI.spacing.sm,
-        }}
-      >
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <Pressable
-            onPress={() => backTo(undefined, '/(tabs)/mood')}
-            style={({ pressed }) => ({
-              width: 36,
-              height: 36,
-              borderRadius: 18,
-              backgroundColor: colors.card,
-              borderWidth: 1,
-              borderColor: colors.border,
-              alignItems: 'center',
-              justifyContent: 'center',
-              opacity: pressed ? 0.7 : 1,
-              ...UI.shadow.sm,
-            })}
+    <SettingsScreen
+      title={t('moodStats.title')}
+      backLabel={t('common.back')}
+      onBack={() => backTo(undefined, '/(tabs)/mood')}
+      glows={[
+        { color: palette.mustard, opacity: 0.3, x: -50, y: -20, width: 280, blur: 80 },
+        { color: palette.sky, opacity: 0.2, x: 180, y: 60, width: 220, blur: 80 },
+      ]}
+      contentStyle={{ gap: 16 }}
+    >
+      <SegmentedControl
+        options={[
+          { value: 'day', label: t('moodStats.oneDay') },
+          { value: 'week', label: t('moodStats.oneWeek') },
+          { value: 'month', label: t('moodStats.oneMonth') },
+        ]}
+        value={period}
+        onChange={setPeriod}
+      />
+
+      <View style={{ backgroundColor: palette.white, borderRadius: 28, padding: 20, gap: 16 }}>
+        <View
+          style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' }}
+        >
+          <Text
+            accessibilityRole="header"
+            style={[Type.bodyStrong, { letterSpacing: 0, color: palette.ink }]}
           >
-            <MaterialIcons
-              name="arrow-back-ios"
-              size={16}
-              color={colors.text}
-              style={{ marginLeft: 4 }}
-            />
-          </Pressable>
-          <View>
-            <Text style={{ ...Typography.heading, fontSize: 24, color: colors.text }}>
-              {t('moodStats.title')}
-            </Text>
-            <Text
-              style={{ fontFamily: Typography.family.body, fontSize: 13, color: colors.mutedText }}
-            >
-              {t('moodStats.subtitle')}
-            </Text>
-          </View>
+            {t('moodStats.chart')}
+          </Text>
+          <Text style={[Type.captionM, { color: palette.textMuted }]}>
+            {t('moodStats.checkInCount', { count: logs.length })}
+          </Text>
+        </View>
+        <View
+          style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}
+        >
+          {buckets.map((b, i) => {
+            const step = b.avg ? moodStep(b.avg) : null;
+            return (
+              <View
+                key={b.start.toISOString()}
+                accessible
+                accessibilityLabel={`${label(b.start, i)}, ${step ? t(`moodScale.${step.key}`) : t('moodStats.noCheckIns')}`}
+                style={{ alignItems: 'center', gap: 6, flex: 1 }}
+              >
+                <View
+                  style={{
+                    width: 22,
+                    height: BAR_H,
+                    borderRadius: 11,
+                    backgroundColor: palette.surfaceLilacSoft,
+                    justifyContent: 'flex-end',
+                    overflow: 'hidden',
+                  }}
+                >
+                  {step && b.avg && (
+                    <View
+                      style={{
+                        height: Math.max(10, (b.avg / 5) * BAR_H),
+                        borderRadius: 11,
+                        backgroundColor: step.color,
+                      }}
+                    />
+                  )}
+                </View>
+                <Text numberOfLines={1} style={[Type.micro, { color: palette.textSubtle }]}>
+                  {label(b.start, i)}
+                </Text>
+              </View>
+            );
+          })}
         </View>
       </View>
 
-      <ScrollView
-        contentContainerStyle={{ paddingHorizontal: UI.spacing.xl, paddingBottom: 100, gap: 16 }}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* ── Period Tabs ── */}
-        <View
-          style={{
-            flexDirection: 'row',
-            gap: 8,
-            backgroundColor: colors.card,
-            borderRadius: UI.radius.xl,
-            padding: 4,
-            borderWidth: 1,
-            borderColor: colors.border,
-          }}
-        >
-          {(['1D', '1W', '1M'] as Period[]).map((p) => {
-            const active = period === p;
+      {summary && avgStep && topStep ? (
+        <View style={{ backgroundColor: palette.white, borderRadius: 28, padding: 20, gap: 18 }}>
+          <View style={{ flexDirection: 'row' }}>
+            <Stat
+              value={t(`moodScale.${avgStep.key}`)}
+              label={t('moodStats.avgMood')}
+              face={avgStep.face}
+            />
+            <Stat
+              value={t(`moodScale.${topStep.key}`)}
+              label={t('moodStats.mostCommon', { count: summary.topMoodCount })}
+              face={topStep.face}
+            />
+          </View>
+          {(summary.avgEnergy != null || summary.avgStress != null) && (
+            <View style={{ flexDirection: 'row' }}>
+              {summary.avgEnergy != null && (
+                <Stat
+                  value={`${summary.avgEnergy.toFixed(1)}/5`}
+                  label={t('moodStats.avgEnergy')}
+                />
+              )}
+              {summary.avgStress != null && (
+                <Stat
+                  value={`${summary.avgStress.toFixed(1)}/10`}
+                  label={t('moodStats.avgStress')}
+                />
+              )}
+            </View>
+          )}
+          {summary.topFactors.length > 0 && (
+            <View style={{ gap: 8 }}>
+              <Text
+                style={[Type.micro, { fontSize: 12, lineHeight: 15, color: palette.textMuted }]}
+              >
+                {t('moodStats.cameUp')}
+              </Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                {summary.topFactors.map((f) => (
+                  <View
+                    key={f}
+                    style={{
+                      backgroundColor: palette.selected,
+                      borderRadius: 999,
+                      paddingVertical: 4,
+                      paddingHorizontal: 10,
+                    }}
+                  >
+                    <Text style={[Type.tag, { lineHeight: 17, color: palette.plum }]}>
+                      {t(`moodCheckIn2.factor.${f}`)}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+        </View>
+      ) : (
+        <View style={{ backgroundColor: palette.white, borderRadius: 28, padding: 20 }}>
+          <Text
+            style={[
+              Type.captionM,
+              { lineHeight: 19, color: palette.textMuted, textAlign: 'center' },
+            ]}
+          >
+            {t('moodStats.empty')}
+          </Text>
+        </View>
+      )}
+
+      {logs.length > 0 && (
+        <View style={{ gap: 10 }}>
+          <Text
+            accessibilityRole="header"
+            style={[Type.bodyStrong, { letterSpacing: 0, color: palette.ink, marginTop: 8 }]}
+          >
+            {t('moodStats.recent')}
+          </Text>
+          {logs.slice(0, RECENT).map((log) => {
+            const step = moodStep(moodScoreOf(log.mood));
+            const when = new Date(log.createdAt);
             return (
               <Pressable
-                key={p}
-                onPress={() => setPeriod(p)}
+                key={log.id}
+                accessibilityRole="button"
+                onPress={() => setOpen(log)}
                 style={({ pressed }) => ({
-                  flex: 1,
-                  paddingVertical: 12,
-                  borderRadius: UI.radius.lg,
-                  backgroundColor: active ? '#8B6B47' : 'transparent',
+                  flexDirection: 'row',
                   alignItems: 'center',
-                  opacity: pressed ? 0.8 : 1,
+                  gap: 12,
+                  minHeight: 72,
+                  borderRadius: 24,
+                  backgroundColor: palette.white,
+                  paddingHorizontal: 14,
+                  opacity: pressed ? 0.9 : 1,
                 })}
               >
-                <Text
+                <View
                   style={{
-                    fontFamily: Typography.family.body,
-                    fontSize: 14,
-                    fontWeight: Typography.weight.semibold,
-                    color: active ? '#fff' : colors.mutedText,
+                    width: 44,
+                    height: 44,
+                    borderRadius: 22,
+                    backgroundColor: `${step.color}55`,
+                    alignItems: 'center',
+                    justifyContent: 'center',
                   }}
                 >
-                  {p === '1D'
-                    ? t('moodStats.oneDay')
-                    : p === '1W'
-                      ? t('moodStats.oneWeek')
-                      : t('moodStats.oneMonth')}
-                </Text>
+                  <Icon name={step.face} size={22} color={palette.plum} />
+                </View>
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text style={[Type.bodyMSemi, { lineHeight: 21, color: palette.ink }]}>
+                    {t(`moodScale.${step.key}`)}
+                  </Text>
+                  <Text numberOfLines={1} style={[Type.captionS, { color: palette.textMuted }]}>
+                    {[
+                      fmt({ weekday: 'short', day: 'numeric', month: 'short' }, when),
+                      fmt({ hour: '2-digit', minute: '2-digit' }, when),
+                      log.note?.trim(),
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </Text>
+                </View>
+                <Icon name="arrow/chevron-right" size={18} color={palette.plum} />
               </Pressable>
             );
           })}
         </View>
-
-        {/* ── Bar Chart ── */}
-        <View
-          style={{
-            backgroundColor: colors.card,
-            borderRadius: UI.radius.xxl,
-            padding: 18,
-            borderWidth: 1,
-            borderColor: colors.border,
-            ...UI.shadow.sm,
-          }}
-        >
-          <View
-            style={{
-              flexDirection: 'row',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: 20,
-            }}
-          >
-            <Text style={{ ...Typography.section, color: colors.text }}>
-              {t('moodStats.moodChart')}
-            </Text>
-            <Text
-              style={{
-                fontFamily: Typography.family.body,
-                fontSize: 12,
-                fontWeight: Typography.weight.semibold,
-                color: colors.mutedText,
-              }}
-            >
-              {filtered.length} {t('moodStats.checkIn', { count: filtered.length })}
-            </Text>
-          </View>
-
-          {/* Y-axis labels + bars */}
-          <View style={{ flexDirection: 'row' }}>
-            {/* Y labels */}
-            <View
-              style={{
-                justifyContent: 'space-between',
-                height: maxBarH,
-                marginRight: 8,
-                paddingBottom: 2,
-              }}
-            >
-              <Text
-                style={{
-                  fontFamily: Typography.family.body,
-                  fontSize: 10,
-                  color: colors.mutedText,
-                }}
-              >
-                5
-              </Text>
-              <Text
-                style={{
-                  fontFamily: Typography.family.body,
-                  fontSize: 10,
-                  color: colors.mutedText,
-                }}
-              >
-                3
-              </Text>
-              <Text
-                style={{
-                  fontFamily: Typography.family.body,
-                  fontSize: 10,
-                  color: colors.mutedText,
-                }}
-              >
-                1
-              </Text>
-            </View>
-
-            {/* Bars */}
-            <View
-              style={{
-                flex: 1,
-                flexDirection: 'row',
-                alignItems: 'flex-end',
-                justifyContent: 'space-around',
-              }}
-            >
-              {barData.map((bar, idx) => {
-                const h = bar.avg != null ? Math.max(8, (bar.avg / 5) * maxBarH) : 6;
-                const barColor = bar.mood
-                  ? (MOOD_META[bar.mood]?.color ?? '#8B6B47')
-                  : colors.border;
-                return (
-                  <View key={idx} style={{ alignItems: 'center', flex: 1 }}>
-                    <View
-                      style={{
-                        width: period === '1D' ? 16 : 22,
-                        height: h,
-                        borderRadius: 11,
-                        backgroundColor: barColor,
-                        opacity: bar.avg != null ? 0.85 : 0.12,
-                      }}
-                    />
-                    <Text
-                      style={{
-                        fontFamily: Typography.family.body,
-                        fontSize: 9,
-                        fontWeight: Typography.weight.semibold,
-                        color: colors.mutedText,
-                        marginTop: 8,
-                      }}
-                    >
-                      {bar.label}
-                    </Text>
-                  </View>
-                );
-              })}
-            </View>
-          </View>
-
-          {/* Gridlines */}
-          {[0, 1, 2].map((i) => (
-            <View
-              key={i}
-              style={{
-                position: 'absolute',
-                left: 40,
-                right: 18,
-                top: 56 + i * (maxBarH / 2),
-                height: 1,
-                backgroundColor: colors.border,
-                opacity: 0.3,
-              }}
-            />
-          ))}
-        </View>
-
-        {/* ── Summary Cards ── */}
-        {summary && (
-          <>
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-              <View
-                style={{
-                  flex: 1,
-                  backgroundColor: colors.card,
-                  borderRadius: UI.radius.xl,
-                  padding: 18,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                  alignItems: 'center',
-                  ...UI.shadow.sm,
-                }}
-              >
-                <Text
-                  style={{
-                    fontFamily: Typography.family.body,
-                    fontSize: 28,
-                    fontWeight: Typography.weight.semibold,
-                    color: '#5B8A5A',
-                  }}
-                >
-                  {summary.avgMood.toFixed(1)}
-                </Text>
-                <Text
-                  style={{
-                    fontFamily: Typography.family.body,
-                    fontSize: 12,
-                    fontWeight: Typography.weight.semibold,
-                    color: colors.mutedText,
-                    marginTop: 4,
-                  }}
-                >
-                  {t('moodStats.avgMood')}
-                </Text>
-              </View>
-              <View
-                style={{
-                  flex: 1,
-                  backgroundColor: colors.card,
-                  borderRadius: UI.radius.xl,
-                  padding: 18,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                  alignItems: 'center',
-                  ...UI.shadow.sm,
-                }}
-              >
-                <Text
-                  style={{
-                    fontFamily: Typography.family.body,
-                    fontSize: 28,
-                    fontWeight: Typography.weight.semibold,
-                    color: '#E8985A',
-                  }}
-                >
-                  {summary.avgEnergy?.toFixed(1) ?? '–'}
-                </Text>
-                <Text
-                  style={{
-                    fontFamily: Typography.family.body,
-                    fontSize: 12,
-                    fontWeight: Typography.weight.semibold,
-                    color: colors.mutedText,
-                    marginTop: 4,
-                  }}
-                >
-                  {t('moodStats.avgEnergy')}
-                </Text>
-              </View>
-            </View>
-
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-              <View
-                style={{
-                  flex: 1,
-                  backgroundColor: colors.card,
-                  borderRadius: UI.radius.xl,
-                  padding: 18,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                  alignItems: 'center',
-                  ...UI.shadow.sm,
-                }}
-              >
-                <Text
-                  style={{
-                    fontFamily: Typography.family.body,
-                    fontSize: 28,
-                    fontWeight: Typography.weight.semibold,
-                    color: '#7B6DC9',
-                  }}
-                >
-                  {summary.avgStress?.toFixed(1) ?? '–'}
-                </Text>
-                <Text
-                  style={{
-                    fontFamily: Typography.family.body,
-                    fontSize: 12,
-                    fontWeight: Typography.weight.semibold,
-                    color: colors.mutedText,
-                    marginTop: 4,
-                  }}
-                >
-                  {t('moodStats.avgStress')}
-                </Text>
-              </View>
-              <View
-                style={{
-                  flex: 1,
-                  backgroundColor: colors.card,
-                  borderRadius: UI.radius.xl,
-                  padding: 18,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                  alignItems: 'center',
-                  ...UI.shadow.sm,
-                }}
-              >
-                <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 28 }}>
-                  {MOOD_META[summary.topMood]?.emoji ?? '😐'}
-                </WellnessIconText>
-                <Text
-                  style={{
-                    fontFamily: Typography.family.body,
-                    fontSize: 12,
-                    fontWeight: Typography.weight.semibold,
-                    color: colors.mutedText,
-                    marginTop: 4,
-                  }}
-                >
-                  {t('moodStats.mostCommon')}
-                </Text>
-              </View>
-            </View>
-          </>
-        )}
-
-        {/* ── Mood Entries List ── */}
-        {filtered.length > 0 && (
-          <View>
-            <Text style={{ ...Typography.section, color: colors.text, marginBottom: 12 }}>
-              {t('moodStats.checkIns')} ({filtered.length})
-            </Text>
-            <View style={{ gap: 8 }}>
-              {filtered.slice(0, 10).map((item) => {
-                const meta = MOOD_META[item.mood] ?? MOOD_META.Okay;
-                return (
-                  <Pressable
-                    key={item.id}
-                    onPress={() => router.push(`/(tabs)/mood/${item.id}`)}
-                    style={({ pressed }) => ({
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 12,
-                      backgroundColor: colors.card,
-                      borderRadius: UI.radius.lg,
-                      padding: 14,
-                      borderWidth: 1,
-                      borderColor: colors.border,
-                      opacity: pressed ? 0.8 : 1,
-                    })}
-                  >
-                    <View
-                      style={{
-                        width: 40,
-                        height: 40,
-                        borderRadius: 12,
-                        backgroundColor: meta.color + '15',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <WellnessIconText
-                        style={{
-                          fontFamily: Typography.family.body,
-                          fontSize: 20,
-                          color: meta.color,
-                        }}
-                      >
-                        {meta.emoji}
-                      </WellnessIconText>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text
-                        style={{
-                          fontFamily: Typography.family.body,
-                          fontSize: 14,
-                          fontWeight: Typography.weight.semibold,
-                          color: colors.text,
-                        }}
-                      >
-                        {meta.label}
-                      </Text>
-                      <Text
-                        style={{
-                          fontFamily: Typography.family.body,
-                          fontSize: 11,
-                          color: colors.mutedText,
-                          marginTop: 2,
-                        }}
-                      >
-                        {new Date(item.createdAt).toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                        })}
-                        {' · '}
-                        {new Date(item.createdAt).toLocaleTimeString('en-US', {
-                          hour: 'numeric',
-                          minute: '2-digit',
-                        })}
-                        {' · '}Energy {item.energy} · Stress {item.stress}
-                      </Text>
-                    </View>
-                    <View
-                      style={{ width: 4, height: 28, borderRadius: 2, backgroundColor: meta.color }}
-                    />
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-        )}
-      </ScrollView>
-    </View>
+      )}
+      <DayDetailsSheet log={open} onClose={() => setOpen(null)} />
+    </SettingsScreen>
   );
 }
