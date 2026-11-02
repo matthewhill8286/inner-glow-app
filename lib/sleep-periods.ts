@@ -8,9 +8,11 @@ export type Period = 'week' | 'month' | 'year';
 
 const DAY = 86_400_000;
 
+/** Hours in bed. `sleep.duration` is whole hours, so it is only a fallback when the times are missing. */
 export function nightHours(n: Night): number {
-  if (n.duration && n.duration > 0) return n.duration / 60;
-  return Math.max(0, (Date.parse(n.endISO) - Date.parse(n.startISO)) / 3_600_000);
+  const span = (Date.parse(n.endISO) - Date.parse(n.startISO)) / 3_600_000;
+  if (Number.isFinite(span) && span > 0) return span;
+  return n.duration && n.duration > 0 ? n.duration : 0;
 }
 
 function dayKey(d: Date) {

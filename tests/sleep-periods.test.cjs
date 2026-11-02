@@ -89,3 +89,8 @@ test('the mood week runs Monday to Sunday with the latest check-in each day', ()
   assert.equal(w.latestLog(logs).id, 'c');
   assert.equal(w.latestLog([]), null);
 });
+
+test('a night is its bedtime to wake span; whole-hour duration is only a fallback', () => {
+  assert.equal(s.nightHours({ startISO: new Date(2026, 9, 29, 23).toISOString(), endISO: new Date(2026, 9, 30, 7).toISOString(), duration: 8 }), 8);
+  assert.equal(s.nightHours({ startISO: '', endISO: '', duration: 7 }), 7);
+});
