@@ -19,7 +19,9 @@ export default function TabsLayout() {
     segments.includes('schedule') ||
     (segments.includes('community') && segments.includes('new-post')) ||
     // The mood check-in and Mood logged are full-screen flows with no tab bar (04 §M2–M5).
-    (segments.includes('mood') && (segments.includes('check-in') || segments.includes('logged')));
+    (segments.includes('mood') && (segments.includes('check-in') || segments.includes('logged'))) ||
+    // Practice Set up, the players and the daily goal are full-screen (07 §2.6–2.7, 10 §3.7).
+    (segments.includes('mindful') && ['[id]', 'goal'].some((s) => segments.includes(s)) && !segments.includes('category'));
 
   // Design order (00-foundations §4.5): Home, Practices, Glow AI (centre), Journal, Profile.
   const tabs: GlowTab[] = [

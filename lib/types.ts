@@ -63,6 +63,11 @@ export type MindfulEntry = {
   seconds: number; // duration in seconds
   dateISO: string;
   note?: string;
+  /** Practices (07 §5): which practice ran, its category, whether it finished, and how long it was set for. */
+  practiceId?: string | null;
+  category?: string | null;
+  completed?: boolean;
+  plannedSeconds?: number | null;
 };
 
 export type SleepSource = 'manual' | 'sleep_mode' | 'health';
@@ -97,6 +102,8 @@ export type UserProfile = {
   /** Daily check-in reminder time, "08:30". */
   checkinTime?: string | null;
   notificationPrefs?: Record<string, boolean>;
+  /** Daily practice goal in minutes (10 §3.7). */
+  mindfulGoalMinutes?: number;
   /** "What should we call you?" (06 P3); greetings prefer it to the first name. */
   nickname?: string | null;
   /** Glow AI settings (05 §3.8). */

@@ -2,8 +2,22 @@ import { notifyMindfulnessSession } from '@/lib/notificationStore';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/supabase/supabase';
 import { MindfulEntry } from '@/lib/types';
+import type { Json } from '@/types/database.types';
 import { useUser } from './useUser';
 import { queryKeys, STALE } from '@/lib/queryKeys';
+
+/** A practice session (07 §5): `practice` is set by the new players; older screens send only seconds and a note. */
+export type SessionInput = {
+  seconds: number;
+  note?: string;
+  practice?: {
+    id: string;
+    category: string;
+    completed: boolean;
+    plannedSeconds: number;
+    options?: Record<string, string | number | boolean>;
+  };
+};
 
 export const useMindfulness = () => {
   const queryClient = useQueryClient();
@@ -30,6 +44,10 @@ export const useMindfulness = () => {
         seconds: d.seconds || 0,
         dateISO: d.date_iso || d.created_at,
         note: d.note || undefined,
+        practiceId: d.practice_id,
+        category: d.category,
+        completed: d.completed ?? true,
+        plannedSeconds: d.planned_seconds,
       }));
 
       return items;
@@ -37,7 +55,7 @@ export const useMindfulness = () => {
   });
 
   const addMindfulnessMutation = useMutation({
-    mutationFn: async ({ seconds, note }: { seconds: number; note?: string }) => {
+    mutationFn: async ({ seconds, note, practice }: SessionInput) => {
       if (!user) throw new Error('Not authenticated');
 
       const { data, error } = await supabase
@@ -47,6 +65,15 @@ export const useMindfulness = () => {
           seconds,
           note,
           date_iso: new Date().toISOString(),
+          ...(practice
+            ? {
+                practice_id: practice.id,
+                category: practice.category,
+                completed: practice.completed,
+                planned_seconds: practice.plannedSeconds,
+                options: (practice.options ?? {}) as Json,
+              }
+            : {}),
         })
         .select()
         .single();
@@ -63,7 +90,7 @@ export const useMindfulness = () => {
       return item;
     },
     onSuccess: (item) => notifyMindfulnessSession(Math.round(item.seconds / 60)),
-    onMutate: async ({ seconds, note }) => {
+    onMutate: async ({ seconds, note, practice }) => {
       await queryClient.cancelQueries({ queryKey: key });
       const previous = queryClient.getQueryData<MindfulEntry[]>(key);
 
@@ -72,6 +99,10 @@ export const useMindfulness = () => {
         seconds,
         dateISO: new Date().toISOString(),
         note,
+        practiceId: practice?.id,
+        category: practice?.category,
+        completed: practice?.completed ?? true,
+        plannedSeconds: practice?.plannedSeconds,
       };
       queryClient.setQueryData<MindfulEntry[]>(key, (old) => [optimistic, ...(old || [])]);
 
@@ -93,6 +124,7 @@ export const useMindfulness = () => {
     error: mindfulnessQuery.error,
     addMindfulMinutes: (seconds: number, note?: string) =>
       addMindfulnessMutation.mutateAsync({ seconds, note }),
+    addSession: addMindfulnessMutation.mutateAsync,
     isAdding: addMindfulnessMutation.isPending,
   };
 };
