@@ -1,758 +1,418 @@
-import { Typography } from '@/constants/typography';
-import { backTo } from '@/lib/navigation';
-import { WellnessIconText } from '@/components/WellnessIconText';
-import React, { useState, useMemo } from 'react';
-import {
-  View,
-  Text,
-  Pressable,
-  ScrollView,
-  Platform,
-  StyleSheet,
-  Dimensions,
-  ActivityIndicator,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import React, { useMemo, useState } from 'react';
+import { Pressable, Text, View, useWindowDimensions } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors, UI } from '@/constants/theme';
-import MaterialIcons from '@/components/AppIcon';
+import Svg, {
+  Circle,
+  Defs,
+  Line,
+  LinearGradient,
+  Path,
+  Polyline,
+  RadialGradient,
+  Rect,
+  Stop,
+  Text as SvgText,
+} from 'react-native-svg';
+import { palette } from '@/constants/theme';
+import { Type } from '@/constants/typography';
+import { LegalNote, SegmentedControl } from '@/components/ui/controls';
+import { SettingsScreen, SettingsSection } from '@/components/settings/SettingsParts';
 import { useSleep } from '@/hooks/useSleep';
-import { useSleepInsights } from '@/hooks/useSleepInsights';
-import { SleepEntry } from '@/lib/types';
-import { summariseStages } from '@/lib/sleep-stages';
-import CitationSection from '@/components/CitationSection';
+import { backTo } from '@/lib/navigation';
+import {
+  chartY,
+  factorImpacts,
+  formatHours,
+  nightsInPeriod,
+  periodAverage,
+  periodSeries,
+  startOfPeriod,
+  type Period,
+} from '@/lib/sleep-periods';
 
-const { width: SCREEN_W } = Dimensions.get('window');
+const CHART_H = 150;
+const GOAL_Y = chartY(8);
+const DESIGN_W = 327;
 
-/* ── colors ──────────────────────────────────────── */
-const SLEEP_COLORS = {
-  core: '#5B8A5A',
-  rem: '#7B6DC9',
-  post: '#E8985A',
-  irregular: '#C45B5B',
-};
-
-/* ── helpers ──────────────────────────────────────── */
-function formatStageMinutes(minutes: number) {
-  const h = Math.floor(minutes / 60);
-  const m = Math.round(minutes % 60);
-  return h > 0 ? `${h}h ${m}m` : `${m}m`;
-}
-
-function goBack(from?: string) {
-  backTo(from, '/(tabs)/sleep');
-}
-
-function getEntryDuration(entry: SleepEntry) {
-  if (entry.duration) return entry.duration;
-  return Math.max(
-    0,
-    (new Date(entry.endISO).getTime() - new Date(entry.startISO).getTime()) / (1000 * 60 * 60),
-  );
-}
-
-const TIME_PERIODS = ['1 Day', '1 Week', '1 Month', '1 Year', 'All Time'] as const;
-
-/* ── Bar Chart Component ─────────────────────────── */
-function BarChart({
-  data,
-  maxVal,
-  colors,
-}: {
-  data: { label: string; value: number; color: string }[];
-  maxVal: number;
-  colors: any;
-}) {
-  const barWidth = Math.max(12, (SCREEN_W - 120) / data.length - 8);
-
+/** Week (06 §4.6): straight segments with a gradient line and soft area; missing nights break it. */
+function WeekLine({ values, width }: { values: (number | null)[]; width: number }) {
+  const sx = width / DESIGN_W;
+  const pts = values.map((v, i) => (v === null ? null : { x: (12 + 50 * i) * sx, y: chartY(v) }));
+  // A missing night ends one run of the line and the next night starts another.
+  const segments: { x: number; y: number }[][] = [];
+  let run: { x: number; y: number }[] = [];
+  for (const p of pts) {
+    if (p) run.push(p);
+    else if (run.length) {
+      segments.push(run);
+      run = [];
+    }
+  }
+  if (run.length) segments.push(run);
+  const last = [...pts].reverse().find(Boolean);
   return (
-    <View style={barS.container}>
-      <View style={barS.barsRow}>
-        {data.map((d, i) => {
-          const heightPct = maxVal > 0 ? (d.value / maxVal) * 100 : 0;
-          return (
-            <View key={i} style={barS.barCol}>
-              <View style={[barS.barTrack, { backgroundColor: colors.inputBg }]}>
-                <View
-                  style={[
-                    barS.barFill,
-                    {
-                      backgroundColor: d.color,
-                      height: `${Math.max(4, heightPct)}%`,
-                    },
-                  ]}
-                />
-              </View>
-              <Text style={[barS.barLabel, { color: colors.subtleText }]}>{d.label}</Text>
-            </View>
-          );
-        })}
-      </View>
-    </View>
-  );
-}
-
-const barS = StyleSheet.create({
-  container: { paddingVertical: 8 },
-  barsRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-around',
-    height: 120,
-  },
-  barCol: { alignItems: 'center', gap: 6 },
-  barTrack: {
-    width: 16,
-    height: 100,
-    borderRadius: 8,
-    justifyContent: 'flex-end',
-    overflow: 'hidden',
-  },
-  barFill: {
-    width: '100%',
-    borderRadius: 8,
-  },
-  barLabel: {
-    fontFamily: Typography.family.body,
-    fontSize: 10,
-    fontWeight: Typography.weight.medium,
-  },
-});
-
-/* ── AI Suggestion Item ──────────────────────────── */
-function AISuggestionItem({
-  icon,
-  title,
-  subtitle,
-  color,
-  colors,
-  citations,
-}: {
-  icon: string;
-  title: string;
-  subtitle: string;
-  color: string;
-  colors: any;
-  citations?: Array<{ source: string; title: string; url: string }>;
-}) {
-  return (
-    <View style={[sugS.item, { backgroundColor: colors.card, borderColor: colors.border }]}>
-      <View style={[sugS.iconWrap, { backgroundColor: color + '15' }]}>
-        <MaterialIcons name={icon as any} size={20} color={color} />
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text style={[sugS.title, { color: colors.text }]}>{title}</Text>
-        <Text style={[sugS.subtitle, { color: colors.mutedText }]}>{subtitle}</Text>
-        {citations && citations.length > 0 && (
-          <CitationSection citations={citations} accentColor={color} colors={colors} compact />
-        )}
-      </View>
-      <MaterialIcons name="chevron-right" size={18} color={colors.subtleText} />
-    </View>
-  );
-}
-
-const sugS = StyleSheet.create({
-  item: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    padding: 14,
-    borderRadius: UI.radius.xxl,
-    borderWidth: 1,
-    ...UI.shadow.sm,
-  },
-  iconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: { ...Typography.label, fontSize: 14 },
-  subtitle: { fontFamily: Typography.family.body, fontSize: 12, marginTop: 2 },
-});
-
-/* ── Main Screen ─────────────────────────────────── */
-export default function SleepInsightsScreen() {
-  const theme = useColorScheme() ?? 'light';
-  const colors = Colors[theme];
-  const insets = useSafeAreaInsets();
-  const { t } = useTranslation();
-  const { from } = useLocalSearchParams<{ from?: string }>();
-  const { sleepEntries: entries } = useSleep();
-  const {
-    suggestions: aiSuggestionData,
-    summary: aiSummary,
-    summaryCitations: aiSummaryCitations,
-    isLoading: aiLoading,
-    isFetching: aiFetching,
-    isError: aiError,
-    refetch: refetchAI,
-    hasData: hasAIData,
-  } = useSleepInsights();
-
-  const [selectedPeriod, setSelectedPeriod] = useState<(typeof TIME_PERIODS)[number]>('1 Week');
-
-  // Filter entries by period
-  const filteredEntries = useMemo(() => {
-    const now = Date.now();
-    const msMap: Record<string, number> = {
-      '1 Day': 86400000,
-      '1 Week': 7 * 86400000,
-      '1 Month': 30 * 86400000,
-      '1 Year': 365 * 86400000,
-      'All Time': Infinity,
-    };
-    const cutoff = now - (msMap[selectedPeriod] || Infinity);
-    return entries.filter((e) => new Date(e.startISO).getTime() >= cutoff);
-  }, [entries, selectedPeriod]);
-
-  // Build chart data
-  const chartData = useMemo(() => {
-    if (filteredEntries.length === 0) return [];
-    const last7 = filteredEntries.slice(0, 7).reverse();
-    return last7.map((e) => {
-      const dur = getEntryDuration(e);
-      const d = new Date(e.startISO);
-      return {
-        label: d.toLocaleDateString(undefined, { weekday: 'short' }).slice(0, 3),
-        value: dur,
-        color: dur >= 7 ? SLEEP_COLORS.core : dur >= 5 ? SLEEP_COLORS.rem : SLEEP_COLORS.irregular,
-      };
-    });
-  }, [filteredEntries]);
-
-  const maxChartVal = Math.max(10, ...chartData.map((d) => d.value));
-
-  // Compute stats
-  const stageSummary = useMemo(() => summariseStages(filteredEntries), [filteredEntries]);
-
-  const avgQual =
-    filteredEntries.filter((e) => e.quality).length > 0
-      ? filteredEntries.filter((e) => e.quality).reduce((a, e) => a + (e.quality || 0), 0) /
-        filteredEntries.filter((e) => e.quality).length
-      : 0;
-
-  // Sleep irregularity (std dev of bedtimes)
-  const bedtimeHours = filteredEntries.map((e) => {
-    const d = new Date(e.startISO);
-    let h = d.getHours() + d.getMinutes() / 60;
-    if (h < 12) h += 24; // normalize late nights
-    return h;
-  });
-  const avgBedtime =
-    bedtimeHours.length > 0 ? bedtimeHours.reduce((a, b) => a + b, 0) / bedtimeHours.length : 0;
-  const stdDev =
-    bedtimeHours.length > 1
-      ? Math.sqrt(bedtimeHours.reduce((a, b) => a + (b - avgBedtime) ** 2, 0) / bedtimeHours.length)
-      : 0;
-  const irregularity = Math.min(100, Math.round(stdDev * 20));
-
-  // AI suggestions come from the hook now
-
-  return (
-    <View style={[s.container, { backgroundColor: colors.background, paddingTop: insets.top + 6 }]}>
-      {/* ── Header ──────────────────────────────── */}
-      <View style={s.header}>
-        <Pressable
-          onPress={() => goBack(from)}
-          style={({ pressed }) => [
-            s.backBtn,
-            {
-              backgroundColor: colors.card,
-              borderColor: colors.border,
-              opacity: pressed ? 0.7 : 1,
-            },
-          ]}
-        >
-          <MaterialIcons
-            name={Platform.OS === 'ios' ? 'arrow-back-ios-new' : 'arrow-back'}
-            size={18}
-            color={colors.text}
+    <>
+      <Defs>
+        <LinearGradient id="sleepLine" x1="0" y1="0" x2="1" y2="0">
+          <Stop offset="0" stopColor={palette.lavender} />
+          <Stop offset="1" stopColor={palette.mustard} />
+        </LinearGradient>
+        <LinearGradient id="sleepArea" x1="0" y1="0" x2="0" y2="1">
+          <Stop offset="0" stopColor={palette.lavenderSoft} stopOpacity={0.45} />
+          <Stop offset="1" stopColor={palette.lavenderSoft} stopOpacity={0} />
+        </LinearGradient>
+      </Defs>
+      {segments.map((run, i) => (
+        <React.Fragment key={i}>
+          {run.length > 1 && (
+            <Path
+              d={`M${run[0].x},${CHART_H} ${run.map((p) => `L${p.x},${p.y}`).join(' ')} L${run.at(-1)!.x},${CHART_H} Z`}
+              fill="url(#sleepArea)"
+            />
+          )}
+          <Polyline
+            points={run.map((p) => `${p.x},${p.y}`).join(' ')}
+            stroke="url(#sleepLine)"
+            strokeWidth={2.5}
+            fill="none"
+            strokeLinejoin="round"
+            strokeLinecap="round"
           />
-        </Pressable>
-        <View style={{ flex: 1 }}>
-          <Text style={[s.headerTitle, { color: colors.text }]}>{t('sleepInsights.title')}</Text>
-          <Text style={[s.headerSub, { color: colors.mutedText }]}>
-            {t('sleepInsights.subtitle')}
-          </Text>
-        </View>
-      </View>
-
-      <ScrollView contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* ── Period Tabs ───────────────────────── */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={s.periodTabs}
-        >
-          {TIME_PERIODS.map((p) => {
-            const periodLabel =
-              p === '1 Day'
-                ? t('sleepInsights.oneDay')
-                : p === '1 Week'
-                  ? t('sleepInsights.oneWeek')
-                  : p === '1 Month'
-                    ? t('sleepInsights.oneMonth')
-                    : p === '1 Year'
-                      ? t('sleepInsights.oneYear')
-                      : t('sleepInsights.allTime');
-            return (
-              <Pressable
-                key={p}
-                onPress={() => setSelectedPeriod(p)}
-                style={[
-                  s.periodTab,
-                  {
-                    backgroundColor: selectedPeriod === p ? '#8B6B47' : colors.inputBg,
-                  },
-                ]}
-              >
-                <Text
-                  style={[s.periodTabText, { color: selectedPeriod === p ? '#FFF' : colors.text }]}
-                >
-                  {periodLabel}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
-
-        {/* ── Chart ─────────────────────────────── */}
-        <View style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[s.cardLabel, { color: colors.mutedText }]}>
-            {t('sleepInsights.sleepDuration')}
-          </Text>
-          {chartData.length > 0 ? (
-            <BarChart data={chartData} maxVal={maxChartVal} colors={colors} />
+        </React.Fragment>
+      ))}
+      {pts.map((p, i) =>
+        p ? (
+          p === last ? (
+            <Circle key={i} cx={p.x} cy={p.y} r={5} fill={palette.plum} />
           ) : (
-            <View style={s.emptyChart}>
-              <Text
-                style={{
-                  fontFamily: Typography.family.body,
-                  color: colors.subtleText,
-                  fontSize: 13,
-                }}
-              >
-                {t('sleepInsights.noData')}
-              </Text>
-            </View>
-          )}
-        </View>
-
-        {/* ── Sleep Irregularity ────────────────── */}
-        <View style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <View style={s.irregularRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={[s.cardLabel, { color: colors.mutedText, marginBottom: 4 }]}>
-                {t('sleepInsights.sleepIrregularity')}
-              </Text>
-              <Text style={[s.irregularValue, { color: colors.text }]}>{irregularity}%</Text>
-            </View>
-            <View
-              style={[
-                s.irregularBadge,
-                {
-                  backgroundColor:
-                    irregularity < 30
-                      ? SLEEP_COLORS.core + '18'
-                      : irregularity < 60
-                        ? SLEEP_COLORS.post + '18'
-                        : SLEEP_COLORS.irregular + '18',
-                },
-              ]}
-            >
-              <Text
-                style={{
-                  fontFamily: Typography.family.body,
-                  fontSize: 13,
-                  fontWeight: Typography.weight.semibold,
-                  color:
-                    irregularity < 30
-                      ? SLEEP_COLORS.core
-                      : irregularity < 60
-                        ? SLEEP_COLORS.post
-                        : SLEEP_COLORS.irregular,
-                }}
-              >
-                {irregularity < 30
-                  ? t('sleepInsights.regular')
-                  : irregularity < 60
-                    ? t('sleepInsights.moderate')
-                    : t('sleepInsights.irregular')}
-              </Text>
-            </View>
-          </View>
-
-          {/* Progress bar */}
-          <View style={[s.progressTrack, { backgroundColor: colors.inputBg }]}>
-            <View
-              style={[
-                s.progressFill,
-                {
-                  width: `${irregularity}%`,
-                  backgroundColor:
-                    irregularity < 30
-                      ? SLEEP_COLORS.core
-                      : irregularity < 60
-                        ? SLEEP_COLORS.post
-                        : SLEEP_COLORS.irregular,
-                },
-              ]}
+            <Circle
+              key={i}
+              cx={p.x}
+              cy={p.y}
+              r={3}
+              fill={palette.white}
+              stroke={palette.plum}
+              strokeWidth={1.5}
             />
-          </View>
-        </View>
-
-        {/* ── Stage Breakdown (only nights with stages from Health) ── */}
-        {stageSummary && (
-          <View style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={[s.cardLabel, { color: colors.mutedText }]}>
-              {t('sleepInsights.breakdown')}
-            </Text>
-            <View style={s.statsGrid}>
-              {(
-                [
-                  { key: 'light', label: t('sleepInsights.lightSleep'), color: SLEEP_COLORS.core },
-                  { key: 'deep', label: t('sleepInsights.deepSleep'), color: SLEEP_COLORS.post },
-                  { key: 'rem', label: t('sleepInsights.rem'), color: SLEEP_COLORS.rem },
-                ] as const
-              ).map((stage) => (
-                <View key={stage.key} style={[s.statBlock, { backgroundColor: stage.color + '12' }]}>
-                  <Text style={[s.statValue, { color: stage.color }]}>
-                    {formatStageMinutes(stageSummary.avgMinutes[stage.key])}
-                  </Text>
-                  <Text style={[s.statLabel, { color: colors.mutedText }]}>{stage.label}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        )}
-
-        {/* ── AI Suggestions ───────────────────── */}
-        <View style={s.sectionHeader}>
-          <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 18 }}>
-            🤖
-          </WellnessIconText>
-          <Text style={[s.sectionTitle, { color: colors.text }]}>
-            {t('sleepInsights.aiSuggestions')}
-          </Text>
-          {hasAIData && (
-            <Pressable
-              onPress={() => refetchAI()}
-              disabled={aiFetching}
-              style={({ pressed }) => ({
-                marginLeft: 'auto',
-                opacity: pressed ? 0.6 : 1,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 4,
-              })}
-            >
-              {aiFetching ? (
-                <ActivityIndicator size="small" color="#8B6B47" />
-              ) : (
-                <>
-                  <MaterialIcons name="refresh" size={16} color="#8B6B47" />
-                  <Text
-                    style={{
-                      fontFamily: Typography.family.body,
-                      fontSize: 13,
-                      fontWeight: Typography.weight.semibold,
-                      color: '#8B6B47',
-                    }}
-                  >
-                    {t('sleepInsights.refreshInsights')}
-                  </Text>
-                </>
-              )}
-            </Pressable>
-          )}
-        </View>
-
-        {/* AI Summary */}
-        {aiSummary ? (
-          <View style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text
-              style={{
-                fontFamily: Typography.family.body,
-                fontSize: 14,
-                color: colors.text,
-                lineHeight: 20,
-                fontWeight: Typography.weight.medium,
-              }}
-            >
-              {aiSummary}
-            </Text>
-            {aiSummaryCitations.length > 0 && (
-              <CitationSection
-                citations={aiSummaryCitations}
-                accentColor="#5A8FB5"
-                colors={colors as any}
-                compact
-              />
-            )}
-          </View>
-        ) : null}
-
-        {/* Loading state */}
-        {aiLoading ? (
-          <View style={{ alignItems: 'center', paddingVertical: 32, gap: 12 }}>
-            <ActivityIndicator size="large" color="#8B6B47" />
-            <Text
-              style={{
-                fontFamily: Typography.family.body,
-                fontSize: 14,
-                fontWeight: Typography.weight.semibold,
-                color: colors.text,
-              }}
-            >
-              {t('sleepInsights.analyzing')}
-            </Text>
-            <Text
-              style={{ fontFamily: Typography.family.body, fontSize: 12, color: colors.mutedText }}
-            >
-              {t('sleepInsights.analyzingSubtitle')}
-            </Text>
-          </View>
-        ) : aiError ? (
-          /* Error state */
-          <View
-            style={[
-              s.card,
-              {
-                backgroundColor: colors.card,
-                borderColor: colors.border,
-                alignItems: 'center',
-                paddingVertical: 28,
-                gap: 10,
-              },
-            ]}
-          >
-            <MaterialIcons name="cloud-off" size={32} color={SLEEP_COLORS.irregular} />
-            <Text
-              style={{
-                fontFamily: Typography.family.body,
-                fontSize: 15,
-                fontWeight: Typography.weight.semibold,
-                color: colors.text,
-              }}
-            >
-              {t('sleepInsights.errorTitle')}
-            </Text>
-            <Text
-              style={{
-                fontFamily: Typography.family.body,
-                fontSize: 13,
-                color: colors.mutedText,
-                textAlign: 'center',
-              }}
-            >
-              {t('sleepInsights.errorSubtitle')}
-            </Text>
-            <Pressable
-              onPress={() => refetchAI()}
-              style={({ pressed }) => ({
-                marginTop: 8,
-                paddingHorizontal: 20,
-                paddingVertical: 10,
-                borderRadius: 12,
-                backgroundColor: '#8B6B47',
-                opacity: pressed ? 0.8 : 1,
-              })}
-            >
-              <Text
-                style={{
-                  fontFamily: Typography.family.body,
-                  color: '#FFF',
-                  fontWeight: Typography.weight.semibold,
-                  fontSize: 14,
-                }}
-              >
-                {t('sleepInsights.retry')}
-              </Text>
-            </Pressable>
-          </View>
-        ) : !hasAIData ? (
-          /* No data state */
-          <View
-            style={[
-              s.card,
-              {
-                backgroundColor: colors.card,
-                borderColor: colors.border,
-                alignItems: 'center',
-                paddingVertical: 28,
-                gap: 10,
-              },
-            ]}
-          >
-            <MaterialIcons name="bedtime" size={32} color={SLEEP_COLORS.rem} />
-            <Text
-              style={{
-                fontFamily: Typography.family.body,
-                fontSize: 15,
-                fontWeight: Typography.weight.semibold,
-                color: colors.text,
-              }}
-            >
-              {t('sleepInsights.noDataTitle')}
-            </Text>
-            <Text
-              style={{
-                fontFamily: Typography.family.body,
-                fontSize: 13,
-                color: colors.mutedText,
-                textAlign: 'center',
-              }}
-            >
-              {t('sleepInsights.noDataSubtitle')}
-            </Text>
-          </View>
-        ) : (
-          /* Suggestion cards */
-          aiSuggestionData.map((sug) => (
-            <AISuggestionItem
-              key={sug.id}
-              icon={sug.icon}
-              title={sug.title}
-              subtitle={sug.subtitle}
-              color={sug.color}
-              colors={colors}
-              citations={sug.citations}
-            />
-          ))
-        )}
-      </ScrollView>
-    </View>
+          )
+        ) : null,
+      )}
+    </>
   );
 }
 
-/* ── Styles ──────────────────────────────────────── */
-const s = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingHorizontal: UI.spacing.xl,
-  } as any,
+/**
+ * Bar geometry: Month bars are 6 wide from x 8.3, Year bars 14 wide from x 12.1, spread so the last
+ * bar ends the same distance from the right edge. That is the design's 10.5 pitch for 30 nights and
+ * 26.25 for 12 months, and keeps 31-night months inside the frame.
+ */
+function barLayout(period: 'month' | 'year', count: number, width: number) {
+  const barW = period === 'year' ? 14 : 6;
+  const first = ((period === 'year' ? 12.1 : 8.3) * width) / DESIGN_W;
+  const pitch = (width - 2 * first - barW) / Math.max(1, count - 1);
+  return { barW, first, pitch };
+}
 
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    marginTop: 6,
-    marginBottom: 4,
-  } as any,
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-  },
-  headerTitle: { ...Typography.heading },
-  headerSub: { fontFamily: Typography.family.body, fontSize: 14, marginTop: 2 },
+/** Month (09 §3.6) and Year (§3.7): one bar per night or month, the same scale as the week line. */
+function Bars({
+  values,
+  period,
+  width,
+}: {
+  values: (number | null)[];
+  period: 'month' | 'year';
+  width: number;
+}) {
+  const { barW, first, pitch } = barLayout(period, values.length, width);
+  return (
+    <>
+      <Defs>
+        <LinearGradient id="sleepBar" x1="0" y1="0" x2="0" y2="1">
+          <Stop offset="0" stopColor={palette.mustard} />
+          <Stop offset="1" stopColor={palette.lavender} stopOpacity={0.5} />
+        </LinearGradient>
+      </Defs>
+      {values.map((v, i) => {
+        if (v === null) return null;
+        const top = Math.min(134, chartY(v));
+        return (
+          <Rect
+            key={i}
+            x={first + pitch * i}
+            y={top}
+            width={barW}
+            height={140 - top}
+            rx={barW / 2}
+            fill="url(#sleepBar)"
+          />
+        );
+      })}
+    </>
+  );
+}
 
-  scrollContent: {
-    paddingTop: 16,
-    paddingBottom: 100,
-    gap: 14,
-  },
+/**
+ * Sleep insights (06 §S8 Week, 09 §3.6 Month, §3.7 Year): the period control, this period's average
+ * against the previous one, the chart against the 8 h goal, what helps and what gets in the way
+ * (from the factors logged with each night), the Ask Glow AI chip and the note. The old rolling
+ * periods, the made-up stage split and the AI suggestion list are gone.
+ */
+export default function SleepInsights() {
+  const { t, i18n } = useTranslation();
+  const { from } = useLocalSearchParams<{ from?: string }>();
+  const { width: screenW } = useWindowDimensions();
+  const width = screenW - 48;
+  const { sleepEntries } = useSleep();
+  const [period, setPeriod] = useState<Period>('week');
+  const now = useMemo(() => new Date(), []);
 
-  /* period tabs */
-  periodTabs: {
-    gap: 8,
-    paddingVertical: 4,
-  },
-  periodTab: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 14,
-  },
-  periodTabText: {
-    fontFamily: Typography.family.body,
-    fontSize: 13,
-    fontWeight: Typography.weight.medium,
-  },
+  const series = useMemo(
+    () => periodSeries(sleepEntries, period, now),
+    [sleepEntries, period, now],
+  );
+  const average = periodAverage(sleepEntries, period, now);
+  const previous = periodAverage(sleepEntries, period, now, -1);
+  const impacts = useMemo(
+    () => factorImpacts(nightsInPeriod(sleepEntries, period, now)),
+    [sleepEntries, period, now],
+  );
 
-  /* cards */
-  card: {
-    borderRadius: UI.radius.xxl,
-    padding: 18,
-    borderWidth: 1,
-    ...UI.shadow.sm,
-  },
-  cardLabel: {
-    fontFamily: Typography.family.body,
-    fontSize: 12,
-    fontWeight: Typography.weight.medium,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 10,
-  },
-  emptyChart: {
-    height: 100,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  const delta = () => {
+    if (average === null || previous === null) return null;
+    const minutes = Math.round((average - previous) * 60);
+    if (minutes === 0) return t('sleepPeriods.same');
+    const sign = minutes > 0 ? '+' : '−';
+    const abs = Math.abs(minutes);
+    if (period === 'week') return t('sleepPeriods.vsLastWeek', { sign, minutes: abs });
+    if (period === 'month')
+      return t('sleepPeriods.vsMonth', {
+        sign,
+        minutes: abs,
+        month: startOfPeriod('month', now, -1).toLocaleDateString(i18n.language, { month: 'long' }),
+      });
+    return t('sleepPeriods.vsYear', { sign, minutes: abs, year: now.getFullYear() - 1 });
+  };
 
-  /* irregularity */
-  irregularRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  irregularValue: {
-    fontFamily: Typography.family.body,
-    fontSize: 28,
-    fontWeight: Typography.weight.bold,
-  },
-  irregularBadge: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 10,
-  },
-  progressTrack: {
-    height: 6,
-    borderRadius: 3,
-    marginTop: 14,
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 3,
-  },
+  const labels = (): { x: number; text: string }[] => {
+    const sx = width / DESIGN_W;
+    if (period === 'week')
+      return t('sleepPeriods.weekdays')
+        .split(',')
+        .map((d, i) => ({ x: (12 + 50 * i) * sx, text: d }));
+    const { barW, first, pitch } = barLayout(period, series.length, width);
+    const centre = (i: number) => first + pitch * i + barW / 2;
+    if (period === 'year')
+      return t('sleepPeriods.months')
+        .split(',')
+        .map((m, i) => ({ x: centre(i), text: m }));
+    const last = series.length;
+    return [1, 8, 15, 22, last].map((d) => ({ x: centre(d - 1), text: String(d) }));
+  };
 
-  /* stats */
-  statsGrid: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  statBlock: {
-    flex: 1,
-    alignItems: 'center',
-    padding: 14,
-    borderRadius: UI.radius.lg,
-    gap: 4,
-  },
-  statValue: {
-    fontFamily: Typography.family.body,
-    fontSize: 18,
-    fontWeight: Typography.weight.bold,
-  },
-  statLabel: {
-    fontFamily: Typography.family.body,
-    fontSize: 11,
-    fontWeight: Typography.weight.bold,
-  },
+  const factorCard = (items: { key: string; minutes: number }[], dot: string) => (
+    <View style={{ backgroundColor: palette.white, borderRadius: 24, paddingHorizontal: 18 }}>
+      {items.map((f, i) => (
+        <View
+          key={f.key}
+          style={{
+            minHeight: 56,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 12,
+            borderTopWidth: i ? 1 : 0,
+            borderTopColor: palette.surfaceLilac,
+          }}
+        >
+          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: dot }} />
+          <Text style={[Type.bodyMMedium, { flex: 1, color: palette.ink }]}>
+            {t(`sleepPeriods.factors.${f.key}`, { defaultValue: f.key })}
+          </Text>
+          <Text
+            style={[Type.captionM, { color: palette.textMuted }]}
+          >{`${f.minutes > 0 ? '+' : '−'}${Math.abs(f.minutes)} min`}</Text>
+        </View>
+      ))}
+    </View>
+  );
 
-  /* section */
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 4,
-  },
-  sectionTitle: { ...Typography.section, fontSize: 20 },
-});
+  const ask = () => {
+    const summary =
+      average === null
+        ? t('sleepPeriods.noData')
+        : `${t('sleepPeriods.average')} ${formatHours(average)}`;
+    router.push({
+      pathname: '/(tabs)/chat/new-conversation',
+      params: {
+        initialMessage: t('sleepPeriods.askPrompt', { summary }),
+        persona: 'sleep',
+        from: '/(tabs)/sleep/insights',
+      },
+    });
+  };
+
+  const d = delta();
+  return (
+    <SettingsScreen
+      title={t('sleepPeriods.title')}
+      backLabel={t('common.back')}
+      onBack={() => backTo(from, '/(tabs)/sleep')}
+      glows={[
+        { color: palette.lavenderSoft, opacity: 0.25, x: -60, y: -40, width: 280, blur: 90 },
+        {
+          color: palette.mustard,
+          opacity: period === 'week' ? 0.15 : 0.28,
+          x: 200,
+          y: 40,
+          width: 220,
+          blur: 90,
+        },
+      ]}
+      contentStyle={{ gap: 24 }}
+    >
+      <SegmentedControl
+        variant="compact"
+        value={period}
+        onChange={setPeriod}
+        options={[
+          { value: 'week', label: t('sleepPeriods.week') },
+          { value: 'month', label: t('sleepPeriods.month') },
+          { value: 'year', label: t('sleepPeriods.year') },
+        ]}
+      />
+
+      <View
+        style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}
+      >
+        <View>
+          <Text style={[Type.microBold, { fontSize: 12, lineHeight: 16, color: palette.lavender }]}>
+            {t('sleepPeriods.average')}
+          </Text>
+          <Text
+            style={[
+              Type.body,
+              {
+                fontSize: average === null ? 22 : 40,
+                lineHeight: average === null ? 30 : 48,
+                color: palette.ink,
+              },
+            ]}
+          >
+            {average === null ? t('sleepPeriods.noData') : formatHours(average)}
+          </Text>
+        </View>
+        {d && (
+          <Text
+            style={[
+              Type.captionM,
+              {
+                fontFamily: Type.bodyMMedium.fontFamily,
+                color: palette.plum,
+                marginBottom: 10,
+                flexShrink: 1,
+                textAlign: 'right',
+              },
+            ]}
+          >
+            {d}
+          </Text>
+        )}
+      </View>
+
+      <View
+        accessible
+        accessibilityLabel={t('sleepPeriods.chartLabel', {
+          period: t(`sleepPeriods.${period}`),
+          average: average === null ? t('sleepPeriods.noData') : formatHours(average),
+        })}
+      >
+        <Svg width={width} height={CHART_H + 22}>
+          <Line
+            x1={0}
+            x2={width}
+            y1={GOAL_Y}
+            y2={GOAL_Y}
+            stroke={palette.lavender}
+            strokeOpacity={0.3}
+            strokeDasharray="4 4"
+            strokeWidth={1}
+          />
+          <SvgText
+            x={width}
+            y={GOAL_Y - 8}
+            fill={palette.lavender}
+            fontSize={11}
+            fontFamily={Type.body.fontFamily}
+            textAnchor="end"
+          >
+            {t('sleepPeriods.goal')}
+          </SvgText>
+          {period === 'week' ? (
+            <WeekLine values={series} width={width} />
+          ) : (
+            <Bars values={series} period={period} width={width} />
+          )}
+          {labels().map((l, i) => (
+            <SvgText
+              key={i}
+              x={l.x}
+              y={CHART_H + 18}
+              fill={palette.textMuted}
+              fontSize={11}
+              fontFamily={Type.body.fontFamily}
+              textAnchor="middle"
+            >
+              {l.text}
+            </SvgText>
+          ))}
+        </Svg>
+      </View>
+
+      <SettingsSection label={t('sleepPeriods.helps')}>
+        {impacts.helps.length ? (
+          factorCard(impacts.helps, palette.mustard)
+        ) : (
+          <Text style={[Type.captionM, { color: palette.textMuted }]}>
+            {t('sleepPeriods.needMore')}
+          </Text>
+        )}
+      </SettingsSection>
+      {impacts.hurts.length > 0 && (
+        <SettingsSection label={t('sleepPeriods.hurts')}>
+          {factorCard(impacts.hurts, palette.lavender)}
+        </SettingsSection>
+      )}
+
+      <Pressable
+        accessibilityRole="button"
+        onPress={ask}
+        style={({ pressed }) => ({
+          minHeight: 55,
+          borderRadius: 999,
+          borderWidth: 1.5,
+          borderColor: palette.plum,
+          backgroundColor: pressed ? palette.surfaceLilac : palette.selected,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 10,
+          paddingLeft: 16,
+          paddingRight: 20,
+        })}
+      >
+        <Svg width={24} height={24}>
+          <Defs>
+            <RadialGradient id="askOrb" cx="50%" cy="50%" r="50%">
+              <Stop offset="0" stopColor={palette.cream} />
+              <Stop offset="1" stopColor={palette.plum} />
+            </RadialGradient>
+          </Defs>
+          <Circle cx={12} cy={12} r={12} fill="url(#askOrb)" />
+        </Svg>
+        <Text style={[Type.buttonS, { fontSize: 15, color: palette.plum, flex: 1 }]}>
+          {t('sleepPeriods.ask')}
+        </Text>
+      </Pressable>
+      <LegalNote text={t('sleepPeriods.legal')} />
+    </SettingsScreen>
+  );
+}
