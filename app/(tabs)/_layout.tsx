@@ -24,6 +24,8 @@ export default function TabsLayout() {
     // The sleep flow from Wind down to Last night is full-screen (06 §S2–S7).
     (segments.includes('sleep') && ['start', 'mode', 'wake', 'log', '[id]'].some((s) => segments.includes(s))) ||
     (segments.includes('community') && segments.includes('new-post')) ||
+    // Grounding and the stress plan are forms built around their bottom button.
+    (segments.includes('stress') && ['grounding', 'plan'].some((s) => segments.includes(s))) ||
     // The mood check-in and Mood logged are full-screen flows with no tab bar (04 §M2–M5).
     (segments.includes('mood') && (segments.includes('check-in') || segments.includes('logged'))) ||
     // Only the Glow score screen itself keeps the tab bar (03 §2.2–2.7).

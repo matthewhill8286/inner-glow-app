@@ -1,660 +1,165 @@
-import { Typography } from '@/constants/typography';
-import { backTo } from '@/lib/navigation';
-import { WellnessIconText } from '@/components/WellnessIconText';
-import React, { useEffect, useState, useRef } from 'react';
-import {
-  View,
-  Text,
-  Pressable,
-  ScrollView,
-  TextInput,
-  Platform,
-  StyleSheet,
-  Animated,
-  Keyboard,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors, UI } from '@/constants/theme';
-import { showAlert } from '@/lib/state';
+import React, { useEffect, useState } from 'react';
+import { Keyboard, KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import { palette } from '@/constants/theme';
+import { Type } from '@/constants/typography';
+import { Icon } from '@/components/icons/Icon';
+import { SettingsScreen, SettingsSection } from '@/components/settings/SettingsParts';
+import { AppButton } from '@/components/ui/AppButton';
+import { Tag } from '@/components/ui/Chip';
 import { toast } from '@/components/Toast';
 import { useStress } from '@/hooks/useStress';
-import { DEFAULT_KIT, StressKit } from '@/lib/types';
-import MaterialIcons from '@/components/AppIcon';
+import type { StressKit } from '@/lib/types';
+import { backTo } from '@/lib/navigation';
+import { addPlanItem, planFilled } from '@/lib/stress-relief';
 
-/* ── section config ─────────────────────────────── */
-const SECTIONS = [
-  {
-    key: 'triggers' as const,
-    emoji: '⚡',
-    title: 'Common Triggers',
-    subtitle: 'What usually sets off your stress?',
-    placeholder: 'Add a trigger\u2026',
-    tint: '#E8985A',
-    emptyHint: 'No triggers yet — knowing them is the first step.',
-  },
-  {
-    key: 'helpfulActions' as const,
-    emoji: '🛟',
-    title: 'Helpful Actions',
-    subtitle: 'What actually helps when stress hits?',
-    placeholder: 'Add an action\u2026',
-    tint: '#5B8A5A',
-    emptyHint: 'Add things that ground you when it gets rough.',
-  },
-  {
-    key: 'people' as const,
-    emoji: '🤝',
-    title: 'People Who Help',
-    subtitle: 'Who can you reach out to?',
-    placeholder: 'Add a person\u2026',
-    tint: '#7B6DC9',
-    emptyHint: 'You don\u2019t have to do this alone.',
-  },
-] as const;
+type ListKey = 'triggers' | 'helpfulActions' | 'people';
+const LISTS: ListKey[] = ['triggers', 'helpfulActions', 'people'];
+const EMPTY: StressKit = { quickPhrase: '', triggers: [], helpfulActions: [], people: [], notes: '' };
 
+const fieldStyle = [Type.bodyM, { color: palette.ink }];
+
+/**
+ * Stress plan: a quick phrase for hard moments, what sets stress off, what helps, who to reach out
+ * to, and notes. Saved as the stress kit the Stress relief hub shows.
+ */
 export default function StressPlan() {
-  const router = useRouter();
-  const theme = useColorScheme() ?? 'light';
-  const colors = Colors[theme];
-  const insets = useSafeAreaInsets();
-
-  const { stressKit, saveStressKit } = useStress();
-  const [draft, setDraft] = useState<StressKit>(DEFAULT_KIT);
+  const { t } = useTranslation();
+  const { stressKit, saveStressKit, isSavingKit } = useStress({ lazy: true });
+  const [draft, setDraft] = useState<StressKit>(EMPTY);
+  const [inputs, setInputs] = useState<Record<ListKey, string>>({ triggers: '', helpfulActions: '', people: '' });
+  const back = () => backTo(undefined, '/(tabs)/stress');
 
   useEffect(() => {
     if (stressKit) setDraft(stressKit);
   }, [stressKit]);
 
-  /* ── list helpers ────────────────────────────── */
-  const addItem = (field: keyof StressKit, value: string) => {
-    const v = value.trim();
-    if (!v) return;
-    setDraft((p) => {
-      const arr = Array.isArray(p[field]) ? (p[field] as string[]) : [];
-      if (arr.includes(v)) return p;
-      return { ...p, [field]: [...arr, v] } as StressKit;
-    });
+  const add = (key: ListKey) => {
+    setDraft((d) => ({ ...d, [key]: addPlanItem(d[key], inputs[key]) }));
+    setInputs((i) => ({ ...i, [key]: '' }));
   };
+  const remove = (key: ListKey, index: number) => setDraft((d) => ({ ...d, [key]: d[key].filter((_, i) => i !== index) }));
 
-  const removeItem = (field: keyof StressKit, idx: number) => {
-    setDraft((p) => {
-      const arr = Array.isArray(p[field]) ? (p[field] as string[]) : [];
-      return { ...p, [field]: arr.filter((_, i) => i !== idx) } as StressKit;
-    });
-  };
-
-  /* ── text inputs per section ─────────────────── */
-  const [inputs, setInputs] = useState<Record<string, string>>({
-    triggers: '',
-    helpfulActions: '',
-    people: '',
-  });
-
-  const setInput = (key: string, val: string) => setInputs((p) => ({ ...p, [key]: val }));
-
-  /* ── save ─────────────────────────────────────── */
-  async function save() {
+  const save = async () => {
     Keyboard.dismiss();
-    const next: StressKit = {
-      quickPhrase: draft.quickPhrase?.trim() || '',
-      triggers: (draft.triggers || []).filter(Boolean),
-      helpfulActions: (draft.helpfulActions || []).filter(Boolean),
-      people: (draft.people || []).filter(Boolean),
-      notes: draft.notes || '',
-    };
-    await saveStressKit(next);
-    toast.success('Your Stress Kit was updated.');
-    backTo(undefined, '/(tabs)/stress');
-  }
+    // Anything still typed in an add field is kept too.
+    const next = LISTS.reduce<StressKit>((k, key) => ({ ...k, [key]: addPlanItem(k[key], inputs[key]) }), {
+      ...draft,
+      quickPhrase: draft.quickPhrase?.trim() ?? '',
+      notes: draft.notes ?? '',
+    });
+    try {
+      await saveStressKit(next);
+      toast.success(t('stressRelief.plan.saved'));
+      back();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('stressRelief.error'));
+    }
+  };
 
-  /* ── counts for progress ─────────────────────── */
-  const totalItems =
-    (draft.triggers?.length || 0) +
-    (draft.helpfulActions?.length || 0) +
-    (draft.people?.length || 0);
-  const hasPhrase = !!draft.quickPhrase?.trim();
-  const filledSections = [
-    hasPhrase,
-    (draft.triggers?.length || 0) > 0,
-    (draft.helpfulActions?.length || 0) > 0,
-    (draft.people?.length || 0) > 0,
-  ].filter(Boolean).length;
+  const card = { backgroundColor: palette.surface, borderRadius: 24, padding: 18, gap: 12 } as const;
 
   return (
-    <View style={[s.container, { backgroundColor: colors.background, paddingTop: insets.top + 6 }]}>
-      {/* ── Header ─────────────────────────────── */}
-      <View style={s.header}>
-        <Pressable
-          onPress={() => backTo(undefined, '/(tabs)/stress')}
-          style={({ pressed }) => [
-            s.backBtn,
-            {
-              backgroundColor: colors.card,
-              borderColor: colors.border,
-              opacity: pressed ? 0.7 : 1,
-            },
-          ]}
-        >
-          <MaterialIcons
-            name={Platform.OS === 'ios' ? 'arrow-back-ios-new' : 'arrow-back'}
-            size={18}
-            color={colors.text}
-          />
-        </Pressable>
-        <View style={{ flex: 1 }}>
-          <Text style={[s.headerTitle, { color: colors.text }]}>Your Stress Plan</Text>
-          <Text style={[s.headerSub, { color: colors.mutedText }]}>
-            Build a personal kit you can use any time.
-          </Text>
-        </View>
-      </View>
-
-      <ScrollView
-        contentContainerStyle={s.scrollContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <SettingsScreen
+        title={t('stressRelief.plan.nav')}
+        backLabel={t('common.back')}
+        onBack={back}
+        glows={[
+          { color: palette.lavenderSoft, opacity: 0.3, x: -70, y: -40, width: 280, blur: 90 },
+          { color: palette.rose, opacity: 0.2, x: 190, y: 80, width: 220, blur: 90 },
+        ]}
+        contentStyle={{ gap: 24 }}
+        cta={<AppButton title={t('stressRelief.plan.save')} busy={isSavingKit} onPress={() => void save()} />}
       >
-        {/* ── Hero card ──────────────────────────── */}
-        <View style={[s.heroCard, { backgroundColor: '#8B6B47' }]}>
-          <View style={s.heroTop}>
-            <View style={s.heroIconWrap}>
-              <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 26 }}>
-                🧰
-              </WellnessIconText>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={s.heroTitle}>Personal Stress Kit</Text>
-              <Text style={s.heroSub}>
-                Personalize a quick plan for what helps you when stress spikes.
-              </Text>
-            </View>
-          </View>
-
-          {/* progress dots */}
-          <View style={s.heroDivider} />
-          <View style={s.progressRow}>
-            <View style={s.progressDots}>
-              {[0, 1, 2, 3].map((i) => (
-                <View
-                  key={i}
-                  style={[
-                    s.progressDot,
-                    {
-                      backgroundColor:
-                        i < filledSections ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.25)',
-                    },
-                  ]}
-                />
-              ))}
-            </View>
-            <Text style={s.progressText}>{filledSections}/4 sections filled</Text>
-          </View>
+        <View style={{ gap: 8 }}>
+          <Text accessibilityRole="header" style={[Type.titleMd, { fontSize: 30, lineHeight: 38, color: palette.plumDeep }]}>
+            {t('stressRelief.plan.title')}
+          </Text>
+          <Text style={[Type.bodySm, { color: palette.textMuted }]}>{t('stressRelief.plan.body')}</Text>
+          <Text style={[Type.labelM, { color: palette.plum, marginTop: 4 }]}>{t('stressRelief.planFilled', { filled: planFilled(draft) })}</Text>
         </View>
 
-        {/* ── Quick Phrase ────────────────────────── */}
-        <View style={[s.sectionCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <View style={s.sectionHeader}>
-            <View style={[s.sectionIconWrap, { backgroundColor: '#5A8FB520' }]}>
-              <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 18 }}>
-                💬
-              </WellnessIconText>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[s.sectionTitle, { color: colors.text }]}>Quick Phrase</Text>
-              <Text style={[s.sectionSub, { color: colors.mutedText }]}>
-                Say this to yourself when you feel overwhelmed.
-              </Text>
-            </View>
+        <SettingsSection label={t('stressRelief.plan.phrase.label').toUpperCase()}>
+          <View style={card}>
+            <Text style={[Type.captionM, { color: palette.textMuted }]}>{t('stressRelief.plan.phrase.hint')}</Text>
+            <TextInput
+              value={draft.quickPhrase ?? ''}
+              onChangeText={(v) => setDraft((d) => ({ ...d, quickPhrase: v }))}
+              placeholder={t('stressRelief.defaultPhrase')}
+              placeholderTextColor={palette.textSubtle}
+              accessibilityLabel={t('stressRelief.plan.phrase.label')}
+              multiline
+              style={[fieldStyle, { minHeight: 64, backgroundColor: palette.bg, borderRadius: 16, padding: 14, textAlignVertical: 'top' }]}
+            />
           </View>
-          <TextInput
-            value={draft.quickPhrase ?? ''}
-            onChangeText={(t) => setDraft((p) => ({ ...p, quickPhrase: t }))}
-            placeholder="e.g., This feeling will pass. I can take one small step."
-            placeholderTextColor={colors.placeholder}
-            style={[
-              s.phraseInput,
-              {
-                backgroundColor: colors.inputBg,
-                color: colors.text,
-                borderColor: hasPhrase ? '#5B8A5A40' : colors.border,
-              },
-            ]}
-            multiline
-          />
-        </View>
+        </SettingsSection>
 
-        {/* ── Editable list sections ─────────────── */}
-        {SECTIONS.map((sec) => {
-          const items = (draft[sec.key] as string[]) || [];
-          const inputVal = inputs[sec.key] || '';
-          return (
-            <View
-              key={sec.key}
-              style={[s.sectionCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-            >
-              <View style={s.sectionHeader}>
-                <View style={[s.sectionIconWrap, { backgroundColor: sec.tint + '18' }]}>
-                  <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 18 }}>
-                    {sec.emoji}
-                  </WellnessIconText>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[s.sectionTitle, { color: colors.text }]}>{sec.title}</Text>
-                  <Text style={[s.sectionSub, { color: colors.mutedText }]}>{sec.subtitle}</Text>
-                </View>
-                {items.length > 0 && (
-                  <View style={[s.countBadge, { backgroundColor: sec.tint + '20' }]}>
-                    <Text style={[s.countText, { color: sec.tint }]}>{items.length}</Text>
-                  </View>
-                )}
-              </View>
-
-              {/* add input row */}
-              <View style={s.addRow}>
-                <TextInput
-                  value={inputVal}
-                  onChangeText={(t) => setInput(sec.key, t)}
-                  placeholder={sec.placeholder}
-                  placeholderTextColor={colors.placeholder}
-                  style={[s.addInput, { backgroundColor: colors.inputBg, color: colors.text }]}
-                  onSubmitEditing={() => {
-                    addItem(sec.key, inputVal);
-                    setInput(sec.key, '');
-                  }}
-                  returnKeyType="done"
-                />
-                <Pressable
-                  onPress={() => {
-                    addItem(sec.key, inputVal);
-                    setInput(sec.key, '');
-                  }}
-                  style={({ pressed }) => [
-                    s.addBtn,
-                    { backgroundColor: sec.tint, opacity: pressed ? 0.8 : 1 },
-                  ]}
-                >
-                  <MaterialIcons name="add" size={20} color="#FFF" />
-                </Pressable>
-              </View>
-
-              {/* items */}
-              {items.length === 0 ? (
-                <Text style={[s.emptyHint, { color: colors.mutedText }]}>{sec.emptyHint}</Text>
-              ) : (
-                <View style={s.itemsList}>
-                  {items.map((it, idx) => (
-                    <ItemRow
-                      key={`${sec.key}-${idx}-${it}`}
-                      text={it}
-                      tint={sec.tint}
-                      dividerColor={colors.divider}
-                      textColor={colors.text}
-                      isLast={idx === items.length - 1}
-                      onRemove={() => removeItem(sec.key, idx)}
+        {LISTS.map((key) => (
+          <SettingsSection key={key} label={t(`stressRelief.plan.${key}.label`).toUpperCase()}>
+            <View style={card}>
+              <Text style={[Type.captionM, { color: palette.textMuted }]}>{t(`stressRelief.plan.${key}.hint`)}</Text>
+              {draft[key].length > 0 && (
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                  {draft[key].map((item, i) => (
+                    <Tag
+                      key={item}
+                      label={item}
+                      variant="brand"
+                      onRemove={() => remove(key, i)}
+                      style={{ height: 30, paddingHorizontal: 12 }}
                     />
                   ))}
                 </View>
               )}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <TextInput
+                  value={inputs[key]}
+                  onChangeText={(v) => setInputs((s) => ({ ...s, [key]: v }))}
+                  onSubmitEditing={() => add(key)}
+                  submitBehavior="submit"
+                  returnKeyType="done"
+                  placeholder={t(`stressRelief.plan.${key}.placeholder`)}
+                  placeholderTextColor={palette.textSubtle}
+                  accessibilityLabel={t(`stressRelief.plan.${key}.placeholder`)}
+                  style={[fieldStyle, { flex: 1, height: 46, backgroundColor: palette.bg, borderRadius: 16, paddingHorizontal: 14 }]}
+                />
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={t('stressRelief.plan.add')}
+                  disabled={!inputs[key].trim()}
+                  onPress={() => add(key)}
+                  style={({ pressed }) => ({
+                    width: 46,
+                    height: 46,
+                    borderRadius: 23,
+                    backgroundColor: palette.plum,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    opacity: !inputs[key].trim() ? 0.4 : pressed ? 0.8 : 1,
+                  })}
+                >
+                  <Icon name="line/plus" size={20} color={palette.white} />
+                </Pressable>
+              </View>
             </View>
-          );
-        })}
+          </SettingsSection>
+        ))}
 
-        {/* ── Notes ───────────────────────────────── */}
-        <View style={[s.sectionCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <View style={s.sectionHeader}>
-            <View style={[s.sectionIconWrap, { backgroundColor: '#C45B5B18' }]}>
-              <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 18 }}>
-                📝
-              </WellnessIconText>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[s.sectionTitle, { color: colors.text }]}>Notes</Text>
-              <Text style={[s.sectionSub, { color: colors.mutedText }]}>
-                Anything else that helps — music, places, reminders.
-              </Text>
-            </View>
-          </View>
-          <TextInput
-            value={draft.notes ?? ''}
-            onChangeText={(t) => setDraft((p) => ({ ...p, notes: t }))}
-            placeholder="Write anything that helps you cope\u2026"
-            placeholderTextColor={colors.placeholder}
-            style={[
-              s.notesInput,
-              { backgroundColor: colors.inputBg, color: colors.text, borderColor: colors.border },
-            ]}
-            multiline
-            textAlignVertical="top"
-          />
-        </View>
-
-        {/* ── Action buttons ─────────────────────── */}
-        <View style={s.actionRow}>
-          <Pressable
-            onPress={save}
-            style={({ pressed }) => [s.saveBtn, { transform: [{ scale: pressed ? 0.97 : 1 }] }]}
-          >
-            <MaterialIcons name="check-circle" size={20} color="#FFF" />
-            <Text style={s.saveBtnText}>Save My Plan</Text>
-          </Pressable>
-
-          <Pressable
-            onPress={() => {
-              setDraft(DEFAULT_KIT);
-              toast.info('Kit restored to defaults.');
-            }}
-            style={({ pressed }) => [
-              s.resetBtn,
-              {
-                backgroundColor: theme === 'light' ? '#C45B5B10' : '#C45B5B18',
-                borderColor: theme === 'light' ? '#C45B5B20' : '#C45B5B25',
-                transform: [{ scale: pressed ? 0.97 : 1 }],
-              },
-            ]}
-          >
-            <MaterialIcons
-              name="refresh"
-              size={18}
-              color={theme === 'light' ? '#C45B5B' : '#E87B7B'}
+        <SettingsSection label={t('stressRelief.plan.notes.label').toUpperCase()}>
+          <View style={card}>
+            <TextInput
+              value={draft.notes ?? ''}
+              onChangeText={(v) => setDraft((d) => ({ ...d, notes: v }))}
+              placeholder={t('stressRelief.plan.notes.placeholder')}
+              placeholderTextColor={palette.textSubtle}
+              accessibilityLabel={t('stressRelief.plan.notes.label')}
+              multiline
+              style={[fieldStyle, { minHeight: 96, backgroundColor: palette.bg, borderRadius: 16, padding: 14, textAlignVertical: 'top' }]}
             />
-            <Text style={[s.resetBtnText, { color: theme === 'light' ? '#C45B5B' : '#E87B7B' }]}>
-              Reset to Defaults
-            </Text>
-          </Pressable>
-        </View>
-
-        {/* encouragement footer */}
-        <WellnessIconText style={[s.footerText, { color: colors.mutedText }]}>
-          {filledSections === 4
-            ? 'Your plan is ready — you\u2019ve got this. 💪'
-            : filledSections >= 2
-              ? 'Great start — keep building your toolkit.'
-              : 'Even one item here is a powerful first step.'}
-        </WellnessIconText>
-      </ScrollView>
-    </View>
+          </View>
+        </SettingsSection>
+      </SettingsScreen>
+    </KeyboardAvoidingView>
   );
 }
-
-/* ── Item row with swipe-to-delete feel ──────────── */
-function ItemRow({
-  text,
-  tint,
-  dividerColor,
-  textColor,
-  isLast,
-  onRemove,
-}: {
-  text: string;
-  tint: string;
-  dividerColor: string;
-  textColor: string;
-  isLast: boolean;
-  onRemove: () => void;
-}) {
-  const fadeAnim = useRef(new Animated.Value(1)).current;
-
-  const handleRemove = () => {
-    Animated.timing(fadeAnim, {
-      toValue: 0,
-      duration: 200,
-      useNativeDriver: true,
-    }).start(() => onRemove());
-  };
-
-  return (
-    <Animated.View
-      style={[
-        s.itemRow,
-        {
-          borderBottomColor: isLast ? 'transparent' : dividerColor,
-          borderBottomWidth: isLast ? 0 : 1,
-          opacity: fadeAnim,
-          transform: [
-            {
-              translateX: fadeAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [60, 0],
-              }),
-            },
-          ],
-        },
-      ]}
-    >
-      <View style={[s.itemDot, { backgroundColor: tint }]} />
-      <Text style={[s.itemText, { color: textColor }]}>{text}</Text>
-      <Pressable
-        onPress={handleRemove}
-        hitSlop={8}
-        style={({ pressed }) => [s.removeBtn, { opacity: pressed ? 0.5 : 1 }]}
-      >
-        <MaterialIcons name="close" size={16} color={tint} />
-      </Pressable>
-    </Animated.View>
-  );
-}
-
-/* ── Styles ──────────────────────────────────────── */
-const s = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingHorizontal: UI.spacing.xl,
-    paddingTop: 8,
-  },
-
-  /* header */
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    marginTop: 6,
-    marginBottom: 4,
-  },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-  },
-  headerTitle: { ...Typography.heading },
-  headerSub: { fontFamily: Typography.family.body, fontSize: 14, marginTop: 2 },
-
-  scrollContent: {
-    paddingTop: 16,
-    paddingBottom: 100,
-    gap: 14,
-  },
-
-  /* hero */
-  heroCard: {
-    borderRadius: UI.radius.xxl,
-    padding: 20,
-    ...UI.shadow.md,
-  },
-  heroTop: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  heroIconWrap: {
-    width: 50,
-    height: 50,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  heroTitle: { ...Typography.heading, color: '#FFF', fontSize: 20 },
-  heroSub: {
-    fontFamily: Typography.family.body,
-    color: 'rgba(255,255,255,0.70)',
-    fontSize: 13,
-    fontWeight: Typography.weight.medium,
-    marginTop: 2,
-  },
-  heroDivider: {
-    height: 1,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    marginVertical: 14,
-  },
-  progressRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  progressDots: { flexDirection: 'row', gap: 6 },
-  progressDot: { width: 10, height: 10, borderRadius: 5 },
-  progressText: {
-    fontFamily: Typography.family.body,
-    color: 'rgba(255,255,255,0.70)',
-    fontSize: 13,
-    fontWeight: Typography.weight.semibold,
-  },
-
-  /* section card */
-  sectionCard: {
-    borderRadius: UI.radius.xxl,
-    padding: 18,
-    borderWidth: 1,
-    ...UI.shadow.sm,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 12,
-  },
-  sectionIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 13,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sectionTitle: { ...Typography.section, fontSize: 20 },
-  sectionSub: { fontFamily: Typography.family.body, fontSize: 13, marginTop: 1 },
-
-  countBadge: {
-    paddingHorizontal: 9,
-    paddingVertical: 3,
-    borderRadius: 10,
-  },
-  countText: {
-    fontFamily: Typography.family.body,
-    fontSize: 13,
-    fontWeight: Typography.weight.bold,
-  },
-
-  /* add row */
-  addRow: { flexDirection: 'row', gap: 10, marginBottom: 4 },
-  addInput: {
-    fontFamily: Typography.family.body,
-    flex: 1,
-    padding: 12,
-    borderRadius: UI.radius.md,
-    fontSize: 14,
-  },
-  addBtn: {
-    width: 42,
-    borderRadius: UI.radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  /* phrase input */
-  phraseInput: {
-    fontFamily: Typography.family.body,
-    padding: 14,
-    borderRadius: UI.radius.md,
-    fontSize: 15,
-    fontStyle: 'italic',
-    fontWeight: Typography.weight.semibold,
-    minHeight: 54,
-    borderWidth: 1,
-  },
-
-  /* notes input */
-  notesInput: {
-    fontFamily: Typography.family.body,
-    padding: 14,
-    borderRadius: UI.radius.md,
-    fontSize: 14,
-    minHeight: 100,
-    borderWidth: 1,
-  },
-
-  /* empty hint */
-  emptyHint: {
-    fontFamily: Typography.family.body,
-    fontSize: 13,
-    fontStyle: 'italic',
-    marginTop: 4,
-    paddingLeft: 2,
-  },
-
-  /* items list */
-  itemsList: { marginTop: 6 },
-  itemRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingVertical: 11,
-  },
-  itemDot: { width: 7, height: 7, borderRadius: 4 },
-  itemText: {
-    fontFamily: Typography.family.body,
-    flex: 1,
-    fontSize: 15,
-    fontWeight: Typography.weight.semibold,
-  },
-  removeBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  /* action buttons */
-  actionRow: { gap: 10, marginTop: 6 },
-  saveBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#5B8A5A',
-    paddingVertical: 16,
-    borderRadius: UI.radius.lg,
-    ...UI.shadow.sm,
-  },
-  saveBtnText: {
-    fontFamily: Typography.family.body,
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: Typography.weight.semibold,
-  },
-  resetBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 14,
-    borderRadius: UI.radius.lg,
-    borderWidth: 1,
-  },
-  resetBtnText: {
-    fontFamily: Typography.family.body,
-    fontSize: 14,
-    fontWeight: Typography.weight.semibold,
-  },
-
-  /* footer */
-  footerText: {
-    fontFamily: Typography.family.body,
-    textAlign: 'center',
-    fontSize: 13,
-    fontStyle: 'italic',
-    marginTop: 4,
-    fontWeight: Typography.weight.medium,
-  },
-});

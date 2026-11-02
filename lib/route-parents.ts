@@ -28,11 +28,6 @@ export function isPrimaryTabPath(path: string): boolean {
 export function parentRouteForPath(path: string): string {
   const route = normalizedRoute(path);
   if (route === '/freud-score/ai-suggestion-category') return '/(tabs)/freud-score/ai-suggestions';
-  if (route.startsWith('/stress/breathing/')) return '/(tabs)/stress/breathing';
-  if (route.startsWith('/stress/list/')) {
-    const parts = route.split('/');
-    return parts.length > 4 ? '/(tabs)' + parts.slice(0, -1).join('/') : '/(tabs)/stress';
-  }
   for (const feature of FEATURES) {
     if (route.startsWith('/' + feature + '/')) return '/(tabs)/' + feature;
     if (route === '/' + feature) return '/(tabs)/home';

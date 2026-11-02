@@ -361,7 +361,7 @@ function ForYouToday() {
           title={t('homeGlow.breathing')}
           meta={t('homeGlow.breathingMeta')}
           cover="breathing"
-          onPress={() => router.push('/(tabs)/stress/breathing')}
+          onPress={() => router.push({ pathname: '/(tabs)/mindful/category/[category]', params: { category: 'breathing' } })}
         />
         <PracticeCard
           title={t('homeGlow.windDown')}
