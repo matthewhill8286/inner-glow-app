@@ -4,6 +4,7 @@ import { supabase } from '@/supabase/supabase';
 import { JournalEntry } from '@/lib/types';
 import { useUser } from './useUser';
 import { queryKeys, STALE } from '@/lib/queryKeys';
+import { removeJournalAudio } from '@/lib/journal-audio';
 
 export const useJournal = () => {
   const queryClient = useQueryClient();
@@ -38,6 +39,8 @@ export const useJournal = () => {
         isVoiceEntry: d.is_voice_entry ?? false,
         audioUrl: d.audio_url ?? undefined,
         recordingDurationMs: d.recording_duration_ms ?? undefined,
+        reflection: d.reflection ?? null,
+        reflectionPracticeId: d.reflection_practice_id ?? null,
       }));
 
       return items;
@@ -198,10 +201,37 @@ export const useJournal = () => {
     },
   });
 
+  /** Voice entry (04 J4): the recording is uploaded after the entry exists, then its path is stored. */
+  const attachAudioMutation = useMutation({
+    mutationFn: async ({ id, path }: { id: string; path: string }) => {
+      const { error } = await supabase
+        .from('journal_entries')
+        .update({ audio_url: path })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: key });
+    },
+  });
+
+  /** Stores the reflection the journal-reflection function returned, without a refetch. */
+  const setReflection = (id: string, reflection: string, practiceId: string | null) =>
+    queryClient.setQueryData<JournalEntry[]>(key, (old) =>
+      (old || []).map((j) =>
+        j.id === id ? { ...j, reflection, reflectionPracticeId: practiceId } : j,
+      ),
+    );
+
   const deleteJournalMutation = useMutation({
     mutationFn: async (id: string) => {
+      const audio = queryClient
+        .getQueryData<JournalEntry[]>(key)
+        ?.find((j) => j.id === id)?.audioUrl;
       const { error } = await supabase.from('journal_entries').delete().eq('id', id);
       if (error) throw error;
+      // The recording goes too; a failure here only leaves a file the account deletion clears.
+      await removeJournalAudio(audio).catch(() => undefined);
       return id;
     },
     onMutate: async (id) => {
@@ -229,6 +259,8 @@ export const useJournal = () => {
     createJournalEntry: createJournalMutation.mutateAsync,
     upsertJournalEntry: upsertJournalMutation.mutateAsync,
     deleteJournalEntry: deleteJournalMutation.mutateAsync,
+    attachJournalAudio: attachAudioMutation.mutateAsync,
+    setReflection,
     changeJournalDate: changeDateMutation.mutateAsync,
     isCreating: createJournalMutation.isPending,
     isUpserting: upsertJournalMutation.isPending,
