@@ -1,90 +1,57 @@
-import { Typography } from '@/constants/typography';
-import { backTo } from '@/lib/navigation';
-import { WellnessIconText } from '@/components/WellnessIconText';
 import React, { useMemo, useState } from 'react';
-import { View, Text, Pressable, ScrollView, Modal, ActivityIndicator } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { router, useLocalSearchParams } from 'expo-router';
+import { Pressable, Text, View, useWindowDimensions } from 'react-native';
+import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { useMood } from '@/hooks/useMood';
-import { useMoodInsights, MoodInsight } from '@/hooks/useMoodInsights';
-import { MoodCheckIn } from '@/lib/types';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors, UI, palette } from '@/constants/theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
+import { palette } from '@/constants/theme';
+import { Type } from '@/constants/typography';
+import { GlowField } from '@/components/glow/Glow';
+import { Icon } from '@/components/icons/Icon';
+import { AppButton } from '@/components/ui/AppButton';
 import { EmptyScreen } from '@/components/EmptyScreen';
+import { SettingsScreen } from '@/components/settings/SettingsParts';
 import { DayDetailsSheet } from '@/components/mood/DayDetailsSheet';
-import MaterialIcons from '@/components/AppIcon';
+import { useMood } from '@/hooks/useMood';
+import { MOOD_SCALE, moodStep } from '@/lib/mood-scale';
+import { mixStops, monthGrid, monthRows, monthStart, monthSummary } from '@/lib/mood-month';
+import { backTo } from '@/lib/navigation';
+import { screenBottomPadding } from '@/lib/screen-layout';
+import type { MoodCheckIn } from '@/lib/types';
 
-/* ── Mood config ── */
-const MOOD_META: Record<string, { emoji: string; color: string; label: string }> = {
-  Great: { emoji: '😄', color: '#5B8A5A', label: 'Overjoyed' },
-  Good: { emoji: '😊', color: '#7EAD7E', label: 'Happy' },
-  Okay: { emoji: '😐', color: '#E8985A', label: 'Neutral' },
-  Low: { emoji: '😔', color: '#C47A5A', label: 'Sad' },
-  Bad: { emoji: '😢', color: '#C45B5B', label: 'Depressed' },
-};
+const DISC = 24;
+const ROW = 52;
+const TOP = 44;
 
-const MOOD_KEYS: MoodCheckIn['mood'][] = ['Great', 'Good', 'Okay', 'Low', 'Bad'];
-
-/* ── Category badge config ── */
-const CATEGORY_META: Record<string, { icon: string; label: string }> = {
-  pattern: { icon: 'insights', label: 'Pattern' },
-  suggestion: { icon: 'lightbulb', label: 'Suggestion' },
-  affirmation: { icon: 'favorite', label: 'Affirmation' },
-  warning: { icon: 'warning-amber', label: 'Heads Up' },
-};
-
-type Tab = 'history' | 'suggestions';
-
+/**
+ * Mood history (04 §M6): the month with previous and next, a Monday-first calendar where each day is
+ * a disc in that day's mood colour with a soft halo, the legend, how the month went with its mood
+ * mix, and See insights. Tapping a logged day opens Day details (09 §3.14). The old list, filter and
+ * AI Suggestions tab are gone; insights live on Mood stats.
+ */
 export default function MoodHistory() {
-  const theme = useColorScheme() ?? 'light';
-  const colors = Colors[theme];
-  const { t } = useTranslation();
-  const { moodCheckIns: items, isLoading: loading } = useMood();
+  const { t, i18n } = useTranslation();
+  const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const {
-    insights,
-    summary,
-    isLoading: insightsLoading,
-    isFetching: insightsFetching,
-    isError: insightsError,
-    refetch: refetchInsights,
-    hasData: hasInsightsData,
-  } = useMoodInsights();
+  const { moodCheckIns: logs, isLoading } = useMood();
+  const now = useMemo(() => new Date(), []);
+  const [offset, setOffset] = useState(0);
+  const [open, setOpen] = useState<MoodCheckIn | null>(null);
 
-  const { tab: initialTab } = useLocalSearchParams<{ tab?: string }>();
-  const [tab, setTab] = useState<Tab>(initialTab === 'suggestions' ? 'suggestions' : 'history');
-  // Day details (09 §3.14) replaces the full-page entry.
-  const [openLog, setOpenLog] = useState<(typeof items)[number] | null>(null);
-  const [filterMood, setFilterMood] = useState<MoodCheckIn['mood'] | null>(null);
-  const [showFilter, setShowFilter] = useState(false);
-  const [dismissedInsights, setDismissedInsights] = useState<string[]>([]);
-
-  const visibleInsights = insights.filter((i) => !dismissedInsights.includes(i.id));
-
-  /* ── Filtered items ── */
-  const filtered = useMemo(() => {
-    if (!filterMood) return items;
-    return items.filter((i) => i.mood === filterMood);
-  }, [items, filterMood]);
-
-  /* ── Group by date ── */
-  const grouped = useMemo(() => {
-    const map = new Map<string, MoodCheckIn[]>();
-    filtered.forEach((item) => {
-      const dateKey = new Date(item.createdAt).toLocaleDateString('en-US', {
-        month: 'long',
-        day: 'numeric',
-        year: 'numeric',
-      });
-      if (!map.has(dateKey)) map.set(dateKey, []);
-      map.get(dateKey)!.push(item);
-    });
-    return Array.from(map.entries());
-  }, [filtered]);
+  const month = monthStart(now, offset);
+  const grid = useMemo(() => monthGrid(logs, month, now), [logs, month, now]);
+  const rows = monthRows(month);
+  const summary = useMemo(() => monthSummary(logs, month), [logs, month]);
+  const cardW = width - 48;
+  // Columns are 40 wide from x 16, spread so the last one ends 16 from the right edge.
+  const pitch = (cardW - 32 - 40) / 6;
+  const cx = (column: number) => 16 + pitch * column + 20;
+  const cy = (row: number) => TOP + ROW * row + DISC / 2;
+  const cardH = TOP + ROW * (rows - 1) + DISC + 22;
+  const letters = t('moodHistory.weekdays').split(',');
 
   // Mood · History empty (09 §3.12): the calendar, legend and summary wait for the first check-in.
-  if (!loading && (items ?? []).length === 0) {
+  if (!isLoading && logs.length === 0) {
     return (
       <EmptyScreen
         header={{ kind: 'nav', title: t('emptyStates.mood.title'), backLabel: t('common.back'), onBack: () => backTo(undefined, '/(tabs)/mood') }}
@@ -96,969 +63,135 @@ export default function MoodHistory() {
     );
   }
 
-  return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
-      {/* Header */}
-      <View
-        style={{
-          paddingTop: insets.top + 6,
-          paddingHorizontal: UI.spacing.xl,
-          paddingBottom: UI.spacing.sm,
-        }}
-      >
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <Pressable
-            onPress={() => backTo(undefined, '/(tabs)/mood')}
-            style={({ pressed }) => ({
-              width: 36,
-              height: 36,
-              borderRadius: 18,
-              backgroundColor: colors.card,
-              borderWidth: 1,
-              borderColor: colors.border,
-              alignItems: 'center',
-              justifyContent: 'center',
-              opacity: pressed ? 0.7 : 1,
-              ...UI.shadow.sm,
-            })}
-          >
-            <MaterialIcons
-              name="arrow-back-ios"
-              size={16}
-              color={colors.text}
-              style={{ marginLeft: 4 }}
-            />
-          </Pressable>
-          <Text style={{ ...Typography.heading, fontSize: 24, color: colors.text, flex: 1 }}>
-            My Mood
-          </Text>
-          {tab === 'history' && (
-            <Pressable
-              onPress={() => setShowFilter(true)}
-              style={({ pressed }) => ({
-                width: 42,
-                height: 42,
-                borderRadius: 14,
-                backgroundColor: filterMood ? '#8B6B47' + '15' : colors.card,
-                borderWidth: 1,
-                borderColor: filterMood ? '#8B6B47' + '40' : colors.border,
-                alignItems: 'center',
-                justifyContent: 'center',
-                opacity: pressed ? 0.7 : 1,
-                ...UI.shadow.sm,
-              })}
-            >
-              <MaterialIcons name="tune" size={20} color={filterMood ? '#8B6B47' : colors.text} />
-            </Pressable>
-          )}
-        </View>
+  const monthName = month.toLocaleDateString(i18n.language, offset === 0 || month.getFullYear() === now.getFullYear() ? { month: 'long' } : { month: 'long', year: 'numeric' });
+  const stops = mixStops(summary.shares);
 
-        {/* Tabs */}
-        <View
-          style={{
-            flexDirection: 'row',
-            gap: 0,
-            marginTop: 16,
-            backgroundColor: colors.card,
-            borderRadius: UI.radius.xl,
-            padding: 4,
-            borderWidth: 1,
-            borderColor: colors.border,
-          }}
-        >
-          {(['history', 'suggestions'] as Tab[]).map((t) => {
-            const active = tab === t;
-            return (
-              <Pressable
-                key={t}
-                onPress={() => setTab(t)}
-                style={({ pressed }) => ({
-                  flex: 1,
-                  paddingVertical: 12,
-                  borderRadius: UI.radius.lg,
-                  backgroundColor: active ? '#8B6B47' : 'transparent',
-                  alignItems: 'center',
-                  opacity: pressed ? 0.8 : 1,
-                })}
-              >
-                <Text
-                  style={{
-                    fontFamily: Typography.family.body,
-                    fontSize: 14,
-                    fontWeight: Typography.weight.semibold,
-                    color: active ? '#fff' : colors.mutedText,
-                  }}
-                >
-                  {t === 'history' ? 'History' : 'AI Suggestions'}
-                </Text>
-              </Pressable>
-            );
-          })}
+  return (
+    <SettingsScreen
+      title={t('moodHistory.title')}
+      backLabel={t('common.back')}
+      onBack={() => backTo(undefined, '/(tabs)/mood')}
+      // Mood screens keep the tab bar (09), so the button scrolls with the content above it.
+      contentStyle={{ gap: 16, paddingBottom: screenBottomPadding(insets.bottom) }}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Text accessibilityRole="header" style={[Type.titleLg, { lineHeight: 36, color: palette.ink }]}>
+          {monthName}
+        </Text>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <MonthButton icon="arrow/chevron-left" label={t('moodHistory.previous')} onPress={() => setOffset((o) => o - 1)} />
+          <MonthButton icon="arrow/chevron-right" label={t('moodHistory.next')} disabled={offset >= 0} onPress={() => setOffset((o) => Math.min(0, o + 1))} />
         </View>
       </View>
 
-      <ScrollView
-        contentContainerStyle={{ paddingHorizontal: UI.spacing.xl, paddingBottom: 120, gap: 16 }}
-        showsVerticalScrollIndicator={false}
-      >
-        {tab === 'history' ? (
-          <>
-            {/* Active filter chip */}
-            {filterMood && (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <Text
-                  style={{
-                    fontFamily: Typography.family.body,
-                    fontSize: 13,
-                    color: colors.mutedText,
-                  }}
-                >
-                  Filtered by:
-                </Text>
-                <Pressable
-                  onPress={() => setFilterMood(null)}
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 6,
-                    paddingHorizontal: 12,
-                    paddingVertical: 6,
-                    borderRadius: UI.radius.pill,
-                    backgroundColor: (MOOD_META[filterMood]?.color ?? '#8B6B47') + '15',
-                  }}
-                >
-                  <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 14 }}>
-                    {MOOD_META[filterMood]?.emoji}
-                  </WellnessIconText>
-                  <Text
-                    style={{
-                      fontFamily: Typography.family.body,
-                      fontSize: 13,
-                      fontWeight: Typography.weight.semibold,
-                      color: MOOD_META[filterMood]?.color,
-                    }}
-                  >
-                    {MOOD_META[filterMood]?.label}
-                  </Text>
-                  <MaterialIcons name="close" size={14} color={MOOD_META[filterMood]?.color} />
-                </Pressable>
-                <Text
-                  style={{
-                    fontFamily: Typography.family.body,
-                    fontSize: 12,
-                    color: colors.mutedText,
-                  }}
-                >
-                  ({filtered.length} entries)
-                </Text>
-              </View>
-            )}
-
-            {/* Grouped entries */}
-            {grouped.length === 0 ? (
-              <View
-                style={{
-                  backgroundColor: colors.card,
-                  borderRadius: UI.radius.xxl,
-                  padding: 32,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                  alignItems: 'center',
-                  gap: 10,
-                  ...UI.shadow.sm,
-                }}
-              >
-                <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 36 }}>
-                  🌙
-                </WellnessIconText>
-                <Text style={{ ...Typography.cardHeading, color: colors.text }}>
-                  No mood entries yet
-                </Text>
-                <Text
-                  style={{
-                    fontFamily: Typography.family.body,
-                    fontSize: 14,
-                    color: colors.mutedText,
-                    textAlign: 'center',
-                  }}
-                >
-                  Start tracking your mood to see your history here.
-                </Text>
-              </View>
-            ) : (
-              grouped.map(([dateLabel, dayItems]) => (
-                <View key={dateLabel}>
-                  <Text
-                    style={{
-                      fontFamily: Typography.family.body,
-                      fontSize: 14,
-                      fontWeight: Typography.weight.semibold,
-                      color: colors.mutedText,
-                      marginBottom: 10,
-                    }}
-                  >
-                    {dateLabel}
-                  </Text>
-                  <View style={{ gap: 8 }}>
-                    {dayItems.map((item) => {
-                      const meta = MOOD_META[item.mood] ?? MOOD_META.Okay;
-                      const timeStr = new Date(item.createdAt).toLocaleTimeString('en-US', {
-                        hour: 'numeric',
-                        minute: '2-digit',
-                      });
-                      return (
-                        <Pressable
-                          key={item.id}
-                          onPress={() => setOpenLog(item)}
-                          style={({ pressed }) => ({
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            gap: 14,
-                            backgroundColor: colors.card,
-                            borderRadius: UI.radius.xl,
-                            padding: 16,
-                            borderWidth: 1,
-                            borderColor: colors.border,
-                            opacity: pressed ? 0.8 : 1,
-                            ...UI.shadow.sm,
-                          })}
-                        >
-                          <View
-                            style={{
-                              width: 50,
-                              height: 50,
-                              borderRadius: 16,
-                              backgroundColor: meta.color + '15',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                            }}
-                          >
-                            <WellnessIconText
-                              style={{
-                                fontFamily: Typography.family.body,
-                                fontSize: 26,
-                                color: meta.color,
-                              }}
-                            >
-                              {meta.emoji}
-                            </WellnessIconText>
-                          </View>
-                          <View style={{ flex: 1 }}>
-                            <Text
-                              style={{
-                                fontFamily: Typography.family.body,
-                                fontSize: 15,
-                                fontWeight: Typography.weight.semibold,
-                                color: colors.text,
-                              }}
-                            >
-                              {meta.label}
-                            </Text>
-                            <Text
-                              style={{
-                                fontFamily: Typography.family.body,
-                                fontSize: 12,
-                                color: colors.mutedText,
-                                marginTop: 3,
-                              }}
-                            >
-                              {timeStr} · Energy {item.energy}/5 · Stress {item.stress}/10
-                            </Text>
-                            {item.note && (
-                              <Text
-                                numberOfLines={1}
-                                style={{
-                                  fontFamily: Typography.family.body,
-                                  fontSize: 12,
-                                  color: colors.mutedText,
-                                  marginTop: 4,
-                                  fontStyle: 'italic',
-                                }}
-                              >
-                                &quot;{item.note}&quot;
-                              </Text>
-                            )}
-                          </View>
-                          <View
-                            style={{
-                              width: 4,
-                              height: 40,
-                              borderRadius: 2,
-                              backgroundColor: meta.color,
-                            }}
-                          />
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                </View>
-              ))
-            )}
-          </>
-        ) : (
-          /* ── AI Insights Tab ── */
-          <View style={{ gap: 14 }}>
-            {/* Header card */}
-            <View
-              style={{
-                backgroundColor: '#8B6B47' + '08',
-                borderRadius: UI.radius.xxl,
-                padding: 18,
-                borderWidth: 1,
-                borderColor: '#8B6B47' + '20',
-              }}
-            >
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                <MaterialIcons name="auto-awesome" size={20} color="#8B6B47" />
-                <Text
-                  style={{
-                    fontFamily: Typography.family.body,
-                    fontSize: 15,
-                    fontWeight: Typography.weight.semibold,
-                    color: '#8B6B47',
-                  }}
-                >
-                  {t('moodInsights.title')}
-                </Text>
-                {insightsFetching && !insightsLoading && (
-                  <ActivityIndicator size="small" color="#8B6B47" style={{ marginLeft: 'auto' }} />
-                )}
-              </View>
-              <Text
-                style={{
-                  fontFamily: Typography.family.body,
-                  fontSize: 13,
-                  color: colors.mutedText,
-                  marginTop: 8,
-                  lineHeight: 20,
-                }}
-              >
-                {summary || t('moodInsights.subtitle')}
-              </Text>
-            </View>
-
-            {/* Loading state */}
-            {insightsLoading && (
-              <View
-                style={{
-                  backgroundColor: colors.card,
-                  borderRadius: UI.radius.xxl,
-                  padding: 40,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                  alignItems: 'center',
-                  gap: 14,
-                  ...UI.shadow.sm,
-                }}
-              >
-                <ActivityIndicator size="large" color="#8B6B47" />
-                <Text
-                  style={{
-                    fontFamily: Typography.family.body,
-                    fontSize: 15,
-                    fontWeight: Typography.weight.semibold,
-                    color: colors.text,
-                  }}
-                >
-                  {t('moodInsights.analyzing')}
-                </Text>
-                <Text
-                  style={{
-                    fontFamily: Typography.family.body,
-                    fontSize: 13,
-                    color: colors.mutedText,
-                    textAlign: 'center',
-                  }}
-                >
-                  {t('moodInsights.analyzingSubtitle')}
-                </Text>
-              </View>
-            )}
-
-            {/* Error state */}
-            {insightsError && !insightsLoading && (
-              <View
-                style={{
-                  backgroundColor: '#C45B5B' + '08',
-                  borderRadius: UI.radius.xxl,
-                  padding: 24,
-                  borderWidth: 1,
-                  borderColor: '#C45B5B' + '20',
-                  alignItems: 'center',
-                  gap: 12,
-                }}
-              >
-                <MaterialIcons name="error-outline" size={36} color="#C45B5B" />
-                <Text
-                  style={{
-                    fontFamily: Typography.family.body,
-                    fontSize: 15,
-                    fontWeight: Typography.weight.semibold,
-                    color: colors.text,
-                  }}
-                >
-                  {t('moodInsights.errorTitle')}
-                </Text>
-                <Text
-                  style={{
-                    fontFamily: Typography.family.body,
-                    fontSize: 13,
-                    color: colors.mutedText,
-                    textAlign: 'center',
-                  }}
-                >
-                  {t('moodInsights.errorSubtitle')}
-                </Text>
-                <Pressable
-                  onPress={() => refetchInsights()}
-                  style={({ pressed }) => ({
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 6,
-                    backgroundColor: '#8B6B47',
-                    borderRadius: UI.radius.lg,
-                    paddingHorizontal: 20,
-                    paddingVertical: 12,
-                    opacity: pressed ? 0.9 : 1,
-                  })}
-                >
-                  <MaterialIcons name="refresh" size={18} color="#fff" />
-                  <Text
-                    style={{
-                      fontFamily: Typography.family.body,
-                      fontSize: 14,
-                      fontWeight: Typography.weight.semibold,
-                      color: '#fff',
-                    }}
-                  >
-                    {t('moodInsights.retry')}
-                  </Text>
-                </Pressable>
-              </View>
-            )}
-
-            {/* No data state */}
-            {!insightsLoading && !insightsError && !hasInsightsData && (
-              <View
-                style={{
-                  backgroundColor: colors.card,
-                  borderRadius: UI.radius.xxl,
-                  padding: 32,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                  alignItems: 'center',
-                  gap: 10,
-                  ...UI.shadow.sm,
-                }}
-              >
-                <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 36 }}>
-                  🔮
-                </WellnessIconText>
-                <Text style={{ ...Typography.cardHeading, color: colors.text }}>
-                  {t('moodInsights.noDataTitle')}
-                </Text>
-                <Text
-                  style={{
-                    fontFamily: Typography.family.body,
-                    fontSize: 14,
-                    color: colors.mutedText,
-                    textAlign: 'center',
-                  }}
-                >
-                  {t('moodInsights.noDataSubtitle')}
-                </Text>
-                <Pressable
-                  onPress={() => router.push('/(tabs)/mood/check-in')}
-                  style={({ pressed }) => ({
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 6,
-                    backgroundColor: '#8B6B47',
-                    borderRadius: UI.radius.lg,
-                    paddingHorizontal: 20,
-                    paddingVertical: 12,
-                    marginTop: 6,
-                    opacity: pressed ? 0.9 : 1,
-                  })}
-                >
-                  <MaterialIcons name="add" size={18} color="#fff" />
-                  <Text
-                    style={{
-                      fontFamily: Typography.family.body,
-                      fontSize: 14,
-                      fontWeight: Typography.weight.semibold,
-                      color: '#fff',
-                    }}
-                  >
-                    {t('moodInsights.checkInNow')}
-                  </Text>
-                </Pressable>
-              </View>
-            )}
-
-            {/* Insight cards */}
-            {!insightsLoading &&
-              visibleInsights.map((insight: MoodInsight) => {
-                const catMeta = CATEGORY_META[insight.category] ?? CATEGORY_META.suggestion;
-                return (
-                  <View
-                    key={insight.id}
-                    style={{
-                      backgroundColor: colors.card,
-                      borderRadius: UI.radius.xxl,
-                      padding: 20,
-                      borderWidth: 1,
-                      borderColor: colors.border,
-                      ...UI.shadow.sm,
-                    }}
-                  >
-                    {/* Category badge */}
-                    <View
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        gap: 5,
-                        backgroundColor: insight.color + '12',
-                        paddingHorizontal: 10,
-                        paddingVertical: 4,
-                        borderRadius: UI.radius.pill,
-                        alignSelf: 'flex-start',
-                        marginBottom: 14,
-                      }}
-                    >
-                      <MaterialIcons name={catMeta.icon as any} size={13} color={insight.color} />
-                      <Text
-                        style={{
-                          fontFamily: Typography.family.body,
-                          fontSize: 11,
-                          fontWeight: Typography.weight.semibold,
-                          color: insight.color,
-                        }}
-                      >
-                        {catMeta.label}
-                      </Text>
-                    </View>
-
-                    {/* Icon + title */}
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-                      <View
-                        style={{
-                          width: 50,
-                          height: 50,
-                          borderRadius: 16,
-                          backgroundColor: insight.color + '15',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
-                      >
-                        <MaterialIcons name={insight.icon as any} size={24} color={insight.color} />
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text
-                          style={{
-                            fontFamily: Typography.family.body,
-                            fontSize: 16,
-                            fontWeight: Typography.weight.semibold,
-                            color: colors.text,
-                          }}
-                        >
-                          {insight.title}
-                        </Text>
-                      </View>
-                    </View>
-
-                    {/* Description */}
-                    <Text
-                      style={{
-                        fontFamily: Typography.family.body,
-                        fontSize: 14,
-                        lineHeight: 22,
-                        color: colors.mutedText,
-                        marginTop: 14,
-                      }}
-                    >
-                      {insight.description}
-                    </Text>
-
-                    {/* Action + dismiss row */}
-                    <View
-                      style={{
-                        flexDirection: 'row',
-                        gap: 10,
-                        marginTop: 16,
-                      }}
-                    >
-                      <Pressable
-                        onPress={() => setDismissedInsights((prev) => [...prev, insight.id])}
-                        style={({ pressed }) => ({
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: 6,
-                          backgroundColor: insight.color + '12',
-                          borderRadius: UI.radius.lg,
-                          paddingVertical: 13,
-                          paddingHorizontal: 18,
-                          opacity: pressed ? 0.8 : 1,
-                        })}
-                      >
-                        <MaterialIcons name="check" size={16} color={insight.color} />
-                        <Text
-                          style={{
-                            fontFamily: Typography.family.body,
-                            fontSize: 13,
-                            fontWeight: Typography.weight.semibold,
-                            color: insight.color,
-                          }}
-                        >
-                          {t('moodInsights.gotIt')}
-                        </Text>
-                      </Pressable>
-
-                      {insight.actionLabel && (
-                        <Pressable
-                          onPress={() => {
-                            const label = (insight.actionLabel || '').toLowerCase();
-                            const desc = (insight.description || '').toLowerCase();
-
-                            // Navigate to root-level action screens so "back" returns here
-                            if (
-                              label.includes('journal') ||
-                              label.includes('writing') ||
-                              label.includes('write') ||
-                              desc.includes('journal')
-                            ) {
-                              router.push('/(suggestion-actions)/journal');
-                            } else if (
-                              label.includes('sleep') ||
-                              label.includes('bedtime') ||
-                              label.includes('rest') ||
-                              desc.includes('sleep')
-                            ) {
-                              router.push('/(suggestion-actions)/sleep');
-                            } else if (
-                              label.includes('breath') ||
-                              label.includes('meditat') ||
-                              label.includes('mindful') ||
-                              label.includes('relax') ||
-                              desc.includes('breathing')
-                            ) {
-                              router.push('/(suggestion-actions)/mindful');
-                            } else if (
-                              label.includes('stress') ||
-                              label.includes('boundar') ||
-                              label.includes('calm') ||
-                              desc.includes('stress')
-                            ) {
-                              router.push('/(suggestion-actions)/stress');
-                            } else if (
-                              label.includes('mood') ||
-                              label.includes('check-in') ||
-                              label.includes('check in') ||
-                              label.includes('track')
-                            ) {
-                              router.push('/(suggestion-actions)/check-in');
-                            } else if (
-                              label.includes('chat') ||
-                              label.includes('talk') ||
-                              label.includes('therap')
-                            ) {
-                              router.push('/(suggestion-actions)/chat');
-                            } else if (insight.category === 'suggestion') {
-                              router.push('/(suggestion-actions)/mindful');
-                            } else if (insight.category === 'warning') {
-                              router.push('/(suggestion-actions)/stress');
-                            } else {
-                              router.push('/(suggestion-actions)/check-in');
-                            }
-                          }}
-                          style={({ pressed }) => ({
-                            flex: 1,
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: 6,
-                            backgroundColor: insight.color,
-                            borderRadius: UI.radius.lg,
-                            paddingVertical: 13,
-                            paddingHorizontal: 16,
-                            opacity: pressed ? 0.9 : 1,
-                          })}
-                        >
-                          <MaterialIcons name="arrow-forward" size={16} color="#fff" />
-                          <Text
-                            style={{
-                              fontFamily: Typography.family.body,
-                              fontSize: 13,
-                              fontWeight: Typography.weight.semibold,
-                              color: '#fff',
-                            }}
-                          >
-                            {insight.actionLabel}
-                          </Text>
-                        </Pressable>
-                      )}
-                    </View>
-                  </View>
-                );
-              })}
-
-            {/* Refresh button */}
-            {!insightsLoading && hasInsightsData && visibleInsights.length === 0 && (
-              <View
-                style={{
-                  backgroundColor: colors.card,
-                  borderRadius: UI.radius.xxl,
-                  padding: 32,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                  alignItems: 'center',
-                  gap: 10,
-                  ...UI.shadow.sm,
-                }}
-              >
-                <MaterialIcons name="check-circle" size={40} color="#5B8A5A" />
-                <Text style={{ ...Typography.cardHeading, color: colors.text }}>
-                  {t('moodInsights.allReviewed')}
-                </Text>
-                <Text
-                  style={{
-                    ...Typography.cardHeading,
-                    color: colors.mutedText,
-                    textAlign: 'center',
-                  }}
-                >
-                  {t('moodInsights.allReviewedSubtitle')}
-                </Text>
-                <Pressable
-                  onPress={() => {
-                    setDismissedInsights([]);
-                    refetchInsights();
-                  }}
-                  style={({ pressed }) => ({
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 6,
-                    backgroundColor: '#8B6B47',
-                    borderRadius: UI.radius.lg,
-                    paddingHorizontal: 20,
-                    paddingVertical: 12,
-                    marginTop: 6,
-                    opacity: pressed ? 0.9 : 1,
-                  })}
-                >
-                  <MaterialIcons name="refresh" size={18} color="#fff" />
-                  <Text
-                    style={{
-                      fontFamily: Typography.family.body,
-                      fontSize: 14,
-                      fontWeight: Typography.weight.semibold,
-                      color: '#fff',
-                    }}
-                  >
-                    {t('moodInsights.generateNew')}
-                  </Text>
-                </Pressable>
-              </View>
-            )}
-
-            {/* Refresh at bottom when insights visible */}
-            {!insightsLoading && visibleInsights.length > 0 && (
-              <Pressable
-                onPress={() => {
-                  setDismissedInsights([]);
-                  refetchInsights();
-                }}
-                style={({ pressed }) => ({
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 8,
-                  paddingVertical: 14,
-                  opacity: pressed ? 0.7 : 1,
-                })}
-              >
-                <MaterialIcons name="refresh" size={18} color="#8B6B47" />
-                <Text
-                  style={{
-                    fontFamily: Typography.family.body,
-                    fontSize: 14,
-                    fontWeight: Typography.weight.semibold,
-                    color: '#8B6B47',
-                  }}
-                >
-                  {t('moodInsights.refreshInsights')}
-                </Text>
-              </Pressable>
-            )}
-          </View>
-        )}
-      </ScrollView>
-
-      {/* ── FAB ── */}
-      <Pressable
-        onPress={() => router.push('/(tabs)/mood/check-in')}
-        style={({ pressed }) => ({
-          position: 'absolute',
-          bottom: insets.bottom + 100,
-          right: 24,
-          width: 60,
-          height: 60,
-          borderRadius: 30,
-          backgroundColor: '#8B6B47',
-          alignItems: 'center',
-          justifyContent: 'center',
-          opacity: pressed ? 0.9 : 1,
-          ...UI.shadow.lg,
-        })}
-      >
-        <MaterialIcons name="add" size={28} color="#fff" />
-      </Pressable>
-
-      {/* ── Filter Modal ── */}
-      <Modal visible={showFilter} animationType="slide" transparent>
-        <View style={{ flex: 1, justifyContent: 'flex-end' }}>
-          <Pressable style={{ flex: 1 }} onPress={() => setShowFilter(false)} />
-          <View
-            style={{
-              backgroundColor: theme === 'dark' ? '#1C1C1E' : '#fff',
-              borderTopLeftRadius: 28,
-              borderTopRightRadius: 28,
-              padding: 24,
-              paddingBottom: insets.bottom + 24,
-              ...UI.shadow.lg,
-            }}
-          >
-            <View
-              style={{
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: 24,
-              }}
-            >
-              <Text style={{ ...Typography.section, color: colors.text }}>Filter Mood</Text>
-              <Pressable onPress={() => setShowFilter(false)}>
-                <MaterialIcons name="close" size={24} color={colors.text} />
-              </Pressable>
-            </View>
-
-            {/* Mood Type Filter */}
-            <Text
-              style={{
-                fontFamily: Typography.family.body,
-                fontSize: 12,
-                fontWeight: Typography.weight.semibold,
-                color: colors.mutedText,
-                textTransform: 'uppercase',
-                letterSpacing: 0.5,
-                marginBottom: 12,
-              }}
-            >
-              Select Mood Type
-            </Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 24 }}>
-              {MOOD_KEYS.map((m) => {
-                const meta = MOOD_META[m];
-                const active = filterMood === m;
-                return (
-                  <Pressable
-                    key={m}
-                    onPress={() => setFilterMood(active ? null : m)}
-                    style={({ pressed }) => ({
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 8,
-                      paddingHorizontal: 16,
-                      paddingVertical: 12,
-                      borderRadius: UI.radius.pill,
-                      borderWidth: 1.5,
-                      backgroundColor: active ? meta.color + '15' : 'transparent',
-                      borderColor: active ? meta.color + '40' : colors.border,
-                      transform: [{ scale: pressed ? 0.95 : 1 }],
-                    })}
-                  >
-                    <WellnessIconText
-                      style={{
-                        fontFamily: Typography.family.body,
-                        fontSize: 18,
-                        color: meta.color,
-                      }}
-                    >
-                      {meta.emoji}
-                    </WellnessIconText>
-                    <Text
-                      style={{
-                        fontFamily: Typography.family.body,
-                        fontSize: 14,
-                        fontWeight: Typography.weight.semibold,
-                        color: active ? meta.color : colors.text,
-                      }}
-                    >
-                      {meta.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-
-            {/* Apply Button */}
+      <View style={{ height: cardH, borderRadius: 24, backgroundColor: palette.white, overflow: 'hidden' }}>
+        {/* Halos in one canvas behind the discs. */}
+        <GlowField
+          scaleToWidth={false}
+          glows={grid
+            .filter((c) => c.score)
+            .map((c) => ({ color: moodStep(c.score!).color, opacity: 0.55, x: cx(c.column) - 17, y: cy(c.row) - 17, width: 34, blur: 8 }))}
+        />
+        {letters.map((l, i) => (
+          <Text key={i} style={[Type.micro, { position: 'absolute', top: 16, left: cx(i) - 20, width: 40, textAlign: 'center', color: palette.textSubtle }]}>
+            {l}
+          </Text>
+        ))}
+        {grid.map((c) => {
+          const step = c.score ? moodStep(c.score) : null;
+          const label = `${new Date(month.getFullYear(), month.getMonth(), c.day).toLocaleDateString(i18n.language, { day: 'numeric', month: 'long' })}${
+            step ? `, ${t(`moodScale.${step.key}`)}` : `, ${t('moodHistory.noLog')}`
+          }`;
+          return (
             <Pressable
-              onPress={() => setShowFilter(false)}
+              key={c.day}
+              accessibilityRole={c.log ? 'button' : 'text'}
+              accessibilityLabel={label}
+              disabled={!c.log}
+              onPress={() => setOpen(c.log)}
+              hitSlop={10}
               style={({ pressed }) => ({
-                flexDirection: 'row',
+                position: 'absolute',
+                left: cx(c.column) - DISC / 2,
+                top: cy(c.row) - DISC / 2,
+                width: DISC,
+                height: DISC,
+                borderRadius: DISC / 2,
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: 8,
-                backgroundColor: '#8B6B47',
-                borderRadius: UI.radius.xl,
-                paddingVertical: 18,
-                opacity: pressed ? 0.9 : 1,
-                ...UI.shadow.md,
+                backgroundColor: step ? step.color : 'transparent',
+                opacity: pressed ? 0.75 : step ? 0.95 : 1,
+                borderWidth: step ? 0 : 1.2,
+                borderColor: '#D6CCC0',
               })}
             >
-              <MaterialIcons name="filter-list" size={20} color="#fff" />
-              <Text
-                style={{
-                  fontFamily: Typography.family.body,
-                  fontSize: 16,
-                  fontWeight: Typography.weight.semibold,
-                  color: '#fff',
-                }}
-              >
-                Filter Mood ({filtered.length})
+              <Text style={[Type.micro, { fontSize: 10, lineHeight: 14, fontWeight: c.today ? '700' : '500', color: c.today ? palette.plum : palette.ink }]}>
+                {c.day}
               </Text>
             </Pressable>
+          );
+        })}
+      </View>
 
-            {/* Clear filter */}
-            {filterMood && (
-              <Pressable
-                onPress={() => {
-                  setFilterMood(null);
-                  setShowFilter(false);
-                }}
-                style={({ pressed }) => ({
-                  alignItems: 'center',
-                  marginTop: 12,
-                  opacity: pressed ? 0.7 : 1,
-                })}
-              >
-                <Text
-                  style={{
-                    fontFamily: Typography.family.body,
-                    fontSize: 14,
-                    fontWeight: Typography.weight.semibold,
-                    color: '#C45B5B',
-                  }}
-                >
-                  Clear Filter
-                </Text>
-              </Pressable>
-            )}
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 12, rowGap: 6 }}>
+        {MOOD_SCALE.map((s) => (
+          <View key={s.key} style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+            <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: s.color }} />
+            <Text style={[Type.caption, { fontWeight: '500', color: palette.textMuted }]}>{t(`moodScale.${s.key}`)}</Text>
           </View>
+        ))}
+      </View>
+
+      <View style={{ backgroundColor: palette.white, borderRadius: 24, padding: 20, gap: 16 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+          <Text style={[Type.bodyMSemi, { color: palette.ink, flexShrink: 1 }]}>
+            {summary.mostly
+              ? t('moodHistory.mostly', { mood: t(`moodScale.${moodStep(summary.mostly).key}`).toLowerCase() })
+              : t('moodHistory.noneThisMonth')}
+          </Text>
+          {summary.total > 0 && (
+            <Text style={[Type.caption, { fontWeight: '500', color: palette.textSubtle }]}>{t('moodHistory.checkIns', { count: summary.total })}</Text>
+          )}
         </View>
-      </Modal>
-      <DayDetailsSheet log={openLog} onClose={() => setOpenLog(null)} />
-    </View>
+        {summary.total > 0 && (
+          <Svg width={cardW - 40} height={14} accessibilityElementsHidden>
+            <Defs>
+              <LinearGradient id="monthMix" x1="0" y1="0" x2="1" y2="0">
+                {stops.map((s, i) => (
+                  <Stop key={i} offset={s.offset} stopColor={moodStep(s.score).color} stopOpacity={0.95} />
+                ))}
+              </LinearGradient>
+            </Defs>
+            <Rect x={0} y={0} width={cardW - 40} height={14} rx={7} fill="url(#monthMix)" />
+          </Svg>
+        )}
+      </View>
+
+      <AppButton
+        title={t('moodHistory.insights')}
+        icon="line/chart"
+        iconPosition="left"
+        onPress={() => router.push('/(tabs)/mood/stats')}
+        style={{ marginTop: 8 }}
+      />
+
+      <DayDetailsSheet log={open} onClose={() => setOpen(null)} />
+    </SettingsScreen>
+  );
+}
+
+function MonthButton({ icon, label, onPress, disabled }: { icon: 'arrow/chevron-left' | 'arrow/chevron-right'; label: string; onPress: () => void; disabled?: boolean }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled }}
+      disabled={disabled}
+      onPress={onPress}
+      hitSlop={4}
+      style={({ pressed }) => ({ width: 36, height: 36, borderRadius: 18, backgroundColor: palette.white, alignItems: 'center', justifyContent: 'center', opacity: disabled ? 0.4 : pressed ? 0.7 : 1 })}
+    >
+      <Icon name={icon} size={18} />
+    </Pressable>
   );
 }
