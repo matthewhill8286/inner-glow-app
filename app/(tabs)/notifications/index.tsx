@@ -1,824 +1,298 @@
-import { canonicalRoute } from '@/lib/legacy-routes';
-import { screenBottomPadding } from '@/lib/screen-layout';
-import { Typography } from '@/constants/typography';
-import { isAppRoute } from '@/lib/navigation';
-import { useFocusEffect } from '@react-navigation/native';
-import * as Notifications from 'expo-notifications';
-import { returnFromNotifications, notificationOrigin } from '@/lib/navigation';
-import { WellnessIconText } from '@/components/WellnessIconText';
-import React, { useEffect, useMemo, useState, useCallback } from 'react';
-import {
-  View,
-  Text,
-  Pressable,
-  Switch,
-  ScrollView,
-  Platform,
-  StyleSheet,
-  AppState,
-} from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
-import { useTranslation } from 'react-i18next';
-import { Colors, UI } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import React, { useEffect, useMemo } from 'react';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import {
-  scheduleNotification,
-  notificationPermission,
-  loadReminderPreferences,
-  setReminderEnabled,
-} from '@/lib/notifications';
-import { toast } from '@/components/Toast';
-import MaterialIcons from '@/components/AppIcon';
-import {
-  useNotificationStore,
-  NOTIF_TYPE_META,
-  timeAgo,
-  type AppNotification,
-} from '@/lib/notificationStore';
+import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
+import Svg, { Circle, Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
+import { palette } from '@/constants/theme';
+import { Type } from '@/constants/typography';
+import { Glow, GlowField } from '@/components/glow/Glow';
+import { Icon } from '@/components/icons/Icon';
+import { IconButton } from '@/components/ui/IconButton';
+import { Moon, StarField } from '@/components/sleep/NightSky';
+import { useBottomSpace } from '@/components/navigation/TabBarContext';
+import { useJournal } from '@/hooks/useJournal';
+import { useSleep } from '@/hooks/useSleep';
+import { useScoreDays } from '@/hooks/useScoreDays';
+import { useNotificationStore, type AppNotification } from '@/lib/notificationStore';
+import { feedLook, feedRoute, gridDot, groupFeed, journalMonth } from '@/lib/notification-feed';
+import { clockFrom, formatDuration, isBestThisMonth, isRecent, lastNight } from '@/lib/sleep-home';
+import { signed } from '@/lib/glow-score';
+import { backTo } from '@/lib/navigation';
 
-/* ── notification settings config ────────────────── */
-type NotifSetting = {
-  key: string;
-  title: string;
-  subtitle: string;
-  emoji: string;
-  tint: string;
-  enabled: boolean;
-};
+type Highlight = { key: string; value: string; caption: string; route: string; art: React.ReactNode; dark?: boolean };
 
-const DEFAULT_SETTINGS: NotifSetting[] = [
-  {
-    key: 'daily_checkin',
-    title: 'Daily Check-in',
-    subtitle: 'Daily at 8:00 PM.',
-    emoji: '🧘',
-    tint: '#5B8A5A',
-    enabled: false,
-  },
-  {
-    key: 'journal_reminder',
-    title: 'Journal Reminder',
-    subtitle: 'Daily at 8:30 PM.',
-    emoji: '📖',
-    tint: '#E8985A',
-    enabled: false,
-  },
-  {
-    key: 'sleep_winddown',
-    title: 'Sleep Wind-down',
-    subtitle: 'Daily at 10:00 PM. Set bedtime reminders in Sleep.',
-    emoji: '🌙',
-    tint: '#7E57C2',
-    enabled: false,
-  },
-  {
-    key: 'mindful_breaks',
-    title: 'Mindful Breaks',
-    subtitle: 'Daily at 3:00 PM.',
-    emoji: '🌬️',
-    tint: '#42A5F5',
-    enabled: false,
-  },
-  {
-    key: 'stress_alert',
-    title: 'Stress Check',
-    subtitle: 'Daily at 6:00 PM.',
-    emoji: '🔥',
-    tint: '#C45B5B',
-    enabled: false,
-  },
-  {
-    key: 'weekly_summary',
-    title: 'Weekly Summary',
-    subtitle: 'Sunday at 6:00 PM.',
-    emoji: '📊',
-    tint: '#8B6B47',
-    enabled: false,
-  },
-];
-
-const BROWN = '#8B6B47';
-
-/* ── Screen ──────────────────────────────────────── */
-
+/**
+ * Notifications, "Your day, in light" (03 §3.1): highlight cards for the Glow score, journal days and
+ * last night, then a timeline of updates grouped by day, with line icons, glow-coloured nodes and
+ * action pills. Cards open the screen they are about. Opening the feed marks everything read. The
+ * six full-screen moments (§3.3–3.8) are not built yet, so highlights open the matching screens.
+ */
 export default function NotificationsScreen() {
-  const { t } = useTranslation();
-  const theme = useColorScheme() ?? 'light';
-  const colors = Colors[theme];
+  const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
-
-  const [settings, setSettings] = useState<NotifSetting[]>(DEFAULT_SETTINGS);
-  const { tab: requestedTab, from } = useLocalSearchParams<{ tab?: string; from?: string }>();
-  const [activeTab, setActiveTab] = useState<'recent' | 'settings'>(
-    requestedTab === 'settings' ? 'settings' : 'recent',
-  );
-  useEffect(() => {
-    if (requestedTab === 'settings') setActiveTab('settings');
-  }, [requestedTab]);
-  const [hasPermission, setHasPermission] = useState(false);
-  const [updatingReminder, setUpdatingReminder] = useState(false);
-
-  // Notification store
+  const bottom = useBottomSpace();
   const notifications = useNotificationStore((s) => s.notifications);
-  const loadNotifs = useNotificationStore((s) => s.load);
-  const markRead = useNotificationStore((s) => s.markRead);
+  const load = useNotificationStore((s) => s.load);
   const markAllRead = useNotificationStore((s) => s.markAllRead);
   const clearAll = useNotificationStore((s) => s.clearAll);
+  const { days } = useScoreDays();
+  const { journalEntries } = useJournal();
+  const { sleepEntries } = useSleep();
+  const now = useMemo(() => new Date(), []);
 
   useEffect(() => {
-    loadNotifs();
-  }, [loadNotifs]);
+    void load().then(() => markAllRead());
+  }, [load, markAllRead]);
 
-  const enabledCount = useMemo(() => settings.filter((i) => i.enabled).length, [settings]);
-  const unreadCount = useMemo(() => notifications.filter((n) => !n.read).length, [notifications]);
+  const groups = useMemo(() => groupFeed(notifications, now), [notifications, now]);
+  const todayCount = groups.find((g) => g.group === 'today')?.items.length ?? 0;
 
-  useFocusEffect(
-    useCallback(() => {
-      let active = true;
-      const refresh = () =>
-        Promise.all([notificationPermission(), loadReminderPreferences()])
-          .then(([allowed, saved]) => {
-            if (!active) return;
-            setHasPermission(allowed);
-            setSettings((prev) =>
-              prev.map((item) => ({ ...item, enabled: saved[item.key] === true })),
-            );
-          })
-          .catch(() => toast.error('Unable to load notification settings.'));
-      void refresh();
-      const listener = AppState.addEventListener('change', (state) => {
-        if (state === 'active') void refresh();
+  const highlights = useMemo<Highlight[]>(() => {
+    const out: Highlight[] = [];
+    if (days[0]) {
+      const delta = days[1] ? days[0].score - days[1].score : 0;
+      out.push({
+        key: 'score',
+        value: delta ? t('notificationFeed.score', { delta: signed(delta) }) : t('notificationFeed.scoreValue', { score: days[0].score }),
+        caption: t(delta > 0 ? 'notificationFeed.rising' : delta < 0 ? 'notificationFeed.dipping' : 'notificationFeed.steady'),
+        route: '/(tabs)/freud-score',
+        art: <ScoreArt score={days[0].score} />,
       });
-      return () => {
-        active = false;
-        listener.remove();
-      };
-    }, []),
-  );
-
-  const toggleNotification = async (key: string, value: boolean) => {
-    if (updatingReminder) return;
-    setUpdatingReminder(true);
-    try {
-      await setReminderEnabled(key, value);
-      setHasPermission(await notificationPermission());
-      setSettings((prev) =>
-        prev.map((item) => (item.key === key ? { ...item, enabled: value } : item)),
-      );
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Unable to update this reminder.');
-    } finally {
-      setUpdatingReminder(false);
     }
+    const journal = journalMonth(journalEntries, now);
+    if (journal.written.size) {
+      out.push({
+        key: 'journal',
+        value: `${journal.written.size}/${journal.days}`,
+        caption: t('notificationFeed.journalDays'),
+        route: '/(tabs)/journal/stats',
+        art: <JournalArt written={journal.written} days={journal.days} />,
+      });
+    }
+    const night = lastNight(sleepEntries);
+    if (night && isRecent(night)) {
+      out.push({
+        key: 'sleep',
+        value: formatDuration(night.asleepMinutes),
+        caption: t(isBestThisMonth(night, sleepEntries) ? 'notificationFeed.bestNight' : 'notificationFeed.lastNight'),
+        route: `/(tabs)/sleep/${night.entry.id}`,
+        art: <SleepArt />,
+        dark: true,
+      });
+    }
+    return out;
+  }, [days, journalEntries, sleepEntries, now, t]);
+
+  const subtitle =
+    highlights.length || todayCount
+      ? t('notificationFeed.subtitle', {
+          highlights: t('notificationFeed.highlights', { count: highlights.length }),
+          updates: t('notificationFeed.updates', { count: todayCount }),
+        })
+      : t('notificationFeed.quiet');
+
+  const time = (n: AppNotification, group: string) => {
+    const d = new Date(n.createdAt);
+    return group === 'earlier' ? d.toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' }) : clockFrom(d.getHours(), d.getMinutes());
   };
-
-  const testNotification = async () => {
-    if (Platform.OS === 'web') {
-      toast.info(
-        'Phone reminders are available in the iPhone app. Your activity notifications remain available here.',
-      );
-      return;
-    }
-    try {
-      await scheduleNotification(
-        'Inner Glow',
-        'Your test notification is working.',
-        { route: '/(tabs)/notifications' },
-        {
-          type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-          seconds: 15,
-          repeats: false,
-        },
-      );
-      toast.info('Test notification scheduled for 15 seconds. Lock your phone to check delivery.');
-      setHasPermission(await notificationPermission());
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Unable to send the test notification.');
-    }
-  };
-
-  // Group notifications by time period
-  const { today, yesterday, older } = useMemo(() => {
-    const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-    const yesterdayStart = todayStart - 86400000;
-
-    const todayList: AppNotification[] = [];
-    const yesterdayList: AppNotification[] = [];
-    const olderList: AppNotification[] = [];
-
-    for (const n of notifications) {
-      const ts = new Date(n.createdAt).getTime();
-      if (ts >= todayStart) todayList.push(n);
-      else if (ts >= yesterdayStart) yesterdayList.push(n);
-      else olderList.push(n);
-    }
-
-    return { today: todayList, yesterday: yesterdayList, older: olderList };
-  }, [notifications]);
 
   return (
-    <View style={[s.container, { backgroundColor: colors.background, paddingTop: insets.top + 8 }]}>
-      {/* ── Header ── */}
-      <View style={s.header}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t('common.back')}
-          onPress={() => returnFromNotifications(from)}
-          style={({ pressed }) => [
-            s.backBtn,
-            {
-              backgroundColor: colors.card,
-              borderColor: colors.border,
-              opacity: pressed ? 0.7 : 1,
-            },
-          ]}
-        >
-          <MaterialIcons
-            name={Platform.OS === 'ios' ? 'arrow-back-ios-new' : 'arrow-back'}
-            size={18}
-            color={colors.text}
-          />
-        </Pressable>
-        <View style={{ flex: 1 }}>
-          <View style={s.titleRow}>
-            <Text style={[s.headerTitle, { color: colors.text }]}>Notifications</Text>
-            {unreadCount > 0 && (
-              <View style={s.unreadBadge}>
-                <Text style={s.unreadText}>{unreadCount}</Text>
-              </View>
-            )}
-          </View>
-          <Text style={[s.headerSub, { color: colors.mutedText }]}>
-            Stay mindful, on your terms.
-          </Text>
-        </View>
-        {/* Mark all / clear */}
-        {notifications.length > 0 && activeTab === 'recent' && (
-          <Pressable
-            onPress={unreadCount > 0 ? markAllRead : clearAll}
-            style={({ pressed }) => [
-              s.headerAction,
-              {
-                backgroundColor: colors.card,
-                borderColor: colors.border,
-                opacity: pressed ? 0.7 : 1,
-              },
-            ]}
-          >
-            <MaterialIcons
-              name={unreadCount > 0 ? 'done-all' : 'delete-outline'}
-              size={16}
-              color={colors.mutedText}
-            />
-          </Pressable>
-        )}
-      </View>
-
-      {/* ── Tab switcher ── */}
-      <View style={[s.tabBar, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        {(['recent', 'settings'] as const).map((tab) => (
-          <Pressable
-            key={tab}
-            onPress={() => setActiveTab(tab)}
-            style={[s.tab, activeTab === tab && [s.tabActive, { backgroundColor: BROWN }]]}
-          >
-            <WellnessIconText
-              style={[s.tabText, { color: activeTab === tab ? '#FFF' : colors.mutedText }]}
-            >
-              {tab === 'recent' ? '🔔  Recent' : '⚙️  Settings'}
-            </WellnessIconText>
-          </Pressable>
-        ))}
-      </View>
-
-      <ScrollView
-        contentContainerStyle={[
-          s.scrollContent,
-          { paddingBottom: screenBottomPadding(insets.bottom) },
+    <View style={{ flex: 1, backgroundColor: palette.bg }}>
+      <GlowField
+        glows={[
+          { color: palette.sky, opacity: 0.2, x: 180, y: 30, width: 240, blur: 90 },
+          { color: palette.mustard, opacity: 0.25, x: -50, y: 0, width: 260, blur: 90 },
         ]}
-        showsVerticalScrollIndicator={false}
-      >
-        {activeTab === 'recent' ? (
-          <>
-            {notifications.length === 0 ? (
-              /* ── Empty state ── */
-              <View
-                style={[s.emptyCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+      />
+      <ScrollView contentContainerStyle={{ paddingTop: insets.top + 7, paddingHorizontal: 24, paddingBottom: bottom }} showsVerticalScrollIndicator={false}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <IconButton size={50} accessibilityLabel={t('common.back')} onPress={() => backTo(undefined, '/(tabs)/home')} />
+          <IconButton
+            size={50}
+            variant="solid"
+            icon="line/settings"
+            iconSize={22}
+            accessibilityLabel={t('notificationFeed.settings')}
+            onPress={() => router.push('/(tabs)/profile/notifications')}
+          />
+        </View>
+        <Text accessibilityRole="header" style={[Type.titleXl, { color: palette.plumDeep, marginTop: 21, letterSpacing: 0 }]}>
+          {t('notificationFeed.title')}
+        </Text>
+        <Text style={[Type.bodyS, { color: palette.textMuted, marginTop: 4 }]}>{subtitle}</Text>
+
+        {highlights.length > 0 && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -24, marginTop: 20 }} contentContainerStyle={{ paddingHorizontal: 24, gap: 12 }}>
+            {highlights.map((h) => (
+              <Pressable
+                key={h.key}
+                accessibilityRole="button"
+                accessibilityLabel={`${h.value}, ${h.caption}`}
+                onPress={() => router.push(h.route as never)}
+                style={({ pressed }) => ({ width: 150, height: 180, borderRadius: 26, overflow: 'hidden', backgroundColor: h.dark ? palette.ink : palette.white, opacity: pressed ? 0.85 : 1 })}
               >
-                <View style={[s.emptyIconWrap, { backgroundColor: BROWN + '12' }]}>
-                  <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 36 }}>
-                    🔕
-                  </WellnessIconText>
-                </View>
-                <Text style={[s.emptyTitle, { color: colors.text }]}>All caught up!</Text>
-                <Text style={[s.emptySub, { color: colors.mutedText }]}>
-                  Notifications will appear here when you log mood, sleep, journal entries, or
-                  complete activities.
-                </Text>
-              </View>
-            ) : (
-              <>
-                {/* Today */}
-                {today.length > 0 && (
-                  <>
-                    <Text style={[s.groupLabel, { color: colors.mutedText }]}>Today</Text>
-                    <View style={{ gap: 8 }}>
-                      {today.map((notif) => (
-                        <NotifCard key={notif.id} notif={notif} colors={colors} onRead={markRead} />
-                      ))}
-                    </View>
-                  </>
-                )}
-
-                {/* Yesterday */}
-                {yesterday.length > 0 && (
-                  <>
-                    <Text style={[s.groupLabel, { color: colors.mutedText, marginTop: 20 }]}>
-                      Yesterday
-                    </Text>
-                    <View style={{ gap: 8 }}>
-                      {yesterday.map((notif) => (
-                        <NotifCard key={notif.id} notif={notif} colors={colors} onRead={markRead} />
-                      ))}
-                    </View>
-                  </>
-                )}
-
-                {/* Older */}
-                {older.length > 0 && (
-                  <>
-                    <Text style={[s.groupLabel, { color: colors.mutedText, marginTop: 20 }]}>
-                      Earlier
-                    </Text>
-                    <View style={{ gap: 8 }}>
-                      {older.map((notif) => (
-                        <NotifCard key={notif.id} notif={notif} colors={colors} onRead={markRead} />
-                      ))}
-                    </View>
-                  </>
-                )}
-              </>
-            )}
-          </>
-        ) : (
-          /* ═══ SETTINGS TAB ═══════════════════════ */
-          <>
-            {/* summary card */}
-            <View style={[s.summaryCard, { backgroundColor: BROWN }]}>
-              <View style={s.summaryTop}>
-                <View style={s.summaryIconWrap}>
-                  <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 24 }}>
-                    🔔
-                  </WellnessIconText>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.summaryTitle}>
-                    {enabledCount} of {settings.length} active
+                {h.art}
+                <View style={{ position: 'absolute', left: 16, top: 122, right: 12 }}>
+                  <Text numberOfLines={1} style={[Type.headline, { color: h.dark ? palette.white : palette.plumDeep }]}>{h.value}</Text>
+                  <Text numberOfLines={1} style={[Type.caption, { fontWeight: '500', color: h.dark ? 'rgba(255,255,255,0.60)' : palette.textMuted, marginTop: 4 }]}>
+                    {h.caption}
                   </Text>
-                  <Text style={s.summarySub}>We only send what you opt in to.</Text>
                 </View>
-              </View>
+              </Pressable>
+            ))}
+          </ScrollView>
+        )}
 
-              <View style={s.summaryDivider} />
-              <View style={s.permRow}>
-                <View
-                  style={[s.permDot, { backgroundColor: hasPermission ? '#7EAD7E' : '#C45B5B' }]}
-                />
-                <Text style={s.permText}>
-                  {Platform.OS === 'web'
-                    ? 'Phone reminders are available in the iPhone app'
-                    : hasPermission
-                      ? 'Notifications permitted'
-                      : 'Notifications not allowed — enable in Settings'}
-                </Text>
-              </View>
-            </View>
-
-            {/* notification toggles */}
-            <View
-              style={[s.settingsCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-            >
-              {settings.map((item, idx) => (
-                <View
-                  key={item.key}
-                  style={[
-                    s.settingRow,
-                    {
-                      borderBottomWidth: idx < settings.length - 1 ? 1 : 0,
-                      borderBottomColor: colors.divider,
-                    },
-                  ]}
-                >
-                  <View style={[s.settingIconWrap, { backgroundColor: item.tint + '15' }]}>
-                    <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 18 }}>
-                      {item.emoji}
-                    </WellnessIconText>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[s.settingTitle, { color: colors.text }]}>{item.title}</Text>
-                    <Text style={[s.settingSub, { color: colors.mutedText }]}>{item.subtitle}</Text>
-                  </View>
-                  <Switch
-                    value={item.enabled}
-                    disabled={updatingReminder || Platform.OS === 'web'}
-                    onValueChange={(v) => toggleNotification(item.key, v)}
-                    trackColor={{
-                      false: theme === 'light' ? '#E0DCD6' : '#3A3A3A',
-                      true: item.tint,
-                    }}
-                    thumbColor="#FFF"
-                  />
-                </View>
-              ))}
-            </View>
-
-            {/* test button */}
-            <Pressable
-              onPress={testNotification}
-              style={({ pressed }) => [s.testBtn, { transform: [{ scale: pressed ? 0.97 : 1 }] }]}
-            >
-              <MaterialIcons name="notifications-active" size={18} color="#FFF" />
-              <Text style={s.testBtnText}>
-                {Platform.OS === 'web' ? 'About Phone Reminders' : 'Send Test Notification'}
+        {groups.length === 0 ? (
+          <View style={{ marginTop: 28, backgroundColor: palette.white, borderRadius: 22, padding: 20, gap: 6 }}>
+            <Text style={[Type.bodyMSemi, { color: palette.plumDeep }]}>{t('notificationFeed.emptyTitle')}</Text>
+            <Text style={[Type.captionM, { lineHeight: 18, color: palette.textMuted }]}>{t('notificationFeed.emptyBody')}</Text>
+          </View>
+        ) : (
+          groups.map((g) => (
+            <View key={g.group} style={{ marginTop: 24 }}>
+              <Text accessibilityRole="header" style={[Type.labelM, { letterSpacing: 0.72, color: palette.textSubtle }]}>
+                {t(`notificationFeed.groups.${g.group}`).toUpperCase()}
               </Text>
-            </Pressable>
-          </>
+              <View style={{ marginTop: 10 }}>
+                {/* Timeline rail behind the nodes (03 §3.1). */}
+                <View pointerEvents="none" style={{ position: 'absolute', left: 9, top: 8, bottom: 8, width: 2 }}>
+                  <Svg width={2} height="100%">
+                    <Defs>
+                      <LinearGradient id={`rail-${g.group}`} x1="0" y1="0" x2="0" y2="1">
+                        <Stop offset="0" stopColor={palette.mustard} stopOpacity={0.6} />
+                        <Stop offset="1" stopColor={palette.border} stopOpacity={0.4} />
+                      </LinearGradient>
+                    </Defs>
+                    <Rect x={0} y={0} width={2} height="100%" rx={1} fill={`url(#rail-${g.group})`} />
+                  </Svg>
+                </View>
+                <View style={{ gap: 12 }}>
+                  {g.items.map((n) => (
+                    <UpdateRow key={n.id} item={n} time={time(n, g.group)} today={g.group === 'today'} />
+                  ))}
+                </View>
+              </View>
+            </View>
+          ))
+        )}
+
+        {groups.length > 0 && (
+          <Pressable accessibilityRole="button" onPress={clearAll} hitSlop={10} style={{ alignSelf: 'center', marginTop: 24, paddingVertical: 6 }}>
+            <Text style={[Type.buttonS, { color: palette.lavender }]}>{t('notificationFeed.clearAll')}</Text>
+          </Pressable>
         )}
       </ScrollView>
     </View>
   );
 }
 
-/* ── Notification card component ─────────────────── */
-function NotifCard({
-  notif,
-  colors,
-  onRead,
-}: {
-  notif: AppNotification;
-  colors: any;
-  onRead: (id: string) => void;
-}) {
-  const { from } = useLocalSearchParams<{ from?: string }>();
-  const meta = NOTIF_TYPE_META[notif.type] || { emoji: '📩', color: '#8B6B47', label: 'Other' };
-
-  const handlePress = () => {
-    if (!notif.read) onRead(notif.id);
-    if (isAppRoute(notif.meta?.route)) {
-      router.navigate(canonicalRoute(notif.meta!.route as string) as import('expo-router').Href);
-      return;
-    }
-    // Navigate to notification detail
-    router.push({
-      pathname: '/(tabs)/notifications/detail',
-      params: {
-        type: notif.type,
-        title: notif.title,
-        body: notif.body,
-        time: timeAgo(notif.createdAt),
-        from: '/(tabs)/notifications',
-        inboxFrom: notificationOrigin(from),
-      },
-    });
-  };
-
+function UpdateRow({ item, time, today }: { item: AppNotification; time: string; today: boolean }) {
+  const { t } = useTranslation();
+  const look = feedLook(item.type);
+  const route = feedRoute(item);
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`Open notification: ${notif.title}`}
-      onPress={handlePress}
-      style={({ pressed }) => [
-        s.notifCard,
-        {
-          backgroundColor: notif.read ? colors.card : meta.color + '08',
-          borderColor: notif.read ? colors.border : meta.color + '20',
-          transform: [{ scale: pressed ? 0.98 : 1 }],
-        },
-      ]}
-    >
-      {/* Colored accent bar */}
-      <View style={[s.notifAccent, { backgroundColor: meta.color }]} />
-
-      <View style={s.notifRow}>
-        <View style={[s.notifIconWrap, { backgroundColor: meta.color + '15' }]}>
-          <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 18 }}>
-            {notif.emoji}
-          </WellnessIconText>
-        </View>
-
-        <View style={{ flex: 1 }}>
-          <View style={s.notifTitleRow}>
-            <WellnessIconText
-              style={[
-                s.notifTitle,
-                { color: colors.text },
-                !notif.read && {
-                  fontFamily: Typography.family.body,
-                  fontWeight: Typography.weight.semibold,
-                },
-              ]}
-              numberOfLines={1}
-            >
-              {notif.title}
-            </WellnessIconText>
-            <Text style={[s.notifTime, { color: colors.subtleText }]}>
-              {timeAgo(notif.createdAt)}
-            </Text>
-          </View>
-          <Text style={[s.notifBody, { color: colors.mutedText }]} numberOfLines={2}>
-            {notif.body}
-          </Text>
-
-          {/* Type label + unread indicator */}
-          <View style={s.notifMeta}>
-            <View style={[s.notifTypeTag, { backgroundColor: meta.color + '12' }]}>
-              <Text
-                style={{
-                  fontFamily: Typography.family.body,
-                  color: meta.color,
-                  fontSize: 10,
-                  fontWeight: Typography.weight.semibold,
-                }}
-              >
-                {meta.label}
-              </Text>
-            </View>
-            {!notif.read && <View style={[s.unreadDot, { backgroundColor: meta.color }]} />}
-          </View>
-        </View>
+    <View style={{ flexDirection: 'row', gap: 12 }}>
+      <View style={{ width: 20, alignItems: 'center', paddingTop: 14 }}>
+        <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: look.node, opacity: 0.35, position: 'absolute', top: 9 }} />
+        <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: look.node }} />
       </View>
-    </Pressable>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${item.title}, ${time}, ${item.body}`}
+        onPress={() => router.push(route as never)}
+        style={({ pressed }) => ({
+          flex: 1,
+          borderRadius: 22,
+          padding: 16,
+          gap: 8,
+          backgroundColor: today ? palette.white : 'transparent',
+          borderWidth: today ? 0 : 1,
+          borderColor: palette.border,
+          opacity: pressed ? 0.85 : 1,
+        })}
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Icon name={look.icon} size={18} color={palette.plum} />
+          <Text numberOfLines={1} style={[Type.bodyMSemi, { flex: 1, color: palette.plumDeep }]}>{item.title}</Text>
+          <Text style={[Type.micro, { color: palette.textSubtle }]}>{time}</Text>
+        </View>
+        <Text style={[Type.captionS, { lineHeight: 17, color: palette.textMuted }]}>{item.body}</Text>
+        {look.action && (
+          <View style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: palette.plum, borderRadius: 999, paddingVertical: 6, paddingHorizontal: 12 }}>
+            <Text style={[Type.labelM, { color: palette.white }]}>{t(`notificationFeed.actions.${look.action}`)}</Text>
+            <Icon name="arrow/forward" size={14} color={palette.white} />
+          </View>
+        )}
+      </Pressable>
+    </View>
   );
 }
 
-/* ── Styles ──────────────────────────────────────── */
-const s = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingHorizontal: UI.spacing.xl,
-  },
+/** Score highlight: a mustard glow, a light beam and the white core with the latest score. */
+function ScoreArt({ score }: { score: number }) {
+  return (
+    <>
+      <Glow color={palette.mustard} opacity={0.5} width={140} blur={30} style={{ position: 'absolute', left: 10, top: -20 }} />
+      <Svg width={26} height={90} style={{ position: 'absolute', left: 62, top: 36 }}>
+        <Defs>
+          <LinearGradient id="scoreBeam" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0" stopColor={palette.mustard} stopOpacity={0.9} />
+            <Stop offset="1" stopColor={palette.mustard} stopOpacity={0} />
+          </LinearGradient>
+        </Defs>
+        <Rect x={0} y={0} width={26} height={90} rx={13} fill="url(#scoreBeam)" />
+      </Svg>
+      <View
+        style={{
+          position: 'absolute',
+          left: 50,
+          top: 22,
+          width: 50,
+          height: 50,
+          borderRadius: 25,
+          backgroundColor: palette.white,
+          alignItems: 'center',
+          justifyContent: 'center',
+          boxShadow: '0px 0px 16px 4px rgba(226,204,64,0.60)',
+        }}
+      >
+        <Text style={[Type.titleSm, { color: palette.plumDeep }]}>{score}</Text>
+      </View>
+    </>
+  );
+}
 
-  /* header */
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    marginBottom: 4,
-  },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-  },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  headerTitle: { ...Typography.heading },
-  headerSub: { fontFamily: Typography.family.body, fontSize: 14, marginTop: 2 },
-  headerAction: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-  },
-  unreadBadge: {
-    backgroundColor: '#E8985A',
-    minWidth: 22,
-    height: 22,
-    borderRadius: 11,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 6,
-  },
-  unreadText: {
-    fontFamily: Typography.family.body,
-    color: '#FFF',
-    fontSize: 12,
-    fontWeight: Typography.weight.semibold,
-  },
+/** Journal highlight: one dot per day of the month so far, written days glowing (03 §4.6). */
+function JournalArt({ written, days }: { written: Set<number>; days: number }) {
+  return (
+    <>
+      <Glow color={palette.sky} opacity={0.35} width={120} blur={30} style={{ position: 'absolute', left: 40, top: 10 }} />
+      <Svg width={150} height={120} style={{ position: 'absolute' }}>
+        {Array.from({ length: days }, (_, i) => {
+          const p = gridDot(i + 1);
+          return written.has(i + 1) ? (
+            <React.Fragment key={i}>
+              <Circle cx={p.x} cy={p.y} r={8} fill={palette.mustard} fillOpacity={0.3} />
+              <Circle cx={p.x} cy={p.y} r={4} fill={palette.mustard} />
+            </React.Fragment>
+          ) : (
+            <Circle key={i} cx={p.x} cy={p.y} r={3} stroke="#D6CCC0" strokeWidth={1} fill="none" />
+          );
+        })}
+      </Svg>
+    </>
+  );
+}
 
-  /* tab bar */
-  tabBar: {
-    flexDirection: 'row',
-    borderRadius: UI.radius.lg,
-    padding: 4,
-    marginTop: 12,
-    borderWidth: 1,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: UI.radius.md,
-    alignItems: 'center',
-  },
-  tabActive: {},
-  tabText: {
-    fontFamily: Typography.family.body,
-    fontSize: 14,
-    fontWeight: Typography.weight.medium,
-  },
-
-  scrollContent: {
-    paddingTop: 16,
-    paddingBottom: 100,
-  },
-
-  /* group label */
-  groupLabel: {
-    fontFamily: Typography.family.body,
-    fontSize: 12,
-    fontWeight: Typography.weight.medium,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginBottom: 8,
-  },
-
-  /* notification card */
-  notifCard: {
-    borderRadius: 20,
-    padding: 14,
-    borderWidth: 1,
-    overflow: 'hidden',
-    ...UI.shadow.sm,
-  },
-  notifRow: {
-    flexDirection: 'row',
-    gap: 12,
-    alignItems: 'flex-start',
-  },
-  notifIconWrap: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 2,
-  },
-  notifTitleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 8,
-  },
-  notifTitle: {
-    fontFamily: Typography.family.body,
-    fontSize: 14,
-    fontWeight: Typography.weight.semibold,
-    flex: 1,
-  },
-  notifTime: {
-    fontFamily: Typography.family.body,
-    fontSize: 11,
-    fontWeight: Typography.weight.bold,
-  },
-  notifBody: { fontFamily: Typography.family.body, fontSize: 13, lineHeight: 19, marginTop: 3 },
-  notifMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 8,
-  },
-  notifTypeTag: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  unreadDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-  },
-  notifAccent: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 3,
-    borderTopLeftRadius: 20,
-    borderBottomLeftRadius: 20,
-  },
-
-  /* empty state */
-  emptyCard: {
-    borderRadius: UI.radius.xxl,
-    padding: 36,
-    borderWidth: 1,
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 20,
-    ...UI.shadow.sm,
-  },
-  emptyIconWrap: {
-    width: 72,
-    height: 72,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  emptyTitle: { ...Typography.cardHeading, marginTop: 4 },
-  emptySub: {
-    fontFamily: Typography.family.body,
-    fontSize: 14,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-
-  /* summary card (settings hero) */
-  summaryCard: {
-    borderRadius: UI.radius.xxl,
-    padding: 20,
-    ...UI.shadow.md,
-  },
-  summaryTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-  },
-  summaryIconWrap: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  summaryTitle: {
-    ...Typography.section,
-    color: '#FFF',
-    fontSize: 20,
-    fontWeight: Typography.weight.regular,
-  },
-  summarySub: {
-    fontFamily: Typography.family.body,
-    color: 'rgba(255,255,255,0.70)',
-    fontSize: 13,
-    marginTop: 2,
-  },
-  summaryDivider: {
-    height: 1,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    marginVertical: 14,
-  },
-  permRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  permDot: { width: 8, height: 8, borderRadius: 4 },
-  permText: {
-    fontFamily: Typography.family.body,
-    color: 'rgba(255,255,255,0.80)',
-    fontSize: 13,
-    fontWeight: Typography.weight.semibold,
-  },
-
-  /* settings card */
-  settingsCard: {
-    borderRadius: UI.radius.xxl,
-    borderWidth: 1,
-    overflow: 'hidden',
-    marginTop: 14,
-    ...UI.shadow.sm,
-  },
-  settingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  settingIconWrap: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  settingTitle: {
-    fontFamily: Typography.family.body,
-    fontSize: 15,
-    fontWeight: Typography.weight.semibold,
-  },
-  settingSub: { fontFamily: Typography.family.body, fontSize: 12, marginTop: 2 },
-
-  /* test button */
-  testBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    marginTop: 16,
-    backgroundColor: '#5B8A5A',
-    paddingVertical: 15,
-    borderRadius: UI.radius.lg,
-    ...UI.shadow.sm,
-  },
-  testBtnText: {
-    fontFamily: Typography.family.body,
-    color: '#FFF',
-    fontSize: 15,
-    fontWeight: Typography.weight.semibold,
-  },
-});
+/** Sleep highlight: the night card with stars and the moon. */
+function SleepArt() {
+  return (
+    <>
+      <Glow color={palette.lavenderSoft} opacity={0.4} width={110} blur={30} style={{ position: 'absolute', left: 60, top: 0 }} />
+      <StarField width={150} height={110} style={{ position: 'absolute' }} />
+      <Moon size={44} style={{ position: 'absolute', left: 90, top: 22 }} />
+    </>
+  );
+}
