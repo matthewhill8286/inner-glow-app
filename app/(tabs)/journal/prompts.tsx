@@ -1,92 +1,103 @@
-import { Typography } from '@/constants/typography';
 import React, { useMemo, useState } from 'react';
-import { View, Text, Pressable, TextInput, FlatList } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import ScreenHeader from '@/components/ScreenHeader';
+import { palette } from '@/constants/theme';
+import { Type } from '@/constants/typography';
+import { Icon } from '@/components/icons/Icon';
+import { AppField } from '@/components/ui/AppField';
+import { SettingsScreen } from '@/components/settings/SettingsParts';
 import { JOURNAL_PROMPTS } from '@/data/journalPrompts';
+import { backTo } from '@/lib/navigation';
 
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors, UI } from '@/constants/theme';
-
+/**
+ * Journal prompts. There is no frame for this screen, so it uses the library shell, search field and
+ * cards: tap a prompt to start Write entry with it.
+ */
 export default function JournalPrompts() {
-  const theme = useColorScheme() ?? 'light';
-  const colors = Colors[theme];
   const { t } = useTranslation();
   const [q, setQ] = useState('');
-
   const data = useMemo(() => {
     const s = q.trim().toLowerCase();
     if (!s) return JOURNAL_PROMPTS;
     return JOURNAL_PROMPTS.filter((p) =>
-      (p.title + ' ' + p.prompt + ' ' + p.category).toLowerCase().includes(s),
+      `${p.title} ${p.prompt} ${t(`journalPrompts.categories.${p.category}`)}`
+        .toLowerCase()
+        .includes(s),
     );
-  }, [q]);
+  }, [q, t]);
 
   return (
-    <View
-      style={{
-        flex: 1,
-        backgroundColor: colors.background,
-        padding: UI.spacing.xl,
-      }}
+    <SettingsScreen
+      title={t('journalPrompts.title')}
+      backLabel={t('common.back')}
+      onBack={() => backTo(undefined, '/(tabs)/journal')}
+      contentStyle={{ gap: 16 }}
     >
-      <ScreenHeader
-        title={t('journalPrompts.title')}
-        subtitle={t('journalPrompts.subtitle')}
-        showBack
-      />
-
-      <TextInput
+      <Text style={[Type.bodyS, { color: palette.textMuted }]}>{t('journalPrompts.subtitle')}</Text>
+      <AppField
+        variant="search"
         value={q}
         onChangeText={setQ}
         placeholder={t('journalPrompts.searchPlaceholder')}
-        placeholderTextColor={colors.placeholder}
-        style={{
-          marginTop: 14,
-          backgroundColor: colors.card,
-          padding: 12,
-          borderRadius: UI.radius.md,
-          color: colors.text,
-        }}
+        accessibilityLabel={t('journalPrompts.searchPlaceholder')}
+        autoCorrect={false}
       />
-
-      <FlatList
-        style={{ marginTop: 14 }}
-        data={data}
-        keyExtractor={(i) => i.id}
-        contentContainerStyle={{ gap: 10, paddingBottom: 18 }}
-        renderItem={({ item }) => (
+      <View style={{ gap: 10 }}>
+        {data.map((p) => (
           <Pressable
+            key={p.id}
+            accessibilityRole="button"
+            accessibilityLabel={`${p.title}. ${p.prompt}`}
             onPress={() =>
-              router.push({ pathname: '/(tabs)/journal/new', params: { promptId: item.id } })
+              router.push({ pathname: '/(tabs)/journal/new', params: { promptId: p.id } })
             }
-            style={{ padding: 14, borderRadius: UI.radius.lg, backgroundColor: colors.card }}
+            style={({ pressed }) => ({
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 12,
+              backgroundColor: palette.white,
+              borderRadius: 24,
+              padding: 16,
+              opacity: pressed ? 0.9 : 1,
+            })}
           >
-            <Text
-              style={{
-                fontFamily: Typography.family.body,
-                fontSize: 16,
-                fontWeight: Typography.weight.semibold,
-                color: colors.text,
-              }}
-            >
-              {item.title}
-            </Text>
-            <Text style={{ color: colors.mutedText, marginTop: 4 }}>{item.prompt}</Text>
-            <Text
-              style={{
-                fontFamily: Typography.family.body,
-                color: colors.primary,
-                marginTop: 8,
-                fontWeight: Typography.weight.semibold,
-              }}
-            >
-              {item.category.toUpperCase()}
-            </Text>
+            <View style={{ flex: 1, gap: 6 }}>
+              <Text style={[Type.bodyMSemi, { lineHeight: 21, color: palette.ink }]}>
+                {p.title}
+              </Text>
+              <Text style={[Type.captionM, { lineHeight: 19, color: palette.textMuted }]}>
+                {p.prompt}
+              </Text>
+              <View
+                style={{
+                  alignSelf: 'flex-start',
+                  backgroundColor: palette.selected,
+                  borderRadius: 999,
+                  paddingVertical: 2,
+                  paddingHorizontal: 8,
+                  marginTop: 2,
+                }}
+              >
+                <Text style={[Type.tag, { fontSize: 11, lineHeight: 15, color: palette.plum }]}>
+                  {t(`journalPrompts.categories.${p.category}`)}
+                </Text>
+              </View>
+            </View>
+            <Icon name="arrow/chevron-right" size={18} color={palette.plum} />
           </Pressable>
+        ))}
+        {data.length === 0 && (
+          <Text
+            style={[
+              Type.captionM,
+              { color: palette.textMuted, textAlign: 'center', marginTop: 12 },
+            ]}
+          >
+            {t('journalPrompts.none')}
+          </Text>
         )}
-      />
-    </View>
+      </View>
+    </SettingsScreen>
   );
 }

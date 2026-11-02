@@ -81,7 +81,6 @@ export const ROUTE_PATHS = [
   '/(tabs)/mindful/session-detail',
   '/(tabs)/mindful/session',
   '/(tabs)/mindful/stats',
-  '/(tabs)/mood/[id]',
   '/(tabs)/mood/check-in',
   '/(tabs)/mood/logged',
   '/(tabs)/mood/history',

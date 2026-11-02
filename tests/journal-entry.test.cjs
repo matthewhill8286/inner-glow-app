@@ -80,3 +80,23 @@ test('the month card has a dot per day so far, logged, missed or today', () => {
   assert.equal(j.monthDots([], new Date(2026, 10, 2)).perRow, 15);
   assert.equal(j.monthDots([at(30)], now).dots[29].state, 'logged');
 });
+
+test('the year stats count months, words and moods', () => {
+  const at = (m, d) => new Date(2026, m, d, 9).toISOString();
+  const s = j.journalYearStats(
+    [
+      { createdAt: at(9, 30), content: 'one two three', mood: 'Low' },
+      { createdAt: at(9, 2), content: 'a b', mood: 'Great' },
+      { createdAt: at(0, 5), content: '', mood: 'Curious' },
+      { createdAt: new Date(2025, 11, 31).toISOString(), content: 'old', mood: 'Low' },
+    ],
+    2026,
+  );
+  assert.equal(s.total, 3);
+  assert.equal(s.monthly[9], 2);
+  assert.equal(s.monthly[0], 1);
+  assert.equal(s.avgWords, 2);
+  assert.equal(s.moods['2'], 1);
+  assert.equal(s.moods['5'], 1);
+  assert.equal(s.moods.none, 1);
+});
