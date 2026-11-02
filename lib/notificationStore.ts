@@ -287,7 +287,7 @@ export function notifyMindfulnessSession(minutes: number) {
     .getState()
     .push(
       'mindfulness_session',
-      `${minutes} minutes of mindfulness`,
+      `${minutes} ${minutes === 1 ? 'minute' : 'minutes'} of mindfulness`,
       `${
         minutes >= 10
           ? 'Wonderful session! Regular practice builds lasting calm.'
@@ -341,7 +341,7 @@ export function notifyNewSuggestions(count: number) {
     .getState()
     .push(
       'new_suggestions',
-      `${count} new suggestions ready`,
+      `${count} new ${count === 1 ? 'suggestion' : 'suggestions'} ready`,
       'Fresh AI-powered activities tailored to your current mental health state.',
       { count },
     );
