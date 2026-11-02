@@ -6,5 +6,6 @@ export default function OnboardingLayout() {
   const stack = <Stack screenOptions={{ headerShown: false }} />;
   // The pre-sign-up flow (splash, welcome, consent, steps) runs without a session.
   const open = ['welcome', 'splash-loading', 'consent', 'steps'].includes(page);
-  return open ? stack : <SessionGate>{stack}</SessionGate>;
+  // The gate stays mounted so moving from an open page to a gated one does not remount the stack.
+  return <SessionGate enforce={!open}>{stack}</SessionGate>;
 }
