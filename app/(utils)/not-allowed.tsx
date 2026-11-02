@@ -1,162 +1,25 @@
-import { Typography } from '@/constants/typography';
-import { backTo } from '@/lib/navigation';
 import React from 'react';
-import { View, Text, Pressable, Platform, Linking } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTranslation } from 'react-i18next';
 import { router } from 'expo-router';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors, UI } from '@/constants/theme';
-import MaterialIcons from '@/components/AppIcon';
+import { useTranslation } from 'react-i18next';
+import { UtilityState } from '@/components/ui/UtilityState';
+import { backTo } from '@/lib/navigation';
 
+/** Private (05 §5.1): the lock ring. Sign in replaces the old mailto to a retired address. */
 export default function NotAllowedScreen() {
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
-  const theme = useColorScheme() ?? 'light';
-  const colors = Colors[theme];
-
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <View
-        style={{
-          paddingTop: insets.top + 16,
-          paddingHorizontal: UI.spacing.xl,
-          paddingBottom: UI.spacing.md,
-        }}
-      >
-        <Pressable
-          onPress={() => backTo(undefined, '/(tabs)/home')}
-          style={({ pressed }) => ({
-            width: 40,
-            height: 40,
-            borderRadius: 20,
-            backgroundColor: colors.card,
-            borderWidth: 1,
-            borderColor: colors.border,
-            alignItems: 'center',
-            justifyContent: 'center',
-            opacity: pressed ? 0.7 : 1,
-            ...UI.shadow.sm,
-          })}
-        >
-          <MaterialIcons
-            name="arrow-back-ios"
-            size={18}
-            color={colors.text}
-            style={{ marginLeft: 4 }}
-          />
-        </Pressable>
-      </View>
-
-      <View
-        style={{
-          flex: 1,
-          alignItems: 'center',
-          justifyContent: 'center',
-          paddingHorizontal: 40,
-          paddingBottom: 60,
-        }}
-      >
-        <View
-          style={{
-            width: 200,
-            height: 200,
-            borderRadius: 100,
-            backgroundColor: theme === 'light' ? '#FCE4EC' : 'rgba(196,91,91,0.12)',
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginBottom: 32,
-          }}
-        >
-          <MaterialIcons name="block" size={90} color="#C45B5B" />
-        </View>
-
-        <Text
-          style={{
-            ...Typography.heading,
-            fontSize: 24,
-            color: colors.text,
-            textAlign: 'center',
-            marginBottom: 10,
-          }}
-        >
-          {t('notAllowed.title')}
-        </Text>
-
-        <Text
-          style={{
-            fontFamily: Typography.family.body,
-            fontSize: 14,
-            color: colors.mutedText,
-            textAlign: 'center',
-            lineHeight: 21,
-            marginBottom: 20,
-          }}
-        >
-          {t('notAllowed.subtitle')}
-        </Text>
-
-        <Pressable
-          onPress={() => {
-            Linking.openURL('mailto:support@freud.ai');
-          }}
-          style={({ pressed }) => ({
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 6,
-            paddingHorizontal: 16,
-            paddingVertical: 8,
-            borderRadius: UI.radius.pill,
-            backgroundColor: theme === 'light' ? '#FCE4EC' : 'rgba(196,91,91,0.15)',
-            borderWidth: 1,
-            borderColor: theme === 'light' ? '#F8BBD0' : 'rgba(196,91,91,0.25)',
-            opacity: pressed ? 0.7 : 1,
-          })}
-        >
-          <Text style={{ fontFamily: Typography.family.body, fontSize: 14 }}>{'\uD83D\uDCDE'}</Text>
-          <Text
-            style={{
-              fontFamily: Typography.family.body,
-              fontSize: 13,
-              fontWeight: Typography.weight.semibold,
-              color: '#C45B5B',
-            }}
-          >
-            {t('notAllowed.contactAdmin')}
-          </Text>
-        </Pressable>
-      </View>
-
-      <View
-        style={{ paddingHorizontal: UI.spacing.xl, paddingBottom: Platform.OS === 'ios' ? 44 : 28 }}
-      >
-        <Pressable
-          onPress={() => router.push('/(tabs)/home')}
-          style={({ pressed }) => ({
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
-            backgroundColor: '#8B6B47',
-            borderRadius: UI.radius.xl,
-            paddingVertical: 16,
-            opacity: pressed ? 0.9 : 1,
-            ...UI.shadow.md,
-          })}
-        >
-          <Text
-            style={{
-              fontFamily: Typography.family.body,
-              fontSize: 16,
-              fontWeight: Typography.weight.semibold,
-              color: '#fff',
-            }}
-          >
-            {t('errorScreen.takeMeHome')}
-          </Text>
-          <MaterialIcons name="home" size={20} color="#fff" />
-        </Pressable>
-      </View>
-    </View>
+    <UtilityState
+      kind="private"
+      title={t('utilityStates.private.title')}
+      body={t('utilityStates.private.body')}
+      chip={t('utilityStates.private.chip')}
+      chipIcon="line/lock"
+      cta={t('utilityStates.private.cta')}
+      onCta={() => router.replace('/(auth)/sign-in')}
+      link={t('utilityStates.private.link')}
+      onLink={() => router.replace('/(tabs)/home')}
+      backLabel={t('common.back')}
+      onBack={() => backTo(undefined, '/(tabs)/home')}
+    />
   );
 }

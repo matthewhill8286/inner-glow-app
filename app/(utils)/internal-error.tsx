@@ -1,158 +1,25 @@
-import { Typography } from '@/constants/typography';
-import { backTo } from '@/lib/navigation';
 import React from 'react';
-import { View, Text, Pressable, Platform } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTranslation } from 'react-i18next';
 import { router } from 'expo-router';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors, UI } from '@/constants/theme';
-import MaterialIcons from '@/components/AppIcon';
+import { useTranslation } from 'react-i18next';
+import { UtilityState } from '@/components/ui/UtilityState';
+import { backTo } from '@/lib/navigation';
 
+/** 500 (05 §5.1): the off-balance contours. Try again goes back to where the error happened. */
 export default function InternalErrorScreen() {
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
-  const theme = useColorScheme() ?? 'light';
-  const colors = Colors[theme];
-
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <View
-        style={{
-          paddingTop: insets.top + 16,
-          paddingHorizontal: UI.spacing.xl,
-          paddingBottom: UI.spacing.md,
-        }}
-      >
-        <Pressable
-          onPress={() => backTo(undefined, '/(tabs)/home')}
-          style={({ pressed }) => ({
-            width: 40,
-            height: 40,
-            borderRadius: 20,
-            backgroundColor: colors.card,
-            borderWidth: 1,
-            borderColor: colors.border,
-            alignItems: 'center',
-            justifyContent: 'center',
-            opacity: pressed ? 0.7 : 1,
-            ...UI.shadow.sm,
-          })}
-        >
-          <MaterialIcons
-            name="arrow-back-ios"
-            size={18}
-            color={colors.text}
-            style={{ marginLeft: 4 }}
-          />
-        </Pressable>
-      </View>
-
-      <View
-        style={{
-          flex: 1,
-          alignItems: 'center',
-          justifyContent: 'center',
-          paddingHorizontal: 40,
-          paddingBottom: 60,
-        }}
-      >
-        <View
-          style={{
-            width: 200,
-            height: 200,
-            borderRadius: 100,
-            backgroundColor: theme === 'light' ? '#FFF3E0' : 'rgba(232,152,90,0.12)',
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginBottom: 32,
-          }}
-        >
-          <MaterialIcons name="warning" size={90} color="#E8985A" />
-        </View>
-
-        <Text
-          style={{
-            ...Typography.heading,
-            fontSize: 24,
-            color: colors.text,
-            textAlign: 'center',
-            marginBottom: 10,
-          }}
-        >
-          {t('internalError.title')}
-        </Text>
-
-        <Text
-          style={{
-            fontFamily: Typography.family.body,
-            fontSize: 14,
-            color: colors.mutedText,
-            textAlign: 'center',
-            lineHeight: 21,
-            marginBottom: 20,
-          }}
-        >
-          {t('internalError.subtitle')}
-        </Text>
-
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 6,
-            paddingHorizontal: 16,
-            paddingVertical: 8,
-            borderRadius: UI.radius.pill,
-            backgroundColor: theme === 'light' ? '#FFF3E0' : 'rgba(232,152,90,0.15)',
-            borderWidth: 1,
-            borderColor: theme === 'light' ? '#FFE0B2' : 'rgba(232,152,90,0.25)',
-          }}
-        >
-          <Text style={{ fontFamily: Typography.family.body, fontSize: 14 }}>{'\u26A0\uFE0F'}</Text>
-          <Text
-            style={{
-              fontFamily: Typography.family.body,
-              fontSize: 13,
-              fontWeight: Typography.weight.semibold,
-              color: '#E8985A',
-            }}
-          >
-            {t('internalError.statusCode500')}
-          </Text>
-        </View>
-      </View>
-
-      <View
-        style={{ paddingHorizontal: UI.spacing.xl, paddingBottom: Platform.OS === 'ios' ? 44 : 28 }}
-      >
-        <Pressable
-          onPress={() => router.push('/(tabs)/home')}
-          style={({ pressed }) => ({
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
-            backgroundColor: '#8B6B47',
-            borderRadius: UI.radius.xl,
-            paddingVertical: 16,
-            opacity: pressed ? 0.9 : 1,
-            ...UI.shadow.md,
-          })}
-        >
-          <Text
-            style={{
-              fontFamily: Typography.family.body,
-              fontSize: 16,
-              fontWeight: Typography.weight.semibold,
-              color: '#fff',
-            }}
-          >
-            {t('errorScreen.takeMeHome')}
-          </Text>
-          <MaterialIcons name="home" size={20} color="#fff" />
-        </Pressable>
-      </View>
-    </View>
+    <UtilityState
+      kind="serverError"
+      title={t('utilityStates.serverError.title')}
+      body={t('utilityStates.serverError.body')}
+      chip={t('utilityStates.serverError.chip')}
+      chipIcon="line/activity"
+      cta={t('utilityStates.serverError.cta')}
+      onCta={() => backTo(undefined, '/(tabs)/home')}
+      link={t('utilityStates.serverError.link')}
+      onLink={() => router.push('/(utils)/support')}
+      backLabel={t('common.back')}
+      onBack={() => backTo(undefined, '/(tabs)/home')}
+    />
   );
 }
