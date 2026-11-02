@@ -58,9 +58,30 @@ export default function SignIn() {
       title={t('authNew.welcomeBack')}
       footer={
         <View style={{ alignItems: 'center', gap: 8 }}>
-          <AuthLinkLine lead={t('authNew.noAccount')} link={t('authNew.signUp')} onPress={() => router.replace('/(auth)/sign-up')} />
-          <Pressable accessibilityRole="link" hitSlop={8} onPress={() => router.push('/(auth)/forgot-password')}>
-            <Text style={{ ...Type.label, fontWeight: '700', letterSpacing: -0.2, color: palette.lavender, textDecorationLine: 'underline' }}>
+          <AuthLinkLine
+            lead={t('authNew.noAccount')}
+            link={t('authNew.signUp')}
+            onPress={() => router.replace('/(auth)/sign-up')}
+          />
+          <Pressable
+            accessibilityRole="link"
+            hitSlop={8}
+            onPress={() =>
+              router.push({
+                pathname: '/(auth)/forgot-password',
+                params: email.trim() ? { email: email.trim() } : {},
+              })
+            }
+          >
+            <Text
+              style={{
+                ...Type.label,
+                fontWeight: '700',
+                letterSpacing: -0.2,
+                color: palette.lavender,
+                textDecorationLine: 'underline',
+              }}
+            >
               {t('authNew.forgotPassword')}
             </Text>
           </Pressable>
@@ -92,7 +113,14 @@ export default function SignIn() {
           onSubmitEditing={onSignIn}
           error={error ?? undefined}
         />
-        <AppButton title={t('authNew.signIn')} size="lg" icon="arrow/forward" busy={loading} disabled={loading} onPress={onSignIn} />
+        <AppButton
+          title={t('authNew.signIn')}
+          size="lg"
+          icon="arrow/forward"
+          busy={loading}
+          disabled={loading}
+          onPress={onSignIn}
+        />
       </View>
     </AuthShell>
   );

@@ -12,11 +12,16 @@ test('every password recovery method uses the installed app rather than the requ
   const module = { exports: {} };
   new Function('exports', compiled)(module.exports);
   assert.equal(module.exports.PASSWORD_RESET_REDIRECT, 'innerglow://reset-password');
-  const screen = fs.readFileSync(path.join(__dirname, '../app/(auth)/forgot-password.tsx'), 'utf8');
-  const requests = [...screen.matchAll(/resetPasswordForEmail\([\s\S]*?redirectTo:\s*([^,\n]+)/g)];
-  assert.equal(requests.length, 3);
-  for (const request of requests) assert.equal(request[1], 'PASSWORD_RESET_REDIRECT');
-  assert.doesNotMatch(screen, /Linking\.createURL/);
+  // Send code (Forgot password) and Resend code (Enter code) both send the recovery email.
+  for (const name of ['forgot-password', 'reset-code']) {
+    const screen = fs.readFileSync(path.join(__dirname, `../app/(auth)/${name}.tsx`), 'utf8');
+    const requests = [
+      ...screen.matchAll(/resetPasswordForEmail\([\s\S]*?redirectTo:\s*([^,\n}]+?)\s*[,}\n]/g),
+    ];
+    assert.equal(requests.length, 1, name);
+    for (const request of requests) assert.equal(request[1], 'PASSWORD_RESET_REDIRECT');
+    assert.doesNotMatch(screen, /Linking\.createURL/);
+  }
 });
 
 test('passwords need 8 characters with a number or symbol', () => {
