@@ -10,7 +10,6 @@ const FEATURES = [
   'stress',
   'mindful',
   'freud-score',
-  'community',
   'profile',
   'notifications',
 ];
@@ -35,7 +34,6 @@ export function parentRouteForPath(path: string): string {
   if (
     [
       '/delete-account',
-      '/blocked-users',
       '/ai-privacy',
       '/support',
       '/support-message',

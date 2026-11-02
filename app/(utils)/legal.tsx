@@ -10,7 +10,7 @@ const policies = {
   privacy: [
     [
       'Information you provide',
-      'Inner Glow stores your account email and profile, mood and sleep logs, stress and mindfulness records, journal entries, and AI conversation history to provide the features you use. Community profiles, posts and comments you publish are visible to other community members.',
+      'Inner Glow stores your account email and profile, mood and sleep logs, stress and mindfulness records, journal entries, and AI conversation history to provide the features you use.',
     ],
     [
       'AI processing',
@@ -26,7 +26,7 @@ const policies = {
     ],
     [
       'Deletion and choices',
-      'Use Profile → Delete Account to permanently delete your account and its associated app data, including community posts and comments. Apple and payment providers retain their own transaction records. Deleting your account does not cancel an Apple subscription; manage it in Apple Settings. You can contact support with privacy, access or correction requests.',
+      'Use Profile → Delete Account to permanently delete your account and its associated app data. Apple and payment providers retain their own transaction records. Deleting your account does not cancel an Apple subscription; manage it in Apple Settings. You can contact support with privacy, access or correction requests.',
     ],
   ],
   terms: [
@@ -43,29 +43,15 @@ const policies = {
       'Lifetime premium is no longer sold. If you bought it before, it stays a one-time purchase with no recurring charge. Restore Purchases restores eligible Apple purchases. Apple handles refunds for Apple purchases.',
     ],
     [
-      'Community conduct',
-      'Do not publish harassment, hate speech, threats, sexual exploitation, illegal content, spam or private information about another person. Posts and comments are screened before publishing. Use Report to send content for review and Block to hide a user. Content that violates these rules may be removed. You retain ownership of your content and allow Inner Glow to display content you publish to the community.',
-    ],
-    [
       'Account and license',
       'Keep your login details secure and provide accurate account information. You may delete your account in Profile. Use of the iOS app is also governed by Apple’s Standard End User License Agreement, available below.',
-    ],
-  ],
-  community: [
-    [
-      'Community Guidelines',
-      'Be respectful. Do not post harassment, hate speech, threats, sexual exploitation, illegal material, spam, or another person’s private information. Community content is screened before publication.',
-    ],
-    [
-      'Report and block',
-      'Use the safety menu beside a post or comment to report content or block its author. Reports go to the moderation queue. Blocked users’ posts and comments are hidden from you. Use Profile → Blocked Users to manage your list.',
     ],
   ],
 };
 
 export default function LegalScreen() {
   const { policy } = useLocalSearchParams<{ policy?: string }>();
-  const key = policy === 'terms' || policy === 'community' ? policy : 'privacy';
+  const key = policy === 'terms' ? policy : 'privacy';
   const colors = Colors[useColorScheme() ?? 'light'];
   const insets = useSafeAreaInsets();
   return (
@@ -81,13 +67,9 @@ export default function LegalScreen() {
         <Text style={{ color: colors.text, marginBottom: 24 }}>← Back</Text>
       </Pressable>
       <Text style={{ ...Typography.heading, color: colors.text }}>
-        {key === 'privacy'
-          ? 'Privacy Policy'
-          : key === 'terms'
-            ? 'Terms of Use'
-            : 'Community Guidelines'}
+        {key === 'privacy' ? 'Privacy Policy' : 'Terms of Use'}
       </Text>
-      <Text style={{ color: colors.mutedText, marginVertical: 12 }}>Updated 13 October 2026</Text>
+      <Text style={{ color: colors.mutedText, marginVertical: 12 }}>Updated 2 November 2026</Text>
       {policies[key].map(([title, content]) => (
         <View key={title} style={{ marginBottom: 24 }}>
           <Text style={{ ...Typography.section, color: colors.text, marginBottom: 8 }}>

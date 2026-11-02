@@ -1,6 +1,6 @@
 import { Stack, useSegments } from 'expo-router';
 import { SessionGate } from '@/components/SessionGate';
-const PRIVATE_SCREENS = new Set(['ai-privacy', 'blocked-users', 'delete-account', 'trial-upgrade', 'payment-success', 'feedback', 'feedback-sent']);
+const PRIVATE_SCREENS = new Set(['ai-privacy', 'delete-account', 'trial-upgrade', 'payment-success', 'feedback', 'feedback-sent']);
 export default function UtilsLayout() {
   const segments = useSegments();
   const stack = <Stack screenOptions={{ headerShown: false }} />;

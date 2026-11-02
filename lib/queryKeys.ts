@@ -59,13 +59,6 @@ export const queryKeys = {
     all: ['assessment'] as const,
     detail: (userId?: string) => ['assessment', userId] as const,
   },
-  community: {
-    feed: ['communityFeed'] as const,
-    post: (postId?: string) => ['communityPost', postId] as const,
-    notifs: ['communityNotifs'] as const,
-    myProfile: ['myProfile'] as const,
-    profile: (userId?: string) => ['communityProfile', userId] as const,
-  },
 } as const;
 
 /** Shared stale-time presets (ms) */

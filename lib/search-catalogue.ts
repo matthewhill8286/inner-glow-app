@@ -3,7 +3,6 @@ export type SearchCategory =
   | 'Mood'
   | 'Meditation'
   | 'Journal'
-  | 'Community'
   | 'Home'
   | 'AI Chatbot'
   | 'Resources';
@@ -155,17 +154,6 @@ export const SEARCH_ITEMS: SearchItem[] = [
     icon: 'lightbulb',
     iconBg: '#E8985A',
   },
-  // ── Community ──
-  {
-    key: 'community',
-    titleKey: 'search.items.communityTitle',
-    subtitleKey: 'search.items.communitySubtitle',
-    category: 'Community',
-    categoryKey: 'search.categories.community',
-    path: '/(tabs)/community',
-    icon: 'people',
-    iconBg: '#5B8A5A',
-  },
   // ── AI Chatbot ──
   {
     key: 'chatbot',
@@ -236,7 +224,6 @@ export const SEARCH_CATEGORIES: { label: SearchCategory; labelKey: string; icon:
   { label: 'Mood', labelKey: 'search.categories.mood', icon: 'mood' },
   { label: 'Meditation', labelKey: 'search.categories.meditation', icon: 'self-improvement' },
   { label: 'Journal', labelKey: 'search.categories.journal', icon: 'edit-note' },
-  { label: 'Community', labelKey: 'search.categories.community', icon: 'people' },
   { label: 'Home', labelKey: 'search.categories.home', icon: 'home' },
   { label: 'AI Chatbot', labelKey: 'search.categories.aiChatbot', icon: 'smart-toy' },
   { label: 'Resources', labelKey: 'search.categories.resources', icon: 'more-horiz' },
