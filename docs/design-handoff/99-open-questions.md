@@ -50,6 +50,17 @@ Design added 35 screens, now placed in their area sections, and a new component 
 - Build Apple Health and Health Connect sleep import. Health Connect still needs wording.
 - Stripe trial eligibility uses the same rule as checkout: an account gets the free week only if it has never paid.
 
+**Glow score decisions (2 Nov 2026, built on `feature/glow-score`; change them if design disagrees):**
+- Ring and row colour by band: 90+ lavender `#8E7FA6`, 80–89 sky `#7FC6F1`, 70–79 mustard `#E2CC40`, below 70 plum `#6B5279`. This matches every mock value (03 §2.2–2.3).
+- The range chip reads "Normal range" at 60+, "Worth watching" at 40–59 and "Low range" below 40. The score label itself still comes from `getFreudLabel`.
+- Mood mix buckets: Great and Good are Good, Okay is Okay, Low is Low, Bad is Tense.
+- A day's score is the last snapshot saved that day. 1W is Monday–Sunday, 1M the calendar month, 3M this month and the two before it, 1Y the calendar year. Each compares with the period before.
+- "What helps" and "What pulls it down" compare the average score on days with a factor against days without it, needing two days on each side. Factors come from practices, sleep, journal entries and check-in factors. "Late-night scrolling" has no data source, so it never shows.
+- "Start my plan" opens the first category with steps left. "Mark as done" completes what is left in that category. Finishing the last category opens "You did it". "Go to Score Tracker" is "Go to Score history".
+- History rows: the title is the day's check-in mood, the subtitle is the first suggestion made that day. "Add note" opens the mood check-in, where the note lives, so `freud_scores` needs no new columns yet. "Export" shares a CSV of the period. "Reminder" opens notification settings.
+- Figma has no way into Insights, so a chart button sits at the right of the Glow score header. The Score history filter button is left out because Figma does not say what it filters.
+- "Suggested for you" also lists the category's own steps above the article, so people can see what they are marking as done. "Read article" expands the card in place.
+
 **Still open product questions:** Do we show per-device detail, revoke and IP-based city names in Active sessions? What exactly do Larger text and Reduce motion change? (08)
 
 ## 1. Library and palette

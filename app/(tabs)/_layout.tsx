@@ -20,6 +20,9 @@ export default function TabsLayout() {
     (segments.includes('community') && segments.includes('new-post')) ||
     // The mood check-in and Mood logged are full-screen flows with no tab bar (04 §M2–M5).
     (segments.includes('mood') && (segments.includes('check-in') || segments.includes('logged'))) ||
+    // Only the Glow score screen itself keeps the tab bar (03 §2.2–2.7).
+    (segments.includes('freud-score') &&
+      ['history', 'insights', 'completed', 'ai-suggestions', 'ai-suggestion-category'].some((s) => segments.includes(s))) ||
     // Practice Set up, the players and the daily goal are full-screen (07 §2.6–2.7, 10 §3.7).
     (segments.includes('mindful') && ['[id]', 'goal'].some((s) => segments.includes(s)) && !segments.includes('category'));
 

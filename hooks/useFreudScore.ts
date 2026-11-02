@@ -175,7 +175,8 @@ export const useFreudScore = (opts?: { lazy?: boolean; withHistory?: boolean }) 
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
-        .limit(90);
+        // Score History and Insights go back a year (03 §2.3–2.4); a day can hold several snapshots.
+        .limit(1000);
 
       if (error) throw error;
 
