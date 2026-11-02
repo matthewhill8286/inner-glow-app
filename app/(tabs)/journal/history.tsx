@@ -1,254 +1,142 @@
-import { Typography } from '@/constants/typography';
-import { backTo } from '@/lib/navigation';
-import { WellnessIconText } from '@/components/WellnessIconText';
 import React, { useMemo, useState } from 'react';
-import { View, Text, Pressable, ScrollView } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors, UI } from '@/constants/theme';
+import { palette } from '@/constants/theme';
+import { Type } from '@/constants/typography';
+import { Icon } from '@/components/icons/Icon';
+import { AppButton } from '@/components/ui/AppButton';
+import { EntryCard } from '@/components/journal/EntryCard';
+import { SettingsScreen } from '@/components/settings/SettingsParts';
 import { useJournal } from '@/hooks/useJournal';
-import { JournalEntry } from '@/lib/types';
-import MaterialIcons from '@/components/AppIcon';
+import { backTo } from '@/lib/navigation';
+import { dayKey } from '@/lib/profile-stats';
 
-/* ── Mood helpers ── */
-const MOOD_MAP: Record<string, { emoji: string; color: string }> = {
-  Calm: { emoji: '\uD83D\uDE0C', color: '#5B8A5A' },
-  Okay: { emoji: '\uD83D\uDE42', color: '#E8985A' },
-  Good: { emoji: '\uD83D\uDE0A', color: '#5B8A5A' },
-  Great: { emoji: '\uD83D\uDE04', color: '#5B8A5A' },
-  Happy: { emoji: '\uD83D\uDE01', color: '#8B6B47' },
-  Anxious: { emoji: '\uD83D\uDE1F', color: '#7B6DC9' },
-  Sad: { emoji: '\uD83D\uDE22', color: '#5A8FB5' },
-  Angry: { emoji: '\uD83D\uDE21', color: '#C45B5B' },
-  Overwhelmed: { emoji: '\uD83E\uDD2F', color: '#E8985A' },
-  Bad: { emoji: '\uD83D\uDE14', color: '#C45B5B' },
-  Low: { emoji: '\uD83D\uDE1E', color: '#5A8FB5' },
-};
-
-function getMood(mood?: string | null) {
-  if (!mood) return { emoji: '\uD83D\uDCDD', color: '#8B6B47' };
-  return MOOD_MAP[mood] ?? { emoji: '\uD83D\uDCDD', color: '#8B6B47' };
+/** Monday to Sunday of the week that holds `d`. */
+function weekOf(d: Date): Date[] {
+  const monday = new Date(d.getFullYear(), d.getMonth(), d.getDate() - ((d.getDay() + 6) % 7));
+  return Array.from(
+    { length: 7 },
+    (_, i) => new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i),
+  );
 }
 
-/* ── Generate week dates around a date ── */
-function getWeekDates(center: Date): Date[] {
-  const dates: Date[] = [];
-  const start = new Date(center);
-  start.setDate(start.getDate() - 3);
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(start);
-    d.setDate(start.getDate() + i);
-    dates.push(d);
-  }
-  return dates;
-}
-
-const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
+/**
+ * My Journals. There is no frame for this screen, so it uses the library shell: a week strip that
+ * marks the days with entries, then the chosen day's entries as Journal home cards, and "New entry"
+ * for that day. Days are matched in local time.
+ */
 export default function JournalHistory() {
-  const theme = useColorScheme() ?? 'light';
-  const colors = Colors[theme];
+  const { t, i18n } = useTranslation();
   const { journalEntries, isLoading } = useJournal();
-  const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
+  const [selected, setSelected] = useState(() => new Date());
+  const week = useMemo(() => weekOf(selected), [selected]);
+  const today = dayKey(new Date());
+  const selectedKey = dayKey(selected);
 
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const weekDates = useMemo(() => getWeekDates(selectedDate), [selectedDate]);
+  const withEntries = useMemo(
+    () => new Set(journalEntries.map((e) => dayKey(new Date(e.createdAt)))),
+    [journalEntries],
+  );
+  const dayEntries = useMemo(
+    () => journalEntries.filter((e) => dayKey(new Date(e.createdAt)) === selectedKey),
+    [journalEntries, selectedKey],
+  );
 
-  const entries = journalEntries ?? [];
-
-  /* Entries for selected day */
-  const dayEntries = useMemo(() => {
-    const iso = selectedDate.toISOString().split('T')[0];
-    return entries
-      .filter((e) => e.createdAt.split('T')[0] === iso)
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  }, [entries, selectedDate]);
-
-  /* Entry dates set for dot indicators */
-  const entryDatesSet = useMemo(() => {
-    const s = new Set<string>();
-    entries.forEach((e) => s.add(e.createdAt.split('T')[0]));
-    return s;
-  }, [entries]);
-
-  const isToday = selectedDate.toDateString() === new Date().toDateString();
-  const monthYear = selectedDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-
-  function shiftWeek(dir: number) {
-    const d = new Date(selectedDate);
-    d.setDate(d.getDate() + dir * 7);
-    setSelectedDate(d);
-  }
+  const shift = (days: number) =>
+    setSelected((d) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + days));
+  const monthYear = new Intl.DateTimeFormat(i18n.language, {
+    month: 'long',
+    year: 'numeric',
+  }).format(selected);
+  const dayLabel =
+    selectedKey === today
+      ? t('journalHistory.today')
+      : new Intl.DateTimeFormat(i18n.language, {
+          weekday: 'long',
+          day: 'numeric',
+          month: 'long',
+        }).format(selected);
+  const isFuture = selectedKey > today;
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
-      {/* Header */}
-      <View
-        style={{
-          paddingTop: insets.top + 6,
-          paddingHorizontal: UI.spacing.xl,
-          paddingBottom: UI.spacing.sm,
-        }}
-      >
-        <View
-          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <Pressable
-              onPress={() => backTo(undefined, '/(tabs)/journal')}
-              style={({ pressed }) => ({
-                width: 36,
-                height: 36,
-                borderRadius: 18,
-                backgroundColor: colors.card,
-                borderWidth: 1,
-                borderColor: colors.border,
-                alignItems: 'center',
-                justifyContent: 'center',
-                opacity: pressed ? 0.7 : 1,
-                ...UI.shadow.sm,
-              })}
-            >
-              <MaterialIcons
-                name="arrow-back-ios"
-                size={16}
-                color={colors.text}
-                style={{ marginLeft: 4 }}
-              />
-            </Pressable>
-            <View>
-              <Text style={{ ...Typography.heading, fontSize: 24, color: colors.text }}>
-                My Journals
-              </Text>
-              <Text
-                style={{
-                  fontFamily: Typography.family.body,
-                  fontSize: 12,
-                  color: colors.mutedText,
-                  marginTop: 2,
-                }}
-              >
-                {entries.length} entries total
-              </Text>
-            </View>
-          </View>
-          {!isToday && (
-            <Pressable
-              onPress={() => setSelectedDate(new Date())}
-              style={({ pressed }) => ({
-                paddingHorizontal: 14,
-                paddingVertical: 7,
-                borderRadius: 10,
-                backgroundColor: '#8B6B47',
-                opacity: pressed ? 0.85 : 1,
-              })}
-            >
-              <Text
-                style={{
-                  fontFamily: Typography.family.body,
-                  color: '#fff',
-                  fontSize: 12,
-                  fontWeight: Typography.weight.semibold,
-                }}
-              >
-                Today
-              </Text>
-            </Pressable>
-          )}
-        </View>
-      </View>
-
-      {/* Calendar Strip */}
-      <View
-        style={{
-          backgroundColor: colors.card,
-          marginHorizontal: UI.spacing.xl,
-          borderRadius: UI.radius.xl,
-          padding: 14,
-          borderWidth: 1,
-          borderColor: colors.border,
-          ...UI.shadow.sm,
-        }}
-      >
-        {/* Month + Nav */}
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: 12,
-          }}
-        >
-          <Pressable onPress={() => shiftWeek(-1)} hitSlop={10}>
-            <MaterialIcons name="chevron-left" size={22} color={colors.mutedText} />
+    <SettingsScreen
+      title={t('journalHistory.title')}
+      backLabel={t('common.back')}
+      onBack={() => backTo(undefined, '/(tabs)/journal')}
+      glows={[
+        { color: palette.mustard, opacity: 0.3, x: -50, y: -20, width: 280, blur: 80 },
+        { color: palette.lavenderSoft, opacity: 0.25, x: 180, y: 60, width: 220, blur: 80 },
+      ]}
+      contentStyle={{ gap: 16 }}
+    >
+      <View style={{ backgroundColor: palette.white, borderRadius: 24, padding: 16, gap: 14 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('journalHistory.previousWeek')}
+            hitSlop={10}
+            onPress={() => shift(-7)}
+            style={{ padding: 4 }}
+          >
+            <Icon name="arrow/chevron-left" size={20} color={palette.plum} />
           </Pressable>
           <Text
-            style={{
-              fontFamily: Typography.family.body,
-              fontSize: 14,
-              fontWeight: Typography.weight.semibold,
-              color: colors.text,
-            }}
+            accessibilityRole="header"
+            style={[Type.bodyMSemi, { flex: 1, textAlign: 'center', color: palette.ink }]}
           >
             {monthYear}
           </Text>
-          <Pressable onPress={() => shiftWeek(1)} hitSlop={10}>
-            <MaterialIcons name="chevron-right" size={22} color={colors.mutedText} />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('journalHistory.nextWeek')}
+            hitSlop={10}
+            onPress={() => shift(7)}
+            style={{ padding: 4 }}
+          >
+            <Icon name="arrow/chevron-right" size={20} color={palette.plum} />
           </Pressable>
         </View>
-
-        {/* Day Cells */}
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-          {weekDates.map((d) => {
-            const dateStr = d.toISOString().split('T')[0];
-            const isSelected = d.toDateString() === selectedDate.toDateString();
-            const hasEntry = entryDatesSet.has(dateStr);
-            const isTodayDate = d.toDateString() === new Date().toDateString();
-
+          {week.map((d) => {
+            const key = dayKey(d);
+            const isSelected = key === selectedKey;
+            const isToday = key === today;
+            const has = withEntries.has(key);
             return (
               <Pressable
-                key={dateStr}
-                onPress={() => setSelectedDate(new Date(d))}
-                style={({ pressed }) => ({
-                  alignItems: 'center',
-                  gap: 4,
-                  paddingVertical: 8,
-                  paddingHorizontal: 6,
-                  borderRadius: UI.radius.lg,
-                  backgroundColor: isSelected ? '#8B6B47' : 'transparent',
-                  minWidth: 42,
-                  opacity: pressed ? 0.7 : 1,
-                })}
+                key={key}
+                accessibilityRole="button"
+                accessibilityState={{ selected: isSelected }}
+                accessibilityLabel={`${new Intl.DateTimeFormat(i18n.language, { weekday: 'long', day: 'numeric', month: 'long' }).format(d)}${has ? `, ${t('journalHistory.hasEntries')}` : ''}`}
+                onPress={() => setSelected(d)}
+                style={{ alignItems: 'center', gap: 6, width: 40 }}
               >
-                <Text
+                <Text style={[Type.micro, { color: palette.textSubtle }]}>
+                  {new Intl.DateTimeFormat(i18n.language, { weekday: 'narrow' }).format(d)}
+                </Text>
+                <View
                   style={{
-                    fontFamily: Typography.family.body,
-                    fontSize: 10,
-                    fontWeight: Typography.weight.semibold,
-                    color: isSelected ? 'rgba(255,255,255,0.8)' : colors.subtleText,
+                    width: 36,
+                    height: 36,
+                    borderRadius: 18,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: isSelected ? palette.plum : 'transparent',
+                    borderWidth: isToday && !isSelected ? 1.5 : 0,
+                    borderColor: palette.plum,
                   }}
                 >
-                  {DAYS[d.getDay()]}
-                </Text>
-                <Text
-                  style={{
-                    fontFamily: Typography.family.body,
-                    fontSize: 18,
-                    fontWeight: Typography.weight.semibold,
-                    color: isSelected ? '#fff' : isTodayDate ? '#8B6B47' : colors.text,
-                  }}
-                >
-                  {d.getDate()}
-                </Text>
+                  <Text style={[Type.label, { color: isSelected ? palette.white : palette.ink }]}>
+                    {d.getDate()}
+                  </Text>
+                </View>
                 <View
                   style={{
                     width: 5,
                     height: 5,
-                    borderRadius: 3,
-                    backgroundColor: hasEntry ? (isSelected ? '#fff' : '#5B8A5A') : 'transparent',
+                    borderRadius: 2.5,
+                    backgroundColor: has ? palette.mustard : 'transparent',
                   }}
                 />
               </Pressable>
@@ -257,305 +145,83 @@ export default function JournalHistory() {
         </View>
       </View>
 
-      {/* Day label */}
       <View
         style={{
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'space-between',
-          paddingHorizontal: UI.spacing.xl,
-          marginTop: 16,
-          marginBottom: 8,
+          marginTop: 8,
         }}
       >
         <Text
-          style={{
-            fontFamily: Typography.family.body,
-            fontSize: 16,
-            fontWeight: Typography.weight.semibold,
-            color: colors.text,
-          }}
+          style={[
+            Type.bodyStrong,
+            { lineHeight: 22, letterSpacing: 0, color: palette.ink, flex: 1 },
+          ]}
         >
-          {isToday
-            ? 'Today'
-            : selectedDate.toLocaleDateString('en-US', {
-                weekday: 'short',
-                month: 'short',
-                day: 'numeric',
-              })}
+          {dayLabel}
+        </Text>
+        {selectedKey !== today && (
           <Text
+            accessibilityRole="button"
+            onPress={() => setSelected(new Date())}
+            style={[Type.label, { color: palette.lavender }]}
+          >
+            {t('journalHistory.backToToday')}
+          </Text>
+        )}
+      </View>
+
+      {dayEntries.length > 0 ? (
+        <View style={{ gap: 10 }}>
+          {dayEntries.map((entry) => (
+            <EntryCard key={entry.id} entry={entry} lang={i18n.language} />
+          ))}
+        </View>
+      ) : (
+        !isLoading && (
+          <View
             style={{
-              fontFamily: Typography.family.body,
-              fontWeight: Typography.weight.medium,
-              color: colors.mutedText,
+              backgroundColor: palette.white,
+              borderRadius: 24,
+              padding: 20,
+              alignItems: 'center',
+              gap: 6,
             }}
           >
-            {' '}
-            {'\u00B7'} {dayEntries.length} {dayEntries.length === 1 ? 'entry' : 'entries'}
-          </Text>
-        </Text>
-        <Pressable
+            <Text style={[Type.bodyMSemi, { color: palette.ink, textAlign: 'center' }]}>
+              {selectedKey === today
+                ? t('journalHistory.noEntriesYetToday')
+                : t('journalHistory.noEntriesThisDay')}
+            </Text>
+            <Text
+              style={[
+                Type.captionM,
+                { lineHeight: 19, color: palette.textMuted, textAlign: 'center' },
+              ]}
+            >
+              {selectedKey === today
+                ? t('journalHistory.startWritingJourney')
+                : t('journalHistory.selectDateEntries')}
+            </Text>
+          </View>
+        )
+      )}
+
+      {!isFuture && (
+        <AppButton
+          title={t('journalHistory.newEntry')}
+          variant="secondary"
+          icon="line/plus"
+          iconPosition="left"
           onPress={() =>
             router.push({
               pathname: '/(tabs)/journal/new',
-              params: { date: selectedDate.toISOString() },
+              params: selectedKey === today ? {} : { date: selected.toISOString() },
             })
           }
-          style={({ pressed }) => ({
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 4,
-            paddingHorizontal: 12,
-            paddingVertical: 7,
-            borderRadius: 10,
-            backgroundColor: '#5B8A5A',
-            opacity: pressed ? 0.85 : 1,
-          })}
-        >
-          <MaterialIcons name="add" size={14} color="#fff" />
-          <Text
-            style={{
-              fontFamily: Typography.family.body,
-              fontSize: 12,
-              fontWeight: Typography.weight.semibold,
-              color: '#fff',
-            }}
-          >
-            New
-          </Text>
-        </Pressable>
-      </View>
-
-      {/* Entries List */}
-      <ScrollView
-        contentContainerStyle={{ paddingHorizontal: UI.spacing.xl, paddingBottom: 100 }}
-        showsVerticalScrollIndicator={false}
-      >
-        {isLoading ? (
-          <View style={{ gap: 10 }}>
-            {[1, 2, 3].map((i) => (
-              <View
-                key={i}
-                style={{
-                  height: 90,
-                  borderRadius: UI.radius.xl,
-                  backgroundColor: colors.card,
-                  ...UI.shadow.sm,
-                }}
-              />
-            ))}
-          </View>
-        ) : dayEntries.length === 0 ? (
-          <View
-            style={{
-              alignItems: 'center',
-              padding: 36,
-              backgroundColor: colors.card,
-              borderRadius: UI.radius.xl,
-              borderWidth: 1,
-              borderColor: colors.border,
-              ...UI.shadow.sm,
-            }}
-          >
-            <MaterialIcons name="menu-book" size={40} color={colors.mutedText} />
-            <Text
-              style={{
-                fontFamily: Typography.family.body,
-                fontSize: 16,
-                fontWeight: Typography.weight.semibold,
-                color: colors.mutedText,
-                marginTop: 10,
-              }}
-            >
-              No entries {isToday ? 'yet today' : 'this day'}
-            </Text>
-            <Text
-              style={{
-                fontFamily: Typography.family.body,
-                fontSize: 13,
-                color: colors.subtleText,
-                marginTop: 4,
-                textAlign: 'center',
-              }}
-            >
-              {isToday
-                ? 'Start writing to track your mental health journey.'
-                : 'Select a date with entries to review them.'}
-            </Text>
-          </View>
-        ) : (
-          <View style={{ gap: 10 }}>
-            {dayEntries.map((entry) => {
-              const moodInfo = getMood(entry.mood);
-              const wordCount = entry.content ? entry.content.trim().split(/\s+/).length : 0;
-              const time = new Date(entry.createdAt).toLocaleTimeString('en-US', {
-                hour: 'numeric',
-                minute: '2-digit',
-              });
-              const aiSuggestions = wordCount > 30 ? Math.min(3, Math.floor(wordCount / 40)) : 0;
-
-              return (
-                <Pressable
-                  key={entry.id}
-                  onPress={() =>
-                    router.push({ pathname: '/(tabs)/journal/[id]', params: { id: entry.id } })
-                  }
-                  style={({ pressed }) => ({
-                    backgroundColor: colors.card,
-                    borderRadius: UI.radius.xl,
-                    padding: 16,
-                    borderWidth: 1,
-                    borderColor: colors.border,
-                    opacity: pressed ? 0.8 : 1,
-                    ...UI.shadow.sm,
-                  })}
-                >
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                    <View
-                      style={{
-                        width: 48,
-                        height: 48,
-                        borderRadius: 24,
-                        backgroundColor: moodInfo.color + '15',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <WellnessIconText
-                        style={{
-                          fontFamily: Typography.family.body,
-                          fontSize: 22,
-                          color: moodInfo.color,
-                        }}
-                      >
-                        {moodInfo.emoji}
-                      </WellnessIconText>
-                    </View>
-
-                    <View style={{ flex: 1 }}>
-                      <Text
-                        style={{
-                          fontFamily: Typography.family.body,
-                          fontSize: 16,
-                          fontWeight: Typography.weight.semibold,
-                          color: colors.text,
-                        }}
-                        numberOfLines={1}
-                      >
-                        {entry.title || 'Untitled Entry'}
-                      </Text>
-                      <Text
-                        style={{
-                          fontFamily: Typography.family.body,
-                          fontSize: 13,
-                          color: colors.mutedText,
-                          marginTop: 2,
-                        }}
-                        numberOfLines={1}
-                      >
-                        {entry.content}
-                      </Text>
-                    </View>
-
-                    <View style={{ alignItems: 'flex-end', gap: 4 }}>
-                      <Text
-                        style={{
-                          fontFamily: Typography.family.body,
-                          fontSize: 11,
-                          color: colors.subtleText,
-                        }}
-                      >
-                        {time}
-                      </Text>
-                      {aiSuggestions > 0 && (
-                        <View
-                          style={{
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            gap: 3,
-                            paddingHorizontal: 7,
-                            paddingVertical: 3,
-                            borderRadius: 8,
-                            backgroundColor: '#7B6DC9' + '15',
-                          }}
-                        >
-                          <MaterialIcons name="auto-awesome" size={10} color="#7B6DC9" />
-                          <Text
-                            style={{
-                              fontFamily: Typography.family.body,
-                              fontSize: 10,
-                              fontWeight: Typography.weight.semibold,
-                              color: '#7B6DC9',
-                            }}
-                          >
-                            {aiSuggestions} AI
-                          </Text>
-                        </View>
-                      )}
-                    </View>
-                  </View>
-
-                  {((entry.tags && entry.tags.length > 0) || entry.mood) && (
-                    <View
-                      style={{
-                        flexDirection: 'row',
-                        flexWrap: 'wrap',
-                        gap: 6,
-                        marginTop: 10,
-                        marginLeft: 60,
-                      }}
-                    >
-                      {entry.mood && (
-                        <View
-                          style={{
-                            paddingHorizontal: 8,
-                            paddingVertical: 3,
-                            borderRadius: 6,
-                            backgroundColor: moodInfo.color + '12',
-                          }}
-                        >
-                          <Text
-                            style={{
-                              fontFamily: Typography.family.body,
-                              fontSize: 11,
-                              fontWeight: Typography.weight.semibold,
-                              color: moodInfo.color,
-                            }}
-                          >
-                            {entry.mood}
-                          </Text>
-                        </View>
-                      )}
-                      {(entry.tags ?? []).slice(0, 2).map((tag) => (
-                        <View
-                          key={tag}
-                          style={{
-                            paddingHorizontal: 8,
-                            paddingVertical: 3,
-                            borderRadius: 6,
-                            backgroundColor: '#8B6B47' + '10',
-                          }}
-                        >
-                          <Text
-                            style={{
-                              fontFamily: Typography.family.body,
-                              fontSize: 11,
-                              fontWeight: Typography.weight.semibold,
-                              color: '#8B6B47',
-                            }}
-                          >
-                            {tag}
-                          </Text>
-                        </View>
-                      ))}
-                    </View>
-                  )}
-                </Pressable>
-              );
-            })}
-          </View>
-        )}
-      </ScrollView>
-    </View>
+        />
+      )}
+    </SettingsScreen>
   );
 }

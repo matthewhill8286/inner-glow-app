@@ -1,376 +1,196 @@
-import { Typography } from '@/constants/typography';
-import { backTo } from '@/lib/navigation';
 import React, { useMemo } from 'react';
-import { View, Text, Pressable, ScrollView } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors, UI } from '@/constants/theme';
+import { palette } from '@/constants/theme';
+import { Type } from '@/constants/typography';
+import { Icon } from '@/components/icons/Icon';
+import { SettingsScreen } from '@/components/settings/SettingsParts';
 import { useJournal } from '@/hooks/useJournal';
-import MaterialIcons from '@/components/AppIcon';
+import { journalYearStats } from '@/lib/journal-entry';
+import { MOOD_SCALE } from '@/lib/mood-scale';
+import { backTo } from '@/lib/navigation';
+import { activeDays, streak } from '@/lib/profile-stats';
 
-/* ── Ring progress component ── */
-function StatRing({
-  value,
-  total,
-  color,
-  label,
-  size = 120,
-}: Readonly<{
-  value: number;
-  total: number;
-  color: string;
-  label: string;
-  size?: number;
-}>) {
-  const theme = useColorScheme() ?? 'light';
-  const colors = Colors[theme];
-  const pct = total > 0 ? value / total : 0;
-  const strokeWidth = 10;
+const BAR_H = 100;
 
+function Stat({ value, label }: { value: string; label: string }) {
   return (
-    <View style={{ alignItems: 'center' }}>
-      <View
-        style={{
-          width: size,
-          height: size,
-          borderRadius: size / 2,
-          borderWidth: strokeWidth,
-          borderColor: theme === 'light' ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.08)',
-          alignItems: 'center',
-          justifyContent: 'center',
-          position: 'relative',
-        }}
-      >
-        {/* Colored arc overlay (top portion) */}
-        <View
-          style={{
-            position: 'absolute',
-            top: -strokeWidth,
-            left: -strokeWidth,
-            width: size,
-            height: size,
-            borderRadius: size / 2,
-            borderWidth: strokeWidth,
-            borderColor: 'transparent',
-            borderTopColor: color,
-            borderRightColor: pct > 0.25 ? color : 'transparent',
-            borderBottomColor: pct > 0.5 ? color : 'transparent',
-            borderLeftColor: pct > 0.75 ? color : 'transparent',
-            transform: [{ rotate: '-90deg' }],
-          }}
-        />
-        <Text
-          style={{
-            fontFamily: Typography.family.body,
-            fontSize: 32,
-            fontWeight: Typography.weight.semibold,
-            color: colors.text,
-          }}
-        >
-          {value}
-        </Text>
-      </View>
-      <Text
-        style={{
-          fontFamily: Typography.family.body,
-          fontSize: 14,
-          fontWeight: Typography.weight.semibold,
-          color,
-          marginTop: 10,
-        }}
-      >
+    <View accessible accessibilityLabel={`${value} ${label}`} style={{ flex: 1, gap: 4 }}>
+      <Text style={[Type.titleMd, { fontSize: 26, lineHeight: 32, color: palette.ink }]}>
+        {value}
+      </Text>
+      <Text style={[Type.micro, { fontSize: 12, lineHeight: 15, color: palette.textMuted }]}>
         {label}
       </Text>
     </View>
   );
 }
 
+/**
+ * Journal Stats. There is no frame for this screen, so it uses the library shell and cards: this
+ * year's entries, the journal streak (the same count as Journal home and Saved) and average length;
+ * the moods entries were written in, on the five-step scale; and entries per month.
+ */
 export default function JournalStats() {
-  const theme = useColorScheme() ?? 'light';
-  const colors = Colors[theme];
-  const { t } = useTranslation();
-  const { journalEntries, isLoading } = useJournal();
-  const insets = useSafeAreaInsets();
-
+  const { t, i18n } = useTranslation();
+  const { journalEntries } = useJournal();
   const year = new Date().getFullYear();
-
-  const stats = useMemo(() => {
-    const entries = (journalEntries ?? []).filter(
-      (e) => new Date(e.createdAt).getFullYear() === year,
-    );
-    const total = entries.length;
-    const positive = entries.filter(
-      (e) => e.mood && ['Calm', 'Okay', 'Great', 'Good', 'Happy'].includes(e.mood),
-    ).length;
-    const negative = entries.filter(
-      (e) => e.mood && ['Anxious', 'Sad', 'Angry', 'Overwhelmed', 'Bad', 'Low'].includes(e.mood),
-    ).length;
-    const untagged = total - positive - negative;
-
-    // Monthly breakdown
-    const monthly = Array.from({ length: 12 }, (_, m) => {
-      const count = entries.filter((e) => new Date(e.createdAt).getMonth() === m).length;
-      return count;
-    });
-
-    const avgWords =
-      total > 0
-        ? Math.round(
-            entries.reduce((sum, e) => sum + (e.content?.split(/\s+/).length ?? 0), 0) / total,
-          )
-        : 0;
-
-    const streak = computeStreak(entries.map((e) => e.createdAt));
-
-    return { total, positive, negative, untagged, monthly, avgWords, streak };
-  }, [journalEntries, year]);
-
-  const MONTHS = [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'May',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dec',
-  ];
-  const maxMonthly = Math.max(...stats.monthly, 1);
+  const stats = useMemo(() => journalYearStats(journalEntries, year), [journalEntries, year]);
+  const days = useMemo(
+    () => streak(activeDays(journalEntries.map((e) => e.createdAt))).count,
+    [journalEntries],
+  );
+  const maxMonth = Math.max(1, ...stats.monthly);
+  const thisMonth = new Date().getMonth();
+  const months = Array.from({ length: 12 }, (_, m) =>
+    new Intl.DateTimeFormat(i18n.language, { month: 'narrow' }).format(new Date(year, m, 1)),
+  );
+  const moodParts = [
+    ...MOOD_SCALE.map((m) => ({
+      key: m.key,
+      label: t(`moodScale.${m.key}`),
+      color: m.color,
+      count: stats.moods[String(m.score) as '1'],
+      face: m.face,
+    })),
+    {
+      key: 'none',
+      label: t('journalStats.noMood'),
+      color: palette.borderLilac,
+      count: stats.moods.none,
+      face: null,
+    },
+  ].filter((p) => p.count > 0);
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
-      {/* Header */}
+    <SettingsScreen
+      title={t('journalStats.title')}
+      backLabel={t('common.back')}
+      onBack={() => backTo(undefined, '/(tabs)/journal')}
+      glows={[
+        { color: palette.mustard, opacity: 0.3, x: -50, y: -20, width: 280, blur: 80 },
+        { color: palette.lavenderSoft, opacity: 0.25, x: 180, y: 60, width: 220, blur: 80 },
+      ]}
+      contentStyle={{ gap: 16 }}
+    >
       <View
         style={{
-          paddingTop: insets.top + 6,
-          paddingHorizontal: UI.spacing.xl,
-          paddingBottom: UI.spacing.md,
+          backgroundColor: palette.white,
+          borderRadius: 28,
+          padding: 20,
+          paddingTop: 18,
+          gap: 14,
         }}
       >
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <Pressable
-            onPress={() => backTo(undefined, '/(tabs)/journal')}
-            style={({ pressed }) => ({
-              width: 36,
-              height: 36,
-              borderRadius: 18,
-              backgroundColor: colors.card,
-              borderWidth: 1,
-              borderColor: colors.border,
-              alignItems: 'center',
-              justifyContent: 'center',
-              opacity: pressed ? 0.7 : 1,
-              ...UI.shadow.sm,
-            })}
-          >
-            <MaterialIcons
-              name="arrow-back-ios"
-              size={16}
-              color={colors.text}
-              style={{ marginLeft: 4 }}
-            />
-          </Pressable>
-          <Text style={{ ...Typography.heading, fontSize: 24, color: colors.text }}>
-            {t('journalStats.title')}
-          </Text>
-        </View>
-        <Text
-          style={{
-            fontFamily: Typography.family.body,
-            fontSize: 13,
-            color: colors.mutedText,
-            marginTop: 4,
-            marginLeft: 46,
-          }}
-        >
-          Your journal trend for Feb {year}
+        <Text style={[Type.microBold, { lineHeight: 15, color: palette.lavender }]}>
+          {t('journalStats.thisYear', { year })}
         </Text>
+        <View style={{ flexDirection: 'row' }}>
+          <Stat value={String(stats.total)} label={t('journalStats.entries')} />
+          <Stat value={String(days)} label={t('journalStats.streak')} />
+          <Stat value={String(stats.avgWords)} label={t('journalStats.avgWords')} />
+        </View>
       </View>
 
-      <ScrollView
-        contentContainerStyle={{ paddingBottom: 100 }}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* ── Circular Stats ── */}
-        <View
-          style={{
-            flexDirection: 'row',
-            justifyContent: 'space-around',
-            paddingHorizontal: UI.spacing.xl,
-            paddingVertical: 28,
-          }}
+      <View style={{ backgroundColor: palette.white, borderRadius: 28, padding: 20, gap: 14 }}>
+        <Text
+          accessibilityRole="header"
+          style={[Type.bodyStrong, { letterSpacing: 0, color: palette.ink }]}
         >
-          <StatRing
-            value={stats.positive}
-            total={stats.total || 1}
-            color="#5B8A5A"
-            label={t('journalStats.positive')}
-          />
-          <StatRing
-            value={stats.negative}
-            total={stats.total || 1}
-            color="#C45B5B"
-            label={t('journalStats.negative')}
-          />
-          <StatRing
-            value={stats.untagged}
-            total={stats.total || 1}
-            color="#E8985A"
-            label={t('journalStats.noMood')}
-          />
-        </View>
-
-        {/* ── Monthly Bar Chart ── */}
-        <View
-          style={{
-            marginHorizontal: UI.spacing.xl,
-            marginTop: 8,
-            backgroundColor: colors.card,
-            borderRadius: UI.radius.xl,
-            padding: 20,
-            borderWidth: 1,
-            borderColor: colors.border,
-            ...UI.shadow.sm,
-          }}
-        >
-          <Text style={{ ...Typography.section, color: colors.text, marginBottom: 20 }}>
-            {t('journalStats.monthlyOverview')}
+          {t('journalStats.moods')}
+        </Text>
+        {stats.total === 0 ? (
+          <Text style={[Type.captionM, { color: palette.textMuted }]}>
+            {t('journalStats.noneYet')}
           </Text>
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'flex-end',
-              justifyContent: 'space-between',
-              height: 120,
-            }}
-          >
-            {stats.monthly.map((count, i) => (
-              <View key={i} style={{ alignItems: 'center', flex: 1 }}>
-                <View
-                  style={{
-                    width: 18,
-                    borderRadius: 9,
-                    height: Math.max(4, (count / maxMonthly) * 100),
-                    backgroundColor:
-                      count > 0
-                        ? i === new Date().getMonth()
-                          ? '#8B6B47'
-                          : '#5B8A5A'
-                        : theme === 'light'
-                          ? 'rgba(0,0,0,0.06)'
-                          : 'rgba(255,255,255,0.08)',
-                  }}
-                />
-                <Text
-                  style={{
-                    fontFamily: Typography.family.body,
-                    fontSize: 9,
-                    color: colors.subtleText,
-                    marginTop: 6,
-                  }}
-                >
-                  {MONTHS[i]}
-                </Text>
-              </View>
-            ))}
-          </View>
-        </View>
-
-        {/* ── Quick Stats ── */}
-        <View style={{ paddingHorizontal: UI.spacing.xl, marginTop: 20, gap: 10 }}>
-          {[
-            {
-              icon: 'edit-note',
-              label: t('journalStats.totalJournals'),
-              value: `${stats.total}`,
-              color: '#8B6B47',
-            },
-            {
-              icon: 'text-fields',
-              label: t('journalStats.avgWordCount'),
-              value: `${stats.avgWords}`,
-              color: '#7B6DC9',
-            },
-            {
-              icon: 'local-fire-department',
-              label: t('journalStats.currentStreak'),
-              value: `${stats.streak} days`,
-              color: '#E8985A',
-            },
-          ].map((item) => (
+        ) : (
+          <>
             <View
-              key={item.label}
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
               style={{
                 flexDirection: 'row',
-                alignItems: 'center',
-                gap: 14,
-                backgroundColor: colors.card,
-                borderRadius: UI.radius.lg,
-                padding: 16,
-                borderWidth: 1,
-                borderColor: colors.border,
-                ...UI.shadow.sm,
+                height: 14,
+                borderRadius: 7,
+                overflow: 'hidden',
+                gap: 2,
               }}
+            >
+              {moodParts.map((p) => (
+                <View key={p.key} style={{ flex: p.count, backgroundColor: p.color }} />
+              ))}
+            </View>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+              {moodParts.map((p) => (
+                <View
+                  key={p.key}
+                  accessible
+                  accessibilityLabel={`${p.label}, ${p.count}`}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
+                >
+                  {p.face ? (
+                    <Icon name={p.face} size={16} color={palette.plum} />
+                  ) : (
+                    <View
+                      style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: p.color }}
+                    />
+                  )}
+                  <Text
+                    style={[Type.captionM, { color: palette.textMuted }]}
+                  >{`${p.label} ${p.count}`}</Text>
+                </View>
+              ))}
+            </View>
+          </>
+        )}
+      </View>
+
+      <View style={{ backgroundColor: palette.white, borderRadius: 28, padding: 20, gap: 16 }}>
+        <Text
+          accessibilityRole="header"
+          style={[Type.bodyStrong, { letterSpacing: 0, color: palette.ink }]}
+        >
+          {t('journalStats.monthly')}
+        </Text>
+        <View
+          style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}
+        >
+          {stats.monthly.map((count, m) => (
+            <View
+              key={m}
+              accessible
+              accessibilityLabel={`${new Intl.DateTimeFormat(i18n.language, { month: 'long' }).format(new Date(year, m, 1))}, ${count}`}
+              style={{ alignItems: 'center', gap: 6 }}
             >
               <View
                 style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 22,
-                  backgroundColor: item.color,
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                  width: 16,
+                  height: BAR_H,
+                  borderRadius: 8,
+                  backgroundColor: palette.surfaceLilacSoft,
+                  justifyContent: 'flex-end',
+                  overflow: 'hidden',
                 }}
               >
-                <MaterialIcons name={item.icon as any} size={22} color="#fff" />
+                {count > 0 && (
+                  <View
+                    style={{
+                      height: Math.max(8, (count / maxMonth) * BAR_H),
+                      borderRadius: 8,
+                      backgroundColor: m === thisMonth ? palette.plum : palette.lavenderSoft,
+                    }}
+                  />
+                )}
               </View>
-              <View style={{ flex: 1 }}>
-                <Text
-                  style={{
-                    fontFamily: Typography.family.body,
-                    fontSize: 13,
-                    color: colors.mutedText,
-                  }}
-                >
-                  {item.label}
-                </Text>
-                <Text
-                  style={{
-                    fontFamily: Typography.family.body,
-                    fontSize: 20,
-                    fontWeight: Typography.weight.semibold,
-                    color: colors.text,
-                  }}
-                >
-                  {item.value}
-                </Text>
-              </View>
+              <Text
+                style={[Type.micro, { color: m === thisMonth ? palette.plum : palette.textSubtle }]}
+              >
+                {months[m]}
+              </Text>
             </View>
           ))}
         </View>
-      </ScrollView>
-    </View>
+      </View>
+    </SettingsScreen>
   );
-}
-
-function computeStreak(dates: string[]): number {
-  if (!dates.length) return 0;
-  const sorted = [...dates].sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
-  const dayKeys = [...new Set(sorted.map((d) => new Date(d).toDateString()))];
-  let streak = 0;
-  const today = new Date();
-  for (let i = 0; i < dayKeys.length; i++) {
-    const expected = new Date(today);
-    expected.setDate(today.getDate() - i);
-    if (new Date(dayKeys[i]).toDateString() === expected.toDateString()) {
-      streak++;
-    } else break;
-  }
-  return streak;
 }

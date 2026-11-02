@@ -148,3 +148,29 @@ export function monthDots(
     perRow: Math.max(15, Math.ceil(monthLength / 2)),
   };
 }
+
+/** Journal Stats: this year's entries per month, the average words, and how many sit on each mood step. */
+export function journalYearStats(
+  entries: { createdAt: string; content?: string | null; mood?: string | null }[],
+  year = new Date().getFullYear(),
+): {
+  total: number;
+  monthly: number[];
+  avgWords: number;
+  moods: Record<'1' | '2' | '3' | '4' | '5' | 'none', number>;
+} {
+  const monthly = Array.from({ length: 12 }, () => 0);
+  const moods = { '1': 0, '2': 0, '3': 0, '4': 0, '5': 0, none: 0 };
+  let words = 0;
+  let total = 0;
+  for (const e of entries) {
+    const d = new Date(e.createdAt);
+    if (d.getFullYear() !== year) continue;
+    total++;
+    monthly[d.getMonth()]++;
+    words += (e.content ?? '').trim().split(/\s+/).filter(Boolean).length;
+    const score = journalMoodScore(e.mood);
+    moods[score ? (String(score) as '1') : 'none']++;
+  }
+  return { total, monthly, avgWords: total ? Math.round(words / total) : 0, moods };
+}
