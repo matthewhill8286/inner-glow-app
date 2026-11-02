@@ -1,637 +1,205 @@
-import { Typography } from '@/constants/typography';
-import { backTo } from '@/lib/navigation';
-import { WellnessIconText } from '@/components/WellnessIconText';
-import React from 'react';
-import { View, Text, Pressable, ScrollView, Platform, StyleSheet } from 'react-native';
+import React, { useMemo } from 'react';
+import { ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useLocalSearchParams, router } from 'expo-router';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors, UI } from '@/constants/theme';
-import MaterialIcons from '@/components/AppIcon';
-import { useSleep } from '@/hooks/useSleep';
-import { showAlert } from '@/lib/state';
+import { StatusBar } from 'expo-status-bar';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
+import Svg, { Circle, Defs, LinearGradient, Path, Rect, Stop, Text as SvgText } from 'react-native-svg';
+import { palette } from '@/constants/theme';
+import { Type } from '@/constants/typography';
+import { Glow, GlowField } from '@/components/glow/Glow';
+import { AppButton } from '@/components/ui/AppButton';
+import { IconButton, NavBar } from '@/components/ui/IconButton';
+import { StarField } from '@/components/sleep/NightSky';
+import { useSleep } from '@/hooks/useSleep';
+import { backTo } from '@/lib/navigation';
+import { showAlert } from '@/lib/state';
+import { formatClock, formatDuration, isRecent, summariseNight } from '@/lib/sleep-home';
+import { factorImpacts, nightsInPeriod } from '@/lib/sleep-periods';
+import { goalPercent, hypnogram, minuteOfDay, nightAxis, stageMinutes, windowMinutes } from '@/lib/sleep-flow';
 
-/* ── colors ──────────────────────────────────────── */
-const SLEEP_COLORS = {
-  core: '#5B8A5A',
-  rem: '#7B6DC9',
-  post: '#E8985A',
-};
+const CHART_H = 112;
+const STAGE_ROWS = [
+  { key: 'deep', color: palette.plum },
+  { key: 'rem', color: palette.lavender },
+  { key: 'light', color: palette.lavenderSoft },
+] as const;
 
-/* ── helpers ──────────────────────────────────────── */
-function goBack(from?: string) {
-  backTo(from, '/(tabs)/sleep');
-}
-
-function getQualityEmoji(q: number) {
-  if (q >= 5) return '😴';
-  if (q >= 4) return '😊';
-  if (q >= 3) return '😐';
-  if (q >= 2) return '😟';
-  return '😫';
-}
-
-function getQualityLabel(q: number) {
-  if (q >= 5) return 'Excellent';
-  if (q >= 4) return 'Great';
-  if (q >= 3) return 'Good';
-  if (q >= 2) return 'Fair';
-  return 'Poor';
-}
-
-/* ── Donut Ring Component ────────────────────────── */
-function DonutRing({
-  size,
-  segments,
-}: {
-  size: number;
-  segments: { color: string; pct: number; label: string; value: string; emoji: string }[];
-}) {
-  const strokeWidth = size * 0.16;
-  const radius = size / 2;
-  const innerR = radius - strokeWidth;
-
-  return (
-    <View style={{ alignItems: 'center', gap: 16 }}>
-      <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
-        {/* Base ring */}
-        <View
-          style={{
-            position: 'absolute',
-            width: size,
-            height: size,
-            borderRadius: radius,
-            borderWidth: strokeWidth,
-            borderColor: segments[0]?.color || '#5B8A5A',
-          }}
-        />
-        {/* Second segment - top half */}
-        {segments.length > 1 && (
-          <View
-            style={{
-              width: size,
-              height: size / 2,
-              borderTopLeftRadius: radius,
-              borderTopRightRadius: radius,
-              overflow: 'hidden',
-              position: 'absolute',
-              top: 0,
-            }}
-          >
-            <View
-              style={{
-                width: size,
-                height: size,
-                borderRadius: radius,
-                borderWidth: strokeWidth,
-                borderColor: segments[1]?.color || '#7B6DC9',
-              }}
-            />
-          </View>
-        )}
-        {/* Third segment - top-left quarter */}
-        {segments.length > 2 && (
-          <View
-            style={{
-              width: size / 2,
-              height: size / 3,
-              borderTopLeftRadius: radius,
-              overflow: 'hidden',
-              position: 'absolute',
-              top: 0,
-              left: 0,
-            }}
-          >
-            <View
-              style={{
-                width: size,
-                height: size,
-                borderRadius: radius,
-                borderWidth: strokeWidth,
-                borderColor: segments[2]?.color || '#E8985A',
-              }}
-            />
-          </View>
-        )}
-        {/* Center content */}
-        <View
-          style={{
-            width: innerR * 2 - 8,
-            height: innerR * 2 - 8,
-            borderRadius: innerR,
-            backgroundColor: 'rgba(255,255,255,0.08)',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Text
-            style={{
-              fontFamily: Typography.family.body,
-              color: '#FFF',
-              fontSize: 14,
-              fontWeight: Typography.weight.semibold,
-            }}
-          >
-            Breakdown
-          </Text>
-        </View>
-      </View>
-
-      {/* Segment legend */}
-      <View style={{ gap: 10, width: '100%' }}>
-        {segments.map((seg, i) => (
-          <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <View
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 12,
-                backgroundColor: seg.color + '25',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 16 }}>
-                {seg.emoji}
-              </WellnessIconText>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text
-                style={{
-                  fontFamily: Typography.family.body,
-                  color: '#FFF',
-                  fontSize: 14,
-                  fontWeight: Typography.weight.semibold,
-                }}
-              >
-                {seg.label}
-              </Text>
-              <Text
-                style={{
-                  fontFamily: Typography.family.body,
-                  color: 'rgba(255,255,255,0.60)',
-                  fontSize: 12,
-                }}
-              >
-                {seg.value}
-              </Text>
-            </View>
-            <View
-              style={{
-                backgroundColor: seg.color + '20',
-                paddingHorizontal: 10,
-                paddingVertical: 4,
-                borderRadius: 8,
-              }}
-            >
-              <Text
-                style={{
-                  fontFamily: Typography.family.body,
-                  color: seg.color,
-                  fontSize: 12,
-                  fontWeight: Typography.weight.semibold,
-                }}
-              >
-                {seg.pct}%
-              </Text>
-            </View>
-          </View>
-        ))}
-      </View>
-    </View>
-  );
-}
-
-/* ── Main Screen ─────────────────────────────────── */
-export default function SleepDetailScreen() {
-  const { t } = useTranslation();
-  const { id, from } = useLocalSearchParams<{ id: string; from?: string }>();
-  const theme = useColorScheme() ?? 'light';
-  const colors = Colors[theme];
+/**
+ * Last night (06 §S7): the night block with the time in bed, the share of the sleep goal (the
+ * schedule's window) and the stage chart, then the stage list, the note, a Glow AI note drawn from
+ * what has helped this month, See sleep insights, and How did you sleep? until the night has a
+ * quality. Nights without stages show the time in bed as one bar. Delete sits in the header.
+ */
+export default function LastNightScreen() {
+  const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
-  const { sleepEntries, deleteSleepEntry } = useSleep();
-
+  const { width } = useWindowDimensions();
+  const { id, from } = useLocalSearchParams<{ id: string; from?: string }>();
+  const { sleepEntries, deleteSleepEntry, schedule } = useSleep();
   const entry = sleepEntries.find((e) => e.id === id);
+  const night = useMemo(() => (entry ? summariseNight(entry) : null), [entry]);
+  const chartW = width - 48;
+  const blockH = insets.top - 44 + 372;
 
-  const handleDelete = () => {
-    showAlert('Delete Entry', 'Are you sure you want to delete this sleep entry?', [
-      { text: 'Cancel', style: 'cancel' },
+  const aiNote = useMemo(() => {
+    const { helps } = factorImpacts(nightsInPeriod(sleepEntries, 'month'));
+    if (helps[0]) return t('sleepFlow.night.noteHelps', { factor: t(`sleepPeriods.factors.${helps[0].key}`), minutes: helps[0].minutes });
+    return t('sleepFlow.night.noteGeneric');
+  }, [sleepEntries, t]);
+
+  const remove = () =>
+    showAlert(t('sleepFlow.night.deleteTitle'), t('sleepFlow.night.deleteBody'), [
+      { text: t('sleepFlow.cancel'), style: 'cancel' },
       {
-        text: 'Delete',
+        text: t('sleepFlow.night.delete'),
         style: 'destructive',
         onPress: async () => {
-          await deleteSleepEntry(id as string);
-          goBack(from);
+          await deleteSleepEntry(id);
+          backTo(from, '/(tabs)/sleep');
         },
       },
     ]);
-  };
 
-  if (!entry) {
+  if (!entry || !night) {
     return (
-      <View style={[s.container, { backgroundColor: colors.background }]}>
-        <View style={s.header}>
-          <Pressable
-            onPress={() => goBack(from)}
-            style={[s.backBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
-          >
-            <MaterialIcons name="arrow-back" size={18} color={colors.text} />
-          </Pressable>
-          <Text style={[s.headerTitle, { color: colors.text }]}>{t('sleepDetail.title')}</Text>
-        </View>
-        <View style={s.centerContent}>
-          <MaterialIcons name="hotel" size={52} color={colors.border} />
-          <Text
-            style={{
-              fontFamily: Typography.family.body,
-              color: colors.mutedText,
-              fontSize: 16,
-              marginTop: 12,
-            }}
-          >
-            {t('sleepDetail.entryNotFound')}
-          </Text>
-          <Pressable onPress={() => goBack(from)} style={{ marginTop: 16 }}>
-            <Text
-              style={{
-                fontFamily: Typography.family.body,
-                color: colors.primary,
-                fontWeight: Typography.weight.semibold,
-              }}
-            >
-              {t('sleepDetail.goBack')}
-            </Text>
-          </Pressable>
-        </View>
+      <View style={{ flex: 1, backgroundColor: palette.bg, paddingTop: insets.top + 10, paddingHorizontal: 24 }}>
+        <NavBar title={t('sleepFlow.night.lastNight')} backLabel={t('common.back')} onBack={() => backTo(from, '/(tabs)/sleep')} />
+        <Text style={[Type.bodyS, { color: palette.textMuted, marginTop: 32, textAlign: 'center' }]}>{t('sleepFlow.night.missing')}</Text>
       </View>
     );
   }
 
-  const startDate = new Date(entry.startISO);
-  const endDate = new Date(entry.endISO);
-  const totalMs = endDate.getTime() - startDate.getTime();
-  const totalHrs = Math.max(0, totalMs / (1000 * 60 * 60));
-
-  // Simulate REM/Core/Post breakdown (since we don't have real phase data)
-  const remHrs = totalHrs * 0.25;
-  const coreHrs = totalHrs * 0.65;
-  const postHrs = totalHrs * 0.1;
-
-  const segments = [
-    {
-      color: SLEEP_COLORS.core,
-      pct: 65,
-      label: 'Core Sleep',
-      value: `${coreHrs.toFixed(2)}h`,
-      emoji: '🌙',
-    },
-    {
-      color: SLEEP_COLORS.rem,
-      pct: 25,
-      label: 'REM Sleep',
-      value: `${remHrs.toFixed(2)}h`,
-      emoji: '💭',
-    },
-    {
-      color: SLEEP_COLORS.post,
-      pct: 10,
-      label: 'Post REM',
-      value: `${Math.round(postHrs * 60)}min`,
-      emoji: '✨',
-    },
-  ];
+  const date = new Date(night.endMs);
+  const title = isRecent(night)
+    ? t('sleepFlow.night.lastNight')
+    : date.toLocaleDateString(i18n.language, { weekday: 'long', day: 'numeric', month: 'short' });
+  const dateLine = `${new Date(night.startMs).toLocaleDateString(i18n.language, { weekday: 'short', day: 'numeric', month: 'short' })} · ${formatClock(night.startMs)} – ${formatClock(night.endMs)}`;
+  const goal = windowMinutes(minuteOfDay(schedule.sleepHour, schedule.sleepMin), minuteOfDay(schedule.wakeHour, schedule.wakeMin));
+  const pct = goalPercent(night.asleepMinutes, goal);
+  const quality = entry.quality ? t(`sleepNight.quality.${entry.quality}`) : null;
+  const stages = entry.stages?.length ? entry.stages : null;
+  const chart = stages ? hypnogram(stages, chartW, CHART_H) : null;
+  const axis = nightAxis(chart?.startMs ?? night.startMs, chart?.endMs ?? night.endMs, chartW);
+  const minutes = stages ? stageMinutes(stages) : null;
 
   return (
-    <View style={[s.container, { backgroundColor: colors.background }]}>
-      <ScrollView contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* ── Hero Card ────────────────────────── */}
-        <View style={[s.heroCard, { backgroundColor: '#5A3E7A' }]}>
-          <View style={[s.heroCircle1, { backgroundColor: 'rgba(255,255,255,0.06)' }]} />
-          <View style={[s.heroCircle2, { backgroundColor: 'rgba(255,255,255,0.04)' }]} />
-
-          {/* Back button overlay */}
-          <Pressable
-            onPress={() => goBack(from)}
-            style={({ pressed }) => [s.heroBackBtn, { opacity: pressed ? 0.7 : 1 }]}
-          >
-            <MaterialIcons
-              name={Platform.OS === 'ios' ? 'arrow-back-ios-new' : 'arrow-back'}
-              size={18}
-              color="rgba(255,255,255,0.8)"
-            />
-          </Pressable>
-
-          <Text style={s.heroTitle}>{t('sleepDetail.youSleptFor')}</Text>
-          <Text style={s.heroDuration}>{totalHrs.toFixed(2)}h</Text>
-          <Text style={s.heroDate}>
-            {startDate.toLocaleDateString(undefined, {
-              weekday: 'long',
-              month: 'long',
-              day: 'numeric',
-            })}
-          </Text>
-
-          {/* Donut chart */}
-          <View style={{ marginTop: 20 }}>
-            <DonutRing size={160} segments={segments} />
-          </View>
-        </View>
-
-        {/* ── Time Card ────────────────────────── */}
-        <View style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <View style={s.timeRow}>
-            <View style={s.timeBlock}>
-              <MaterialIcons name="nightlight-round" size={18} color="#7B6DC9" />
-              <Text style={[s.timeLabel, { color: colors.mutedText }]}>
-                {t('sleepDetail.bedtime')}
-              </Text>
-              <Text style={[s.timeValue, { color: colors.text }]}>
-                {startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </Text>
-            </View>
-            <View style={[s.timeDivider, { backgroundColor: colors.divider }]} />
-            <View style={s.timeBlock}>
-              <MaterialIcons name="wb-sunny" size={18} color="#E8985A" />
-              <Text style={[s.timeLabel, { color: colors.mutedText }]}>
-                {t('sleepDetail.wakeUp')}
-              </Text>
-              <Text style={[s.timeValue, { color: colors.text }]}>
-                {endDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* ── Quality Card ─────────────────────── */}
-        {entry.quality && (
-          <View style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <View style={s.qualityRow}>
-              <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 32 }}>
-                {getQualityEmoji(entry.quality)}
-              </WellnessIconText>
-              <View style={{ flex: 1 }}>
-                <Text style={[s.qualityLabel, { color: colors.mutedText }]}>
-                  {t('sleepDetail.sleepQuality')}
-                </Text>
-                <Text style={[s.qualityValue, { color: colors.text }]}>
-                  {getQualityLabel(entry.quality)} ({entry.quality}/5)
-                </Text>
-              </View>
-            </View>
-          </View>
-        )}
-
-        {/* ── Awakenings ───────────────────────── */}
-        {entry.awakenings !== undefined && (
-          <View style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <View style={s.infoRow}>
-              <MaterialIcons name="notification-important" size={20} color="#C45B5B" />
-              <Text style={[s.infoLabel, { color: colors.text }]}>
-                {t('sleepDetail.awakenings')}
-              </Text>
-              <Text style={[s.infoValue, { color: colors.text }]}>{entry.awakenings}</Text>
-            </View>
-          </View>
-        )}
-
-        {/* ── Notes ────────────────────────────── */}
-        {entry.notes && (
-          <View style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={[s.notesLabel, { color: colors.mutedText }]}>
-              {t('sleepDetail.notes')}
+    <View style={{ flex: 1, backgroundColor: palette.bg }}>
+      <StatusBar style="light" />
+      <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 24 }} bounces={false}>
+        <View style={{ height: blockH, backgroundColor: palette.ink, overflow: 'hidden' }}>
+          <StarField width={width} height={blockH} style={{ position: 'absolute', top: 0 }} />
+          <GlowField glows={[{ color: palette.lavenderSoft, opacity: 0.18, x: 88, y: 20, width: 200, blur: 70 }]} />
+          <NavBar
+            title={title}
+            backLabel={t('common.back')}
+            onBack={() => backTo(from, '/(tabs)/sleep')}
+            tone="dark"
+            trailing={<IconButton size={44} variant="onDark" icon="line/trash" iconSize={20} accessibilityLabel={t('sleepFlow.night.delete')} onPress={remove} />}
+            style={{ marginTop: insets.top + 10, marginHorizontal: 24 }}
+          />
+          <View style={{ alignItems: 'center', marginTop: 14 }}>
+            <Text style={[Type.captionM, { color: 'rgba(255,255,255,0.60)' }]}>{dateLine}</Text>
+            <Text style={[Type.display, { fontSize: 56, lineHeight: 68, fontWeight: '400', color: palette.white }]}>
+              {formatDuration(night.asleepMinutes)}
             </Text>
-            <Text style={[s.notesText, { color: colors.text }]}>{entry.notes}</Text>
+            <Text style={[Type.bodyS, { color: palette.mustard }]}>
+              {[quality, t('sleepFlow.night.goal', { pct })].filter(Boolean).join(' · ')}
+            </Text>
           </View>
-        )}
+          <View style={{ position: 'absolute', left: 24, bottom: 24 }}>
+            <Svg width={chartW} height={CHART_H + 20} accessibilityLabel={t('sleepFlow.night.chartLabel')}>
+              <Defs>
+                <LinearGradient id="stageArea" x1="0" y1="0" x2="0" y2="1">
+                  <Stop offset="0" stopColor={palette.lavenderSoft} stopOpacity={0.55} />
+                  <Stop offset="1" stopColor={palette.sky} stopOpacity={0.05} />
+                </LinearGradient>
+              </Defs>
+              {chart ? (
+                <>
+                  <Path d={chart.area} fill="url(#stageArea)" />
+                  <Path d={chart.line} stroke={palette.mustard} strokeOpacity={0.8} strokeWidth={1.5} fill="none" />
+                </>
+              ) : (
+                // No stages from Health: the time in bed as one bar (06 §6 item 6).
+                <>
+                  <Rect x={0} y={CHART_H / 2 - 10} width={chartW} height={20} rx={10} fill="url(#stageArea)" />
+                  <Circle cx={10} cy={CHART_H / 2} r={4} fill={palette.mustard} />
+                  <Circle cx={chartW - 10} cy={CHART_H / 2} r={4} fill={palette.mustard} />
+                </>
+              )}
+              {axis.map((a, i) => (
+                <SvgText
+                  key={i}
+                  x={Math.min(chartW - 2, Math.max(2, a.x))}
+                  y={CHART_H + 16}
+                  fill={palette.white}
+                  fillOpacity={0.5}
+                  fontSize={11}
+                  fontFamily={Type.body.fontFamily}
+                  textAnchor={i === 0 ? 'start' : i === axis.length - 1 ? 'end' : 'middle'}
+                >
+                  {formatClock(a.ms)}
+                </SvgText>
+              ))}
+            </Svg>
+          </View>
+        </View>
 
-        {/* ── Actions ──────────────────────────── */}
-        <Pressable
-          onPress={() => goBack(from)}
-          style={({ pressed }) => [
-            s.gotItBtn,
-            { backgroundColor: '#8B6B47', transform: [{ scale: pressed ? 0.97 : 1 }] },
-          ]}
-        >
-          <Text style={s.gotItText}>{t('sleepDetail.gotItThanks')}</Text>
-        </Pressable>
+        <View style={{ paddingHorizontal: 24, paddingTop: 24, gap: 16 }}>
+          {minutes && (
+            <>
+              <Text style={[Type.labelM, { color: palette.lavender }]}>{t('sleepFlow.night.stages')}</Text>
+              {STAGE_ROWS.map((s) => (
+                <View key={s.key} accessible accessibilityLabel={`${t(`sleepFlow.night.stage.${s.key}`)}, ${formatDuration(minutes[s.key])}`} style={{ gap: 10 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: s.color }} />
+                    <Text style={[Type.bodyMMedium, { flex: 1, color: palette.ink }]}>{t(`sleepFlow.night.stage.${s.key}`)}</Text>
+                    <Text style={[Type.bodyMSemi, { color: palette.plumDeep }]}>{formatDuration(minutes[s.key])}</Text>
+                  </View>
+                  <View style={{ marginLeft: 20, height: 4, borderRadius: 2, backgroundColor: palette.borderLilac, overflow: 'hidden' }}>
+                    <View style={{ height: 4, width: `${minutes.asleep ? (minutes[s.key] / minutes.asleep) * 100 : 0}%`, backgroundColor: s.color }} />
+                  </View>
+                </View>
+              ))}
+            </>
+          )}
 
-        <Pressable
-          onPress={handleDelete}
-          style={({ pressed }) => [
-            s.deleteBtn,
-            { borderColor: '#C45B5B', opacity: pressed ? 0.7 : 1 },
-          ]}
-        >
-          <MaterialIcons name="delete-outline" size={18} color="#C45B5B" />
-          <Text style={s.deleteBtnText}>{t('sleepDetail.deleteEntry')}</Text>
-        </Pressable>
+          {entry.notes ? (
+            <View style={{ gap: 6 }}>
+              <Text style={[Type.labelM, { color: palette.lavender }]}>{t('sleepFlow.night.note')}</Text>
+              <Text style={[Type.bodyS, { color: palette.plumDeep }]}>{entry.notes}</Text>
+            </View>
+          ) : null}
+
+          <View style={{ backgroundColor: palette.white, borderRadius: 24, padding: 16, overflow: 'hidden', gap: 10 }}>
+            <Glow color={palette.lavenderSoft} opacity={0.3} width={120} blur={40} style={{ position: 'absolute', left: -30, top: -30 }} />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <Svg width={28} height={28}>
+                <Defs>
+                  <LinearGradient id="noteOrb" x1="0" y1="0" x2="1" y2="1">
+                    <Stop offset="0" stopColor={palette.cream} />
+                    <Stop offset="1" stopColor={palette.plum} />
+                  </LinearGradient>
+                </Defs>
+                <Circle cx={14} cy={14} r={14} fill="url(#noteOrb)" />
+              </Svg>
+              <Text style={[Type.labelM, { color: palette.plum }]}>{t('sleepFlow.night.glowAi')}</Text>
+            </View>
+            <Text style={[Type.bodyS, { lineHeight: 20, color: palette.plumDeep }]}>{aiNote}</Text>
+          </View>
+
+          <AppButton title={t('sleepFlow.night.insights')} onPress={() => router.push('/(tabs)/sleep/insights')} style={{ marginTop: 6 }} />
+          {!entry.quality && (
+            <AppButton
+              variant="outline"
+              title={t('sleepFlow.night.howDidYouSleep')}
+              onPress={() => router.push({ pathname: '/(tabs)/sleep/log', params: { id: entry.id, from: `/(tabs)/sleep/${entry.id}` } })}
+              style={{ backgroundColor: 'transparent', borderColor: 'rgba(107,82,121,0.50)' }}
+            />
+          )}
+        </View>
       </ScrollView>
     </View>
   );
 }
-
-/* ── Styles ──────────────────────────────────────── */
-const s = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    paddingHorizontal: UI.spacing.xl,
-    marginTop: Platform.OS === 'ios' ? 44 : 24,
-  } as any,
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-  },
-  headerTitle: { ...Typography.heading },
-
-  centerContent: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  scrollContent: {
-    paddingBottom: 100,
-    gap: 14,
-  },
-
-  /* hero */
-  heroCard: {
-    borderBottomLeftRadius: UI.radius.xxl,
-    borderBottomRightRadius: UI.radius.xxl,
-    padding: 24,
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
-    alignItems: 'center',
-    overflow: 'hidden',
-    ...UI.shadow.md,
-  } as any,
-  heroCircle1: {
-    position: 'absolute',
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    top: -60,
-    right: -40,
-  },
-  heroCircle2: {
-    position: 'absolute',
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    bottom: -50,
-    left: -30,
-  },
-  heroBackBtn: {
-    position: 'absolute',
-    top: Platform.OS === 'ios' ? 52 : 32,
-    left: 20,
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  heroTitle: { ...Typography.heading, color: 'rgba(255,255,255,0.70)', fontSize: 20 },
-  heroDuration: {
-    fontFamily: Typography.family.body,
-    color: '#FFF',
-    fontSize: 42,
-    fontWeight: Typography.weight.semibold,
-    marginTop: 4,
-  },
-  heroDate: {
-    fontFamily: Typography.family.body,
-    color: 'rgba(255,255,255,0.55)',
-    fontSize: 13,
-    fontWeight: Typography.weight.semibold,
-    marginTop: 4,
-  },
-
-  /* cards */
-  card: {
-    borderRadius: UI.radius.xxl,
-    padding: 18,
-    marginHorizontal: UI.spacing.xl,
-    borderWidth: 1,
-    ...UI.shadow.sm,
-  },
-
-  /* time */
-  timeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  timeBlock: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 4,
-  },
-  timeDivider: {
-    width: 1,
-    height: 40,
-    marginHorizontal: 12,
-  },
-  timeLabel: {
-    fontFamily: Typography.family.body,
-    fontSize: 12,
-    fontWeight: Typography.weight.bold,
-  },
-  timeValue: {
-    fontFamily: Typography.family.body,
-    fontSize: 18,
-    fontWeight: Typography.weight.bold,
-  },
-
-  /* quality */
-  qualityRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-  },
-  qualityLabel: {
-    fontFamily: Typography.family.body,
-    fontSize: 12,
-    fontWeight: Typography.weight.medium,
-  },
-  qualityValue: {
-    fontFamily: Typography.family.body,
-    fontSize: 16,
-    fontWeight: Typography.weight.bold,
-  },
-
-  /* info */
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  infoLabel: {
-    fontFamily: Typography.family.body,
-    flex: 1,
-    fontSize: 14,
-    fontWeight: Typography.weight.medium,
-  },
-  infoValue: {
-    fontFamily: Typography.family.body,
-    fontSize: 18,
-    fontWeight: Typography.weight.bold,
-  },
-
-  /* notes */
-  notesLabel: {
-    fontFamily: Typography.family.body,
-    fontSize: 12,
-    fontWeight: Typography.weight.medium,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 8,
-  },
-  notesText: {
-    fontFamily: Typography.family.body,
-    fontSize: 14,
-    lineHeight: 22,
-    fontStyle: 'italic',
-  },
-
-  /* actions */
-  gotItBtn: {
-    marginHorizontal: UI.spacing.xl,
-    paddingVertical: 16,
-    borderRadius: UI.radius.lg,
-    alignItems: 'center',
-    ...UI.shadow.sm,
-  },
-  gotItText: {
-    fontFamily: Typography.family.body,
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: Typography.weight.semibold,
-  },
-  deleteBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    marginHorizontal: UI.spacing.xl,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderRadius: UI.radius.lg,
-  },
-  deleteBtnText: {
-    fontFamily: Typography.family.body,
-    color: '#C45B5B',
-    fontSize: 14,
-    fontWeight: Typography.weight.semibold,
-  },
-});

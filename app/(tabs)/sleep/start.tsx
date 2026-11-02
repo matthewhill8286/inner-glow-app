@@ -1,339 +1,200 @@
-import { Typography } from '@/constants/typography';
-import { backTo } from '@/lib/navigation';
-import { WellnessIconText } from '@/components/WellnessIconText';
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, Pressable, Platform, StyleSheet, Animated } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import MaterialIcons from '@/components/AppIcon';
+import { palette } from '@/constants/theme';
+import { Type } from '@/constants/typography';
+import { GlowField } from '@/components/glow/Glow';
+import { Icon, type IconName } from '@/components/icons/Icon';
+import { NavBar } from '@/components/ui/IconButton';
+import { AppButton } from '@/components/ui/AppButton';
+import { BottomSheet } from '@/components/ui/BottomSheet';
+import { Radio } from '@/components/ui/controls';
+import { StarField } from '@/components/sleep/NightSky';
 import { useSleep } from '@/hooks/useSleep';
-import { UI } from '@/constants/theme';
+import { practiceById } from '@/data/practices';
+import { openPractice } from '@/lib/practice-routes';
+import { backTo } from '@/lib/navigation';
+import { playSoundscape, stopSoundscapeAfter } from '@/lib/soundscape';
+import { STOP_AFTER_CHOICES } from '@/lib/sleep-flow';
 
-/* ── helpers ──────────────────────────────────────── */
-function goBack(from?: string) {
-  backTo(from, '/(tabs)/sleep');
-}
+type Choice = { key: 'rain' | 'breathing' | 'quietMind' | 'write'; icon: IconName; minutes: number; practice?: string };
 
-function formatTime(date: Date) {
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-}
+/** The four wind-down options (06 §S3). Rain plays here; the others open a practice or the journal. */
+const CHOICES: Choice[] = [
+  { key: 'rain', icon: 'line/music', minutes: 20 },
+  { key: 'breathing', icon: 'line/leaf', minutes: 6, practice: 'bedtime-breathing' },
+  { key: 'quietMind', icon: 'line/moon', minutes: 10, practice: 'quiet-mind' },
+  { key: 'write', icon: 'line/note', minutes: 3 },
+];
 
-function formatDuration(ms: number) {
-  const h = Math.floor(ms / (1000 * 60 * 60));
-  const m = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
-  return `${h}h ${m}m`;
-}
-
-/* ── Main Screen ─────────────────────────────────── */
-export default function StartSleepingScreen() {
+/**
+ * Wind down (06 §S3): pick something to fall asleep to, choose when the sound stops, then Start
+ * sleep mode. Sleep mode starts straight away and the chosen practice or journal opens on top, so
+ * finishing it lands back in sleep mode. Opening this while sleep mode is running goes to it.
+ */
+export default function WindDownScreen() {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
   const { from } = useLocalSearchParams<{ from?: string }>();
-  const { sleepMode, setSleepMode } = useSleep();
-  const isSleeping = !!sleepMode.sleepModeStartISO;
+  const { sleepMode, setSleepMode, schedule, saveSchedule } = useSleep();
+  const [choice, setChoice] = useState<Choice['key']>((schedule.windDownChoice as Choice['key']) ?? 'rain');
+  const [stopAfter, setStopAfter] = useState<number | null>(schedule.stopAfterMin === undefined ? 30 : schedule.stopAfterMin);
+  const [picking, setPicking] = useState(false);
+  const [starting, setStarting] = useState(false);
 
-  const [now, setNow] = useState(new Date());
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-
-  // Clock tick
+  // Already in sleep mode: show it. Skipped while this screen is the one starting it.
   useEffect(() => {
-    const interval = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Pulse animation for the main button
+    if (sleepMode.sleepModeStartISO && !starting) router.replace('/(tabs)/sleep/mode');
+  }, [sleepMode.sleepModeStartISO, starting]);
   useEffect(() => {
-    if (isSleeping) {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, { toValue: 1.06, duration: 1200, useNativeDriver: true }),
-          Animated.timing(pulseAnim, { toValue: 1, duration: 1200, useNativeDriver: true }),
-        ]),
-      ).start();
-    } else {
-      pulseAnim.setValue(1);
+    if (schedule.windDownChoice) setChoice(schedule.windDownChoice as Choice['key']);
+    if (schedule.stopAfterMin !== undefined) setStopAfter(schedule.stopAfterMin);
+  }, [schedule.windDownChoice, schedule.stopAfterMin]);
+
+  const stopLabel = (m: number | null) => (m == null ? t('sleepFlow.windDown.never') : t('sleepFlow.minutes', { count: m }));
+
+  const start = async () => {
+    setStarting(true);
+    const picked = CHOICES.find((c) => c.key === choice)!;
+    const sound = picked.key === 'rain' ? 'rain' : null;
+    await saveSchedule({ windDownChoice: choice, stopAfterMin: stopAfter });
+    await setSleepMode({
+      sleepModeStartISO: new Date().toISOString(),
+      soundKey: sound,
+      windDown: true,
+      autoDetectionEnabled: true,
+    });
+    if (sound) {
+      await playSoundscape(sound);
+      stopSoundscapeAfter(stopAfter);
     }
-  }, [isSleeping, pulseAnim]);
-
-  const elapsed = isSleeping ? now.getTime() - new Date(sleepMode.sleepModeStartISO!).getTime() : 0;
-
-  const handleToggle = async () => {
-    if (isSleeping) {
-      // Stop sleeping → compute & log
-      const start = new Date(sleepMode.sleepModeStartISO!);
-      const end = new Date();
-      const durationHrs =
-        Math.round(((end.getTime() - start.getTime()) / (1000 * 60 * 60)) * 10) / 10;
-
-      await setSleepMode({ sleepModeStartISO: null });
-
-      // Navigate to log with pre-filled duration
-      router.push({
-        pathname: '/(tabs)/sleep/log',
-        params: { duration: durationHrs.toString(), from: '/(tabs)/sleep' },
-      });
-    } else {
-      // Start sleeping
-      await setSleepMode({ sleepModeStartISO: new Date().toISOString() });
-    }
+    router.replace('/(tabs)/sleep/mode');
+    const practice = picked.practice ? practiceById(picked.practice) : undefined;
+    if (practice) openPractice(practice);
+    else if (picked.key === 'write') router.push({ pathname: '/(tabs)/journal/new', params: { from: '/(tabs)/sleep/mode' } });
   };
 
-  const userName = 'there'; // generic fallback
-
   return (
-    <View style={s.container}>
-      {/* Decorative circles */}
-      <View style={[s.bgCircle1]} />
-      <View style={[s.bgCircle2]} />
-      <View style={[s.bgCircle3]} />
-
-      {/* ── Back Button ────────────────────────── */}
-      <Pressable
-        onPress={() => goBack(from)}
-        style={({ pressed }) => [s.backBtn, { opacity: pressed ? 0.7 : 1 }]}
-      >
-        <MaterialIcons
-          name={Platform.OS === 'ios' ? 'arrow-back-ios-new' : 'arrow-back'}
-          size={18}
-          color="rgba(255,255,255,0.8)"
-        />
-      </Pressable>
-
-      {/* ── Content ────────────────────────────── */}
-      <View style={s.content}>
-        {isSleeping ? (
-          <>
-            {/* Sleeping state */}
-            <Text style={s.greeting}>{t('sleepStart.goodNight', { name: userName })}</Text>
-            <Text style={s.clock}>{formatTime(now)}</Text>
-
-            <View style={s.statsRow}>
-              <View style={s.statPill}>
-                <MaterialIcons name="access-time" size={14} color="rgba(255,255,255,0.7)" />
-                <Text style={s.statText}>{formatDuration(elapsed)}</Text>
-              </View>
-              <View style={s.statPill}>
-                <MaterialIcons name="nightlight-round" size={14} color="rgba(255,255,255,0.7)" />
-                <Text style={s.statText}>{t('sleepStart.sleepMode')}</Text>
-              </View>
-            </View>
-
-            {/* Sleeping illustration placeholder */}
-            <View style={s.illustrationWrap}>
-              <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 80 }}>
-                😴
-              </WellnessIconText>
-            </View>
-          </>
-        ) : (
-          <>
-            {/* Ready to sleep */}
-            <Text style={s.greeting}>{t('sleepStart.readyToSleep')}</Text>
-            <Text style={s.clock}>{formatTime(now)}</Text>
-
-            <Text style={s.subtitle}>{t('sleepStart.instruction')}</Text>
-
-            {/* Moon illustration */}
-            <View style={s.illustrationWrap}>
-              <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 80 }}>
-                🌙
-              </WellnessIconText>
-            </View>
-          </>
-        )}
-
-        {/* ── Main Action Button ───────────────── */}
-        <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-          <Pressable
-            onPress={handleToggle}
-            style={({ pressed }) => [
-              s.mainBtn,
-              isSleeping
-                ? { backgroundColor: 'rgba(255,255,255,0.15)' }
-                : { backgroundColor: 'rgba(255,255,255,0.12)' },
-              { opacity: pressed ? 0.8 : 1 },
-            ]}
-          >
-            <View style={s.mainBtnInner}>
-              <MaterialIcons name={isSleeping ? 'stop' : 'play-arrow'} size={48} color="#FFF" />
-            </View>
-          </Pressable>
-        </Animated.View>
-
-        <Text style={s.mainBtnLabel}>
-          {isSleeping ? t('sleepStart.tapToWakeUp') : t('sleepStart.startSleeping')}
+    <View style={{ flex: 1, backgroundColor: palette.ink }}>
+      <StatusBar style="light" />
+      <GlowField glows={[{ color: palette.lavender, opacity: 0.35, x: 37.5, y: 100, width: 300, blur: 80 }]} />
+      <StarField width={width} height={540} style={{ position: 'absolute', top: 0 }} />
+      <NavBar
+        title={t('sleepFlow.windDown.header')}
+        backLabel={t('common.back')}
+        onBack={() => backTo(from, '/(tabs)/sleep')}
+        tone="dark"
+        style={{ marginTop: insets.top + 10, marginHorizontal: 24 }}
+      />
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 22, paddingBottom: 24, gap: 10 }}>
+        <Text accessibilityRole="header" style={[Type.titleLg, { fontSize: 28, lineHeight: 39, color: palette.white }]}>
+          {t('sleepFlow.windDown.title')}
         </Text>
+        <Text style={[Type.bodyS, { color: 'rgba(255,255,255,0.65)', marginTop: -6, marginBottom: 14 }]}>
+          {t('sleepFlow.windDown.subtitle')}
+        </Text>
+        {CHOICES.map((c) => {
+          const on = c.key === choice;
+          return (
+            <Pressable
+              key={c.key}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: on }}
+              onPress={() => setChoice(c.key)}
+              style={({ pressed }) => ({
+                minHeight: 72,
+                borderRadius: 24,
+                backgroundColor: 'rgba(255,255,255,0.08)',
+                borderWidth: 1.5,
+                borderColor: on ? 'rgba(226,204,64,0.80)' : 'transparent',
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 12,
+                paddingHorizontal: 14,
+                opacity: pressed ? 0.85 : 1,
+              })}
+            >
+              <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.10)', alignItems: 'center', justifyContent: 'center' }}>
+                <Icon name={c.icon} size={20} color={palette.white} />
+              </View>
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text style={[Type.bodyMSemi, { color: palette.white }]}>{t(`sleepFlow.windDown.choices.${c.key}.title`)}</Text>
+                <Text style={[Type.captionS, { color: 'rgba(255,255,255,0.60)' }]}>
+                  {t(`sleepFlow.windDown.choices.${c.key}.meta`, { minutes: c.minutes })}
+                </Text>
+              </View>
+              <View
+                style={{
+                  width: 20,
+                  height: 20,
+                  borderRadius: 10,
+                  backgroundColor: on ? palette.mustard : 'transparent',
+                  borderWidth: on ? 0 : 1.5,
+                  borderColor: 'rgba(255,255,255,0.40)',
+                }}
+              />
+            </Pressable>
+          );
+        })}
 
-        {/* ── Schedule link ────────────────────── */}
-        {!isSleeping && (
-          <Pressable
-            onPress={() =>
-              router.push({
-                pathname: '/(tabs)/sleep/schedule' as any,
-                params: { from: '/(tabs)/sleep/start' },
-              })
-            }
-            style={({ pressed }) => [s.scheduleBtn, { opacity: pressed ? 0.7 : 1 }]}
-          >
-            <MaterialIcons name="alarm" size={18} color="rgba(255,255,255,0.8)" />
-            <Text style={s.scheduleBtnText}>{t('sleepStart.orScheduleSleep')}</Text>
-          </Pressable>
-        )}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`${t('sleepFlow.windDown.stopAfter')}, ${stopLabel(stopAfter)}`}
+          onPress={() => setPicking(true)}
+          style={({ pressed }) => ({
+            minHeight: 56,
+            marginTop: 8,
+            borderRadius: 24,
+            backgroundColor: 'rgba(255,255,255,0.08)',
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingLeft: 20,
+            paddingRight: 16,
+            gap: 8,
+            opacity: pressed ? 0.85 : 1,
+          })}
+        >
+          <Text style={[Type.bodySMedium, { flex: 1, color: palette.white }]}>{t('sleepFlow.windDown.stopAfter')}</Text>
+          <Text style={[Type.buttonS, { color: palette.mustard }]}>{stopLabel(stopAfter)}</Text>
+          <Icon name="arrow/chevron-right" size={16} color={palette.white} />
+        </Pressable>
+      </ScrollView>
+      <View style={{ paddingHorizontal: 24, paddingBottom: insets.bottom + 14, paddingTop: 8 }}>
+        <AppButton
+          variant="onDark"
+          title={t('sleepFlow.windDown.start')}
+          icon="line/moon"
+          iconPosition="left"
+          busy={starting}
+          onPress={start}
+          style={{ backgroundColor: palette.softButton }}
+        />
       </View>
+
+      <BottomSheet visible={picking} onClose={() => setPicking(false)} closeLabel={t('common.close')}>
+        <Text style={[Type.titleSm, { color: palette.plumDeep, alignSelf: 'flex-start' }]}>{t('sleepFlow.windDown.stopAfter')}</Text>
+        <View style={{ alignSelf: 'stretch' }}>
+          {STOP_AFTER_CHOICES.map((m) => (
+            <Pressable
+              key={String(m)}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: m === stopAfter }}
+              onPress={() => {
+                setStopAfter(m);
+                setPicking(false);
+              }}
+              style={{ minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+            >
+              <Text style={[Type.bodyMMedium, { color: palette.ink }]}>{stopLabel(m)}</Text>
+              <Radio selected={m === stopAfter} />
+            </Pressable>
+          ))}
+        </View>
+      </BottomSheet>
     </View>
   );
 }
-
-/* ── Styles ──────────────────────────────────────── */
-const s = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#2A1A3E',
-    paddingHorizontal: UI.spacing.xl,
-  },
-
-  bgCircle1: {
-    position: 'absolute',
-    width: 300,
-    height: 300,
-    borderRadius: 150,
-    backgroundColor: 'rgba(123,109,201,0.12)',
-    top: -80,
-    right: -60,
-  },
-  bgCircle2: {
-    position: 'absolute',
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    backgroundColor: 'rgba(91,138,90,0.10)',
-    bottom: 100,
-    left: -60,
-  },
-  bgCircle3: {
-    position: 'absolute',
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: 'rgba(232,152,90,0.08)',
-    bottom: 200,
-    right: 20,
-  },
-
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.10)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: Platform.OS === 'ios' ? 60 : 40,
-  } as any,
-
-  content: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingBottom: 60,
-  },
-
-  greeting: {
-    fontFamily: Typography.family.body,
-    color: '#FFF',
-    fontSize: 24,
-    fontWeight: Typography.weight.semibold,
-    marginBottom: 8,
-  },
-  clock: {
-    fontFamily: Typography.family.body,
-    color: '#FFF',
-    fontSize: 52,
-    fontWeight: Typography.weight.semibold,
-    letterSpacing: 2,
-    marginBottom: 12,
-  },
-  subtitle: {
-    fontFamily: Typography.family.body,
-    color: 'rgba(255,255,255,0.60)',
-    fontSize: 14,
-    textAlign: 'center',
-    lineHeight: 22,
-    paddingHorizontal: 40,
-    marginBottom: 20,
-  },
-
-  statsRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 20,
-  },
-  statPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(255,255,255,0.10)',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 12,
-  },
-  statText: {
-    fontFamily: Typography.family.body,
-    color: 'rgba(255,255,255,0.8)',
-    fontSize: 13,
-    fontWeight: Typography.weight.bold,
-  },
-
-  illustrationWrap: {
-    marginVertical: 30,
-    width: 120,
-    height: 120,
-    borderRadius: 40,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  mainBtn: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 3,
-    borderColor: 'rgba(255,255,255,0.20)',
-  },
-  mainBtnInner: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  mainBtnLabel: {
-    fontFamily: Typography.family.body,
-    color: 'rgba(255,255,255,0.70)',
-    fontSize: 15,
-    fontWeight: Typography.weight.medium,
-    marginTop: 16,
-  },
-
-  scheduleBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 32,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
-  },
-  scheduleBtnText: {
-    fontFamily: Typography.family.body,
-    color: 'rgba(255,255,255,0.8)',
-    fontSize: 14,
-    fontWeight: Typography.weight.semibold,
-  },
-});

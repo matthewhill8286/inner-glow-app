@@ -11,6 +11,10 @@ export interface SleepModeState {
   sleepModeStartISO: string | null;
   suggestedWakeISO: string | null;
   autoDetectionEnabled: boolean;
+  /** Soundscape playing in sleep mode (06 §S3), if any. */
+  soundKey?: string | null;
+  /** Sleep mode was started from Wind down, so the night is tagged `wind_down` (06 §6 item 5). */
+  windDown?: boolean;
 }
 
 export interface SleepScheduleState {
@@ -23,6 +27,9 @@ export interface SleepScheduleState {
   autoDisplayStats: boolean;
   autoSetAlarm: boolean;
   bedtimeReminder: boolean;
+  /** Last Wind down choice and "Stop sound after" minutes (null is Never), 06 §S3. */
+  windDownChoice?: string;
+  stopAfterMin?: number | null;
   /** ISO string of when this schedule was last saved */
   savedAt: string | null;
 }
@@ -214,6 +221,39 @@ export const useSleep = () => {
     },
   });
 
+  /** The sleep check-in (06 §S6) fills in quality, factors and the note on a night already saved. */
+  const updateSleepMutation = useMutation({
+    mutationFn: async (input: Pick<SleepEntry, 'id'> & Partial<Pick<SleepEntry, 'quality' | 'factors' | 'notes' | 'awakenings'>>) => {
+      if (!user) throw new Error('Not authenticated');
+      const { error } = await supabase
+        .from('sleep')
+        .update({
+          quality: input.quality,
+          factors: input.factors,
+          notes: input.notes,
+          awakenings: input.awakenings,
+        })
+        .eq('id', input.id)
+        .eq('user_id', user.id);
+      if (error) throw error;
+      return input;
+    },
+    onMutate: async (input) => {
+      await queryClient.cancelQueries({ queryKey: key });
+      const previous = queryClient.getQueryData<SleepEntry[]>(key);
+      queryClient.setQueryData<SleepEntry[]>(key, (old) =>
+        (old || []).map((e) => (e.id === input.id ? { ...e, ...input } : e)),
+      );
+      return { previous };
+    },
+    onError: (_err, _input, context) => {
+      if (context?.previous) queryClient.setQueryData(key, context.previous);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: key });
+    },
+  });
+
   const deleteSleepMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from('sleep').delete().eq('id', id);
@@ -244,6 +284,8 @@ export const useSleep = () => {
     error: sleepQuery.error,
     addSleepEntry: addSleepMutation.mutateAsync,
     deleteSleepEntry: deleteSleepMutation.mutateAsync,
+    updateSleepEntry: updateSleepMutation.mutateAsync,
+    isUpdating: updateSleepMutation.isPending,
     setSleepMode,
     saveSchedule,
     isAdding: addSleepMutation.isPending,

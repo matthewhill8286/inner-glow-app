@@ -1,605 +1,224 @@
-import { backTo, finishTo } from '@/lib/navigation';
-import { Typography } from '@/constants/typography';
-import { saveWakeAlarm, ringingAlarmsSupported, testWakeAlarm } from '@/lib/alarms';
-import React, { useState, useEffect } from 'react';
-import { View, Text, Pressable, ScrollView, Platform, StyleSheet } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { router, useLocalSearchParams } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { Platform, Pressable, Text, View } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { useTranslation } from 'react-i18next';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors, UI } from '@/constants/theme';
-import MaterialIcons from '@/components/AppIcon';
-import { useSleep } from '@/hooks/useSleep';
+import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
+import { palette } from '@/constants/theme';
+import { Type } from '@/constants/typography';
+import { AppButton } from '@/components/ui/AppButton';
+import { BottomSheet } from '@/components/ui/BottomSheet';
+import { Toggle } from '@/components/ui/controls';
+import { Icon, type IconName } from '@/components/icons/Icon';
+import { SettingsScreen } from '@/components/settings/SettingsParts';
+import { SleepDial } from '@/components/sleep/SleepDial';
 import { toast } from '@/components/Toast';
-import { scheduleBedtimeReminders, cancelBedtimeReminders } from '@/lib/notifications';
+import { useSleep } from '@/hooks/useSleep';
+import { saveWakeAlarm, ringingAlarmsSupported } from '@/lib/alarms';
+import { BEDTIME_REMINDER_MINUTES, cancelBedtimeReminders, scheduleBedtimeReminders } from '@/lib/notifications';
+import { backTo, finishTo } from '@/lib/navigation';
+import { clockFrom } from '@/lib/sleep-home';
+import { formatWindow, hourMinute, minuteOfDay, windowAllowed, windowMinutes } from '@/lib/sleep-flow';
 
-/* ── helpers ──────────────────────────────────────── */
-function goBack(from?: string) {
-  backTo(from, '/(tabs)/sleep');
-}
-
+/** Day keys used by the reminders and the alarm, shown Monday first. */
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-const MINUTE_STEP = 5;
-
-function formatHour(h: number, m: number) {
-  const ampm = h >= 12 ? 'PM' : 'AM';
-  const hh = h % 12 || 12;
-  return `${hh}:${m.toString().padStart(2, '0')} ${ampm}`;
-}
-
-function formatH(h: number) {
-  const ampm = h >= 12 ? 'PM' : 'AM';
-  return `${h % 12 || 12} ${ampm}`;
-}
-
-function formatM(m: number) {
-  return m.toString().padStart(2, '0');
-}
-
-/* ── Toggle component ────────────────────────────── */
-function ToggleSwitch({
-  value,
-  onToggle,
-  activeColor,
-  inactiveColor,
-}: {
-  value: boolean;
-  onToggle: () => void;
-  activeColor: string;
-  inactiveColor: string;
-}) {
-  return (
-    <Pressable
-      onPress={onToggle}
-      style={[toggleS.track, { backgroundColor: value ? activeColor : inactiveColor }]}
-    >
-      <View style={[toggleS.thumb, { transform: [{ translateX: value ? 20 : 0 }] }]} />
-    </Pressable>
-  );
-}
-
-const toggleS = StyleSheet.create({
-  track: { width: 48, height: 28, borderRadius: 14, padding: 4 },
-  thumb: { width: 20, height: 20, borderRadius: 10, backgroundColor: '#FFF' },
-});
-
-/* ── Main Screen ─────────────────────────────────── */
+/**
+ * Bedtime schedule (06 §S2): the 24-hour dial, Bedtime and Wake up tiles that open a time picker,
+ * repeat days, the wind-down reminder and, on iPhones that support it, the wake-up alarm, then
+ * Save schedule. The old stepper buttons and "auto display stats" are gone.
+ */
 export default function SleepScheduleScreen() {
-  const theme = useColorScheme() ?? 'light';
-  const colors = Colors[theme];
-  const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const { from } = useLocalSearchParams<{ from?: string }>();
-  const { setSleepMode, saveSchedule, schedule } = useSleep();
-
-  // Sleep time state — initialised from saved schedule
-  const [sleepHour, setSleepHour] = useState(schedule.sleepHour);
-  const [sleepMin, setSleepMin] = useState(schedule.sleepMin);
-  const [wakeHour, setWakeHour] = useState(schedule.wakeHour);
-  const [wakeMin, setWakeMin] = useState(schedule.wakeMin);
-
-  // Repeat snooze (1-5)
-
-  // Days of week
-  const [selectedDays, setSelectedDays] = useState<string[]>(schedule.selectedDays);
-
-  // Toggles
-  const [autoDisplayStats, setAutoDisplayStats] = useState(schedule.autoDisplayStats);
-  const [autoSetAlarm, setAutoSetAlarm] = useState(schedule.autoSetAlarm);
-  const [bedtimeReminder, setBedtimeReminder] = useState(schedule.bedtimeReminder);
-
-  // Sync local state when the persisted schedule loads from AsyncStorage
-  const [hydrated, setHydrated] = useState(false);
-  useEffect(() => {
-    if (!hydrated && schedule.savedAt) {
-      setSleepHour(schedule.sleepHour);
-      setSleepMin(schedule.sleepMin);
-      setWakeHour(schedule.wakeHour);
-      setWakeMin(schedule.wakeMin);
-
-      setSelectedDays(schedule.selectedDays);
-      setAutoDisplayStats(schedule.autoDisplayStats);
-      setAutoSetAlarm(schedule.autoSetAlarm);
-      setBedtimeReminder(schedule.bedtimeReminder);
-      setHydrated(true);
-    }
-  }, [schedule.savedAt]);
-
+  const { schedule, saveSchedule, setSleepMode } = useSleep();
+  const [bed, setBed] = useState(minuteOfDay(schedule.sleepHour, schedule.sleepMin));
+  const [wake, setWake] = useState(minuteOfDay(schedule.wakeHour, schedule.wakeMin));
+  const [days, setDays] = useState<string[]>(schedule.selectedDays);
+  const [reminder, setReminder] = useState(schedule.bedtimeReminder);
+  const [alarm, setAlarm] = useState(schedule.autoSetAlarm);
+  const [picking, setPicking] = useState<null | 'bed' | 'wake'>(null);
   const [saving, setSaving] = useState(false);
+  const [dragging, setDragging] = useState(false);
   const supportsAlarm = ringingAlarmsSupported();
 
-  const toggleDay = (day: string) => {
-    setSelectedDays((prev) =>
-      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day],
-    );
-  };
+  // The stored schedule loads after the first render.
+  useEffect(() => {
+    setBed(minuteOfDay(schedule.sleepHour, schedule.sleepMin));
+    setWake(minuteOfDay(schedule.wakeHour, schedule.wakeMin));
+    setDays(schedule.selectedDays);
+    setReminder(schedule.bedtimeReminder);
+    setAlarm(schedule.autoSetAlarm);
+  }, [schedule]);
 
-  const adjustTime = (type: 'sleep' | 'wake', field: 'hour' | 'min', delta: number) => {
-    if (type === 'sleep') {
-      if (field === 'hour') setSleepHour((h) => (h + delta + 24) % 24);
-      else setSleepMin((m) => (m + delta * MINUTE_STEP + 60) % 60);
-    } else {
-      if (field === 'hour') setWakeHour((h) => (h + delta + 24) % 24);
-      else setWakeMin((m) => (m + delta * MINUTE_STEP + 60) % 60);
+  const letters = t('me.reminderSheet.dayLetters').split(',');
+  const names = t('me.reminderSheet.dayLabels').split(',');
+  // The reminder labels start on Sunday.
+  const sundayIndex = (key: string) => (DAYS.indexOf(key) + 1) % 7;
+  const clock = (m: number) => clockFrom(hourMinute(m).hour, hourMinute(m).minute);
+
+  const setTime = (which: 'bed' | 'wake', m: number) => {
+    const nextBed = which === 'bed' ? m : bed;
+    const nextWake = which === 'wake' ? m : wake;
+    if (!windowAllowed(nextBed, nextWake)) {
+      toast.info(t('sleepFlow.schedule.windowLimit'));
+      return;
     }
+    setBed(nextBed);
+    setWake(nextWake);
   };
 
-  const handleSave = async () => {
+  const openPicker = (which: 'bed' | 'wake') => {
+    const m = which === 'bed' ? bed : wake;
+    const value = new Date(2000, 0, 1, hourMinute(m).hour, hourMinute(m).minute);
+    if (Platform.OS === 'android') {
+      DateTimePickerAndroid.open({
+        value,
+        mode: 'time',
+        is24Hour: true,
+        onChange: (event, date) => event.type === 'set' && date && setTime(which, minuteOfDay(date.getHours(), date.getMinutes())),
+      });
+    } else setPicking(which);
+  };
+
+  const save = async () => {
     setSaving(true);
     try {
-      // Build a suggested wake time
-      const now = new Date();
-      const sleepDate = new Date(now);
-      sleepDate.setHours(sleepHour, sleepMin, 0, 0);
-      if (sleepDate < now) sleepDate.setDate(sleepDate.getDate() + 1);
-
-      const wakeDate = new Date(sleepDate);
-      wakeDate.setHours(wakeHour, wakeMin, 0, 0);
-      if (wakeDate <= sleepDate) wakeDate.setDate(wakeDate.getDate() + 1);
-
-      if (autoSetAlarm && !selectedDays.length) throw new Error('Choose at least one repeat day.');
-      // Ask for permissions and schedule before persisting an enabled switch.
-      await saveWakeAlarm({ enabled: autoSetAlarm, wakeHour, wakeMin, selectedDays });
-      if (bedtimeReminder && selectedDays.length > 0) {
-        await scheduleBedtimeReminders({ sleepHour, sleepMin, selectedDays });
-      } else {
-        await cancelBedtimeReminders();
-      }
+      const b = hourMinute(bed);
+      const w = hourMinute(wake);
+      if (alarm && !days.length) throw new Error(t('sleepFlow.schedule.chooseDay'));
+      // Always called: turning the alarm off also retires the old notification alarms.
+      await saveWakeAlarm({ enabled: alarm, wakeHour: w.hour, wakeMin: w.minute, selectedDays: days });
+      if (reminder && days.length) await scheduleBedtimeReminders({ sleepHour: b.hour, sleepMin: b.minute, selectedDays: days });
+      else await cancelBedtimeReminders();
       await saveSchedule({
-        sleepHour,
-        sleepMin,
-        wakeHour,
-        wakeMin,
-        snoozeCount: 0,
-        selectedDays,
-        autoDisplayStats,
-        autoSetAlarm,
-        bedtimeReminder,
+        sleepHour: b.hour,
+        sleepMin: b.minute,
+        wakeHour: w.hour,
+        wakeMin: w.minute,
+        selectedDays: days,
+        bedtimeReminder: reminder,
+        autoSetAlarm: alarm,
       });
-      await setSleepMode({ suggestedWakeISO: wakeDate.toISOString(), autoDetectionEnabled: false });
-
+      // Tonight's suggested wake time, for sleep mode and wake detection.
+      const next = new Date();
+      next.setHours(b.hour, b.minute, 0, 0);
+      if (next.getTime() < Date.now()) next.setDate(next.getDate() + 1);
+      await setSleepMode({ suggestedWakeISO: new Date(next.getTime() + windowMinutes(bed, wake) * 60_000).toISOString() });
       toast.success(t('sleepSchedule.scheduleSaved'));
       finishTo('/(tabs)/sleep');
     } catch (err) {
-      console.error('Failed to save schedule:', err);
       toast.error(err instanceof Error ? err.message : t('sleepSchedule.scheduleSaveError'));
     } finally {
       setSaving(false);
     }
   };
 
-  return (
-    <View style={[s.container, { backgroundColor: colors.background, paddingTop: insets.top + 6 }]}>
-      {/* ── Header ──────────────────────────────── */}
-      <View style={s.header}>
-        <Pressable
-          onPress={() => goBack(from)}
-          style={({ pressed }) => [
-            s.backBtn,
-            {
-              backgroundColor: colors.card,
-              borderColor: colors.border,
-              opacity: pressed ? 0.7 : 1,
-            },
-          ]}
-        >
-          <MaterialIcons
-            name={Platform.OS === 'ios' ? 'arrow-back-ios-new' : 'arrow-back'}
-            size={18}
-            color={colors.text}
-          />
-        </Pressable>
-        <View style={{ flex: 1 }}>
-          <Text style={[s.headerTitle, { color: colors.text }]}>{t('sleepSchedule.title')}</Text>
-          <Text style={[s.headerSub, { color: colors.mutedText }]}>
-            {t('sleepSchedule.subtitle')}
-          </Text>
-        </View>
+  const tile = (which: 'bed' | 'wake', icon: IconName, label: string) => (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${label}, ${clock(which === 'bed' ? bed : wake)}`}
+      onPress={() => openPicker(which)}
+      style={({ pressed }) => ({ flex: 1, minHeight: 76, borderRadius: 24, backgroundColor: palette.white, padding: 16, gap: 4, opacity: pressed ? 0.85 : 1 })}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        <Icon name={icon} size={16} />
+        <Text style={[Type.caption, { fontWeight: '500', color: palette.textSubtle }]}>{label}</Text>
       </View>
+      <Text style={[Type.titleMd, { lineHeight: 30, color: palette.ink }]}>{clock(which === 'bed' ? bed : wake)}</Text>
+    </Pressable>
+  );
 
-      <ScrollView contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* ── Time Pickers ──────────────────────── */}
-        <View style={s.timePickersRow}>
-          {/* Sleep At */}
-          <View
-            style={[s.timePicker, { backgroundColor: colors.card, borderColor: colors.border }]}
-          >
-            <Text style={[s.timeLabel, { color: colors.mutedText }]}>
-              {t('sleepSchedule.sleepAt')}
-            </Text>
-            <View style={s.timeColumnsRow}>
-              {/* Hour spinner */}
-              <View style={s.timeControls}>
-                <Pressable onPress={() => adjustTime('sleep', 'hour', -1)} hitSlop={8}>
-                  <MaterialIcons name="keyboard-arrow-up" size={22} color={colors.subtleText} />
-                </Pressable>
-                <Text style={[s.timeValue, { color: colors.text }]}>{formatH(sleepHour)}</Text>
-                <Pressable onPress={() => adjustTime('sleep', 'hour', 1)} hitSlop={8}>
-                  <MaterialIcons name="keyboard-arrow-down" size={22} color={colors.subtleText} />
-                </Pressable>
-              </View>
-              <Text style={[s.timeSeparator, { color: colors.mutedText }]}>:</Text>
-              {/* Minute spinner */}
-              <View style={s.timeControls}>
-                <Pressable onPress={() => adjustTime('sleep', 'min', -1)} hitSlop={8}>
-                  <MaterialIcons name="keyboard-arrow-up" size={22} color={colors.subtleText} />
-                </Pressable>
-                <Text style={[s.timeValue, { color: colors.text }]}>{formatM(sleepMin)}</Text>
-                <Pressable onPress={() => adjustTime('sleep', 'min', 1)} hitSlop={8}>
-                  <MaterialIcons name="keyboard-arrow-down" size={22} color={colors.subtleText} />
-                </Pressable>
-              </View>
-            </View>
-          </View>
-
-          {/* Wake Up At */}
-          <View
-            style={[s.timePicker, { backgroundColor: colors.card, borderColor: colors.border }]}
-          >
-            <Text style={[s.timeLabel, { color: colors.mutedText }]}>
-              {t('sleepSchedule.wakeUpAt')}
-            </Text>
-            <View style={s.timeColumnsRow}>
-              {/* Hour spinner */}
-              <View style={s.timeControls}>
-                <Pressable onPress={() => adjustTime('wake', 'hour', -1)} hitSlop={8}>
-                  <MaterialIcons name="keyboard-arrow-up" size={22} color={colors.subtleText} />
-                </Pressable>
-                <Text style={[s.timeValue, { color: colors.text }]}>{formatH(wakeHour)}</Text>
-                <Pressable onPress={() => adjustTime('wake', 'hour', 1)} hitSlop={8}>
-                  <MaterialIcons name="keyboard-arrow-down" size={22} color={colors.subtleText} />
-                </Pressable>
-              </View>
-              <Text style={[s.timeSeparator, { color: colors.mutedText }]}>:</Text>
-              {/* Minute spinner */}
-              <View style={s.timeControls}>
-                <Pressable onPress={() => adjustTime('wake', 'min', -1)} hitSlop={8}>
-                  <MaterialIcons name="keyboard-arrow-up" size={22} color={colors.subtleText} />
-                </Pressable>
-                <Text style={[s.timeValue, { color: colors.text }]}>{formatM(wakeMin)}</Text>
-                <Pressable onPress={() => adjustTime('wake', 'min', 1)} hitSlop={8}>
-                  <MaterialIcons name="keyboard-arrow-down" size={22} color={colors.subtleText} />
-                </Pressable>
-              </View>
-            </View>
-          </View>
-        </View>
-
-        <View style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[s.cardTitle, { color: colors.text }]}>Wake-up alarm</Text>
-          <Text style={[s.settingSub, { color: colors.mutedText }]}>
-            {supportsAlarm
-              ? 'Rings even with Silent Mode or Focus on. Stop the alarm from your Lock Screen.'
-              : 'Ringing alarms require the updated iPhone app and iOS 26 or later.'}
-          </Text>
-          {supportsAlarm && (
-            <Pressable
-              onPress={async () => {
-                try {
-                  await testWakeAlarm();
-                  toast.info('Test alarm set for 15 seconds from now.');
-                } catch (error) {
-                  toast.error(
-                    error instanceof Error ? error.message : 'Unable to set the test alarm.',
-                  );
-                }
-              }}
-              style={{ paddingVertical: 16 }}
-            >
-              <Text
-                style={{
-                  fontFamily: Typography.family.body,
-                  color: colors.primary,
-                  fontWeight: Typography.weight.semibold,
-                }}
-              >
-                Test ringing alarm
-              </Text>
-            </Pressable>
-          )}
-        </View>
-
-        {/* ── Auto Repeat Days ──────────────────── */}
-        <View style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[s.cardTitle, { color: colors.text }]}>
-            {t('sleepSchedule.autoRepeatEvery')}
-          </Text>
-          <View style={s.daysRow}>
-            {DAYS.map((day) => (
-              <Pressable
-                key={day}
-                onPress={() => toggleDay(day)}
-                style={[
-                  s.dayBtn,
-                  {
-                    backgroundColor: selectedDays.includes(day) ? '#8B6B47' : colors.inputBg,
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    s.dayBtnText,
-                    { color: selectedDays.includes(day) ? '#FFF' : colors.text },
-                  ]}
-                >
-                  {day}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
-
-        {/* ── Toggle Settings ───────────────────── */}
-        <View style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <View style={s.settingRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={[s.settingLabel, { color: colors.text }]}>
-                {t('sleepSchedule.autoDisplayStats')}
-              </Text>
-              <Text style={[s.settingSub, { color: colors.mutedText }]}>
-                {t('sleepSchedule.autoDisplayStatsDesc')}
-              </Text>
-            </View>
-            <ToggleSwitch
-              value={autoDisplayStats}
-              onToggle={() => setAutoDisplayStats(!autoDisplayStats)}
-              activeColor="#5B8A5A"
-              inactiveColor={colors.divider}
-            />
-          </View>
-
-          <View style={[s.divider, { backgroundColor: colors.divider }]} />
-
-          <View style={s.settingRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={[s.settingLabel, { color: colors.text }]}>Enable wake-up alarm</Text>
-              <Text style={[s.settingSub, { color: colors.mutedText }]}>
-                Ring at your wake-up time on the selected days.
-              </Text>
-            </View>
-            <ToggleSwitch
-              value={autoSetAlarm}
-              onToggle={() => {
-                if (supportsAlarm || autoSetAlarm) setAutoSetAlarm(!autoSetAlarm);
-                else toast.info('Ringing alarms require iOS 26 or later.');
-              }}
-              activeColor="#5B8A5A"
-              inactiveColor={colors.divider}
-            />
-          </View>
-
-          <View style={[s.divider, { backgroundColor: colors.divider }]} />
-
-          <View style={s.settingRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={[s.settingLabel, { color: colors.text }]}>
-                {t('sleepSchedule.bedtimeReminder')}
-              </Text>
-              <Text style={[s.settingSub, { color: colors.mutedText }]}>
-                {t('sleepSchedule.bedtimeReminderDesc')}
-              </Text>
-            </View>
-            <ToggleSwitch
-              value={bedtimeReminder}
-              onToggle={() => setBedtimeReminder(!bedtimeReminder)}
-              activeColor="#7E57C2"
-              inactiveColor={colors.divider}
-            />
-          </View>
-        </View>
-
-        {/* ── Duration Preview ──────────────────── */}
-        <View style={[s.previewCard, { backgroundColor: '#5A3E7A' }]}>
-          <View style={[s.previewCircle, { backgroundColor: 'rgba(255,255,255,0.06)' }]} />
-          <MaterialIcons name="hotel" size={22} color="rgba(255,255,255,0.7)" />
-          <Text style={s.previewText}>
-            Sleep duration: ~
-            {(() => {
-              let totalMin = wakeHour * 60 + wakeMin - (sleepHour * 60 + sleepMin);
-              if (totalMin <= 0) totalMin += 24 * 60;
-              const h = Math.floor(totalMin / 60);
-              const m = totalMin % 60;
-              return m > 0 ? `${h}h ${m}m` : `${h}h`;
-            })()}
-          </Text>
-        </View>
-
-        {/* ── Save Button ───────────────────────── */}
-        <Pressable
-          onPress={handleSave}
-          disabled={saving}
-          style={({ pressed }) => [
-            s.saveBtn,
-            {
-              backgroundColor: '#8B6B47',
-              transform: [{ scale: pressed ? 0.97 : 1 }],
-              opacity: saving ? 0.7 : 1,
-            },
-          ]}
-        >
-          <MaterialIcons name="check-circle" size={20} color="#FFF" />
-          <Text style={s.saveBtnText}>
-            {saving ? t('sleepSchedule.saving') : t('sleepSchedule.setSchedule')}
-          </Text>
-        </Pressable>
-      </ScrollView>
+  const row = (label: string, value: boolean, onChange: (v: boolean) => void) => (
+    <View style={{ minHeight: 56, borderRadius: 24, backgroundColor: palette.white, flexDirection: 'row', alignItems: 'center', paddingLeft: 20, paddingRight: 16, gap: 12 }}>
+      <Text style={[Type.bodySMedium, { flex: 1, color: palette.ink }]}>{label}</Text>
+      <Toggle value={value} onValueChange={onChange} accessibilityLabel={label} />
     </View>
   );
+
+  const window = windowMinutes(bed, wake);
+  return (
+    <SettingsScreen
+      title={t('sleepFlow.schedule.title')}
+      backLabel={t('common.back')}
+      onBack={() => backTo(from, '/(tabs)/sleep')}
+      glows={[
+        { color: palette.lavenderSoft, opacity: 0.3, x: -50, y: -20, width: 280, blur: 80 },
+        { color: palette.sky, opacity: 0.22, x: 180, y: 60, width: 220, blur: 80 },
+      ]}
+      contentStyle={{ gap: 16 }}
+      scrollEnabled={!dragging}
+      cta={<AppButton title={t('sleepFlow.schedule.save')} icon="line/check" iconPosition="left" busy={saving} onPress={save} />}
+    >
+      <StatusBar style="dark" />
+      <Text accessibilityRole="header" style={[Type.titleLg, { lineHeight: 36, color: palette.ink }]}>
+        {t('sleepFlow.schedule.question')}
+      </Text>
+      <SleepDial
+        bed={bed}
+        wake={wake}
+        onChange={(b, w) => {
+          setBed(b);
+          setWake(w);
+        }}
+        centreLabel={formatWindow(window)}
+        centreSub={t('sleepFlow.schedule.inBed')}
+        onDragging={setDragging}
+        accessibilityLabel={t('sleepFlow.schedule.dialLabel', { bed: clock(bed), wake: clock(wake), length: formatWindow(window) })}
+      />
+      <View style={{ flexDirection: 'row', gap: 8 }}>
+        {tile('bed', 'line/moon', t('sleepFlow.schedule.bedtime'))}
+        {tile('wake', 'line/star', t('sleepFlow.schedule.wakeUp'))}
+      </View>
+
+      <Text style={[Type.chipSelected, { color: palette.ink, marginTop: 4 }]}>{t('sleepFlow.schedule.repeat')}</Text>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: -8 }}>
+        {DAYS.map((key) => {
+          const on = days.includes(key);
+          return (
+            <Pressable
+              key={key}
+              accessibilityRole="checkbox"
+              accessibilityLabel={names[sundayIndex(key)]}
+              accessibilityState={{ checked: on }}
+              onPress={() => setDays((d) => (on ? d.filter((x) => x !== key) : [...d, key]))}
+              style={{
+                width: 41,
+                height: 41,
+                borderRadius: 21,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: on ? palette.selected : palette.white,
+                borderWidth: on ? 1.5 : 1,
+                borderColor: on ? palette.plum : palette.border,
+              }}
+            >
+              <Text style={[Type.chip, { fontWeight: on ? '600' : '500', color: on ? palette.plum : palette.textMuted }]}>
+                {letters[sundayIndex(key)]}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      {row(t('sleepFlow.schedule.windDown', { minutes: BEDTIME_REMINDER_MINUTES }), reminder, setReminder)}
+      {/* Figma has no alarm row; the ringing alarm (iOS 26+) keeps a home here (06 §S2 gaps). */}
+      {supportsAlarm && row(t('sleepFlow.schedule.alarm'), alarm, setAlarm)}
+
+      {Platform.OS === 'ios' && (
+        <BottomSheet visible={picking !== null} onClose={() => setPicking(null)}>
+          {picking && (
+            <DateTimePicker
+              value={new Date(2000, 0, 1, hourMinute(picking === 'bed' ? bed : wake).hour, hourMinute(picking === 'bed' ? bed : wake).minute)}
+              mode="time"
+              display="spinner"
+              minuteInterval={5}
+              onChange={(_, date) => date && setTime(picking, minuteOfDay(date.getHours(), date.getMinutes()))}
+            />
+          )}
+          <AppButton title={t('sleepFlow.done')} onPress={() => setPicking(null)} style={{ alignSelf: 'stretch' }} />
+        </BottomSheet>
+      )}
+    </SettingsScreen>
+  );
 }
-
-/* ── Styles ──────────────────────────────────────── */
-const s = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingHorizontal: UI.spacing.xl,
-  } as any,
-
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    marginTop: 6,
-    marginBottom: 4,
-  } as any,
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-  },
-  headerTitle: { ...Typography.heading },
-  headerSub: { fontFamily: Typography.family.body, fontSize: 14, marginTop: 2 },
-
-  scrollContent: {
-    paddingTop: 16,
-    paddingBottom: 100,
-    gap: 14,
-  },
-
-  /* time pickers */
-  timePickersRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  timePicker: {
-    flex: 1,
-    borderRadius: UI.radius.xxl,
-    padding: 18,
-    borderWidth: 1,
-    alignItems: 'center',
-    ...UI.shadow.sm,
-  },
-  timeLabel: {
-    fontFamily: Typography.family.body,
-    fontSize: 12,
-    fontWeight: Typography.weight.bold,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 10,
-  },
-  timeColumnsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-  },
-  timeControls: {
-    alignItems: 'center',
-    gap: 4,
-  },
-  timeSeparator: {
-    fontFamily: Typography.family.body,
-    fontSize: 20,
-    fontWeight: Typography.weight.bold,
-    marginTop: 2,
-  },
-  timeValue: {
-    fontFamily: Typography.family.body,
-    fontSize: 18,
-    fontWeight: Typography.weight.bold,
-  },
-
-  /* cards */
-  card: {
-    borderRadius: UI.radius.xxl,
-    padding: 18,
-    borderWidth: 1,
-    ...UI.shadow.sm,
-  },
-  cardTitle: { ...Typography.cardHeading,  marginBottom: 14 },
-
-  /* snooze */
-  snoozeRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  snoozeBtn: {
-    flex: 1,
-    height: 44,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  snoozeBtnText: {
-    fontFamily: Typography.family.body,
-    fontSize: 16,
-    fontWeight: Typography.weight.semibold,
-  },
-
-  /* days */
-  daysRow: {
-    flexDirection: 'row',
-    gap: 8,
-    flexWrap: 'wrap',
-  },
-  dayBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 12,
-  },
-  dayBtnText: {
-    fontFamily: Typography.family.body,
-    fontSize: 13,
-    fontWeight: Typography.weight.semibold,
-  },
-
-  /* settings */
-  settingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 4,
-  },
-  settingLabel: {
-    fontFamily: Typography.family.body,
-    fontSize: 14,
-    fontWeight: Typography.weight.medium,
-  },
-  settingSub: { fontFamily: Typography.family.body, fontSize: 12, marginTop: 2 },
-  divider: { height: 1, marginVertical: 14 },
-
-  /* preview */
-  previewCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    borderRadius: UI.radius.xxl,
-    padding: 16,
-    overflow: 'hidden',
-    ...UI.shadow.sm,
-  },
-  previewCircle: {
-    position: 'absolute',
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    top: -30,
-    right: -20,
-  },
-  previewText: {
-    fontFamily: Typography.family.body,
-    color: '#FFF',
-    fontSize: 15,
-    fontWeight: Typography.weight.semibold,
-  },
-
-  /* save */
-  saveBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 16,
-    borderRadius: UI.radius.lg,
-    ...UI.shadow.md,
-  },
-  saveBtnText: {
-    fontFamily: Typography.family.body,
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: Typography.weight.semibold,
-  },
-});

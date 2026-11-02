@@ -37,10 +37,40 @@ export async function playSoundscape(key: string): Promise<void> {
   }
 }
 
+let stopTimer: ReturnType<typeof setTimeout> | null = null;
+let fadeTimer: ReturnType<typeof setInterval> | null = null;
+
+function clearStopTimers() {
+  if (stopTimer) clearTimeout(stopTimer);
+  if (fadeTimer) clearInterval(fadeTimer);
+  stopTimer = null;
+  fadeTimer = null;
+}
+
+/**
+ * Stop the soundscape after `minutes`, fading it out over the last 30 seconds ("Stop sound after",
+ * 06 §S3). Null keeps it playing.
+ */
+export function stopSoundscapeAfter(minutes: number | null): void {
+  clearStopTimers();
+  if (minutes == null || !currentPlayer) return;
+  const fadeMs = 30_000;
+  stopTimer = setTimeout(() => {
+    const start = currentPlayer?.volume ?? 0.6;
+    let step = 0;
+    fadeTimer = setInterval(() => {
+      step++;
+      setSoundscapeVolume(start * (1 - step / 30));
+      if (step >= 30) void stopSoundscape();
+    }, fadeMs / 30);
+  }, Math.max(0, minutes * 60_000 - fadeMs));
+}
+
 /**
  * Stop the current soundscape and release the player.
  */
 export async function stopSoundscape(): Promise<void> {
+  clearStopTimers();
   if (currentPlayer) {
     try {
       currentPlayer.pause();
