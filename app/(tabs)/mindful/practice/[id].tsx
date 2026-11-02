@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -10,16 +10,11 @@ import { Icon } from '@/components/icons/Icon';
 import { Glow, GlowField } from '@/components/glow/Glow';
 import { AppButton } from '@/components/ui/AppButton';
 import { Toggle } from '@/components/ui/controls';
-import { IconButton, NavBar } from '@/components/ui/IconButton';
-import { toast } from '@/components/Toast';
-import {
-  DarkToast,
-  OptionPills,
-  SoundSheet,
-  usePracticeText,
-} from '@/components/practices/PracticeParts';
-import { practiceById, type SoundKey } from '@/data/practices';
-import { useFavourites } from '@/hooks/usePractices';
+import { NavBar } from '@/components/ui/IconButton';
+import { OptionPills, SoundSheet, usePracticeText } from '@/components/practices/PracticeParts';
+import { practiceById, type Practice, type SoundKey } from '@/data/practices';
+import { VideoDetails } from '@/components/practices/VideoDetails';
+import { useFavouriteHeart } from '@/hooks/useFavouriteHeart';
 import { backTo } from '@/lib/navigation';
 import type { Pace } from '@/lib/practices';
 
@@ -145,38 +140,31 @@ function Divider() {
  * and Start practice. The sound row opens Choose a sound. The design's voice guidance toggle is left
  * out because there are no narration recordings yet.
  */
-export default function PracticeSetup() {
-  const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
+export default function PracticeScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const practice = practiceById(id);
-  const text = usePracticeText();
-  const { isFavourite, setFavourite } = useFavourites();
-  const [pace, setPace] = useState<Pace>('slow');
-  const [duration, setDuration] = useState(practice?.defaultDuration ?? 5);
-  const [sound, setSound] = useState<SoundKey>(practice?.options.sound ?? 'silence');
-  const [haptics, setHaptics] = useState(practice?.options.haptics ?? false);
-  const [fadeOut, setFadeOut] = useState(practice?.options.fadeOut ?? false);
-  const [soundOpen, setSoundOpen] = useState(false);
-  const [toastText, setToastText] = useState<string | null>(null);
-  const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  useEffect(() => () => clearTimeout(toastTimer.current), []);
+  if (!practice) return null;
+  return practice.kind === 'video' ? (
+    <VideoDetails practice={practice} />
+  ) : (
+    <PracticeSetup practice={practice} />
+  );
+}
 
-  if (!practice || practice.kind === 'video') return null;
+function PracticeSetup({ practice }: { practice: Practice }) {
+  const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
+  const text = usePracticeText();
+  const heart = useFavouriteHeart(practice.id, insets.bottom + 90);
+  const [pace, setPace] = useState<Pace>('slow');
+  const [duration, setDuration] = useState(practice.defaultDuration ?? 5);
+  const [sound, setSound] = useState<SoundKey>(practice.options.sound ?? 'silence');
+  const [haptics, setHaptics] = useState(practice.options.haptics ?? false);
+  const [fadeOut, setFadeOut] = useState(practice.options.fadeOut ?? false);
+  const [soundOpen, setSoundOpen] = useState(false);
+
   const category = practice.category as 'breathing' | 'mindfulness' | 'sleep';
   const x = text(practice);
-  const saved = isFavourite(practice.id);
-
-  async function toggleFavourite() {
-    try {
-      await setFavourite(practice!.id, !saved);
-      setToastText(t(saved ? 'practices.setup.removed' : 'practices.setup.saved'));
-      clearTimeout(toastTimer.current);
-      toastTimer.current = setTimeout(() => setToastText(null), 2000);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : String(err));
-    }
-  }
 
   const start = () =>
     router.push({
@@ -210,18 +198,7 @@ export default function PracticeSetup() {
         title={t(`practices.categories.${category}.title`)}
         backLabel={t('common.back')}
         onBack={() => backTo(undefined, '/(tabs)/mindful')}
-        trailing={
-          <IconButton
-            variant="solid"
-            icon={saved ? 'line/heart-filled' : 'line/heart'}
-            iconSize={20}
-            active={saved}
-            accessibilityLabel={t(
-              saved ? 'practices.setup.unfavourite' : 'practices.setup.favourite',
-            )}
-            onPress={() => void toggleFavourite()}
-          />
-        }
+        trailing={heart.button}
         style={{ marginTop: insets.top + 10, marginHorizontal: 24 }}
       />
       <ScrollView
@@ -360,7 +337,7 @@ export default function PracticeSetup() {
       <View style={{ paddingHorizontal: 24, paddingTop: 8, paddingBottom: insets.bottom + 14 }}>
         <AppButton title={t('practices.setup.start')} onPress={start} />
       </View>
-      <DarkToast text={toastText ?? ''} visible={!!toastText} bottom={insets.bottom + 90} />
+      {heart.toast}
       <SoundSheet
         visible={soundOpen}
         category={category}

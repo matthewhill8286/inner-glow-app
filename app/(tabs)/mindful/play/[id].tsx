@@ -15,8 +15,10 @@ import {
   CompleteModal,
   EndEarlySheet,
   usePracticeText,
+  Waveform,
 } from '@/components/practices/PracticeParts';
 import { practiceById } from '@/data/practices';
+import { VideoPlayer } from '@/components/practices/VideoPlayer';
 import { useMindfulness } from '@/hooks/useMindfulness';
 import { useDailyGoal } from '@/hooks/usePractices';
 import { useAccessibilityPrefs } from '@/lib/accessibility-prefs';
@@ -42,7 +44,14 @@ const MIN_SAVE_SECONDS = 10;
  * built (07 §2.15–2.16). Leaving early asks first (07 §2.8); the end shows Complete (07 §2.9). Each
  * session is saved with the practice, its options and whether it finished.
  */
-export default function PracticePlayer() {
+export default function PlayScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const practice = practiceById(id);
+  if (!practice) return null;
+  return practice.kind === 'video' ? <VideoPlayer practice={practice} /> : <PracticePlayer />;
+}
+
+function PracticePlayer() {
   useKeepAwake();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -174,10 +183,11 @@ export default function PracticePlayer() {
     practice.pattern?.doubleInhale &&
     phase === 'inhale' &&
     elapsedRef.current % cycle > pattern.inhale / 2;
-  const heading = isBreathing ? t(`practices.player.${phase}`) : t('practices.player.calm');
+  // Mindfulness and sleep show the practice name and its line over the waveform (07 §2.15–2.16).
+  const heading = isBreathing ? t(`practices.player.${phase}`) : title;
   const guidance = isBreathing
     ? t(doubleInhaleSecond ? 'practices.player.inhale2Body' : `practices.player.${phase}Body`)
-    : t('practices.player.calmBody');
+    : text(practice).description;
   const completeTitle =
     practice.kind === 'breathing'
       ? t('practices.complete.breathing')
@@ -235,12 +245,29 @@ export default function PracticePlayer() {
           {guidance}
         </Text>
         <View style={{ marginTop: 20 }}>
-          <BreathingOrb
-            scale={scale}
-            hold={isBreathing && (phase === 'hold' || phase === 'holdAfter') && running}
-            paused={!running && !done}
-          />
+          {isBreathing ? (
+            <BreathingOrb
+              scale={scale}
+              hold={phase === 'hold' || phase === 'holdAfter'}
+              paused={!running && !done}
+            />
+          ) : (
+            <Waveform
+              running={running && !done}
+              tone={practice.kind === 'sleep' ? 'sleep' : 'mindful'}
+            />
+          )}
         </View>
+        {practice.kind === 'sleep' && (
+          <Text
+            style={[
+              Type.microBold,
+              { fontSize: 20, lineHeight: 32, color: palette.lavender, marginTop: 16 },
+            ]}
+          >
+            {t(`practices.sounds.${params.sound ?? 'silence'}.name`)}
+          </Text>
+        )}
         {isBreathing && (
           <Text
             style={[
