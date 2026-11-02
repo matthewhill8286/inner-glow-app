@@ -24,7 +24,7 @@ Shared items are owned by the foundations doc (`00-foundations.md`) and are only
 | | `4002:14476` | Forgot password | `app/(auth)/forgot-password.tsx` |
 | | `6015:1261` | Check your inbox (modal) | `forgot-password.tsx` modal |
 
-Intended flow from the frame order: Splash → Quote → Progress → Welcome landing → Consent → Steps 1–5 → Paywall → Sign up. "Already have an account? Sign In." on the landing goes to Sign in. Current code goes `index` → `splash-loading` → `welcome` (6 slides) → `sign-up` → `assessment` (`app/(onboarding)/welcome.tsx:57-64`, `app/(auth)/sign-up.tsx:66`). Reset-password and two-factor screens have no Figma counterpart in these sections and keep their current layout restyled with tokens.
+Intended flow from the frame order: Splash → Quote → Progress → Welcome landing → Consent → Steps 1–5 → Paywall → Sign up. **Decision (Nov 2026): there is no paywall before sign-up. "Your plan is ready" (02 A15), shown after the assessment, is the onboarding paywall, so purchases always belong to an account and nobody sees two paywalls in a row. Step Five goes straight to Sign up.** The built flow is Splash → … → Steps 1–5 → Sign up → Assessment → Your plan is ready → Profile setup. "Already have an account? Sign In." on the landing goes to Sign in. Current code goes `index` → `splash-loading` → `welcome` (6 slides) → `sign-up` → `assessment` (`app/(onboarding)/welcome.tsx:57-64`, `app/(auth)/sign-up.tsx:66`). Reset-password and two-factor screens have no Figma counterpart in these sections and keep their current layout restyled with tokens.
 
 ### The logo mark (one parametric component)
 
@@ -165,7 +165,7 @@ Shared chrome for all five steps:
 
 Step One's bottom block sits 6px higher than the others (track y 538.5, title y 568, FAB y 668). Treat this as a Figma inconsistency and use the Steps Two–Five values for all five.
 
-Titles verbatim: "Gently personalised support, just for you" / "Notice How You’re Feeling" / "Talk, Reflect, and Unwind" / "Moments of Calm and Clarity" / "Support When You Need It". There is no body copy, no back button and no skip on these frames. Swiping left/right should also page. FAB on Step Five → Paywall.
+Titles verbatim: "Gently personalised support, just for you" / "Notice How You’re Feeling" / "Talk, Reflect, and Unwind" / "Moments of Calm and Clarity" / "Support When You Need It". There is no body copy, no back button and no skip on these frames. Swiping left/right should also page. FAB on Step Five → Paywall in the frames; built as FAB on Step Five → Sign up (see the decision in §1).
 
 Step-specific artwork (all coordinates inside the 375×480 illustration frame):
 
@@ -218,7 +218,7 @@ Gaps vs code (landing + carousel):
 - `components/WelcomeArtwork.tsx:5-106` draws six green line illustrations (sunrise mark, notebook, chat bubbles, chart, book, circles). Replace entirely with the five artworks above plus the landing illustration.
 - `app/(onboarding)/welcome.tsx:11-17` `HIGHLIGHT_COLORS` are old palette and the design has no highlighted keywords. Delete them and `buildTitleSegments`.
 - `app/(onboarding)/welcome.tsx:46` builds 6 slides; design has landing + 5 steps, with Consent between landing and Step One and Paywall after Step Five.
-- `app/(onboarding)/welcome.tsx:61-62` writes `onboarding:seen:v1` and goes to sign-up. Move the write to after the paywall (or its close) and route to sign-up from there.
+- `app/(onboarding)/welcome.tsx:61-62` writes `onboarding:seen:v1` and goes to sign-up. Kept: there is no paywall before sign-up (see the decision in §1).
 - `i18n/locales/en/translation.ts:118-157` welcome copy is entirely different from the design and needs replacing (landing title/body, step tags, step titles, consent copy).
 - Consent screen has no code counterpart.
 
@@ -279,7 +279,7 @@ Gaps vs code (paywall):
 - `trial-upgrade.tsx:365-410` renders plan tabs with `#8B6B47` brown fills; design uses white cards with radio selection and `#6B5279` border.
 - `trial-upgrade.tsx:295-303` "Premium" hero badge and `t('auth.premiumTitle')` "InnerGlow Premium". Design uses the logo mark and "Try Pro free for 7 days".
 - `lib/purchase-products.ts:1-13` and `lib/revenuecat.ts:37-40` only know `monthly` and `lifetime`. There is no yearly product, no `$rc_annual` package and no intro-offer handling.
-- `app/(utils)/_layout.tsx:3` lists `trial-upgrade` in `PRIVATE_SCREENS`, so it needs a session. The onboarding paywall appears before sign-up, so it either needs an anonymous RevenueCat user (aliased after sign-up) or the paywall must move to after sign-up.
+- `app/(utils)/_layout.tsx:3` lists `trial-upgrade` in `PRIVATE_SCREENS`, so it needs a session. Resolved: there is no paywall before sign-up, so the paywall always has a session (see the decision in §1).
 - `i18n/locales/en/translation.ts:212-235` holds the old plan copy (`monthlyPlanPrice: '10€/mo'`, `lifetimePlanPrice: '72€'`). Replace with paywall keys.
 
 ### 2.8 Sign in `4002:14430`
@@ -447,7 +447,7 @@ No raster assets are used in these sections.
 3. Add the "Before we begin" consent screen with the agree checkbox, gated CTA and local consent capture (01 §2.5).
 4. Rebuild the welcome carousel chrome for Steps One–Five: Step tag, gradient step track, 30/38 title, 80px FAB, swipe paging and new i18n copy; delete the old slides and highlight colours (01 §2.6).
 5. Export the Step One aura contours (`6638:2898`) and Step Five network (`6638:2945`) as SVG and build the five carousel artworks (contours, gradient slider, overlapping circles, sunrise, constellation) from SVG primitives plus glow data (01 §2.6, §3).
-6. Build the shared `Paywall` component from the canonical "Try Pro free for 7 days" frame (plan cards, Save badge, feature rows, CTA, fine print with Restore) with a copy-variant API, and mount it in `trial-upgrade.tsx` and after Step Five (01 §2.7).
+6. Build the shared `Paywall` component from the canonical "Try Pro free for 7 days" frame (plan cards, Save badge, feature rows, CTA, fine print with Restore) with a copy-variant API, and mount it in `trial-upgrade.tsx` (01 §2.7). Done; there is no Step Five paywall (decision in §1).
 7. Add the yearly subscription with a 7-day intro offer to the stores, RevenueCat and `lib/purchase-products.ts` / `lib/revenuecat.ts`, read prices, savings and trial eligibility from RevenueCat, and retire the server-side `start_free_trial` path for the paywall (01 §2.7, §4).
 8. Restyle Sign in to the design: lockup, "Welcome back", white pill fields with labels, "Sign In" + arrow, footer links, social row placeholder (01 §2.8).
 9. Restyle Sign up to the design: "Create your space", email + password + confirmation fields, "Sign Up" + arrow, `Legal/Note`, remove the name field, and persist the consent record after sign-up (01 §2.9, §2.5).
@@ -462,7 +462,7 @@ No raster assets are used in these sections.
 - **Old-palette leftovers in Figma:** `#838264` (olive) on "Sign In." / "Sign Up." links (`4002:13887`, `4002:14456`, `4002:14475`); `#9BB068` @ 0.25 green focus ring on the selected reset card (`4002:14487`); `#4B3425` brown in modal and card shadows (`6015:1314`, `6015:1320`, `4002:14488`). Suggest `#6B5279` for the links, `#6B5279`@0.18 for the focus ring (matching the input focus ring) and a neutral or `#241A2E` shadow.
 - **Copy artefacts:** "Notice How You’re Feeling" ends with a U+2028 line separator (`4002:14027`); "Talk, Reflect, and Unwind" ends with a newline (`4002:14220`); the landing body uses U+2028 to force breaks (`4002:13794`). Step titles mix Title Case ("Notice How You’re Feeling") with sentence case ("Gently personalised support, just for you"). Brand name appears as "InnerGlow", "INNER GLOW" and "inner glow" on different screens. "Forgot Password" and "Sign In." / "Sign Up." carry inconsistent capitalisation and trailing periods.
 - **Layer hygiene:** layer names are left over from the freud UI kit ("Welcome to the ultimate freud UI Kit", "Sign In To freud ai", "Personalize Your Men…"). The `Legal/Note` text layer is named "INNER GLOW supports your wellbeing…" but contains different copy. Each step has an empty `Progress Bar` instance (`4002:13972` etc.) that renders nothing. Step Three's bottom frame (`4002:14217`) is offset 2px right and is 373 wide.
-- **Flow ambiguity:** the paywall sits before sign-up but the current paywall route needs a session and purchases are tied to the user. Product must decide between an anonymous RevenueCat purchase that is aliased at sign-up, or moving the onboarding paywall after sign-up.
+- ~~**Flow ambiguity:** the paywall sits before sign-up but the current paywall route needs a session and purchases are tied to the user.~~ **Resolved:** no paywall before sign-up; "Your plan is ready" after the assessment is the onboarding paywall (see §1).
 - **Trial model conflict:** the design's store intro trial auto-renews; the current app trial is a free, non-renewing, server-side AI trial with copy saying it "does not automatically renew". Product must choose one.
 - **Forgot password data source:** the design shows a masked email and phone with no input, which requires knowing the account. It is unclear whether the email is passed from Sign in or entered on a missing step. There is also no design for the 6-digit code-entry screen or the new-password screen.
 - **Monthly CTA label and non-eligible trial copy** are not drawn.
