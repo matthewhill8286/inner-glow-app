@@ -660,27 +660,42 @@ export type Database = {
       mindfulness: {
         Row: {
           created_at: string
+          category: string | null
+          completed: boolean
           date_iso: string
           id: string
           note: string | null
+          options: Json
+          planned_seconds: number | null
+          practice_id: string | null
           seconds: number | null
           updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
+          category?: string | null
+          completed?: boolean
           date_iso?: string
           id?: string
           note?: string | null
+          options?: Json
+          planned_seconds?: number | null
+          practice_id?: string | null
           seconds?: number | null
           updated_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
+          category?: string | null
+          completed?: boolean
           date_iso?: string
           id?: string
           note?: string | null
+          options?: Json
+          planned_seconds?: number | null
+          practice_id?: string | null
           seconds?: number | null
           updated_at?: string
           user_id?: string
@@ -726,6 +741,12 @@ export type Database = {
         }
         Relationships: []
       }
+      practice_favourites: {
+        Row: { created_at: string; practice_id: string; user_id: string }
+        Insert: { created_at?: string; practice_id: string; user_id: string }
+        Update: { created_at?: string; practice_id?: string; user_id?: string }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_path: string | null
@@ -738,6 +759,7 @@ export type Database = {
           ai_tone: string
           ai_voice_replies: boolean
           notification_prefs: Json
+          mindful_goal_minutes: number
           nickname: string | null
           routine: string | null
           selected_issues: Json | null
@@ -757,6 +779,7 @@ export type Database = {
           ai_tone?: string
           ai_voice_replies?: boolean
           notification_prefs?: Json
+          mindful_goal_minutes?: number
           nickname?: string | null
           routine?: string | null
           selected_issues?: Json | null
@@ -776,6 +799,7 @@ export type Database = {
           ai_tone?: string
           ai_voice_replies?: boolean
           notification_prefs?: Json
+          mindful_goal_minutes?: number
           nickname?: string | null
           routine?: string | null
           selected_issues?: Json | null

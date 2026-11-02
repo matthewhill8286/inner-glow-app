@@ -1,356 +1,357 @@
-import { backTo } from '@/lib/navigation';
-import { Typography } from '@/constants/typography';
 import React from 'react';
-import { View, Text, Pressable, ScrollView, ActivityIndicator } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import ScreenHeader from '@/components/ScreenHeader';
-import { router } from 'expo-router';
-import { useMindfulness } from '@/hooks/useMindfulness';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors, UI } from '@/constants/theme';
-import MaterialIcons from '@/components/AppIcon';
+import { router, type Href } from 'expo-router';
+import { useTranslation } from 'react-i18next';
+import Svg, { Circle, Line, Path } from 'react-native-svg';
+import { palette } from '@/constants/theme';
+import { Type } from '@/constants/typography';
+import { Icon } from '@/components/icons/Icon';
+import { Glow, GlowField } from '@/components/glow/Glow';
+import { IconButton } from '@/components/ui/IconButton';
+import { useDailyGoal } from '@/hooks/usePractices';
+import { screenBottomPadding } from '@/lib/screen-layout';
 
-const SESSION_ICONS: Record<string, { icon: string; color: string }> = {
-  meditation: { icon: 'self-improvement', color: '#7B6DC9' },
-  breathing: { icon: 'air', color: '#5B8A5A' },
-  relaxation: { icon: 'spa', color: '#E8985A' },
-  sleep: { icon: 'bedtime', color: '#5A8FB5' },
-  focus: { icon: 'psychology', color: '#8B6B47' },
-};
+const RING = 220;
+const R = (RING - 5.5) / 2;
+const C = 2 * Math.PI * R;
 
-function formatHours(totalSeconds: number): string {
-  const hours = totalSeconds / 3600;
-  return hours.toFixed(2);
-}
-
-function getSessionType(note?: string): string {
-  if (!note) return 'meditation';
-  const lower = note.toLowerCase();
-  if (lower.includes('breath')) return 'breathing';
-  if (lower.includes('relax')) return 'relaxation';
-  if (lower.includes('sleep')) return 'sleep';
-  if (lower.includes('focus')) return 'focus';
-  return 'meditation';
-}
-
-function getSessionLabel(note?: string): string {
-  if (!note) return 'Mindfulness Session';
-  return note;
-}
-
-function formatSessionDate(iso: string): string {
-  const d = new Date(iso);
-  const now = new Date();
-  const diffMs = now.getTime() - d.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  if (diffDays === 0) return 'Today';
-  if (diffDays === 1) return 'Yesterday';
-  if (diffDays < 7) return `${diffDays} days ago`;
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-}
-
-export default function MindfulHoursMain() {
-  const theme = useColorScheme() ?? 'light';
-  const colors = Colors[theme];
-  const insets = useSafeAreaInsets();
-  const { mindfulnessHistory: history, isLoading } = useMindfulness();
-
-  const totalSeconds = history.reduce((sum, e) => sum + e.seconds, 0);
-  const totalHours = formatHours(totalSeconds);
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const todaySessions = history.filter((e) => e.dateISO.slice(0, 10) === todayStr);
-  const todaySeconds = todaySessions.reduce((sum, e) => sum + e.seconds, 0);
-  const todayMins = Math.round(todaySeconds / 60);
-
+/** Cover art for the four category cards (07 §2.1), drawn from the design's shapes. */
+function Cover({ kind }: { kind: 'breathing' | 'relax' | 'mindfulness' | 'sleep' }) {
   return (
     <View
       style={{
-        flex: 1,
-        backgroundColor: colors.background,
-        paddingHorizontal: UI.spacing.xl,
+        height: 58,
+        borderRadius: 18,
+        backgroundColor: kind === 'sleep' ? '#EDE2EE' : '#FBF8F5',
+        overflow: 'hidden',
+        alignItems: 'center',
+        justifyContent: 'center',
       }}
     >
-      <ScreenHeader
-        title="Mindful Hours"
-        showBack
-        onBack={() => backTo(undefined, '/(tabs)/home')}
-        rightElement={
-          <Pressable
-            onPress={() => router.push('/(tabs)/mindful/stats')}
-            style={({ pressed }) => ({
-              opacity: pressed ? 0.7 : 1,
-              backgroundColor: colors.card,
-              width: 40,
-              height: 40,
-              borderRadius: 20,
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderWidth: 1,
-              borderColor: colors.border,
-            })}
-          >
-            <MaterialIcons name="bar-chart" size={22} color={colors.primary} />
-          </Pressable>
-        }
-      />
-
-      {/* Total hours hero section */}
-      <View
-        style={{
-          alignItems: 'center',
-          marginTop: 28,
-          marginBottom: 24,
-        }}
-      >
-        <View
-          style={{
-            width: 180,
-            height: 180,
-            borderRadius: 90,
-            backgroundColor: colors.card,
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderWidth: 1,
-            borderColor: colors.border,
-            ...UI.shadow.lg,
-          }}
-        >
-          <Text
-            style={{
-              fontFamily: Typography.family.body,
-              fontSize: 42,
-              fontWeight: Typography.weight.semibold,
-              color: colors.primary,
-              letterSpacing: -1,
-            }}
-          >
-            {totalHours}
-          </Text>
-          <Text
-            style={{
-              fontFamily: Typography.family.body,
-              fontSize: 14,
-              color: colors.mutedText,
-              fontWeight: Typography.weight.semibold,
-              marginTop: 2,
-            }}
-          >
-            Total Hours
-          </Text>
-        </View>
-      </View>
-
-      {/* Today's progress bar */}
-      <View
-        style={{
-          backgroundColor: colors.card,
-          borderRadius: UI.radius.lg,
-          padding: 16,
-          borderWidth: 1,
-          borderColor: colors.border,
-          marginBottom: 20,
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 12,
-        }}
-      >
-        <View
-          style={{
-            width: 44,
-            height: 44,
-            borderRadius: 22,
-            backgroundColor: '#5B8A5A20',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <MaterialIcons name="today" size={22} color="#5B8A5A" />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text
-            style={{
-              fontFamily: Typography.family.body,
-              fontWeight: Typography.weight.semibold,
-              color: colors.text,
-              fontSize: 15,
-            }}
-          >
-            Today&apos;s Mindfulness
-          </Text>
-          <Text
-            style={{
-              fontFamily: Typography.family.body,
-              color: colors.mutedText,
-              fontSize: 13,
-              marginTop: 2,
-            }}
-          >
-            {todayMins} min{todayMins !== 1 ? 's' : ''} completed
-          </Text>
-        </View>
-        <Pressable
-          onPress={() => router.push('/(tabs)/mindful/new-exercise')}
-          style={({ pressed }) => ({
-            backgroundColor: colors.primary,
-            paddingHorizontal: 16,
-            paddingVertical: 10,
-            borderRadius: UI.radius.pill,
-            opacity: pressed ? 0.8 : 1,
-          })}
-        >
-          <Text
-            style={{
-              fontFamily: Typography.family.body,
-              color: colors.onPrimary,
-              fontWeight: Typography.weight.semibold,
-              fontSize: 13,
-            }}
-          >
-            + New Exercise
-          </Text>
-        </Pressable>
-      </View>
-
-      {/* Session history header */}
-      <View
-        style={{
-          flexDirection: 'row',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 12,
-        }}
-      >
-        <Text style={{ ...Typography.section, color: colors.text }}>Recent Sessions</Text>
-        <Pressable onPress={() => router.push('/(tabs)/mindful/stats')}>
-          <Text
-            style={{
-              fontFamily: Typography.family.body,
-              fontSize: 13,
-              fontWeight: Typography.weight.semibold,
-              color: colors.primary,
-            }}
-          >
-            View All
-          </Text>
-        </Pressable>
-      </View>
-
-      {/* Session history list */}
-      {isLoading ? (
-        <ActivityIndicator color={colors.primary} style={{ marginTop: 40 }} />
-      ) : history.length === 0 ? (
-        <View
-          style={{
-            flex: 1,
-            justifyContent: 'center',
-            alignItems: 'center',
-            opacity: 0.5,
-            paddingBottom: 60,
-          }}
-        >
-          <MaterialIcons name="self-improvement" size={64} color={colors.icon} />
-          <Text style={{ ...Typography.section, marginTop: 16, color: colors.text }}>
-            No sessions yet
-          </Text>
-          <Text style={{ marginTop: 8, color: colors.mutedText, textAlign: 'center' }}>
-            Start your first mindful exercise to begin tracking your progress.
-          </Text>
-        </View>
-      ) : (
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ gap: 10, paddingBottom: 100 }}
-        >
-          {history.slice(0, 20).map((entry) => {
-            const type = getSessionType(entry.note);
-            const iconInfo = SESSION_ICONS[type] || SESSION_ICONS.meditation;
-            const minutes = Math.round(entry.seconds / 60);
-
-            return (
-              <Pressable
-                key={entry.id}
-                onPress={() =>
-                  router.push({
-                    pathname: '/(tabs)/mindful/session-detail',
-                    params: { id: entry.id },
-                  })
-                }
-                style={({ pressed }) => ({
-                  backgroundColor: colors.card,
-                  borderRadius: UI.radius.lg,
-                  padding: 14,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 12,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                  opacity: pressed ? 0.7 : 1,
-                })}
-              >
-                <View
-                  style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: 12,
-                    backgroundColor: iconInfo.color + '18',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <MaterialIcons name={iconInfo.icon as any} size={22} color={iconInfo.color} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text
-                    style={{
-                      fontFamily: Typography.family.body,
-                      fontWeight: Typography.weight.semibold,
-                      color: colors.text,
-                      fontSize: 15,
-                    }}
-                  >
-                    {getSessionLabel(entry.note)}
-                  </Text>
-                  <Text
-                    style={{
-                      fontFamily: Typography.family.body,
-                      color: colors.mutedText,
-                      fontSize: 12,
-                      marginTop: 2,
-                    }}
-                  >
-                    {formatSessionDate(entry.dateISO)}
-                  </Text>
-                </View>
-                <View style={{ alignItems: 'flex-end', flexDirection: 'row', gap: 8 }}>
-                  <View style={{ alignItems: 'flex-end' }}>
-                    <Text
-                      style={{
-                        fontFamily: Typography.family.body,
-                        fontSize: 16,
-                        fontWeight: Typography.weight.semibold,
-                        color: colors.primary,
-                      }}
-                    >
-                      {minutes}m
-                    </Text>
-                    <Text
-                      style={{
-                        fontFamily: Typography.family.body,
-                        fontSize: 11,
-                        color: colors.mutedText,
-                      }}
-                    >
-                      Duration
-                    </Text>
-                  </View>
-                  <MaterialIcons name="chevron-right" size={20} color={colors.mutedText} />
-                </View>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
+      {kind === 'breathing' && (
+        <>
+          <Glow
+            color={palette.sky}
+            opacity={0.55}
+            width={120}
+            blur={24}
+            style={{ position: 'absolute', left: 17.5, top: -31 }}
+          />
+          <Svg width={80} height={80} style={{ position: 'absolute' }}>
+            {[14, 22, 30, 38].map((r, i) => (
+              <Circle
+                key={r}
+                cx={40}
+                cy={40}
+                r={r}
+                stroke={palette.plum}
+                strokeOpacity={[0.5, 0.35, 0.25, 0.15][i]}
+                fill="none"
+              />
+            ))}
+          </Svg>
+          <Glow color="#F2D96A" opacity={0.9} width={16} blur={4} />
+        </>
       )}
+      {kind === 'relax' && (
+        <>
+          <Glow
+            color={palette.mustard}
+            opacity={0.55}
+            width={130}
+            blur={26}
+            style={{ position: 'absolute', left: 12.5, top: -36 }}
+          />
+          <Svg width={155} height={58} style={{ position: 'absolute' }}>
+            {[10, 15, 20, 25, 30].map((h, i) => (
+              <Path
+                key={h}
+                d={`M0 ${29} Q 39 ${29 - h} 78 29 T 155 29`}
+                stroke={palette.plum}
+                strokeOpacity={0.4 - i * 0.06}
+                fill="none"
+              />
+            ))}
+          </Svg>
+        </>
+      )}
+      {kind === 'mindfulness' && (
+        <>
+          <Glow
+            color={palette.lavender}
+            opacity={0.45}
+            width={120}
+            blur={26}
+            style={{ position: 'absolute', left: 17, top: -31 }}
+          />
+          <Glow color={palette.mustard} opacity={0.3} width={70} blur={18} />
+          <Svg width={120} height={58} style={{ position: 'absolute' }}>
+            {[8, 13, 18, 23, 28, 33].map((r, i) => (
+              <Circle
+                key={r}
+                cx={60}
+                cy={29}
+                r={r}
+                stroke={palette.plum}
+                strokeOpacity={0.4 - i * 0.05}
+                fill="none"
+              />
+            ))}
+          </Svg>
+        </>
+      )}
+      {kind === 'sleep' && (
+        <>
+          <Glow
+            color={palette.lavenderSoft}
+            opacity={0.7}
+            width={110}
+            blur={20}
+            style={{ position: 'absolute', left: 22, top: -26 }}
+          />
+          <View style={{ position: 'absolute', top: 15 }}>
+            <Icon name="line/moon" size={22} />
+          </View>
+          <Svg width={155} height={58} style={{ position: 'absolute' }}>
+            <Line x1={0} x2={155} y1={46.4} y2={46.4} stroke={palette.plum} strokeOpacity={0.3} />
+          </Svg>
+        </>
+      )}
+      <View
+        style={{
+          position: 'absolute',
+          right: 6,
+          top: 6,
+          width: 26,
+          height: 26,
+          borderRadius: 13,
+          backgroundColor: palette.plum,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Icon name="line/play" size={12} color={palette.white} />
+      </View>
+    </View>
+  );
+}
+
+const CARDS: { kind: 'breathing' | 'relax' | 'mindfulness' | 'sleep'; href: Href }[] = [
+  {
+    kind: 'breathing',
+    href: { pathname: '/(tabs)/mindful/category/[category]', params: { category: 'breathing' } },
+  },
+  { kind: 'relax', href: '/(tabs)/stress' },
+  {
+    kind: 'mindfulness',
+    href: { pathname: '/(tabs)/mindful/category/[category]', params: { category: 'mindfulness' } },
+  },
+  {
+    kind: 'sleep',
+    href: { pathname: '/(tabs)/mindful/category/[category]', params: { category: 'sleep' } },
+  },
+];
+
+/**
+ * Practices hub (07 §2.1): today's minutes against the daily goal in the ring (tap to change the
+ * goal), the change since yesterday, and the four practice categories. The header adds Favourites
+ * and Your sessions. The goal is in minutes, as on the Daily goal screen (10 §3.7).
+ */
+export default function PracticesHub() {
+  const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
+  const { goal, today, yesterday } = useDailyGoal();
+  const fraction = Math.min(1, today / goal);
+  const end = -Math.PI / 2 + fraction * 2 * Math.PI;
+  const delta = today - yesterday;
+
+  return (
+    <View style={{ flex: 1, backgroundColor: '#F3EFED' }}>
+      <GlowField
+        glows={[
+          { color: palette.mustard, opacity: 0.3, x: -40, y: 40, width: 260, blur: 90 },
+          { color: palette.sky, opacity: 0.3, x: 170, y: 120, width: 240, blur: 90 },
+        ]}
+      />
+      <ScrollView
+        contentContainerStyle={{
+          paddingTop: insets.top + 10,
+          paddingBottom: screenBottomPadding(insets.bottom),
+        }}
+        showsVerticalScrollIndicator={false}
+      >
+        <View
+          style={{
+            flexDirection: 'row',
+            justifyContent: 'flex-end',
+            gap: 10,
+            paddingHorizontal: 24,
+          }}
+        >
+          <IconButton
+            variant="solid"
+            icon="line/heart"
+            iconSize={20}
+            accessibilityLabel={t('practices.hub.favourites')}
+            onPress={() => router.push('/(tabs)/mindful/favourites')}
+          />
+          <IconButton
+            variant="solid"
+            icon="line/chart"
+            iconSize={20}
+            accessibilityLabel={t('practices.hub.history')}
+            onPress={() => router.push('/(tabs)/mindful/stats')}
+          />
+        </View>
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`${today} ${t('practices.hub.minutesToday')}, ${t('practices.hub.ofGoal', { goal })}. ${t('practices.hub.editGoal')}`}
+          onPress={() => router.push('/(tabs)/mindful/goal')}
+          style={{
+            width: RING,
+            height: RING,
+            alignSelf: 'center',
+            marginTop: 4,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Svg width={RING} height={RING} style={{ position: 'absolute' }}>
+            <Circle
+              cx={RING / 2}
+              cy={RING / 2}
+              r={R}
+              stroke={palette.border}
+              strokeWidth={5.5}
+              fill="none"
+            />
+            {fraction > 0 && (
+              <Circle
+                cx={RING / 2}
+                cy={RING / 2}
+                r={R}
+                stroke={palette.plum}
+                strokeWidth={5.5}
+                fill="none"
+                strokeLinecap="round"
+                strokeDasharray={`${C} ${C}`}
+                strokeDashoffset={C * (1 - fraction)}
+                transform={`rotate(-90 ${RING / 2} ${RING / 2})`}
+              />
+            )}
+            <Circle
+              cx={RING / 2 + R * Math.cos(end)}
+              cy={RING / 2 + R * Math.sin(end)}
+              r={9}
+              fill={palette.mustard}
+            />
+          </Svg>
+          <Text style={[Type.titleMd, { fontSize: 56, lineHeight: 64, color: palette.plumDeep }]}>
+            {today}
+          </Text>
+          <Text
+            style={[
+              Type.bodySm,
+              { fontFamily: Type.bodyMMedium.fontFamily, color: palette.textMuted },
+            ]}
+          >
+            {t('practices.hub.ofGoal', { goal })}
+          </Text>
+          {delta !== 0 && (
+            <View
+              style={{
+                marginTop: 8,
+                backgroundColor: palette.plum,
+                borderRadius: 999,
+                paddingVertical: 3,
+                paddingHorizontal: 10,
+              }}
+            >
+              <Text
+                style={[Type.microBold, { fontSize: 12, lineHeight: 14, color: palette.white }]}
+              >
+                {t(delta > 0 ? 'practices.hub.up' : 'practices.hub.down', {
+                  minutes: Math.abs(delta),
+                })}
+              </Text>
+            </View>
+          )}
+        </Pressable>
+
+        <View
+          style={{
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            paddingHorizontal: 24,
+            marginTop: 28,
+          }}
+        >
+          <Text
+            accessibilityRole="header"
+            style={[Type.bodyMSemi, { fontSize: 18, lineHeight: 24, color: palette.ink }]}
+          >
+            {t('practices.hub.choose')}
+          </Text>
+          <Pressable
+            accessibilityRole="link"
+            onPress={() => router.push('/(tabs)/mindful/all')}
+            hitSlop={10}
+          >
+            <Text
+              style={[
+                Type.buttonS,
+                { fontSize: 14, fontFamily: Type.microBold.fontFamily, color: palette.lavender },
+              ]}
+            >
+              {t('practices.hub.seeAll')}
+            </Text>
+          </Pressable>
+        </View>
+
+        <View
+          style={{
+            marginTop: 16,
+            marginHorizontal: 1,
+            backgroundColor: palette.white,
+            borderRadius: 40,
+            padding: 15,
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            gap: 9,
+            boxShadow: '0px -17px 38px rgba(75,52,37,0.05)',
+          }}
+        >
+          {CARDS.map((c) => (
+            <Pressable
+              key={c.kind}
+              accessibilityRole="button"
+              accessibilityLabel={`${t(`practices.categories.${c.kind}.title`)}, ${t(`practices.categories.${c.kind}.meta`)}`}
+              onPress={() => router.push(c.href)}
+              style={({ pressed }) => ({
+                width: '48.5%',
+                borderRadius: 24,
+                padding: 6,
+                paddingBottom: 14,
+                backgroundColor: pressed ? palette.surfaceLilacSoft : palette.white,
+                gap: 8,
+              })}
+            >
+              <Cover kind={c.kind} />
+              <View style={{ paddingHorizontal: 8, gap: 2 }}>
+                <Text style={[Type.bodyMSemi, { lineHeight: 20, color: palette.ink }]}>
+                  {t(`practices.categories.${c.kind}.title`)}
+                </Text>
+                <Text style={[Type.micro, { color: palette.textSubtle }]}>
+                  {t(`practices.categories.${c.kind}.meta`)}
+                </Text>
+              </View>
+            </Pressable>
+          ))}
+        </View>
+      </ScrollView>
     </View>
   );
 }

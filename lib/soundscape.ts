@@ -70,3 +70,12 @@ export function resumeSoundscape(): void {
     } catch {}
   }
 }
+
+/** Volume of the current soundscape, 0–1 (the default is 0.6). Used for "Fade out at the end". */
+export function setSoundscapeVolume(volume: number): void {
+  if (currentPlayer) {
+    try {
+      currentPlayer.volume = Math.min(1, Math.max(0, volume));
+    } catch {}
+  }
+}

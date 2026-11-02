@@ -559,3 +559,35 @@ async function rescheduleReminders() {
   for (const [key, setting] of Object.entries(settings) as [ReminderKey, ReminderSetting][])
     if (setting.enabled) await setReminder(key, true, setting).catch(() => undefined);
 }
+
+/* ── Daily practice goal nudge (10 §3.7) ─────────────────────────────── */
+
+const GOAL_NUDGE_KEY = 'practice-goal-nudge:v1';
+
+export async function goalNudgeEnabled(): Promise<boolean> {
+  try {
+    return JSON.parse((await AsyncStorage.getItem(GOAL_NUDGE_KEY)) || '{}').enabled === true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * One gentle nudge at `at` (19:00 today until the goal is met, otherwise tomorrow). Called when the
+ * setting changes and after each session, so a met goal moves the nudge to the next day.
+ */
+export async function setGoalNudge(enabled: boolean, at?: Date, body?: { title: string; body: string }) {
+  if (Platform.OS === 'web') return;
+  let saved: { enabled?: boolean; id?: string } = {};
+  try {
+    saved = JSON.parse((await AsyncStorage.getItem(GOAL_NUDGE_KEY)) || '{}');
+  } catch {
+    saved = {};
+  }
+  if (saved.id) await Notifications.cancelScheduledNotificationAsync(saved.id).catch(() => {});
+  const id =
+    enabled && at && body
+      ? await scheduleNotification(body.title, body.body, { route: '/(tabs)/mindful' }, { type: Notifications.SchedulableTriggerInputTypes.DATE, date: at })
+      : undefined;
+  await AsyncStorage.setItem(GOAL_NUDGE_KEY, JSON.stringify({ enabled, id }));
+}
