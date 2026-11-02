@@ -1,33 +1,43 @@
-import { Typography } from '@/constants/typography';
-import { backTo } from '@/lib/navigation';
+import React, { useState } from 'react';
+import { Linking, Platform, Pressable, Text, TextInput, View } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
-import { useState } from 'react';
-import {
-  ScrollView,
-  Text,
-  TextInput,
-  Pressable,
-  Linking,
-  ActivityIndicator,
-  Platform,
-} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors, UI } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useTranslation } from 'react-i18next';
+import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
+import { palette } from '@/constants/theme';
+import { Type } from '@/constants/typography';
+import { AppButton } from '@/components/ui/AppButton';
+import { Icon, type IconName } from '@/components/icons/Icon';
+import { LegalNote } from '@/components/ui/controls';
+import { SettingsScreen } from '@/components/settings/SettingsParts';
+import { toast } from '@/components/Toast';
 import { supabase } from '@/supabase/supabase';
 import { resetSubscription } from '@/hooks/useSubscription';
 import { authTokenVar, showAlert } from '@/lib/state';
-import { toast } from '@/components/Toast';
+import { backTo } from '@/lib/navigation';
+import { exportMyData } from '@/lib/data-export-run';
 
+/** The server checks for this exact word, so it is not translated (06 §P14). */
+const CONFIRM = 'DELETE';
+const REMOVES: { icon: IconName; key: string }[] = [
+  { icon: 'line/heart', key: 'mood' },
+  { icon: 'line/journal', key: 'journal' },
+  { icon: 'line/chat', key: 'talks' },
+  { icon: 'line/moon', key: 'sleep' },
+];
+
+/**
+ * Delete account (06 §P14): what deleting removes, Download my data first, type DELETE, then
+ * Delete my account. The delete-account function, local clean-up and sign-out are unchanged.
+ */
 export default function DeleteAccount() {
+  const { t } = useTranslation();
   const [confirmation, setConfirmation] = useState('');
   const [busy, setBusy] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const queryClient = useQueryClient();
-  const colors = Colors[useColorScheme() ?? 'light'];
-  const insets = useSafeAreaInsets();
   async function removeAccount() {
     setBusy(true);
     try {
@@ -35,7 +45,7 @@ export default function DeleteAccount() {
         body: { confirmation: 'DELETE' },
       });
       if (error || !data?.deleted)
-        throw new Error('Account deletion failed. Please retry or contact support.');
+        throw new Error(t('deleteFlow.failed'));
       await supabase.auth.signOut({ scope: 'local' });
       await AsyncStorage.clear();
       if (Platform.OS !== 'web' && FileSystem.cacheDirectory) {
@@ -52,93 +62,117 @@ export default function DeleteAccount() {
       queryClient.clear();
       authTokenVar(null);
       router.replace('/(auth)/sign-in');
-      toast.success('Your account and app data have been deleted.');
+      toast.success(t('deleteFlow.deleted'));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Unable to delete account');
+      toast.error(err instanceof Error ? err.message : t('deleteFlow.failed'));
     } finally {
       setBusy(false);
     }
   }
+  const download = async () => {
+    setExporting(true);
+    try {
+      await exportMyData();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('aiData.exportError'));
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
-    <ScrollView
-      style={{ backgroundColor: colors.background }}
-      contentContainerStyle={{ padding: 24, paddingTop: insets.top + 16, gap: 20 }}
+    <SettingsScreen
+      title={t('deleteFlow.header')}
+      backLabel={t('common.back')}
+      onBack={() => (busy ? undefined : backTo(undefined, '/(tabs)/profile/settings'))}
+      glows={[
+        { color: palette.rose, opacity: 0.18, x: -70, y: -50, width: 280, blur: 90 },
+        { color: palette.lavenderSoft, opacity: 0.2, x: 200, y: 40, width: 220, blur: 90 },
+      ]}
+      contentStyle={{ gap: 14 }}
     >
-      <Pressable disabled={busy} onPress={() => backTo(undefined, '/(tabs)/profile')}>
-        <Text style={{ color: colors.text }}>← Back</Text>
+      <View style={{ alignItems: 'center' }}>
+        <Svg width={172} height={172}>
+          <Defs>
+            <RadialGradient id="deleteLight" cx="50%" cy="50%" r="50%">
+              <Stop offset="0" stopColor={palette.cream} />
+              <Stop offset="0.6" stopColor={palette.rose} stopOpacity={0.9} />
+              <Stop offset="1" stopColor={palette.rose} stopOpacity={0} />
+            </RadialGradient>
+          </Defs>
+          {[
+            [44, 0.22],
+            [64, 0.16],
+            [84, 0.1],
+          ].map(([r, o]) => (
+            <Circle key={r} cx={86} cy={86} r={r} stroke={palette.danger} strokeOpacity={o} strokeWidth={1} fill="none" />
+          ))}
+          <Circle cx={86} cy={86} r={28} fill="url(#deleteLight)" />
+        </Svg>
+        <Text accessibilityRole="header" style={[Type.titleLg, { color: palette.ink, textAlign: 'center' }]}>{t('deleteFlow.title')}</Text>
+        <Text style={[Type.bodyS, { lineHeight: 20, color: palette.textMuted, textAlign: 'center', marginTop: 8, maxWidth: 295 }]}>
+          {t('deleteFlow.body')}
+        </Text>
+      </View>
+
+      <View style={{ backgroundColor: palette.white, borderRadius: 24, paddingVertical: 8, paddingHorizontal: 16, marginTop: 6 }}>
+        {REMOVES.map((r) => (
+          <View key={r.key} style={{ minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: palette.dangerSoft, alignItems: 'center', justifyContent: 'center' }}>
+              <Icon name={r.icon} size={20} color={palette.danger} />
+            </View>
+            <Text style={[Type.bodySMedium, { flex: 1, color: palette.ink }]}>{t(`deleteFlow.removes.${r.key}`)}</Text>
+          </View>
+        ))}
+      </View>
+
+      <Pressable
+        accessibilityRole="button"
+        disabled={exporting}
+        onPress={download}
+        style={({ pressed }) => ({ minHeight: 76, borderRadius: 20, backgroundColor: palette.selected, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, opacity: pressed || exporting ? 0.7 : 1 })}
+      >
+        <View style={{ flex: 1, gap: 4 }}>
+          <Text style={[Type.bodyMSemi, { color: palette.ink }]}>{t('deleteFlow.copyTitle')}</Text>
+          <Text style={[Type.chipSelected, { color: palette.plum }]}>{exporting ? t('aiData.exporting') : t('aiData.download')}</Text>
+        </View>
+        <Icon name="arrow/chevron-right" size={18} />
       </Pressable>
-      <Text style={{ ...Typography.heading, color: colors.text, fontSize: 24 }}>
-        Delete Account
-      </Text>
-      <Text style={{ color: colors.text, lineHeight: 24 }}>
-        This permanently deletes your account, profile, wellness logs, journal entries, chat
-        history, community posts and comments. This cannot be undone.
-      </Text>
-      <Text style={{ color: colors.text, lineHeight: 24 }}>
-        Deleting your account does not cancel a paid subscription. Cancel it with your payment
-        provider before deleting your account to prevent further charges.
-      </Text>
-      {Platform.OS === 'ios' && (
-        <Pressable onPress={() => Linking.openURL('https://apps.apple.com/account/subscriptions')}>
-          <Text style={{ color: colors.tint }}>Manage Apple subscriptions</Text>
-        </Pressable>
-      )}
-      <Text style={{ color: colors.text }}>Type DELETE to confirm.</Text>
+
+      <Text style={[Type.labelM, { color: palette.lavender, marginTop: 6 }]}>{t('deleteFlow.typeLabel', { word: CONFIRM })}</Text>
       <TextInput
         value={confirmation}
         onChangeText={setConfirmation}
         autoCapitalize="characters"
         autoCorrect={false}
         editable={!busy}
-        accessibilityLabel="Type DELETE to confirm account deletion"
-        style={{
-          color: colors.text,
-          padding: 16,
-          borderWidth: 1,
-          borderColor: colors.border,
-          borderRadius: 12,
-        }}
+        placeholder={CONFIRM}
+        placeholderTextColor={palette.textSubtle}
+        accessibilityLabel={t('deleteFlow.typeLabel', { word: CONFIRM })}
+        style={[Type.bodyM, { height: 52, borderRadius: 16, borderWidth: confirmation ? 1.5 : 1, borderColor: confirmation ? palette.plum : palette.borderLilac, backgroundColor: palette.white, paddingHorizontal: 16, color: palette.ink }]}
       />
-      <Pressable
-        disabled={busy || confirmation !== 'DELETE'}
+
+      <AppButton
+        variant="danger"
+        title={t('deleteFlow.delete')}
+        busy={busy}
+        disabled={confirmation !== CONFIRM}
         onPress={() =>
-          showAlert(
-            'Permanently delete your account?',
-            'Your account and associated app data will be deleted.',
-            [
-              { text: 'Keep Account', style: 'cancel' },
-              {
-                text: 'Delete Account',
-                style: 'destructive',
-                onPress: () => {
-                  void removeAccount();
-                },
-              },
-            ],
-          )
+          showAlert(t('deleteFlow.confirmTitle'), t('deleteFlow.confirmBody'), [
+            { text: t('deleteFlow.keep'), style: 'cancel' },
+            { text: t('deleteFlow.delete'), style: 'destructive', onPress: () => void removeAccount() },
+          ])
         }
-        style={{
-          backgroundColor: '#C45B5B',
-          padding: 18,
-          borderRadius: 12,
-          opacity: busy || confirmation !== 'DELETE' ? 0.5 : 1,
-        }}
-      >
-        {busy ? (
-          <ActivityIndicator color="#FFF" />
-        ) : (
-          <Text
-            style={{
-              fontFamily: Typography.family.body,
-              color: '#FFF',
-              textAlign: 'center',
-              fontWeight: Typography.weight.semibold,
-            }}
-          >
-            Permanently Delete Account
-          </Text>
-        )}
-      </Pressable>
-    </ScrollView>
+        style={{ marginTop: 10 }}
+      />
+      <AppButton variant="text" title={t('deleteFlow.keep')} disabled={busy} onPress={() => backTo(undefined, '/(tabs)/profile/settings')} />
+      {Platform.OS === 'ios' ? (
+        <Pressable accessibilityRole="link" onPress={() => void Linking.openURL('https://apps.apple.com/account/subscriptions')}>
+          <LegalNote text={t('deleteFlow.billingIos')} />
+        </Pressable>
+      ) : (
+        <LegalNote text={t('deleteFlow.billing')} />
+      )}
+    </SettingsScreen>
   );
 }

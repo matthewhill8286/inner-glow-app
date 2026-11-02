@@ -71,6 +71,14 @@ Design added 35 screens, now placed in their area sections, and a new component 
 - Nights without Health stages show the time in bed as one bar. The tab bar is hidden from Wind down to Last night.
 - Not built: keeping the screen awake in sleep mode, and background audio while the phone is locked. Both need native config.
 
+**Profile and support decisions (2 Nov 2026, built on `feature/profile-support`; change them if design disagrees):**
+- "Glow AI & your data" keeps the AI processing permission as its first switch, then memory and journal, which the chat function already reads. Figma's "Use mood & sleep data" has no separate control, so it is not shown.
+- "Download my data" builds one JSON file on the device from the person's own rows and opens the share sheet. No export function was needed.
+- "Message our team" and "Report a problem" open the existing support form, and replies come by email, because there is no in-app reply thread. The form now fills in the account email.
+- Send feedback stores to a new `feedback` table (migration `20261109_feedback.sql`), allowing ten notes a day per person. "Include device info" adds the OS, version, model and app version.
+- Delete account keeps the existing function, clean-up and final confirmation. The confirm word stays "DELETE" in every language, because the server checks for it.
+- Connected apps was already built to the design, so it is unchanged.
+
 **Still open product questions:** Do we show per-device detail, revoke and IP-based city names in Active sessions? What exactly do Larger text and Reduce motion change? (08)
 
 ## 1. Library and palette

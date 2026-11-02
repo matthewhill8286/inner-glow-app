@@ -242,7 +242,7 @@ export default function Settings() {
           <ListRow
             icon="line/star"
             label={t('me.settings.feedback')}
-            onPress={go('/(utils)/support')}
+            onPress={go('/(utils)/feedback')}
           />
           <ListRow icon="line/note" label={t('me.settings.legal')} onPress={go('/(utils)/legal')} />
         </ListGroup>

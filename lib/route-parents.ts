@@ -43,6 +43,9 @@ export function parentRouteForPath(path: string): string {
       '/blocked-users',
       '/ai-privacy',
       '/support',
+      '/support-message',
+      '/feedback',
+      '/help-center',
       '/trial-upgrade',
       '/legal',
     ].includes(route)
