@@ -31,7 +31,7 @@ export default function Steps() {
       list.current?.scrollToIndex({ index: index + 1, animated: true });
       return;
     }
-    // The paywall after Step Five is a separate task (t179); until then the flow goes to sign-up.
+    // No paywall here: "Your plan is ready" after the assessment is the onboarding paywall (01 §1).
     await AsyncStorage.setItem('onboarding:seen:v1', 'true');
     router.replace('/(auth)/sign-up');
   };
