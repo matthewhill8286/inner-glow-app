@@ -71,6 +71,13 @@ Design added 35 screens, now placed in their area sections, and a new component 
 - Nights without Health stages show the time in bed as one bar. The tab bar is hidden from Wind down to Last night.
 - Not built: keeping the screen awake in sleep mode, and background audio while the phone is locked. Both need native config.
 
+**Search and utility decisions (2 Nov 2026, built on `feature/search-utilities`; change them if design disagrees):**
+- Search runs on the device over practices, journal entries, Glow AI talks and five insight screens. Every word must match, and titles that start with the query rank first. No backend RPC was needed.
+- "Popular right now" is a fixed list (Deep sleep, 4-7-8 Calm, Grounding) until there is usage data. Recent searches are kept on the device, newest first, six at most.
+- Typing suggestions only show practice and insight titles, never journal or talk text. Results tabs are All, Practices, Journal and Glow AI. Insights can be chosen in the filter sheet.
+- Length filters apply only to practices, and Time filters only to journal entries and talks.
+- Offline's "Open offline mode" opens the journal. Maintenance's "Notify me" sets a reminder 30 minutes out, because there is no maintenance flag with a real ETA. Private's "Sign in" replaces the old mailto to a retired address. Unknown routes now show the 404 screen.
+
 **Still open product questions:** Do we show per-device detail, revoke and IP-based city names in Active sessions? What exactly do Larger text and Reduce motion change? (08)
 
 ## 1. Library and palette

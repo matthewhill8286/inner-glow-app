@@ -1,164 +1,26 @@
-import { Typography } from '@/constants/typography';
-import { backTo } from '@/lib/navigation';
-import React, { useCallback } from 'react';
-import { View, Text, Pressable, Platform } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTranslation } from 'react-i18next';
+import React from 'react';
 import { router } from 'expo-router';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors, UI } from '@/constants/theme';
-import MaterialIcons from '@/components/AppIcon';
+import { useTranslation } from 'react-i18next';
+import { UtilityState } from '@/components/ui/UtilityState';
 
+/**
+ * Offline (05 §5.1): the signal arcs. Try again restarts from the entry route, which checks the
+ * session again; "Open offline mode" goes to the journal, which saves on the device.
+ */
 export default function NoInternetScreen() {
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
-  const theme = useColorScheme() ?? 'light';
-  const colors = Colors[theme];
-
-  const handleRefresh = useCallback(() => {
-    router.replace('/');
-  }, []);
-
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <View
-        style={{
-          paddingTop: insets.top + 16,
-          paddingHorizontal: UI.spacing.xl,
-          paddingBottom: UI.spacing.md,
-        }}
-      >
-        <Pressable
-          onPress={() => backTo(undefined, '/(tabs)/home')}
-          style={({ pressed }) => ({
-            width: 40,
-            height: 40,
-            borderRadius: 20,
-            backgroundColor: colors.card,
-            borderWidth: 1,
-            borderColor: colors.border,
-            alignItems: 'center',
-            justifyContent: 'center',
-            opacity: pressed ? 0.7 : 1,
-            ...UI.shadow.sm,
-          })}
-        >
-          <MaterialIcons
-            name="arrow-back-ios"
-            size={18}
-            color={colors.text}
-            style={{ marginLeft: 4 }}
-          />
-        </Pressable>
-      </View>
-
-      <View
-        style={{
-          flex: 1,
-          alignItems: 'center',
-          justifyContent: 'center',
-          paddingHorizontal: 40,
-          paddingBottom: 60,
-        }}
-      >
-        <View
-          style={{
-            width: 200,
-            height: 200,
-            borderRadius: 100,
-            backgroundColor: theme === 'light' ? '#E8E0F0' : 'rgba(123,109,201,0.12)',
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginBottom: 32,
-          }}
-        >
-          <MaterialIcons name="wifi-off" size={90} color={colors.mutedText} />
-        </View>
-
-        <Text
-          style={{
-            ...Typography.heading,
-            fontSize: 24,
-            color: colors.text,
-            textAlign: 'center',
-            marginBottom: 10,
-          }}
-        >
-          {t('offlineScreen.title')}
-        </Text>
-
-        <Text
-          style={{
-            fontFamily: Typography.family.body,
-            fontSize: 14,
-            color: colors.mutedText,
-            textAlign: 'center',
-            lineHeight: 21,
-            marginBottom: 20,
-          }}
-        >
-          {t('offlineScreen.subtitle')}
-        </Text>
-
-        <Pressable
-          onPress={handleRefresh}
-          style={({ pressed }) => ({
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 6,
-            paddingHorizontal: 16,
-            paddingVertical: 8,
-            borderRadius: UI.radius.pill,
-            backgroundColor: theme === 'light' ? '#E8F5E9' : 'rgba(91,138,90,0.15)',
-            borderWidth: 1,
-            borderColor: theme === 'light' ? '#C8E6C9' : 'rgba(91,138,90,0.25)',
-            opacity: pressed ? 0.7 : 1,
-          })}
-        >
-          <MaterialIcons name="refresh" size={16} color="#5B8A5A" />
-          <Text
-            style={{
-              fontFamily: Typography.family.body,
-              fontSize: 13,
-              fontWeight: Typography.weight.semibold,
-              color: '#5B8A5A',
-            }}
-          >
-            {t('offlineScreen.refresh')}
-          </Text>
-        </Pressable>
-      </View>
-
-      <View
-        style={{ paddingHorizontal: UI.spacing.xl, paddingBottom: Platform.OS === 'ios' ? 44 : 28 }}
-      >
-        <Pressable
-          onPress={() => router.replace('/')}
-          style={({ pressed }) => ({
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
-            backgroundColor: '#8B6B47',
-            borderRadius: UI.radius.xl,
-            paddingVertical: 16,
-            opacity: pressed ? 0.9 : 1,
-            ...UI.shadow.md,
-          })}
-        >
-          <Text
-            style={{
-              fontFamily: Typography.family.body,
-              fontSize: 16,
-              fontWeight: Typography.weight.semibold,
-              color: '#fff',
-            }}
-          >
-            {t('errorScreen.takeMeHome')}
-          </Text>
-          <MaterialIcons name="home" size={20} color="#fff" />
-        </Pressable>
-      </View>
-    </View>
+    <UtilityState
+      kind="offline"
+      title={t('utilityStates.offline.title')}
+      body={t('utilityStates.offline.body')}
+      chip={t('utilityStates.offline.chip')}
+      chipIcon="line/leaf"
+      cta={t('utilityStates.offline.cta')}
+      onCta={() => router.replace('/')}
+      link={t('utilityStates.offline.link')}
+      onLink={() => router.replace('/(tabs)/journal')}
+      backLabel={t('common.back')}
+    />
   );
 }
