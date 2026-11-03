@@ -41,6 +41,7 @@ import { useChat } from '@/hooks/useChat';
 import { ChatMessage } from '@/lib/types';
 import { useTopics } from '@/hooks/useTopics';
 import { parseChatKey } from '@/lib/chatKeys';
+import { useComposerVoice } from '@/hooks/useVoiceAsk';
 import { CATEGORY_GLOW, practiceById } from '@/data/practices';
 import { openPractice } from '@/lib/practice-routes';
 
@@ -290,6 +291,9 @@ export default function Chat() {
     void sendMessage(openingMessage, false, history[issueKey] || []);
   }, [initialMessage, issueKey, loading, accessLoading, history, sendMessage]);
 
+  // The composer's mic sends the spoken question as the next message.
+  const voice = useComposerVoice((spoken) => void sendMessage(spoken));
+
   /* ── Render ── */
 
   const header = (
@@ -471,6 +475,7 @@ export default function Chat() {
           placeholder={t('glowAi.composer.placeholder')}
           sendLabel={t('glowAi.composer.send')}
           disabled={isTyping}
+          voice={voice}
         />
         {!keyboardVisible && <LegalNote text={t('glowAi.note')} />}
       </View>

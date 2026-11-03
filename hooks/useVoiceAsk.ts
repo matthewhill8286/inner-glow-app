@@ -31,13 +31,19 @@ export function useVoiceAsk(onAsk: (text: string) => void) {
   const [levels, setLevels] = useState<number[]>([]);
   const listen = useRef<AskListen>(LISTEN_START);
   const stopping = useRef(false);
+  // The recorder object and the caller's callback change every render; refs keep `finish` stable so
+  // the meter effect below does not re-run (and set state) on every render.
+  const recorderRef = useRef(recorder);
+  recorderRef.current = recorder;
+  const onAskRef = useRef(onAsk);
+  onAskRef.current = onAsk;
 
   const finish = useCallback(
     async (send: boolean) => {
       if (stopping.current) return;
       stopping.current = true;
       try {
-        const { uri, durationMs } = await recorder.stopRecording();
+        const { uri, durationMs } = await recorderRef.current.stopRecording();
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         if (!send || durationMs < MIN_ASK_MS) {
           setState('idle');
@@ -56,7 +62,7 @@ export function useVoiceAsk(onAsk: (text: string) => void) {
         if (error) throw error;
         const text = cleanTranscript(data?.text);
         setState('idle');
-        if (text) onAsk(text);
+        if (text) onAskRef.current(text);
         else toast.info(t('voiceAsk.nothingHeard'));
       } catch {
         setState('idle');
@@ -66,7 +72,7 @@ export function useVoiceAsk(onAsk: (text: string) => void) {
         setLevels([]);
       }
     },
-    [recorder, onAsk, t],
+    [t],
   );
 
   const start = useCallback(async () => {
@@ -106,5 +112,30 @@ export function useVoiceAsk(onAsk: (text: string) => void) {
     send: () => void finish(true),
     /** Stop and throw the recording away. */
     cancel: () => void finish(false),
+  };
+}
+
+/** `useVoiceAsk` shaped for the chat composer's mic. */
+export function useComposerVoice(
+  onAsk: (text: string) => void,
+  canStart: () => boolean = () => true,
+) {
+  const { t } = useTranslation();
+  const voice = useVoiceAsk(onAsk);
+  return {
+    state: voice.state,
+    levels: voice.levels,
+    start: () => {
+      if (canStart()) void voice.start();
+    },
+    send: voice.send,
+    cancel: voice.cancel,
+    labels: {
+      mic: t('homeGlow.voice'),
+      cancel: t('voiceAsk.cancel'),
+      send: t('voiceAsk.send'),
+      listening: t('voiceAsk.listening'),
+      transcribing: t('voiceAsk.transcribing'),
+    },
   };
 }

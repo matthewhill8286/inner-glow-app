@@ -8,6 +8,7 @@ import { Type } from '@/constants/typography';
 import { GlowField, GlowOrb } from '@/components/glow/Glow';
 import { LegalNote } from '@/components/ui/controls';
 import { ChatHeader, Composer, StarterRow } from '@/components/chat/ChatParts';
+import { useComposerVoice } from '@/hooks/useVoiceAsk';
 import { useChat } from '@/hooks/useChat';
 import { useGlowAiGate } from '@/hooks/useGlowAi';
 import { stageChatDraft } from '@/lib/chat-drafts';
@@ -42,6 +43,9 @@ export default function NewConversation() {
   const { canStartTalk } = useGlowAiGate();
   const persona = getPersona(personaParam);
   const [text, setText] = useState(initialMessage ?? '');
+
+  // The mic asks by voice; the spoken words start the talk like typed ones (`canStartTalk` runs there).
+  const voice = useComposerVoice((spoken) => start(spoken));
 
   function start(message: string) {
     const first = message.trim();
@@ -116,6 +120,7 @@ export default function NewConversation() {
           onSend={() => start(text)}
           placeholder={t('glowAi.composer.placeholder')}
           sendLabel={t('glowAi.composer.send')}
+          voice={voice}
         />
         <LegalNote text={t('glowAi.note')} />
       </View>
