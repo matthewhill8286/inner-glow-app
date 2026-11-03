@@ -975,6 +975,8 @@ export default {
     legal: 'Inner Glow is a wellbeing app, not a medical service.',
   },
   supportMessage: {
+    minHint_one: '1 more character and you can send it.',
+    minHint_other: '{{count}} more characters and you can send it.',
     title: 'Message our team',
     problemTitle: 'Report a problem',
     body: 'Ask about the app, payments, privacy or your account. We reply to the email below.',
@@ -1274,6 +1276,7 @@ export default {
       mindTag: 'Relax · Mind',
     },
     video: {
+      showControls: 'Shows the pause button',
       badge: 'Video',
       length: '{{length}} video',
       whatYoullDo: 'What you’ll do',

@@ -32,6 +32,8 @@ import { thumbnailUrl } from '@/components/practices/VideoDetails';
 /** Leaving after this share of the video counts as finished (07 §5.10). */
 const DONE_SHARE = 0.9;
 const MIN_SAVE_SECONDS = 10;
+/** While playing, the pause button fades out after this long and a tap on the video brings it back. */
+const CONTROLS_HIDE_MS = 2500;
 
 /**
  * Video player (07 §2.13, redrawn in 10 §3.8): title, length and body tag, the video card with one
@@ -71,8 +73,27 @@ export function VideoPlayer({ practice }: { practice: Practice }) {
   const saved = useRef(false);
   const cardW = width - 32;
 
+  // TestFlight report 45: the pause button covered the video the whole time it played.
+  const [controlsShown, setControlsShown] = useState(true);
+  const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showControls = useCallback(() => {
+    setControlsShown(true);
+    if (hideTimer.current) clearTimeout(hideTimer.current);
+    hideTimer.current = playing
+      ? setTimeout(() => setControlsShown(false), CONTROLS_HIDE_MS)
+      : null;
+  }, [playing]);
+  useEffect(() => {
+    showControls();
+    return () => {
+      if (hideTimer.current) clearTimeout(hideTimer.current);
+    };
+  }, [showControls]);
+
+  // While the button is hidden, the first tap only brings it back; the next one pauses.
   const togglePlay = () => {
-    requestPlayback(!playing);
+    if (playing && !controlsShown) showControls();
+    else requestPlayback(!playing);
   };
 
   useEffect(() => {
@@ -270,6 +291,9 @@ export function VideoPlayer({ practice }: { practice: Practice }) {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={playing ? t('practices.player.pause') : t('practices.player.play')}
+          accessibilityHint={
+            playing && !controlsShown ? t('practices.video.showControls') : undefined
+          }
           disabled={!ready || failed}
           onPress={togglePlay}
           pointerEvents={started || !ready || failed ? 'auto' : 'none'}
@@ -303,6 +327,7 @@ export function VideoPlayer({ practice }: { practice: Practice }) {
                 backgroundColor: palette.white,
                 alignItems: 'center',
                 justifyContent: 'center',
+                opacity: controlsShown ? 1 : 0,
               }}
             >
               <Icon name={playing ? 'line/pause' : 'line/play'} size={24} color={palette.plum} />
