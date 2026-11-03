@@ -18,8 +18,8 @@ import {
 export type HelpTab = 'faq' | 'contact';
 
 /**
- * Help Centre (06 §P10–P11, `6722:4755` and `6722:4837`): one screen with an FAQ / Contact us
- * switch under the nav bar. The switch changes the content in place, with no new screen. The
+ * Help Centre (06 §P10–P11, `6722:4755` and `6722:4837`): one screen. The nav bar, "How can we
+ * help?" and the FAQ / Contact us switch stay put; only the content under the switch changes. The
  * track is white with a 1px `#E6E0EA` stroke, radius 22 and padding 4. The active tab is the
  * selected fill with a 1.5 plum stroke, radius 18, in SemiBold 14 plum; the other is Medium 14 muted.
  */
@@ -39,39 +39,11 @@ export function HelpCentre({ initialTab = 'faq' }: { initialTab?: HelpTab }) {
   return (
     <SettingsScreen
       title={t('helpCenter.title')}
-      largeTitle={tab === 'faq' ? t('helpCenter.heading') : undefined}
+      largeTitle={t('helpCenter.heading')}
       backLabel={t('common.back')}
       onBack={() => backTo(undefined, '/(tabs)/profile/settings')}
       contentStyle={{ gap: 20 }}
     >
-      {tab === 'faq' && (
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 10,
-            paddingHorizontal: 16,
-            borderRadius: 16,
-            minHeight: 52,
-            backgroundColor: palette.white,
-            borderWidth: 1,
-            borderColor: palette.borderLilac,
-          }}
-        >
-          <Icon name="line/search" size={20} />
-          <TextInput
-            accessibilityLabel={t('helpCenter.search')}
-            placeholder={t('helpCenter.search')}
-            placeholderTextColor={palette.textMuted}
-            value={query}
-            onChangeText={setQuery}
-            autoCorrect={false}
-            returnKeyType="search"
-            clearButtonMode="while-editing"
-            style={[Type.bodySm, { flex: 1, paddingVertical: 14, color: palette.ink }]}
-          />
-        </View>
-      )}
       <View
         accessibilityRole="tablist"
         style={{
@@ -119,6 +91,32 @@ export function HelpCentre({ initialTab = 'faq' }: { initialTab?: HelpTab }) {
         <ContactPanel />
       ) : (
         <>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 10,
+              paddingHorizontal: 16,
+              borderRadius: 16,
+              minHeight: 52,
+              backgroundColor: palette.white,
+              borderWidth: 1,
+              borderColor: palette.borderLilac,
+            }}
+          >
+            <Icon name="line/search" size={20} />
+            <TextInput
+              accessibilityLabel={t('helpCenter.search')}
+              placeholder={t('helpCenter.search')}
+              placeholderTextColor={palette.textMuted}
+              value={query}
+              onChangeText={setQuery}
+              autoCorrect={false}
+              returnKeyType="search"
+              clearButtonMode="while-editing"
+              style={[Type.bodySm, { flex: 1, paddingVertical: 14, color: palette.ink }]}
+            />
+          </View>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
