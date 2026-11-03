@@ -8,7 +8,8 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
-import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
+import Svg, { Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
+import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -44,7 +45,7 @@ const CONTROLS_HIDE_MS = 2500;
 export function VideoPlayer({ practice }: { practice: Practice }) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const text = usePracticeText()(practice);
   const { addSession } = useMindfulness();
   const { today, goal, refreshNudge } = useDailyGoal();
@@ -71,7 +72,12 @@ export function VideoPlayer({ practice }: { practice: Practice }) {
   const [done, setDone] = useState(false);
   const watched = useRef(0);
   const saved = useRef(false);
-  const cardW = width - 32;
+  // Full screen (TestFlight report 45): the same card grows to fill the window and turns to
+  // landscape. The app is portrait-only, so the card is rotated rather than the device, and the
+  // player is never remounted, so playback carries on.
+  const [fullScreen, setFullScreen] = useState(false);
+  const cardW = fullScreen ? height : width - 32;
+  const cardH = fullScreen ? width : 212;
 
   // TestFlight report 45: the pause button covered the video the whole time it played.
   const [controlsShown, setControlsShown] = useState(true);
@@ -140,6 +146,10 @@ export function VideoPlayer({ practice }: { practice: Practice }) {
   }, [save, requestPlayback]);
 
   const askToLeave = useCallback(() => {
+    if (fullScreen) {
+      setFullScreen(false);
+      return true;
+    }
     if (done) return false;
     if (watched.current >= length * DONE_SHARE) {
       finish();
@@ -148,7 +158,7 @@ export function VideoPlayer({ practice }: { practice: Practice }) {
     requestPlayback(false);
     setEndOpen(true);
     return true;
-  }, [done, length, finish, requestPlayback]);
+  }, [fullScreen, done, length, finish, requestPlayback]);
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', askToLeave);
     return () => sub.remove();
@@ -196,16 +206,31 @@ export function VideoPlayer({ practice }: { practice: Practice }) {
         </Text>
       </View>
 
+      {fullScreen && <StatusBar hidden />}
       <View
-        style={{
-          marginTop: 24,
-          marginHorizontal: 16,
-          height: 212,
-          borderRadius: 24,
-          overflow: 'hidden',
-          backgroundColor: palette.ink,
-          boxShadow: '0px 0px 0px 4px rgba(107,82,121,0.25)',
-        }}
+        style={
+          fullScreen
+            ? {
+                position: 'absolute',
+                zIndex: 10,
+                width: cardW,
+                height: cardH,
+                left: (width - cardW) / 2,
+                top: (height - cardH) / 2,
+                transform: [{ rotate: '90deg' }],
+                overflow: 'hidden',
+                backgroundColor: '#000',
+              }
+            : {
+                marginTop: 24,
+                marginHorizontal: 16,
+                height: cardH,
+                borderRadius: 24,
+                overflow: 'hidden',
+                backgroundColor: palette.ink,
+                boxShadow: '0px 0px 0px 4px rgba(107,82,121,0.25)',
+              }
+        }
       >
         {/* A playing iOS web view can draw above its siblings, so the overlays below carry zIndex and,
             once started, the frame takes no touches. */}
@@ -213,7 +238,7 @@ export function VideoPlayer({ practice }: { practice: Practice }) {
           <View pointerEvents={started ? 'none' : 'auto'} style={{ zIndex: 0 }}>
             <YoutubePlayer
               ref={ref}
-              height={212}
+              height={cardH}
               width={cardW}
               videoId={practice.video!.youtubeId}
               play={playing}
@@ -334,6 +359,49 @@ export function VideoPlayer({ practice }: { practice: Practice }) {
             </View>
           )}
         </Pressable>
+        {started && !failed && (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t(
+              fullScreen ? 'practices.video.exitFullScreen' : 'practices.video.fullScreen',
+            )}
+            onPress={() => {
+              setFullScreen((f) => !f);
+              showControls();
+            }}
+            hitSlop={8}
+            // Hidden, it ignores taps, so the first tap on the video only brings the controls back.
+            pointerEvents={controlsShown ? 'auto' : 'none'}
+            style={{
+              position: 'absolute',
+              right: fullScreen ? 24 : 12,
+              bottom: fullScreen ? 20 : 12,
+              zIndex: 3,
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              backgroundColor: 'rgba(36,26,46,0.55)',
+              alignItems: 'center',
+              justifyContent: 'center',
+              opacity: controlsShown ? 1 : 0,
+            }}
+          >
+            <Svg width={18} height={18} viewBox="0 0 18 18">
+              <Path
+                d={
+                  fullScreen
+                    ? 'M7 2v5H2M11 2v5h5M7 16v-5H2M11 16v-5h5'
+                    : 'M2 7V2h5M16 7V2h-5M2 11v5h5M16 11v5h-5'
+                }
+                stroke={palette.white}
+                strokeWidth={1.8}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                fill="none"
+              />
+            </Svg>
+          </Pressable>
+        )}
       </View>
 
       <View

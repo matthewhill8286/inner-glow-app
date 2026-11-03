@@ -119,7 +119,8 @@ These elements are missing:
     Replace the FAQ answers with the final copy from the frame, in English and Greek.
 
 39. **Full-screen video** (TestFlight report 45) **[app][native]**
-    A tester asked for a full-screen option in the Relax video player. There is no Figma frame for it yet. A landscape player needs `expo-screen-orientation` and a new build.
+    A tester asked for a full-screen option in the Relax video player.
+    **Status: built on `feature/glow-ai-chat-elements`.** The card fills the window and rotates to landscape, with no native module. There is no Figma frame for it, so the control style follows the video card.
 
 ## Overlap with the TestFlight feedback on main
 

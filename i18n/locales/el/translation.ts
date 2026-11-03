@@ -1287,6 +1287,8 @@ export default {
       mindTag: 'Χαλάρωση · Νους',
     },
     video: {
+      fullScreen: 'Πλήρης οθόνη',
+      exitFullScreen: 'Έξοδος από πλήρη οθόνη',
       showControls: 'Εμφανίζει το κουμπί παύσης',
       badge: 'Βίντεο',
       length: 'Βίντεο {{length}}',
