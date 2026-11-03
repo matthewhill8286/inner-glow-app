@@ -31,7 +31,7 @@ export default function MoodCheckInScreen() {
   const { createJournalEntry } = useJournal();
 
   // Home's mood slider can open this with its chosen mood (1–5); otherwise start at Okay.
-  const { mood: moodParam } = useLocalSearchParams<{ mood?: string }>();
+  const { mood: moodParam, from } = useLocalSearchParams<{ mood?: string; from?: string }>();
   const [score, setScore] = useState<MoodScore>(() => {
     const s = Number(moodParam);
     return (Number.isInteger(s) && s >= 1 && s <= 5 ? s : 3) as MoodScore;
@@ -43,21 +43,32 @@ export default function MoodCheckInScreen() {
   const saving$ = useRef(false);
   const mood = moodStep(score);
 
-  const toggle = (f: MoodFactor) => setFactors((cur) => (cur.includes(f) ? cur.filter((x) => x !== f) : [...cur, f]));
+  const toggle = (f: MoodFactor) =>
+    setFactors((cur) => (cur.includes(f) ? cur.filter((x) => x !== f) : [...cur, f]));
 
   async function save() {
     if (saving$.current) return;
     saving$.current = true;
     setSaving(true);
     try {
-      const entry = await addMoodCheckIn({ mood: mood.checkIn, factors, note: note.trim() || undefined });
+      const entry = await addMoodCheckIn({
+        mood: mood.checkIn,
+        factors,
+        note: note.trim() || undefined,
+      });
       if (note.trim()) {
         // The note is "saved to your journal too"; a failure here must not lose the check-in.
-        createJournalEntry({ title: '', content: note.trim(), mood: mood.checkIn, moodLogId: entry.id }).catch(() =>
-          toast.error(t('moodCheckIn2.journalFailed')),
-        );
+        createJournalEntry({
+          title: '',
+          content: note.trim(),
+          mood: mood.checkIn,
+          moodLogId: entry.id,
+        }).catch(() => toast.error(t('moodCheckIn2.journalFailed')));
       }
-      router.replace({ pathname: '/(tabs)/mood/logged', params: { mood: String(score), factors: factors.join(',') } });
+      router.replace({
+        pathname: '/(tabs)/mood/logged',
+        params: { mood: String(score), factors: factors.join(','), from },
+      });
     } catch {
       toast.error(t('moodCheckIn2.saveFailed'));
     } finally {
@@ -68,7 +79,14 @@ export default function MoodCheckInScreen() {
 
   if (step === 'mood') {
     return (
-      <View style={{ flex: 1, backgroundColor: palette.bg, paddingTop: insets.top + 10, paddingBottom: insets.bottom + 24 }}>
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: palette.bg,
+          paddingTop: insets.top + 10,
+          paddingBottom: insets.bottom + 24,
+        }}
+      >
         <View style={{ alignItems: 'flex-end', paddingHorizontal: 24 }}>
           <IconButton
             icon="arrow/close"
@@ -77,12 +95,31 @@ export default function MoodCheckInScreen() {
             onPress={() => backTo(undefined, '/(tabs)/mood')}
           />
         </View>
-        <Text accessibilityRole="header" style={{ ...Type.titleLg, lineHeight: 36, color: palette.ink, textAlign: 'center', marginTop: 20, paddingHorizontal: 24 }}>
+        <Text
+          accessibilityRole="header"
+          style={{
+            ...Type.titleLg,
+            lineHeight: 36,
+            color: palette.ink,
+            textAlign: 'center',
+            marginTop: 20,
+            paddingHorizontal: 24,
+          }}
+        >
           {t('moodCheckIn2.question')}
         </Text>
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <MoodOrb score={score} />
-          <Text accessibilityLiveRegion="polite" style={{ ...Type.display, fontSize: 32, lineHeight: 45, color: palette.ink, marginTop: -24 }}>
+          <Text
+            accessibilityLiveRegion="polite"
+            style={{
+              ...Type.display,
+              fontSize: 32,
+              lineHeight: 45,
+              color: palette.ink,
+              marginTop: -24,
+            }}
+          >
             {t(`moodScale.${mood.key}`)}
           </Text>
         </View>
@@ -104,15 +141,38 @@ export default function MoodCheckInScreen() {
   }
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: palette.bg }}>
-      <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE}
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      style={{ flex: 1, backgroundColor: palette.bg }}
+    >
+      <ScrollView
+        keyboardDismissMode={KEYBOARD_DISMISS_MODE}
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ paddingTop: insets.top + 10, paddingHorizontal: 24, paddingBottom: insets.bottom + 24 }}
+        contentContainerStyle={{
+          paddingTop: insets.top + 10,
+          paddingHorizontal: 24,
+          paddingBottom: insets.bottom + 24,
+        }}
       >
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <IconButton variant="nav" accessibilityLabel={t('moodCheckIn2.back')} onPress={() => setStep('mood')} />
+        <View
+          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+        >
+          <IconButton
+            variant="nav"
+            accessibilityLabel={t('moodCheckIn2.back')}
+            onPress={() => setStep('mood')}
+          />
           <View
-            style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: palette.selected, borderRadius: 999, paddingVertical: 6, paddingLeft: 10, paddingRight: 14 }}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+              backgroundColor: palette.selected,
+              borderRadius: 999,
+              paddingVertical: 6,
+              paddingLeft: 10,
+              paddingRight: 14,
+            }}
           >
             <Icon name={mood.face} size={18} />
             <Text style={{ ...Type.label, color: palette.plum }}>{t(`moodScale.${mood.key}`)}</Text>
@@ -120,10 +180,15 @@ export default function MoodCheckInScreen() {
           <View style={{ width: 44 }} />
         </View>
 
-        <Text accessibilityRole="header" style={{ ...Type.titleLg, lineHeight: 36, color: palette.ink, marginTop: 26 }}>
+        <Text
+          accessibilityRole="header"
+          style={{ ...Type.titleLg, lineHeight: 36, color: palette.ink, marginTop: 26 }}
+        >
           {t('moodCheckIn2.shaping')}
         </Text>
-        <Text style={{ ...Type.bodySm, color: palette.textMuted, marginTop: 4 }}>{t('moodCheckIn2.optional')}</Text>
+        <Text style={{ ...Type.bodySm, color: palette.textMuted, marginTop: 4 }}>
+          {t('moodCheckIn2.optional')}
+        </Text>
 
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 18 }}>
           {MOOD_FACTORS.map((f) => (
@@ -138,8 +203,19 @@ export default function MoodCheckInScreen() {
           ))}
         </View>
 
-        <Text style={{ ...Type.label, fontSize: 13, color: palette.ink, marginTop: 28 }}>{t('moodCheckIn2.addNote')}</Text>
-        <View style={{ backgroundColor: palette.surface, borderRadius: 24, paddingVertical: 18, paddingHorizontal: 20, marginTop: 10, minHeight: 120 }}>
+        <Text style={{ ...Type.label, fontSize: 13, color: palette.ink, marginTop: 28 }}>
+          {t('moodCheckIn2.addNote')}
+        </Text>
+        <View
+          style={{
+            backgroundColor: palette.surface,
+            borderRadius: 24,
+            paddingVertical: 18,
+            paddingHorizontal: 20,
+            marginTop: 10,
+            minHeight: 120,
+          }}
+        >
           <TextInput
             value={note}
             onChangeText={setNote}
@@ -148,9 +224,18 @@ export default function MoodCheckInScreen() {
             multiline
             maxLength={1000}
             accessibilityLabel={t('moodCheckIn2.addNote')}
-            style={{ ...Type.bodyM, lineHeight: 23, color: '#44403B', minHeight: 60, textAlignVertical: 'top', padding: 0 }}
+            style={{
+              ...Type.bodyM,
+              lineHeight: 23,
+              color: '#44403B',
+              minHeight: 60,
+              textAlignVertical: 'top',
+              padding: 0,
+            }}
           />
-          <Text style={{ ...Type.micro, color: palette.textSubtle, marginTop: 10 }}>{t('moodCheckIn2.savedToJournal')}</Text>
+          <Text style={{ ...Type.micro, color: palette.textSubtle, marginTop: 10 }}>
+            {t('moodCheckIn2.savedToJournal')}
+          </Text>
         </View>
 
         <AppButton

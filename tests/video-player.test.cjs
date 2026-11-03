@@ -7,6 +7,9 @@ const ts = require('typescript');
 function player() {
   const states = [];
   let cursor = 0;
+  let refCursor = 0;
+  const refs = [];
+  const commands = [];
   const react = {
     createElement: (type, props, ...children) => ({ type, props: props || {}, children }),
     useState: (initial) => {
@@ -19,7 +22,20 @@ function player() {
         },
       ];
     },
-    useRef: (initial) => ({ current: initial }),
+    useRef: (initial) => {
+      const index = refCursor++;
+      if (!refs[index])
+        refs[index] = {
+          current:
+            index === 0
+              ? {
+                  playVideo: () => commands.push('play'),
+                  pauseVideo: () => commands.push('pause'),
+                }
+              : initial,
+        };
+      return refs[index];
+    },
     useEffect: () => {},
     useCallback: (fn) => fn,
   };
@@ -69,6 +85,7 @@ function player() {
   );
   const render = () => {
     cursor = 0;
+    refCursor = 0;
     const root = module.exports.VideoPlayer({
       practice: {
         id: 'test',
@@ -92,6 +109,7 @@ function player() {
       complete: nodes.find((n) => n.type === 'CompleteModal'),
     };
   };
+  render.commands = commands;
   return render;
 }
 
@@ -154,4 +172,31 @@ test('the end of a video stops playback and opens completion', () => {
   screen = render();
   assert.equal(screen.video.props.play, false);
   assert.equal(screen.complete.props.visible, true);
+});
+
+test('a delayed playing event cannot undo the user pause request', () => {
+  const render = player();
+  let screen = render();
+  screen.video.props.onReady();
+  screen.video.props.onChangeState('playing');
+  screen = render();
+  screen.button.props.onPress();
+  screen = render();
+  screen.video.props.onChangeState('playing');
+  screen = render();
+  assert.equal(screen.video.props.play, false);
+  assert.equal(screen.icon.props.name, 'line/play');
+});
+
+test('user taps send direct native iframe commands in addition to updating props', () => {
+  const render = player();
+  let screen = render();
+  screen.video.props.onReady();
+  screen.video.props.onChangeState('playing');
+  screen = render();
+  screen.button.props.onPress();
+  assert.equal(render.commands.at(-1), 'pause');
+  screen = render();
+  screen.button.props.onPress();
+  assert.equal(render.commands.at(-1), 'play');
 });

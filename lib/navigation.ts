@@ -65,3 +65,25 @@ export function returnFromNotifications(origin?: unknown) {
 export function finishTo(destination: Href) {
   router.dismissTo(destination);
 }
+
+/** Only primary tabs can be the terminal destination of a mood flow. */
+export function moodReturnDestination(
+  from?: string,
+): '/(tabs)/profile' | '/(tabs)/home' | '/(tabs)/mood' {
+  if (from === '/(tabs)/profile') return from;
+  if (from === '/(tabs)/mood') return from;
+  return '/(tabs)/home';
+}
+/** Explicit Home shortcuts must not pop into an older conversation in the Chat stack. */
+export function returnFromChat(from?: string) {
+  if (from === '/(tabs)/home') {
+    if (router.canDismiss()) router.dismissAll();
+    router.navigate('/(tabs)/home');
+  } else backTo(from, '/(tabs)/chat');
+}
+
+/** POP_TO cannot target another tab from a nested feature stack. Clear the forms, then switch tabs. */
+export function finishMoodFlow(from?: string) {
+  if (router.canDismiss()) router.dismissAll();
+  router.navigate(moodReturnDestination(from));
+}

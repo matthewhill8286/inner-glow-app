@@ -1,5 +1,11 @@
 # 04 — Verify the redesigned welcome artwork fits supported screens
 
+## Current disposition — 3 November 2026
+
+Welcome has been redesigned. Artwork sizing and clean-install routing require Build 27 device verification. See November tasks 14 and 24.
+
+[Full feedback reconciliation](../../testflight-feedback-2026-11-03/README.md). Earlier implementation notes below are historical.
+
 **Priority:** P2
 
 **Status:** implemented locally; next binary verification pending

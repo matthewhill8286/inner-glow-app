@@ -54,6 +54,14 @@ export function VideoPlayer({ practice }: { practice: Practice }) {
   // YouTube's title, share and "Watch on YouTube" links. Once started, the card's button drives the
   // player and the frame gets no taps at all.
   const [playing, setPlaying] = useState(false);
+  // Iframe events arrive asynchronously. They acknowledge playback but must not reverse a newer tap.
+  const playIntent = useRef<boolean | null>(null);
+  const requestPlayback = useCallback((next: boolean) => {
+    playIntent.current = next;
+    setPlaying(next);
+    if (next) ref.current?.playVideo();
+    else ref.current?.pauseVideo();
+  }, []);
   const [started, setStarted] = useState(false);
   const [position, setPosition] = useState(0);
   const [length, setLength] = useState(practice.video!.seconds);
@@ -64,7 +72,7 @@ export function VideoPlayer({ practice }: { practice: Practice }) {
   const cardW = width - 32;
 
   const togglePlay = () => {
-    setPlaying((p) => !p);
+    requestPlayback(!playing);
   };
 
   useEffect(() => {
@@ -105,10 +113,10 @@ export function VideoPlayer({ practice }: { practice: Practice }) {
   );
 
   const finish = useCallback(() => {
-    setPlaying(false);
+    requestPlayback(false);
     setDone(true);
     void save(true);
-  }, [save]);
+  }, [save, requestPlayback]);
 
   const askToLeave = useCallback(() => {
     if (done) return false;
@@ -116,10 +124,10 @@ export function VideoPlayer({ practice }: { practice: Practice }) {
       finish();
       return true;
     }
-    setPlaying(false);
+    requestPlayback(false);
     setEndOpen(true);
     return true;
-  }, [done, length, finish]);
+  }, [done, length, finish, requestPlayback]);
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', askToLeave);
     return () => sub.remove();
@@ -199,8 +207,9 @@ export function VideoPlayer({ practice }: { practice: Practice }) {
               onChangeState={(state: string) => {
                 if (state === 'playing') {
                   setStarted(true);
-                  setPlaying(true);
-                } else if (state === 'paused') setPlaying(false);
+                  if (playIntent.current !== false) setPlaying(true);
+                  else ref.current?.pauseVideo();
+                } else if (state === 'paused' && playIntent.current !== true) setPlaying(false);
                 else if (state === 'ended') finish();
               }}
             />
@@ -357,7 +366,7 @@ export function VideoPlayer({ practice }: { practice: Practice }) {
         bodyText={endBody}
         onKeep={() => {
           setEndOpen(false);
-          setPlaying(true);
+          requestPlayback(true);
         }}
         onEnd={() => {
           setEndOpen(false);
@@ -368,16 +377,20 @@ export function VideoPlayer({ practice }: { practice: Practice }) {
         visible={done}
         title={t('practices.complete.practice', { title: text.title })}
         body={t('practices.complete.body')}
-        onBack={() => router.dismissTo('/(tabs)/mindful')}
-        onReflect={() =>
+        onBack={() => {
+          setDone(false);
+          router.dismissTo('/(tabs)/mindful');
+        }}
+        onReflect={() => {
+          setDone(false);
           router.replace({
             pathname: '/(tabs)/chat/new-conversation',
             params: {
               initialMessage: t('practices.complete.reflectPrompt', { title: text.title }),
               from: '/(tabs)/mindful',
             },
-          })
-        }
+          });
+        }}
       />
     </View>
   );

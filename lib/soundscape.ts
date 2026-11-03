@@ -1,4 +1,4 @@
-import { createAudioPlayer, type AudioPlayer } from 'expo-audio';
+import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from 'expo-audio';
 
 /* ── Sound file map ──────────────────────────────── */
 
@@ -13,6 +13,8 @@ const SOUND_FILES: Record<string, any> = {
 /* ── Soundscape player ───────────────────────────── */
 
 let currentPlayer: AudioPlayer | null = null;
+let playbackGeneration = 0;
+let paused = false;
 
 /**
  * Start playing a soundscape in a loop.
@@ -21,17 +23,24 @@ let currentPlayer: AudioPlayer | null = null;
  */
 export async function playSoundscape(key: string): Promise<void> {
   // Stop any existing playback
-  await stopSoundscape();
+  const stopping = stopSoundscape();
+  const generation = playbackGeneration;
+  paused = false;
+  await stopping;
+  if (generation !== playbackGeneration) return;
 
   const source = SOUND_FILES[key];
   if (!source) return; // 'silence' or unknown — no audio
 
   try {
+    await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
+    // Navigation or a newer selection may have cancelled this asynchronous start.
+    if (generation !== playbackGeneration) return;
     const player = createAudioPlayer(source);
     player.loop = true;
     player.volume = 0.6;
-    player.play();
     currentPlayer = player;
+    if (!paused) player.play();
   } catch (err) {
     console.warn('[soundscape] Failed to play:', err);
   }
@@ -55,21 +64,25 @@ export function stopSoundscapeAfter(minutes: number | null): void {
   clearStopTimers();
   if (minutes == null || !currentPlayer) return;
   const fadeMs = 30_000;
-  stopTimer = setTimeout(() => {
-    const start = currentPlayer?.volume ?? 0.6;
-    let step = 0;
-    fadeTimer = setInterval(() => {
-      step++;
-      setSoundscapeVolume(start * (1 - step / 30));
-      if (step >= 30) void stopSoundscape();
-    }, fadeMs / 30);
-  }, Math.max(0, minutes * 60_000 - fadeMs));
+  stopTimer = setTimeout(
+    () => {
+      const start = currentPlayer?.volume ?? 0.6;
+      let step = 0;
+      fadeTimer = setInterval(() => {
+        step++;
+        setSoundscapeVolume(start * (1 - step / 30));
+        if (step >= 30) void stopSoundscape();
+      }, fadeMs / 30);
+    },
+    Math.max(0, minutes * 60_000 - fadeMs),
+  );
 }
 
 /**
  * Stop the current soundscape and release the player.
  */
 export async function stopSoundscape(): Promise<void> {
+  playbackGeneration++;
   clearStopTimers();
   if (currentPlayer) {
     try {
@@ -86,6 +99,7 @@ export async function stopSoundscape(): Promise<void> {
  * Pause / resume the current soundscape.
  */
 export function pauseSoundscape(): void {
+  paused = true;
   if (currentPlayer) {
     try {
       currentPlayer.pause();
@@ -94,6 +108,7 @@ export function pauseSoundscape(): void {
 }
 
 export function resumeSoundscape(): void {
+  paused = false;
   if (currentPlayer) {
     try {
       currentPlayer.play();

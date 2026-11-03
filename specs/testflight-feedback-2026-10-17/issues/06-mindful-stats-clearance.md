@@ -1,5 +1,11 @@
 # 06 — Verify Mindful Stats remains readable above bottom navigation
 
+## Current disposition — 3 November 2026
+
+Shared bottom-navigation clearance is present (69b47ae). Build 27 device verification remains required. See November task 24.
+
+[Full feedback reconciliation](../../testflight-feedback-2026-11-03/README.md). Earlier implementation notes below are historical.
+
 **Priority:** P2
 
 **Status:** implemented locally; next binary verification pending

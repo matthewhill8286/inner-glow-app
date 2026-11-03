@@ -1,5 +1,11 @@
 # 01 — Show medication details only after an explicit Yes
 
+## Current disposition — 3 November 2026
+
+Build 27 implements the redesigned medication selections and exclusive none/prefer-not options. Retest on device; the old Yes-only wording is superseded. See November task 19.
+
+[Full feedback reconciliation](../../testflight-feedback-2026-11-03/README.md). Earlier implementation notes below are historical.
+
 **Priority:** P1
 
 **Status:** implemented — awaiting next binary/device verification

@@ -1,0 +1,759 @@
+[
+  {
+    "id": "ANbUS2r6yJ0I6DdvCfV0Zt0",
+    "timestamp": "2026-11-03T10:22:00.331Z[UTC]",
+    "cfBundleShortVersion": "1.0.0",
+    "cfBundleVersion": "26",
+    "deviceModel": "iPhone18,2",
+    "osVersion": "26.7.2",
+    "comment": "Old design ",
+    "number": 1,
+    "source": "https://appstoreconnect.apple.com/testflight/v3/providers/128596004/apps/6760898488/feedback/download/ANbUS2r6yJ0I6DdvCfV0Zt0.zip",
+    "evidence": [
+      "evidence/01-1.jpg"
+    ],
+    "tasks": [
+      "issues/01-two-factor-setup.md"
+    ],
+    "disposition": "Implemented \u2014 authenticator QR/layout checked in iPhone simulator; physical-device verification pending"
+  },
+  {
+    "id": "ALweWl4hEX1nZF3sIJtauAo",
+    "timestamp": "2026-11-03T10:20:03.968Z[UTC]",
+    "cfBundleShortVersion": "1.0.0",
+    "cfBundleVersion": "26",
+    "deviceModel": "iPhone18,2",
+    "osVersion": "26.7.2",
+    "comment": "When when I am in my profile, I press on glow score and my history is empty because I haven\u2019t logged anything yet but when it gives me the ability to log my mood I logged it and then pressed done button. It went back to the home screen instead of going to profile screen where I actually was.",
+    "number": 2,
+    "source": "https://appstoreconnect.apple.com/testflight/v3/providers/128596004/apps/6760898488/feedback/download/ALweWl4hEX1nZF3sIJtauAo.zip",
+    "evidence": [
+      "evidence/02-1.jpg"
+    ],
+    "tasks": [
+      "issues/02-profile-mood-return.md"
+    ],
+    "disposition": "Implemented \u2014 native return tested; broader regression verification pending"
+  },
+  {
+    "id": "ABBVMlhFzo_nkmY0JtnfG5k",
+    "timestamp": "2026-11-03T09:56:26.787Z[UTC]",
+    "cfBundleShortVersion": "1.0.0",
+    "cfBundleVersion": "26",
+    "deviceModel": "iPhone18,2",
+    "osVersion": "26.7.2",
+    "comment": "After I finish the winding down sleep session I pressed \u201creflect with ai\u201d and it went there, but the overlay stays ",
+    "number": 3,
+    "source": "https://appstoreconnect.apple.com/testflight/v3/providers/128596004/apps/6760898488/feedback/download/ABBVMlhFzo_nkmY0JtnfG5k.zip",
+    "evidence": [
+      "evidence/03-1.jpg"
+    ],
+    "tasks": [
+      "issues/03-practice-completion-overlay.md"
+    ],
+    "disposition": "Implemented locally \u2014 awaiting device verification"
+  },
+  {
+    "id": "AJW62DuI9_TyLLvY0n4kIi0",
+    "timestamp": "2026-11-03T09:54:29.563Z[UTC]",
+    "cfBundleShortVersion": "1.0.0",
+    "cfBundleVersion": "26",
+    "deviceModel": "iPhone18,2",
+    "osVersion": "26.7.2",
+    "comment": "Back button doesn\u2019t work \nThere is no switch button for the voice guidance \n\nThe rain sounds is very quite and it\u2019s a very short melody that keeps replaying itself \n\n\n\u201cRain at night\u201d should be under the switch on off for the voice guidance \n\n",
+    "number": 4,
+    "source": "https://appstoreconnect.apple.com/testflight/v3/providers/128596004/apps/6760898488/feedback/download/AJW62DuI9_TyLLvY0n4kIi0.zip",
+    "evidence": [
+      "evidence/04-1.jpg"
+    ],
+    "tasks": [
+      "issues/04-sleep-player-back.md",
+      "issues/05-sleep-voice-guidance.md",
+      "issues/06-rain-sound-quality.md"
+    ],
+    "disposition": "Outstanding"
+  },
+  {
+    "id": "AHzmN7Yrajuxzo8Ab-XEpac",
+    "timestamp": "2026-11-03T09:51:23.670Z[UTC]",
+    "cfBundleShortVersion": "1.0.0",
+    "cfBundleVersion": "26",
+    "deviceModel": "iPhone18,2",
+    "osVersion": "26.7.2",
+    "comment": "Don\u2019t have the voice guidance switch ",
+    "number": 5,
+    "source": "https://appstoreconnect.apple.com/testflight/v3/providers/128596004/apps/6760898488/feedback/download/AHzmN7Yrajuxzo8Ab-XEpac.zip",
+    "evidence": [
+      "evidence/05-1.jpg"
+    ],
+    "tasks": [
+      "issues/05-sleep-voice-guidance.md"
+    ],
+    "disposition": "Outstanding \u2014 narration assets required"
+  },
+  {
+    "id": "AKgCC-bHN7_fyL92n0WICEs",
+    "timestamp": "2026-11-03T09:50:46.285Z[UTC]",
+    "cfBundleShortVersion": "1.0.0",
+    "cfBundleVersion": "26",
+    "deviceModel": "iPhone18,2",
+    "osVersion": "26.7.2",
+    "comment": "The moon is different ",
+    "number": 6,
+    "source": "https://appstoreconnect.apple.com/testflight/v3/providers/128596004/apps/6760898488/feedback/download/AKgCC-bHN7_fyL92n0WICEs.zip",
+    "evidence": [
+      "evidence/06-1.jpg"
+    ],
+    "tasks": [
+      "issues/07-sleep-winddown-design.md"
+    ],
+    "disposition": "Outstanding \u2014 design comparison required"
+  },
+  {
+    "id": "AMuPdhE8E0uW38FQY4yQN2w",
+    "timestamp": "2026-11-03T09:50:10.336Z[UTC]",
+    "cfBundleShortVersion": "1.0.0",
+    "cfBundleVersion": "26",
+    "deviceModel": "iPhone18,2",
+    "osVersion": "26.7.2",
+    "comment": "This screen is different to our ui design ",
+    "number": 7,
+    "source": "https://appstoreconnect.apple.com/testflight/v3/providers/128596004/apps/6760898488/feedback/download/AMuPdhE8E0uW38FQY4yQN2w.zip",
+    "evidence": [
+      "evidence/07-1.jpg"
+    ],
+    "tasks": [
+      "issues/07-sleep-winddown-design.md"
+    ],
+    "disposition": "Outstanding \u2014 design comparison required"
+  },
+  {
+    "id": "ALV0UE0h0lOVZdv2oQkMpDo",
+    "timestamp": "2026-11-03T09:46:33.991Z[UTC]",
+    "cfBundleShortVersion": "1.0.0",
+    "cfBundleVersion": "26",
+    "deviceModel": "iPhone18,2",
+    "osVersion": "26.7.2",
+    "comment": "Forwarded back button doesn\u2019t work ",
+    "number": 8,
+    "source": "https://appstoreconnect.apple.com/testflight/v3/providers/128596004/apps/6760898488/feedback/download/ALV0UE0h0lOVZdv2oQkMpDo.zip",
+    "evidence": [
+      "evidence/08-1.jpg"
+    ],
+    "tasks": [
+      "issues/08-practice-transport.md"
+    ],
+    "disposition": "Outstanding \u2014 reproduce"
+  },
+  {
+    "id": "AOVuC43PpBH-ef8BLXio9po",
+    "timestamp": "2026-11-03T09:44:16.227Z[UTC]",
+    "cfBundleShortVersion": "1.0.0",
+    "cfBundleVersion": "26",
+    "deviceModel": "iPhone18,2",
+    "osVersion": "26.7.2",
+    "comment": "This is broken ",
+    "number": 9,
+    "source": "https://appstoreconnect.apple.com/testflight/v3/providers/128596004/apps/6760898488/feedback/download/AOVuC43PpBH-ef8BLXio9po.zip",
+    "evidence": [
+      "evidence/09-1.jpg"
+    ],
+    "tasks": [
+      "issues/09-practice-progress-ring.md"
+    ],
+    "disposition": "Outstanding"
+  },
+  {
+    "id": "AC8nF2GKRSt4detuAvEJ9x4",
+    "timestamp": "2026-11-03T09:42:18.700Z[UTC]",
+    "cfBundleShortVersion": "1.0.0",
+    "cfBundleVersion": "26",
+    "deviceModel": "iPhone18,2",
+    "osVersion": "26.7.2",
+    "comment": "The score is not in the middle ",
+    "number": 10,
+    "source": "https://appstoreconnect.apple.com/testflight/v3/providers/128596004/apps/6760898488/feedback/download/AC8nF2GKRSt4detuAvEJ9x4.zip",
+    "evidence": [
+      "evidence/10-1.jpg"
+    ],
+    "tasks": [
+      "issues/10-home-alignment.md"
+    ],
+    "disposition": "Partial \u2014 icon sizes aligned; score centring still outstanding"
+  },
+  {
+    "id": "AMFNtHXEZUEyLEQmxWAlqv4",
+    "timestamp": "2026-11-03T09:41:55.482Z[UTC]",
+    "cfBundleShortVersion": "1.0.0",
+    "cfBundleVersion": "26",
+    "deviceModel": "iPhone18,2",
+    "osVersion": "26.7.2",
+    "comment": "If if I press on the home screen ask low and thing it goes into the AI which is fine but then when you press back it goes into you last chat with AI instead of going back to home screen so please change that. Just delete one one action it doesn\u2019t need to go to the recent chat. It just can go back to home please",
+    "number": 11,
+    "source": "https://appstoreconnect.apple.com/testflight/v3/providers/128596004/apps/6760898488/feedback/download/AMFNtHXEZUEyLEQmxWAlqv4.zip",
+    "evidence": [
+      "evidence/11-1.jpg"
+    ],
+    "tasks": [
+      "issues/11-home-ai-return.md"
+    ],
+    "disposition": "Implemented locally \u2014 awaiting device verification"
+  },
+  {
+    "id": "AEa8se4B_Fo5zzqY9N7c5T0",
+    "timestamp": "2026-11-03T09:40:04.786Z[UTC]",
+    "cfBundleShortVersion": "1.0.0",
+    "cfBundleVersion": "26",
+    "deviceModel": "iPhone18,2",
+    "osVersion": "26.7.2",
+    "comment": "Different size icons ",
+    "number": 12,
+    "source": "https://appstoreconnect.apple.com/testflight/v3/providers/128596004/apps/6760898488/feedback/download/AEa8se4B_Fo5zzqY9N7c5T0.zip",
+    "evidence": [
+      "evidence/12-1.jpg"
+    ],
+    "tasks": [
+      "issues/10-home-alignment.md"
+    ],
+    "disposition": "Partial \u2014 icon sizes aligned; score centring still outstanding"
+  },
+  {
+    "id": "AEC8YbNaDYro6HZo4VjT0VM",
+    "timestamp": "2026-11-03T09:35:38.930Z[UTC]",
+    "cfBundleShortVersion": "1.0.0",
+    "cfBundleVersion": "26",
+    "deviceModel": "iPhone18,2",
+    "osVersion": "26.7.2",
+    "comment": "This is different to the ui design ",
+    "number": 13,
+    "source": "https://appstoreconnect.apple.com/testflight/v3/providers/128596004/apps/6760898488/feedback/download/AEC8YbNaDYro6HZo4VjT0VM.zip",
+    "evidence": [
+      "evidence/13-1.jpg"
+    ],
+    "tasks": [
+      "issues/12-chat-composer-design.md"
+    ],
+    "disposition": "Outstanding \u2014 design comparison required"
+  },
+  {
+    "id": "AL7TiAhJDE747yh4rqixJWY",
+    "timestamp": "2026-11-03T09:25:22.277Z[UTC]",
+    "cfBundleShortVersion": "1.0.0",
+    "cfBundleVersion": "26",
+    "deviceModel": "iPhone18,2",
+    "osVersion": "26.7.2",
+    "comment": "This opens after I drug the slider in my Home Screen \nNo need for this as it updated instantly at home while you drugging it ",
+    "number": 14,
+    "source": "https://appstoreconnect.apple.com/testflight/v3/providers/128596004/apps/6760898488/feedback/download/AL7TiAhJDE747yh4rqixJWY.zip",
+    "evidence": [
+      "evidence/14-1.jpg"
+    ],
+    "tasks": [
+      "issues/13-home-inline-mood.md"
+    ],
+    "disposition": "Implemented locally \u2014 awaiting device verification"
+  },
+  {
+    "id": "AP_11-BgtL7yZpWz6w7oAmg",
+    "timestamp": "2026-11-03T09:23:38.528Z[UTC]",
+    "cfBundleShortVersion": "1.0.0",
+    "cfBundleVersion": "26",
+    "deviceModel": "iPhone18,2",
+    "osVersion": "26.7.2",
+    "comment": "The splash and loading was missing \n\nWelcome and onboarding was missing too \n\n\nAfter signing up it went straight to assessment ",
+    "number": 15,
+    "source": "https://appstoreconnect.apple.com/testflight/v3/providers/128596004/apps/6760898488/feedback/download/AP_11-BgtL7yZpWz6w7oAmg.zip",
+    "evidence": [
+      "evidence/15-1.jpg"
+    ],
+    "tasks": [
+      "issues/14-onboarding-verification.md"
+    ],
+    "disposition": "Partial \u2014 signup fix shipped in Build 27; device retest required"
+  },
+  {
+    "id": "ADs_oF-Ia1pXspXEQHs7AeE",
+    "timestamp": "2026-11-03T09:20:30.430Z[UTC]",
+    "cfBundleShortVersion": "1.0.0",
+    "cfBundleVersion": "26",
+    "deviceModel": "iPhone18,2",
+    "osVersion": "26.7.2",
+    "comment": "This doesn\u2019t work correctly, plus I don\u2019t think this is obvious that you can press on time and select different time \nI am going to redesign it ",
+    "number": 16,
+    "source": "https://appstoreconnect.apple.com/testflight/v3/providers/128596004/apps/6760898488/feedback/download/ADs_oF-Ia1pXspXEQHs7AeE.zip",
+    "evidence": [
+      "evidence/16-1.jpg"
+    ],
+    "tasks": [
+      "issues/15-checkin-time-picker.md"
+    ],
+    "disposition": "Waiting for design \u2014 reproduction still required"
+  },
+  {
+    "id": "ANnZy3itE8o1-yMVf8z9qlc",
+    "timestamp": "2026-11-03T09:13:44.881Z[UTC]",
+    "cfBundleShortVersion": "1.0.0",
+    "cfBundleVersion": "26",
+    "deviceModel": "iPhone18,2",
+    "osVersion": "26.7.2",
+    "comment": "Would be great if we could drag it down and close the keyboard ",
+    "number": 17,
+    "source": "https://appstoreconnect.apple.com/testflight/v3/providers/128596004/apps/6760898488/feedback/download/ANnZy3itE8o1-yMVf8z9qlc.zip",
+    "evidence": [
+      "evidence/17-1.jpg"
+    ],
+    "tasks": [
+      "issues/16-keyboard-dismissal.md"
+    ],
+    "disposition": "Implemented in Build 27 \u2014 device retest required"
+  },
+  {
+    "id": "AFLbNRwWdnabgLj-e9k3pHU",
+    "timestamp": "2026-11-03T09:11:58.280Z[UTC]",
+    "cfBundleShortVersion": "1.0.0",
+    "cfBundleVersion": "26",
+    "deviceModel": "iPhone18,2",
+    "osVersion": "26.7.2",
+    "comment": "Need to update an obvious play(start) button ",
+    "number": 18,
+    "source": "https://appstoreconnect.apple.com/testflight/v3/providers/128596004/apps/6760898488/feedback/download/AFLbNRwWdnabgLj-e9k3pHU.zip",
+    "evidence": [
+      "evidence/18-1.jpg"
+    ],
+    "tasks": [
+      "issues/17-voice-record-affordance.md"
+    ],
+    "disposition": "Implemented locally \u2014 awaiting device verification"
+  },
+  {
+    "id": "AHHRUEIi8o8WUX0pG3PVQhA",
+    "timestamp": "2026-11-03T09:09:07.532Z[UTC]",
+    "cfBundleShortVersion": "1.0.0",
+    "cfBundleVersion": "26",
+    "deviceModel": "iPhone18,2",
+    "osVersion": "26.7.2",
+    "comment": "User needs to be able to swipe down to hide the keyboard and be able to see the list clearly ",
+    "number": 19,
+    "source": "https://appstoreconnect.apple.com/testflight/v3/providers/128596004/apps/6760898488/feedback/download/AHHRUEIi8o8WUX0pG3PVQhA.zip",
+    "evidence": [
+      "evidence/19-1.jpg"
+    ],
+    "tasks": [
+      "issues/16-keyboard-dismissal.md"
+    ],
+    "disposition": "Implemented in Build 27 \u2014 device retest required"
+  },
+  {
+    "id": "ALurPFlSvh3R5CjmxnzL6zk",
+    "timestamp": "2026-11-03T09:01:50.926Z[UTC]",
+    "cfBundleShortVersion": "1.0.0",
+    "cfBundleVersion": "26",
+    "deviceModel": "iPhone17,2",
+    "osVersion": "26.7.2",
+    "comment": "No microphone access prompt ",
+    "number": 20,
+    "source": "https://appstoreconnect.apple.com/testflight/v3/providers/128596004/apps/6760898488/feedback/download/ALurPFlSvh3R5CjmxnzL6zk.zip",
+    "evidence": [
+      "evidence/20-1.jpg"
+    ],
+    "tasks": [
+      "issues/18-microphone-recovery.md"
+    ],
+    "disposition": "Implemented locally \u2014 awaiting device verification"
+  },
+  {
+    "id": "ACfkXD50TQqI5KdaxXRAKEc",
+    "timestamp": "2026-11-03T09:01:06.883Z[UTC]",
+    "cfBundleShortVersion": "1.0.0",
+    "cfBundleVersion": "26",
+    "deviceModel": "iPhone18,2",
+    "osVersion": "26.7.2",
+    "comment": "Need to create a multi selection ",
+    "number": 21,
+    "source": "https://appstoreconnect.apple.com/testflight/v3/providers/128596004/apps/6760898488/feedback/download/ACfkXD50TQqI5KdaxXRAKEc.zip",
+    "evidence": [
+      "evidence/21-1.jpg"
+    ],
+    "tasks": [
+      "issues/19-assessment-multiselect.md"
+    ],
+    "disposition": "Implemented in Build 27 \u2014 device retest required"
+  },
+  {
+    "id": "AHDVSXRUHnLkF3RiSthUyJ4",
+    "timestamp": "2026-11-03T08:40:13.838Z[UTC]",
+    "cfBundleShortVersion": "1.0.0",
+    "cfBundleVersion": "26",
+    "deviceModel": "iPhone17,2",
+    "osVersion": "26.7.2",
+    "comment": "Voice entry doesn\u2019t work at all",
+    "number": 22,
+    "source": "https://appstoreconnect.apple.com/testflight/v3/providers/128596004/apps/6760898488/feedback/download/AHDVSXRUHnLkF3RiSthUyJ4.zip",
+    "evidence": [
+      "evidence/22-1.jpg"
+    ],
+    "tasks": [
+      "issues/18-microphone-recovery.md"
+    ],
+    "disposition": "Implemented locally \u2014 awaiting device verification"
+  },
+  {
+    "id": "AAMrXzmk8NF1j-RMgRbDb9w",
+    "timestamp": "2026-11-03T08:39:36.804Z[UTC]",
+    "cfBundleShortVersion": "1.0.0",
+    "cfBundleVersion": "26",
+    "deviceModel": "iPhone17,2",
+    "osVersion": "26.7.2",
+    "comment": "Once paused the video keeps playing",
+    "number": 23,
+    "source": "https://appstoreconnect.apple.com/testflight/v3/providers/128596004/apps/6760898488/feedback/download/AAMrXzmk8NF1j-RMgRbDb9w.zip",
+    "evidence": [
+      "evidence/23-1.jpg"
+    ],
+    "tasks": [
+      "issues/20-video-pause.md"
+    ],
+    "disposition": "Implemented \u2014 pause/resume verified on iPhone simulator; physical-device verification pending"
+  },
+  {
+    "id": "AP8mvQMkWGC3Mbxn2rXBRqQ",
+    "timestamp": "2026-11-03T08:38:55.471Z[UTC]",
+    "cfBundleShortVersion": "1.0.0",
+    "cfBundleVersion": "26",
+    "deviceModel": "iPhone17,2",
+    "osVersion": "26.7.2",
+    "comment": "No sound is coming",
+    "number": 24,
+    "source": "https://appstoreconnect.apple.com/testflight/v3/providers/128596004/apps/6760898488/feedback/download/AP8mvQMkWGC3Mbxn2rXBRqQ.zip",
+    "evidence": [
+      "evidence/24-1.jpg"
+    ],
+    "tasks": [
+      "issues/21-deep-sleep-audio.md"
+    ],
+    "disposition": "Implemented locally \u2014 awaiting native audio verification"
+  },
+  {
+    "id": "AIdiHdmIO-HqMDLavE7t5I8",
+    "timestamp": "2026-11-03T08:37:53.227Z[UTC]",
+    "cfBundleShortVersion": "1.0.0",
+    "cfBundleVersion": "26",
+    "deviceModel": "iPhone17,2",
+    "osVersion": "26.7.2",
+    "comment": "Numbers are overlapping making it hard to read",
+    "number": 25,
+    "source": "https://appstoreconnect.apple.com/testflight/v3/providers/128596004/apps/6760898488/feedback/download/AIdiHdmIO-HqMDLavE7t5I8.zip",
+    "evidence": [
+      "evidence/25-1.jpg"
+    ],
+    "tasks": [
+      "issues/22-score-label-overlap.md"
+    ],
+    "disposition": "Implemented locally \u2014 awaiting device verification"
+  },
+  {
+    "id": "AJ7byKBSgvnY3UPl5dHqVr4",
+    "timestamp": "2026-10-18T14:22:12.133Z[UTC]",
+    "cfBundleShortVersion": "1.0.0",
+    "cfBundleVersion": "23",
+    "deviceModel": "iPhone17,2",
+    "osVersion": "26.7.1",
+    "comment": "Heading has far to much top margin added",
+    "number": 26,
+    "source": "https://appstoreconnect.apple.com/testflight/v3/providers/128596004/apps/6760898488/feedback/download/AJ7byKBSgvnY3UPl5dHqVr4.zip",
+    "evidence": [
+      "evidence/26-1.jpg"
+    ],
+    "tasks": [
+      "issues/24-historical-layout-navigation.md"
+    ],
+    "disposition": "Historical \u2014 redesigned screens require regression verification"
+  },
+  {
+    "id": "ABCNi0iVjbCEXfzUXL_0atA",
+    "timestamp": "2026-10-18T14:21:39.439Z[UTC]",
+    "cfBundleShortVersion": "1.0.0",
+    "cfBundleVersion": "23",
+    "deviceModel": "iPhone17,2",
+    "osVersion": "26.7.1",
+    "comment": "The QR code doesn\u2019t render plus we need to think about how the 2 factor will actually work",
+    "number": 27,
+    "source": "https://appstoreconnect.apple.com/testflight/v3/providers/128596004/apps/6760898488/feedback/download/ABCNi0iVjbCEXfzUXL_0atA.zip",
+    "evidence": [],
+    "tasks": [
+      "issues/01-two-factor-setup.md"
+    ],
+    "disposition": "Implemented \u2014 authenticator QR/layout checked in iPhone simulator; physical-device verification pending",
+    "evidenceNote": "Original screenshot contains an authenticator provisioning secret; use the authenticated Apple source."
+  },
+  {
+    "id": "AC6hdhsriMXv_PFVq6I7Ez4",
+    "timestamp": "2026-10-17T14:02:00.130Z[UTC]",
+    "cfBundleShortVersion": "1.0.0",
+    "cfBundleVersion": "23",
+    "deviceModel": "iPhone17,2",
+    "osVersion": "26.7.1",
+    "comment": "After I press mindful h and go there, and then press back and it goes to the homepage instead of going back to this page ",
+    "number": 28,
+    "source": "https://appstoreconnect.apple.com/testflight/v3/providers/128596004/apps/6760898488/feedback/download/AC6hdhsriMXv_PFVq6I7Ez4.zip",
+    "evidence": [
+      "evidence/28-1.jpg"
+    ],
+    "tasks": [
+      "issues/24-historical-layout-navigation.md"
+    ],
+    "disposition": "Historical \u2014 redesigned screens require regression verification"
+  },
+  {
+    "id": "ABw1C7fwlQJv0QIMjOyQtrk",
+    "timestamp": "2026-10-17T13:58:35.862Z[UTC]",
+    "cfBundleShortVersion": "1.0.0",
+    "cfBundleVersion": "23",
+    "deviceModel": "iPhone17,2",
+    "osVersion": "26.7.1",
+    "comment": "An error \u201cmy mood cannot be saved\u201d",
+    "number": 29,
+    "source": "https://appstoreconnect.apple.com/testflight/v3/providers/128596004/apps/6760898488/feedback/download/ABw1C7fwlQJv0QIMjOyQtrk.zip",
+    "evidence": [
+      "evidence/29-1.jpg"
+    ],
+    "tasks": [
+      "issues/23-mood-save-error.md"
+    ],
+    "disposition": "Not reproduced \u2014 current backend and iPhone simulator saves passed"
+  },
+  {
+    "id": "AHmlu-zC0mdy7qtrNbpYMWs",
+    "timestamp": "2026-10-17T13:57:36.104Z[UTC]",
+    "cfBundleShortVersion": "1.0.0",
+    "cfBundleVersion": "23",
+    "deviceModel": "iPhone17,2",
+    "osVersion": "26.7.1",
+    "comment": "Delete and edit buttons have different font ",
+    "number": 30,
+    "source": "https://appstoreconnect.apple.com/testflight/v3/providers/128596004/apps/6760898488/feedback/download/AHmlu-zC0mdy7qtrNbpYMWs.zip",
+    "evidence": [
+      "evidence/30-1.jpg"
+    ],
+    "tasks": [
+      "issues/24-historical-layout-navigation.md"
+    ],
+    "disposition": "Historical \u2014 redesigned screens require regression verification"
+  },
+  {
+    "id": "AIDx7_hXkq69tyr-K_ecwHk",
+    "timestamp": "2026-10-17T13:57:01.080Z[UTC]",
+    "cfBundleShortVersion": "1.0.0",
+    "cfBundleVersion": "23",
+    "deviceModel": "iPhone17,2",
+    "osVersion": "26.7.1",
+    "comment": "Arrow back is not centred  ",
+    "number": 31,
+    "source": "https://appstoreconnect.apple.com/testflight/v3/providers/128596004/apps/6760898488/feedback/download/AIDx7_hXkq69tyr-K_ecwHk.zip",
+    "evidence": [
+      "evidence/31-1.jpg"
+    ],
+    "tasks": [
+      "issues/24-historical-layout-navigation.md"
+    ],
+    "disposition": "Historical \u2014 redesigned screens require regression verification"
+  },
+  {
+    "id": "AMP4sse1pFWRCp_mK9zyBAA",
+    "timestamp": "2026-10-17T13:55:57.640Z[UTC]",
+    "cfBundleShortVersion": "1.0.0",
+    "cfBundleVersion": "23",
+    "deviceModel": "iPhone17,2",
+    "osVersion": "26.7.1",
+    "comment": "No going back here? I checked the plans and want to go back home ",
+    "number": 32,
+    "source": "https://appstoreconnect.apple.com/testflight/v3/providers/128596004/apps/6760898488/feedback/download/AMP4sse1pFWRCp_mK9zyBAA.zip",
+    "evidence": [
+      "evidence/32-1.jpg"
+    ],
+    "tasks": [
+      "issues/24-historical-layout-navigation.md"
+    ],
+    "disposition": "Historical \u2014 redesigned screens require regression verification"
+  },
+  {
+    "id": "AAuHWBuO4dT8qJ2nTLE0gu0",
+    "timestamp": "2026-10-17T13:55:15.904Z[UTC]",
+    "cfBundleShortVersion": "1.0.0",
+    "cfBundleVersion": "23",
+    "deviceModel": "iPhone17,2",
+    "osVersion": "26.7.1",
+    "comment": "Need to add a bit of space after body text before the plans and lets align the name of the plan and the price \nCan make it centred and the \u201cmost popular\u201d can be a badge on top of the plan ",
+    "number": 33,
+    "source": "https://appstoreconnect.apple.com/testflight/v3/providers/128596004/apps/6760898488/feedback/download/AAuHWBuO4dT8qJ2nTLE0gu0.zip",
+    "evidence": [
+      "evidence/33-1.jpg"
+    ],
+    "tasks": [
+      "issues/24-historical-layout-navigation.md"
+    ],
+    "disposition": "Historical \u2014 redesigned screens require regression verification"
+  },
+  {
+    "id": "AMN8h51jh-KcpfMj-6wHZR8",
+    "timestamp": "2026-10-17T13:51:30.961Z[UTC]",
+    "cfBundleShortVersion": "1.0.0",
+    "cfBundleVersion": "23",
+    "deviceModel": "iPhone17,2",
+    "osVersion": "26.7.1",
+    "comment": "\u201cTrial expired\u201d tab needs spacing after \u201cFreud score\u201d",
+    "number": 34,
+    "source": "https://appstoreconnect.apple.com/testflight/v3/providers/128596004/apps/6760898488/feedback/download/AMN8h51jh-KcpfMj-6wHZR8.zip",
+    "evidence": [
+      "evidence/34-1.jpg"
+    ],
+    "tasks": [
+      "issues/24-historical-layout-navigation.md"
+    ],
+    "disposition": "Historical \u2014 redesigned screens require regression verification"
+  },
+  {
+    "id": "AGX2-7P9mN5Xoqkpw8AeM2s",
+    "timestamp": "2026-10-17T08:00:39.977Z[UTC]",
+    "cfBundleShortVersion": "1.0.0",
+    "cfBundleVersion": "11",
+    "deviceModel": "iPhone18,2",
+    "osVersion": "26.7",
+    "comment": "No margins on the sides ",
+    "number": 35,
+    "source": "https://appstoreconnect.apple.com/testflight/v3/providers/128596004/apps/6760898488/feedback/download/AGX2-7P9mN5Xoqkpw8AeM2s.zip",
+    "evidence": [
+      "evidence/35-1.jpg"
+    ],
+    "tasks": [
+      "issues/24-historical-layout-navigation.md"
+    ],
+    "disposition": "Historical \u2014 redesigned screens require regression verification"
+  },
+  {
+    "id": "AMLGAxyCOZPhYXrJVd42zcU",
+    "timestamp": "2026-10-17T07:59:15.228Z[UTC]",
+    "cfBundleShortVersion": "1.0.0",
+    "cfBundleVersion": "11",
+    "deviceModel": "iPhone18,2",
+    "osVersion": "26.7",
+    "comment": "Goes next even though I haven\u2019t selected anything ",
+    "number": 36,
+    "source": "https://appstoreconnect.apple.com/testflight/v3/providers/128596004/apps/6760898488/feedback/download/AMLGAxyCOZPhYXrJVd42zcU.zip",
+    "evidence": [
+      "evidence/36-1.jpg"
+    ],
+    "tasks": [
+      "issues/19-assessment-multiselect.md"
+    ],
+    "disposition": "Implemented in Build 27 \u2014 device retest required"
+  },
+  {
+    "id": "AF6NIN0p_LcxY3HogZ78UHE",
+    "timestamp": "2026-10-17T07:57:24.045Z[UTC]",
+    "cfBundleShortVersion": "1.0.0",
+    "cfBundleVersion": "11",
+    "deviceModel": "iPhone18,2",
+    "osVersion": "26.7",
+    "comment": "Can\u2019t navigate back",
+    "number": 37,
+    "source": "https://appstoreconnect.apple.com/testflight/v3/providers/128596004/apps/6760898488/feedback/download/AF6NIN0p_LcxY3HogZ78UHE.zip",
+    "evidence": [
+      "evidence/37-1.jpg"
+    ],
+    "tasks": [
+      "issues/24-historical-layout-navigation.md"
+    ],
+    "disposition": "Historical \u2014 redesigned screens require regression verification"
+  },
+  {
+    "id": "ADAMsfY8Dq72PoyAFdREzEA",
+    "timestamp": "2026-10-16T06:53:12.220Z[UTC]",
+    "cfBundleShortVersion": "1.0.0",
+    "cfBundleVersion": "11",
+    "deviceModel": "iPhone18,2",
+    "osVersion": "26.7",
+    "comment": "Also think it needs a multi selection ",
+    "number": 38,
+    "source": "https://appstoreconnect.apple.com/testflight/v3/providers/128596004/apps/6760898488/feedback/download/ADAMsfY8Dq72PoyAFdREzEA.zip",
+    "evidence": [
+      "evidence/38-1.jpg"
+    ],
+    "tasks": [
+      "issues/25-mixed-feelings.md"
+    ],
+    "disposition": "Outstanding \u2014 product/design decision required"
+  },
+  {
+    "id": "ALAOCuPkJgEyFw4EGM2josY",
+    "timestamp": "2026-10-16T06:52:26.588Z[UTC]",
+    "cfBundleShortVersion": "1.0.0",
+    "cfBundleVersion": "11",
+    "deviceModel": "iPhone18,2",
+    "osVersion": "26.7",
+    "comment": "Needs a multi election ",
+    "number": 39,
+    "source": "https://appstoreconnect.apple.com/testflight/v3/providers/128596004/apps/6760898488/feedback/download/ALAOCuPkJgEyFw4EGM2josY.zip",
+    "evidence": [
+      "evidence/39-1.jpg"
+    ],
+    "tasks": [
+      "issues/19-assessment-multiselect.md"
+    ],
+    "disposition": "Implemented in Build 27 \u2014 device retest required"
+  },
+  {
+    "id": "AHWRfWsxffUdyg02Q0vM_0M",
+    "timestamp": "2026-10-16T06:42:19.709Z[UTC]",
+    "cfBundleShortVersion": "1.0.0",
+    "cfBundleVersion": "11",
+    "deviceModel": "iPhone18,2",
+    "osVersion": "26.7",
+    "comment": "change the pic size tuck you ",
+    "number": 40,
+    "source": "https://appstoreconnect.apple.com/testflight/v3/providers/128596004/apps/6760898488/feedback/download/AHWRfWsxffUdyg02Q0vM_0M.zip",
+    "evidence": [
+      "evidence/40-1.jpg"
+    ],
+    "tasks": [
+      "issues/24-historical-layout-navigation.md"
+    ],
+    "disposition": "Historical \u2014 redesigned screens require regression verification"
+  },
+  {
+    "id": "AMxHCe4eZss_NqTq-j_md30",
+    "timestamp": "2026-10-14T14:30:04.561Z[UTC]",
+    "cfBundleShortVersion": "1.0.0",
+    "cfBundleVersion": "14",
+    "deviceModel": "iPhone17,2",
+    "osVersion": "26.7.1",
+    "comment": null,
+    "number": 41,
+    "source": "https://appstoreconnect.apple.com/testflight/v3/providers/128596004/apps/6760898488/feedback/download/AMxHCe4eZss_NqTq-j_md30.zip",
+    "evidence": [
+      "evidence/41-1.jpg"
+    ],
+    "tasks": [
+      "issues/24-historical-layout-navigation.md"
+    ],
+    "disposition": "Historical \u2014 redesigned screens require regression verification"
+  },
+  {
+    "id": "AIgPUmsdu_uqWORfMiLTVa4",
+    "timestamp": "2026-10-14T10:22:37.935Z[UTC]",
+    "cfBundleShortVersion": "1.0.0",
+    "cfBundleVersion": "11",
+    "deviceModel": "iPhone17,2",
+    "osVersion": "26.7.1",
+    "comment": null,
+    "number": 42,
+    "source": "https://appstoreconnect.apple.com/testflight/v3/providers/128596004/apps/6760898488/feedback/download/AIgPUmsdu_uqWORfMiLTVa4.zip",
+    "evidence": [
+      "evidence/42-1.jpg"
+    ],
+    "tasks": [
+      "issues/24-historical-layout-navigation.md"
+    ],
+    "disposition": "Historical \u2014 redesigned screens require regression verification"
+  }
+]

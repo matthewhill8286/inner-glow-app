@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
+  Linking,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -34,7 +36,7 @@ import { invokeAI } from '@/lib/ai-privacy';
 import { needsCrisisSupport } from '@/lib/journal-entry';
 import { MOOD_SCALE, moodStep, type MoodScore } from '@/lib/mood-scale';
 import { backTo } from '@/lib/navigation';
-import { useRecorder } from '@/lib/recorder';
+import { MicPermissionError, useRecorder } from '@/lib/recorder';
 import { uploadJournalAudio } from '@/lib/journal-audio';
 import { useUser } from '@/hooks/useUser';
 import { RecordingPill } from '@/components/journal/RecordingPill';
@@ -274,7 +276,13 @@ export default function VoiceEntry() {
     setStep('recording');
     try {
       await recorder.startRecording();
-    } catch {
+    } catch (err) {
+      if (err instanceof MicPermissionError && !err.canAskAgain) {
+        Alert.alert(t('journalVoice.recordTitle'), t('journalVoice.micPermissionError'), [
+          { text: t('common.cancel'), style: 'cancel' },
+          { text: t('common.openSettings'), onPress: () => void Linking.openSettings() },
+        ]);
+      }
       setError(t('journalVoice.micPermissionError'));
       setStep('error');
     }
@@ -392,7 +400,8 @@ export default function VoiceEntry() {
       </View>
 
       {reviewing ? (
-        <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE}
+        <ScrollView
+          keyboardDismissMode={KEYBOARD_DISMISS_MODE}
           contentContainerStyle={{
             flexGrow: 1,
             paddingHorizontal: 24,

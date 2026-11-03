@@ -1,5 +1,11 @@
 # 02 — Allow more than one assessment support goal
 
+## Current disposition — 3 November 2026
+
+Build 27 implements multiple support goals. Device verification is outstanding. Custom-text criteria from the old design are superseded by the current selection UI. See November task 19.
+
+[Full feedback reconciliation](../../testflight-feedback-2026-11-03/README.md). Earlier implementation notes below are historical.
+
 **Priority:** P2
 
 **Status:** implemented locally; next binary verification pending

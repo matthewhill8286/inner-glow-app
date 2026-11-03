@@ -13,7 +13,7 @@ import { useGlowAiGate } from '@/hooks/useGlowAi';
 import { stageChatDraft } from '@/lib/chat-drafts';
 import { getPersona } from '@/lib/chat';
 import { buildNewChatKey } from '@/lib/chatKeys';
-import { backTo } from '@/lib/navigation';
+import { returnFromChat } from '@/lib/navigation';
 import type { IconName } from '@/components/icons/iconData';
 import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
 
@@ -50,7 +50,7 @@ export default function NewConversation() {
       pathname: '/(tabs)/chat/[issueKey]',
       params: {
         issueKey: stageChatDraft(buildNewChatKey(persona.id), first),
-        from: '/(tabs)/chat',
+        from: from ?? '/(tabs)/chat',
         persona: persona.id,
       },
     });
@@ -71,10 +71,11 @@ export default function NewConversation() {
         title={t('glowAi.title')}
         status={t('glowAi.chat.status')}
         backLabel={t('common.back')}
-        onBack={() => backTo(from, '/(tabs)/chat')}
+        onBack={() => returnFromChat(from)}
         style={{ marginTop: insets.top + 10, marginHorizontal: 24 }}
       />
-      <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE}
+      <ScrollView
+        keyboardDismissMode={KEYBOARD_DISMISS_MODE}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 16 }}
       >

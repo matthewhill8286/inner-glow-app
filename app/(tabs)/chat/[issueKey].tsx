@@ -23,7 +23,7 @@ import { ChatHeader, Composer, MessageBubble, StarterRow } from '@/components/ch
 import { prepareChatTurn } from '@/lib/conversation-display';
 import { ServiceError } from '@/lib/function-errors';
 import { takeChatDraft } from '@/lib/chat-drafts';
-import { backTo } from '@/lib/navigation';
+import { returnFromChat } from '@/lib/navigation';
 import { showAlert } from '@/lib/state';
 import { talkDate } from '@/lib/talks';
 import { palette } from '@/constants/theme';
@@ -38,7 +38,7 @@ import { parseChatKey } from '@/lib/chatKeys';
 /* ── Helpers ────────────────────────────────────────── */
 
 function goBack(from?: string) {
-  backTo(from, '/(tabs)/chat');
+  returnFromChat(from);
 }
 
 function clock(iso: string) {

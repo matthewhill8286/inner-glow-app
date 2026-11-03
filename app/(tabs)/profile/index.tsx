@@ -71,7 +71,8 @@ export default function Profile() {
           { color: palette.mustard, opacity: 0.18, x: 190, y: 60, width: 240, blur: 90 },
         ]}
       />
-      <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE}
+      <ScrollView
+        keyboardDismissMode={KEYBOARD_DISMISS_MODE}
         contentContainerStyle={{
           paddingTop: insets.top + 10,
           paddingHorizontal: 24,
@@ -215,7 +216,9 @@ export default function Profile() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={`${t('me.profile.glowScore')} ${stats.score}`}
-            onPress={() => router.push('/(tabs)/freud-score')}
+            onPress={() =>
+              router.push({ pathname: '/(tabs)/freud-score', params: { from: '/(tabs)/profile' } })
+            }
             style={{
               flex: 1,
               height: 150,

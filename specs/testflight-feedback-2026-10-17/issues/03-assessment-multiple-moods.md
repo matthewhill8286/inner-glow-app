@@ -1,5 +1,11 @@
 # 03 — Allow mixed feelings in the assessment mood question
 
+## Current disposition — 3 November 2026
+
+The current redesigned assessment uses a single five-point mood slider. Multiple feelings are not implemented in the current code. This remains a product/design decision, not a verified fix. See November task 25.
+
+[Full feedback reconciliation](../../testflight-feedback-2026-11-03/README.md). Earlier implementation notes below are historical.
+
 **Priority:** P2
 
 **Status:** implemented locally; next binary verification pending

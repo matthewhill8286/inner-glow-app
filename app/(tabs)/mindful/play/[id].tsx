@@ -119,13 +119,26 @@ function PracticePlayer() {
           },
         });
         // A finished breathing practice also counts towards stress relief in the Glow score.
-        if (completed && practice.kind === 'breathing') await addStressCompletion(practice.id, text(practice).title);
+        if (completed && practice.kind === 'breathing')
+          await addStressCompletion(practice.id, text(practice).title);
         await refreshNudge(today + Math.round(seconds / 60), goal);
       } catch {
         // The session stays unsaved; the player still closes.
       }
     },
-    [practice, total, addSession, addStressCompletion, text, pace, params.sound, minutes, refreshNudge, today, goal],
+    [
+      practice,
+      total,
+      addSession,
+      addStressCompletion,
+      text,
+      pace,
+      params.sound,
+      minutes,
+      refreshNudge,
+      today,
+      goal,
+    ],
   );
 
   // One frame loop drives time, phase, the orb and the fade.
@@ -399,16 +412,20 @@ function PracticePlayer() {
             ? t('practices.complete.sleepBody')
             : t('practices.complete.body')
         }
-        onBack={() => router.dismissTo('/(tabs)/mindful')}
-        onReflect={() =>
+        onBack={() => {
+          setDone(false);
+          router.dismissTo('/(tabs)/mindful');
+        }}
+        onReflect={() => {
+          setDone(false);
           router.replace({
             pathname: '/(tabs)/chat/new-conversation',
             params: {
               initialMessage: t('practices.complete.reflectPrompt', { title }),
               from: '/(tabs)/mindful',
             },
-          })
-        }
+          });
+        }}
       />
     </View>
   );

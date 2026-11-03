@@ -1,5 +1,11 @@
 # 07 — Recheck cold launch against the historical Build 2 crash
 
+## Current disposition — 3 November 2026
+
+The current crash list still has only the historical Build 2 launch report. Its root cause remains unconfirmed because no stack trace was supplied. No current crash report is not proof of resolution; repeat cold launch on Build 27.
+
+[Full feedback reconciliation](../../testflight-feedback-2026-11-03/README.md). Earlier implementation notes below are historical.
+
 **Priority:** P2
 
 **Status:** implemented locally; next binary verification pending

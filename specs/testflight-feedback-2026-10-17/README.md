@@ -1,5 +1,9 @@
 # TestFlight feedback work items — 17 October 2026
 
+## Latest review — 3 November 2026
+
+Use the [current feedback board](../testflight-feedback-2026-11-03/README.md) and the current-disposition section of each task. The implementation and release statements below describe the October review, not the current release. In particular, mixed feelings are not supported by the current single-slider redesign, and historical crash resolution remains unconfirmed.
+
 Reviewed all five screenshot feedback items and the one crash feedback item visible in App Store Connect. Screenshots are from Builds 11 and 14; the crash is from Build 2. Added the medication branching bug reported in chat. These are local work items, not externally filed tracker issues. Original feedback was not changed or deleted.
 
 - [Show medication details only after an explicit Yes](issues/01-medication-follow-up.md) — P1; implemented — awaiting next binary/device verification.

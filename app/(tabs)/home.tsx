@@ -20,6 +20,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { MoodSlider } from '@/components/mood/MoodSlider';
 import AuraArt from '@/assets/svg/illustrations/home/aura.svg';
 import { useFreudScore } from '@/hooks/useFreudScore';
+import { toast } from '@/components/Toast';
 import { useMood } from '@/hooks/useMood';
 import { useProfile } from '@/hooks/useProfile';
 import { useSleep } from '@/hooks/useSleep';
@@ -61,16 +62,26 @@ export default function HomeScreen() {
 
   const { profile } = useProfile({ lazy: true });
   const { hasFullAccess } = useSubscription();
-  const { moodCheckIns, isLoading: moodLoading, updateMoodCheckIn } = useMood();
+  const { moodCheckIns, isLoading: moodLoading, updateMoodCheckIn, addMoodCheckIn } = useMood();
   const { sleepEntries } = useSleep();
-  const { currentScore, scoreHistory, isLoadingHistory } = useFreudScore({ lazy: true, withHistory: true });
+  const { currentScore, scoreHistory, isLoadingHistory } = useFreudScore({
+    lazy: true,
+    withHistory: true,
+  });
 
   const firstName = greetingName(profile);
   const greeting = t(`home.${greetingKey(new Date().getHours())}`);
   const loading = moodLoading || isLoadingHistory;
 
   if (!loading && isFirstDay(moodCheckIns.length, scoreHistory.length)) {
-    return <FirstDay greeting={greeting} name={firstName} bottom={screenBottomPadding(insets.bottom)} topInset={insets.top} />;
+    return (
+      <FirstDay
+        greeting={greeting}
+        name={firstName}
+        bottom={screenBottomPadding(insets.bottom)}
+        topInset={insets.top}
+      />
+    );
   }
 
   return (
@@ -81,35 +92,66 @@ export default function HomeScreen() {
           { color: palette.sky, opacity: 0.2, x: 180, y: 40, width: 240, blur: 90 },
         ]}
       />
-      <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE}
+      <ScrollView
+        keyboardDismissMode={KEYBOARD_DISMISS_MODE}
         ref={scrollRef}
-        contentContainerStyle={{ paddingTop: insets.top + 16, paddingHorizontal: 16, paddingBottom: screenBottomPadding(insets.bottom) }}
+        contentContainerStyle={{
+          paddingTop: insets.top + 16,
+          paddingHorizontal: 16,
+          paddingBottom: screenBottomPadding(insets.bottom),
+        }}
         showsVerticalScrollIndicator={false}
       >
         <Header greeting={greeting} name={firstName} isPro={hasFullAccess} />
         <MoodCard
           checkIns={moodCheckIns}
           locale={i18n.language}
-          onEditToday={(id, score) => updateMoodCheckIn({ id, mood: moodStep(score).checkIn })}
+          onSave={(id, score) =>
+            id
+              ? updateMoodCheckIn({ id, mood: moodStep(score).checkIn })
+              : addMoodCheckIn({ mood: moodStep(score).checkIn })
+          }
         />
         <GlowAiInput />
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 28, marginBottom: 5, paddingHorizontal: 6 }}>
-          <Text style={{ ...Type.bodyLg, lineHeight: 20, color: palette.ink }}>{t('homeGlow.innerGlowToday')}</Text>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginTop: 28,
+            marginBottom: 5,
+            paddingHorizontal: 6,
+          }}
+        >
+          <Text style={{ ...Type.bodyLg, lineHeight: 20, color: palette.ink }}>
+            {t('homeGlow.innerGlowToday')}
+          </Text>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={t('homeGlow.scoreOptions')}
             hitSlop={10}
             onPress={() => router.push('/(tabs)/freud-score')}
-            style={{ width: 24, height: 24, alignItems: 'center', justifyContent: 'center', gap: 3.8 }}
+            style={{
+              width: 24,
+              height: 24,
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 3.8,
+            }}
           >
             {[0, 1, 2].map((i) => (
-              <View key={i} style={{ width: 3.2, height: 3.2, borderRadius: 1.6, backgroundColor: palette.ink }} />
+              <View
+                key={i}
+                style={{ width: 3.2, height: 3.2, borderRadius: 1.6, backgroundColor: palette.ink }}
+              />
             ))}
           </Pressable>
         </View>
         <InnerGlowCard
           score={Math.round(currentScore.score)}
-          scoreLabel={t(`freudScore.${labelKey(currentScore.label)}`, { defaultValue: currentScore.label })}
+          scoreLabel={t(`freudScore.${labelKey(currentScore.label)}`, {
+            defaultValue: currentScore.label,
+          })}
           scoreTrend={trend(currentScore.score, previousDayScore(scoreHistory))}
           checkIns={moodCheckIns}
           sleepEntries={sleepEntries}
@@ -129,11 +171,20 @@ export default function HomeScreen() {
 function StatusBackdrop({ height }: { height: number }) {
   const fade = 16;
   return (
-    <Svg pointerEvents="none" width="100%" height={height + fade} style={{ position: 'absolute', top: 0, left: 0, right: 0 }}>
+    <Svg
+      pointerEvents="none"
+      width="100%"
+      height={height + fade}
+      style={{ position: 'absolute', top: 0, left: 0, right: 0 }}
+    >
       <Defs>
         <LinearGradient id="statusBackdrop" x1="0" y1="0" x2="0" y2="1">
           <Stop offset="0" stopColor={palette.bg} stopOpacity={1} />
-          <Stop offset={String(height / (height + fade))} stopColor={palette.bg} stopOpacity={0.96} />
+          <Stop
+            offset={String(height / (height + fade))}
+            stopColor={palette.bg}
+            stopOpacity={0.96}
+          />
           <Stop offset="1" stopColor={palette.bg} stopOpacity={0} />
         </LinearGradient>
       </Defs>
@@ -158,7 +209,14 @@ function Header({ greeting, name, isPro }: { greeting: string; name: string; isP
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 4 }}>
       <View
-        style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: palette.lavender, alignItems: 'center', justifyContent: 'center' }}
+        style={{
+          width: 44,
+          height: 44,
+          borderRadius: 22,
+          backgroundColor: palette.lavender,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
         accessibilityElementsHidden
       >
         {/* No avatar field exists yet (t202), so the initial stands in for the photo. */}
@@ -170,14 +228,29 @@ function Header({ greeting, name, isPro }: { greeting: string; name: string; isP
       </View>
       <View style={{ flex: 1 }}>
         {/* Profiles without a name get the greeting as the large line instead of a stand-in name. */}
-        {name ? <Text style={{ ...Type.captionM, color: palette.textMuted }}>{`${greeting},`}</Text> : null}
+        {name ? (
+          <Text style={{ ...Type.captionM, color: palette.textMuted }}>{`${greeting},`}</Text>
+        ) : null}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <Text accessibilityRole="header" numberOfLines={1} style={{ ...Type.titleMd, lineHeight: 26, color: palette.ink, flexShrink: 1 }}>
+          <Text
+            accessibilityRole="header"
+            numberOfLines={1}
+            style={{ ...Type.titleMd, lineHeight: 26, color: palette.ink, flexShrink: 1 }}
+          >
             {name || greeting}
           </Text>
           {isPro && (
             <View
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: palette.mustard, borderRadius: 999, paddingVertical: 2, paddingLeft: 6, paddingRight: 8 }}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 3,
+                backgroundColor: palette.mustard,
+                borderRadius: 999,
+                paddingVertical: 2,
+                paddingLeft: 6,
+                paddingRight: 8,
+              }}
             >
               <Icon name="line/crown" size={12} color={palette.ink} />
               <Text style={{ ...Type.microBold, fontSize: 10, color: palette.ink }}>PRO</Text>
@@ -185,8 +258,20 @@ function Header({ greeting, name, isPro }: { greeting: string; name: string; isP
           )}
         </View>
       </View>
-      <IconButton icon="line/search" size={44} iconSize={20} accessibilityLabel={t('homeGlow.search')} onPress={() => router.push('/(tabs)/search')} />
-      <IconButton icon="line/bell" size={44} iconSize={24} accessibilityLabel={t('homeGlow.notifications')} onPress={() => router.push('/(tabs)/notifications')} />
+      <IconButton
+        icon="line/search"
+        size={44}
+        iconSize={24}
+        accessibilityLabel={t('homeGlow.search')}
+        onPress={() => router.push('/(tabs)/search')}
+      />
+      <IconButton
+        icon="line/bell"
+        size={44}
+        iconSize={24}
+        accessibilityLabel={t('homeGlow.notifications')}
+        onPress={() => router.push('/(tabs)/notifications')}
+      />
     </View>
   );
 }
@@ -196,11 +281,11 @@ function Header({ greeting, name, isPro }: { greeting: string; name: string; isP
 function MoodCard({
   checkIns,
   locale,
-  onEditToday,
+  onSave,
 }: {
   checkIns: ReturnType<typeof useMood>['moodCheckIns'];
   locale: string;
-  onEditToday: (id: string, score: MoodScore) => void;
+  onSave: (id: string | undefined, score: MoodScore) => Promise<unknown>;
 }) {
   const { t } = useTranslation();
   const today = todaysCheckIn(checkIns);
@@ -209,27 +294,53 @@ function MoodCard({
   useEffect(() => setValue(saved), [saved]);
   const step = moodStep(value);
 
-  // Today's entry is edited in place. Without one, the full check-in collects energy and stress too.
-  const release = (score: MoodScore) => {
-    if (today) {
-      if (score !== saved) onEditToday(today.id, score);
-    } else {
-      router.push({ pathname: '/(tabs)/mood/check-in', params: { mood: String(score) } });
+  const saving = useRef(false);
+  const release = async (score: MoodScore) => {
+    if (saving.current) {
+      setValue(saved);
+      return;
+    }
+    if (today && score === saved) return;
+    saving.current = true;
+    try {
+      await onSave(today?.id, score);
+    } catch {
+      setValue(saved);
+      toast.error(t('moodCheckIn2.saveFailed'));
+    } finally {
+      saving.current = false;
     }
   };
 
   return (
-    <View style={{ backgroundColor: palette.surface, borderRadius: 28, padding: 20, paddingTop: 18, paddingBottom: 13, marginTop: 20 }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
+    <View
+      style={{
+        backgroundColor: palette.surface,
+        borderRadius: 28,
+        padding: 20,
+        paddingTop: 18,
+        paddingBottom: 13,
+        marginTop: 20,
+      }}
+    >
+      <View
+        style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}
+      >
         <Text style={{ ...Type.bodyStrong, color: palette.ink }}>{t('homeGlow.howAreYou')}</Text>
         <Text style={{ ...Type.caption, fontWeight: '500', color: palette.textSubtle }}>
-          {new Intl.DateTimeFormat(locale, { weekday: 'short', day: 'numeric', month: 'short' }).format(new Date())}
+          {new Intl.DateTimeFormat(locale, {
+            weekday: 'short',
+            day: 'numeric',
+            month: 'short',
+          }).format(new Date())}
         </Text>
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 11 }}>
         <Icon name={step.face} size={26} />
         <Text style={{ ...Type.titleMd, color: palette.plum }}>{t(`moodScale.${step.key}`)}</Text>
-        <Text style={{ ...Type.captionS, color: palette.textSubtle, marginTop: 4 }}>{t('homeGlow.slideToAdjust')}</Text>
+        <Text style={{ ...Type.captionS, color: palette.textSubtle, marginTop: 4 }}>
+          {t('homeGlow.slideToAdjust')}
+        </Text>
       </View>
       <MoodSlider
         value={value}
@@ -249,7 +360,8 @@ function MoodCard({
 function GlowAiInput() {
   const { t } = useTranslation();
   const { left } = useGlowAiUsage();
-  const open = () => router.push('/(tabs)/chat/new-conversation');
+  const open = () =>
+    router.push({ pathname: '/(tabs)/chat/new-conversation', params: { from: '/(tabs)/home' } });
   return (
     <Pressable
       accessibilityRole="button"
@@ -267,13 +379,33 @@ function GlowAiInput() {
         opacity: pressed ? 0.85 : 1,
       })}
     >
-      <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: palette.lavender, alignItems: 'center', justifyContent: 'center' }}>
+      <View
+        style={{
+          width: 44,
+          height: 44,
+          borderRadius: 22,
+          backgroundColor: palette.lavender,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
         <Icon name="line/sparkle" size={22} color={palette.white} accent={palette.gold} />
       </View>
-      <Text style={{ ...Type.bodyM, color: palette.textSubtle, flex: 1 }}>{t('homeGlow.askGlow')}</Text>
+      <Text style={{ ...Type.bodyM, color: palette.textSubtle, flex: 1 }}>
+        {t('homeGlow.askGlow')}
+      </Text>
       {left !== null && (
-        <View style={{ backgroundColor: palette.selected, borderRadius: 999, paddingVertical: 3, paddingHorizontal: 8 }}>
-          <Text style={{ ...Type.micro, fontWeight: '600', color: palette.plum }}>{t('homeGlow.chatsLeft', { count: left })}</Text>
+        <View
+          style={{
+            backgroundColor: palette.selected,
+            borderRadius: 999,
+            paddingVertical: 3,
+            paddingHorizontal: 8,
+          }}
+        >
+          <Text style={{ ...Type.micro, fontWeight: '600', color: palette.plum }}>
+            {t('homeGlow.chatsLeft', { count: left })}
+          </Text>
         </View>
       )}
       <Pressable
@@ -281,7 +413,14 @@ function GlowAiInput() {
         accessibilityLabel={t('homeGlow.voice')}
         onPress={open}
         hitSlop={4}
-        style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: palette.plum, alignItems: 'center', justifyContent: 'center' }}
+        style={{
+          width: 44,
+          height: 44,
+          borderRadius: 22,
+          backgroundColor: palette.plum,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
       >
         <Icon name="line/mic" size={20} color={palette.white} />
       </Pressable>
@@ -334,7 +473,10 @@ function InnerGlowCard({
     {
       key: 'stress',
       label: t('homeGlow.stress'),
-      value: mood.latest?.stress != null ? t(`homeGlow.stressLevel.${stressLevel(mood.latest.stress)}`) : '–',
+      value:
+        mood.latest?.stress != null
+          ? t(`homeGlow.stressLevel.${stressLevel(mood.latest.stress)}`)
+          : '–',
       trend: trend(mood.latest?.stress, mood.previous?.stress),
     },
   ];
@@ -344,24 +486,71 @@ function InnerGlowCard({
       accessibilityRole="button"
       accessibilityLabel={`${t('homeGlow.glowScore')} ${score}, ${scoreLabel}`}
       onPress={() => router.push('/(tabs)/freud-score')}
-      style={({ pressed }) => ({ marginTop: 8, height: 212, borderRadius: 28, backgroundColor: palette.surface, overflow: 'hidden', flexDirection: 'row', opacity: pressed ? 0.9 : 1 })}
+      style={({ pressed }) => ({
+        marginTop: 8,
+        height: 212,
+        borderRadius: 28,
+        backgroundColor: palette.surface,
+        overflow: 'hidden',
+        flexDirection: 'row',
+        opacity: pressed ? 0.9 : 1,
+      })}
     >
       <View style={{ width: 188, height: 212 }}>
-        <Glow color={palette.mustard} opacity={0.35} width={170} blur={40} style={{ position: 'absolute', left: 9, top: 21 }} />
-        <Glow color={palette.lavenderSoft} opacity={0.35} width={110} blur={30} style={{ position: 'absolute', left: 79, top: 81 }} />
-        <Glow color={palette.gold} opacity={0.85} width={64} blur={16} style={{ position: 'absolute', left: 62, top: 74 }} />
+        <Glow
+          color={palette.mustard}
+          opacity={0.35}
+          width={170}
+          blur={40}
+          style={{ position: 'absolute', left: 9, top: 21 }}
+        />
+        <Glow
+          color={palette.lavenderSoft}
+          opacity={0.35}
+          width={110}
+          blur={30}
+          style={{ position: 'absolute', left: 79, top: 81 }}
+        />
+        <Glow
+          color={palette.gold}
+          opacity={0.85}
+          width={64}
+          blur={16}
+          style={{ position: 'absolute', left: 62, top: 74 }}
+        />
         <AuraArt width={343} height={212} style={{ position: 'absolute', left: 0, top: 0 }} />
         <View style={{ position: 'absolute', left: 0, width: 188, top: 62, alignItems: 'center' }}>
-          <Text style={{ ...Type.display, fontSize: 32, lineHeight: 38, color: palette.plumDeep }}>{score}</Text>
-          <Text style={{ ...Type.micro, color: palette.textMuted, marginTop: 2 }}>{scoreLabel}</Text>
+          <Text style={{ ...Type.display, fontSize: 32, lineHeight: 38, color: palette.plumDeep }}>
+            {score}
+          </Text>
+          <Text style={{ ...Type.micro, color: palette.textMuted, marginTop: 2 }}>
+            {scoreLabel}
+          </Text>
         </View>
       </View>
       <View style={{ flex: 1, paddingTop: 26, paddingRight: 12, gap: 12 }}>
         {rows.map((row) => (
-          <View key={row.key} style={{ height: 31, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 8 }}>
+          <View
+            key={row.key}
+            style={{
+              height: 31,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 8,
+              paddingHorizontal: 8,
+            }}
+          >
             <View style={{ width: 16, height: 16, alignItems: 'center', justifyContent: 'center' }}>
-              <Glow color={LEGEND[row.key]} opacity={0.6} width={16} blur={5} style={{ position: 'absolute' }} />
-              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: LEGEND[row.key] }} />
+              <Glow
+                color={LEGEND[row.key]}
+                opacity={0.6}
+                width={16}
+                blur={5}
+                style={{ position: 'absolute' }}
+              />
+              <View
+                style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: LEGEND[row.key] }}
+              />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ ...Type.micro, color: palette.textSubtle }}>{row.label}</Text>
@@ -383,10 +572,25 @@ function ForYouToday() {
   const { t } = useTranslation();
   return (
     <View style={{ marginTop: 28 }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', paddingHorizontal: 8 }}>
-        <Text style={{ ...Type.bodyStrong, lineHeight: 20, color: palette.ink }}>{t('homeGlow.forYouToday')}</Text>
-        <Pressable accessibilityRole="link" hitSlop={8} onPress={() => router.push('/(tabs)/mindful')}>
-          <Text style={{ ...Type.chipSelected, color: palette.lavender }}>{t('homeGlow.allPractices')}</Text>
+      <View
+        style={{
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'baseline',
+          paddingHorizontal: 8,
+        }}
+      >
+        <Text style={{ ...Type.bodyStrong, lineHeight: 20, color: palette.ink }}>
+          {t('homeGlow.forYouToday')}
+        </Text>
+        <Pressable
+          accessibilityRole="link"
+          hitSlop={8}
+          onPress={() => router.push('/(tabs)/mindful')}
+        >
+          <Text style={{ ...Type.chipSelected, color: palette.lavender }}>
+            {t('homeGlow.allPractices')}
+          </Text>
         </Pressable>
       </View>
       <View style={{ flexDirection: 'row', gap: 9, marginTop: 13 }}>
@@ -394,7 +598,12 @@ function ForYouToday() {
           kind="breathing"
           title={t('homeGlow.breathing')}
           meta={t('homeGlow.breathingMeta')}
-          onPress={() => router.push({ pathname: '/(tabs)/mindful/category/[category]', params: { category: 'breathing' } })}
+          onPress={() =>
+            router.push({
+              pathname: '/(tabs)/mindful/category/[category]',
+              params: { category: 'breathing' },
+            })
+          }
         />
         <CategoryCard
           kind="sleep"
@@ -407,32 +616,74 @@ function ForYouToday() {
   );
 }
 
-
-
-
 /* ── Free plan ───────────────────────────────────── */
 
 function FreePlanCard() {
   const { t } = useTranslation();
   return (
-    <View style={{ marginTop: 16, minHeight: 76, borderRadius: 24, backgroundColor: palette.surface, overflow: 'hidden', flexDirection: 'row', alignItems: 'center', padding: 16, gap: 12 }}>
-      <Glow color={palette.mustard} opacity={0.3} width={120} blur={30} style={{ position: 'absolute', left: -30, top: -20 }} />
-      <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(226,204,64,0.30)', alignItems: 'center', justifyContent: 'center' }}>
+    <View
+      style={{
+        marginTop: 16,
+        minHeight: 76,
+        borderRadius: 24,
+        backgroundColor: palette.surface,
+        overflow: 'hidden',
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 16,
+        gap: 12,
+      }}
+    >
+      <Glow
+        color={palette.mustard}
+        opacity={0.3}
+        width={120}
+        blur={30}
+        style={{ position: 'absolute', left: -30, top: -20 }}
+      />
+      <View
+        style={{
+          width: 40,
+          height: 40,
+          borderRadius: 20,
+          backgroundColor: 'rgba(226,204,64,0.30)',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
         <Icon name="line/crown" size={20} />
       </View>
       <View style={{ flex: 1, gap: 2 }}>
         <Text style={{ ...Type.bodyMSemi, color: palette.ink }}>{t('homeGlow.freePlan')}</Text>
         {/* "3 of 10 AI chats left this week" and its progress bar wait for the quota backend (t172). */}
-        <Text style={{ ...Type.captionS, color: palette.textMuted }}>{t('homeGlow.freePlanDetail')}</Text>
+        <Text style={{ ...Type.captionS, color: palette.textMuted }}>
+          {t('homeGlow.freePlanDetail')}
+        </Text>
       </View>
-      <AppButton title={t('homeGlow.tryPro')} size="s" onPress={() => router.push({ pathname: '/(utils)/trial-upgrade', params: { variant: 'home' } })} />
+      <AppButton
+        title={t('homeGlow.tryPro')}
+        size="s"
+        onPress={() =>
+          router.push({ pathname: '/(utils)/trial-upgrade', params: { variant: 'home' } })
+        }
+      />
     </View>
   );
 }
 
 /* ── First day (09 §3.9) ─────────────────────────── */
 
-function FirstDay({ greeting, name, bottom, topInset }: { greeting: string; name: string; bottom: number; topInset: number }) {
+function FirstDay({
+  greeting,
+  name,
+  bottom,
+  topInset,
+}: {
+  greeting: string;
+  name: string;
+  bottom: number;
+  topInset: number;
+}) {
   const { t } = useTranslation();
   return (
     <View style={{ flex: 1, backgroundColor: palette.bg }}>
@@ -442,11 +693,23 @@ function FirstDay({ greeting, name, bottom, topInset }: { greeting: string; name
           { color: palette.lavenderSoft, opacity: 0.25, x: -70, y: -50, width: 280, blur: 90 },
         ]}
       />
-      <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE} contentContainerStyle={{ paddingTop: topInset + 26, paddingHorizontal: 24, paddingBottom: bottom }}>
+      <ScrollView
+        keyboardDismissMode={KEYBOARD_DISMISS_MODE}
+        contentContainerStyle={{
+          paddingTop: topInset + 26,
+          paddingHorizontal: 24,
+          paddingBottom: bottom,
+        }}
+      >
         <Text accessibilityRole="header" style={{ ...Type.titleLg, color: palette.ink }}>
           {name ? `${greeting}, ${name}` : greeting}
         </Text>
-        <EmptyState glowColor={palette.mustard} title={t('homeGlow.firstDayTitle')} body={t('homeGlow.firstDayBody')} style={{ marginTop: 14 }} />
+        <EmptyState
+          glowColor={palette.mustard}
+          title={t('homeGlow.firstDayTitle')}
+          body={t('homeGlow.firstDayBody')}
+          style={{ marginTop: 14 }}
+        />
         <AppButton
           title={t('homeGlow.firstCheckIn')}
           onPress={() => router.push('/(tabs)/mood/check-in')}

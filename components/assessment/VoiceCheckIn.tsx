@@ -1,6 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Alert, Linking, Pressable, Text, View } from 'react-native';
-import Animated, { cancelAnimation, Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
+import Animated, {
+  cancelAnimation,
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from 'react-native-reanimated';
 import { palette } from '@/constants/theme';
 import { Type } from '@/constants/typography';
 import { Glow } from '@/components/glow/Glow';
@@ -35,7 +42,17 @@ type Labels = {
 
 function PlayRecording({ uri, labels }: { uri: string; labels: Labels }) {
   const { play, pause, isPlaying } = usePlayer(uri);
-  return <AppButton variant="ghost" size="s" icon={isPlaying ? 'line/pause' : 'line/play'} iconPosition="left" title={isPlaying ? labels.pause : labels.play} onPress={() => (isPlaying ? pause() : play())} style={{ alignSelf: 'center' }} />;
+  return (
+    <AppButton
+      variant="ghost"
+      size="s"
+      icon={isPlaying ? 'line/pause' : 'line/play'}
+      iconPosition="left"
+      title={isPlaying ? labels.pause : labels.play}
+      onPress={() => (isPlaying ? pause() : play())}
+      style={{ alignSelf: 'center' }}
+    />
+  );
 }
 
 /**
@@ -44,7 +61,17 @@ function PlayRecording({ uri, labels }: { uri: string; labels: Labels }) {
  * SemiBold 30; words already read sit on a lavender pill in white, the rest are muted. Recording states
  * are not designed, so a short caption and a play button carry them.
  */
-export function VoiceCheckIn({ phrase, value, onRecorded, labels }: { phrase: string; value: SoundCheck | null | undefined; onRecorded: (check: SoundCheck) => void; labels: Labels }) {
+export function VoiceCheckIn({
+  phrase,
+  value,
+  onRecorded,
+  labels,
+}: {
+  phrase: string;
+  value: SoundCheck | null | undefined;
+  onRecorded: (check: SoundCheck) => void;
+  labels: Labels;
+}) {
   const { startRecording, stopRecording, isRecording } = useRecorder();
   const [busy, setBusy] = useState(false);
   const [spoken, setSpoken] = useState(value ? Number.MAX_SAFE_INTEGER : 0);
@@ -55,7 +82,11 @@ export function VoiceCheckIn({ phrase, value, onRecorded, labels }: { phrase: st
     if (!isRecording) return;
     setSpoken(0);
     const id = setInterval(() => setSpoken((n) => Math.min(words.length, n + 1)), MS_PER_WORD);
-    pulse.value = withRepeat(withTiming(1.08, { duration: 900, easing: Easing.inOut(Easing.sin) }), -1, true);
+    pulse.value = withRepeat(
+      withTiming(1.08, { duration: 900, easing: Easing.inOut(Easing.sin) }),
+      -1,
+      true,
+    );
     return () => {
       clearInterval(id);
       cancelAnimation(pulse);
@@ -72,7 +103,12 @@ export function VoiceCheckIn({ phrase, value, onRecorded, labels }: { phrase: st
       if (isRecording) {
         const { uri, durationMs } = await stopRecording();
         const transcript = phrase;
-        onRecorded({ uri, durationMs, transcript, metrics: computeVoiceMetrics(durationMs, transcript) });
+        onRecorded({
+          uri,
+          durationMs,
+          transcript,
+          metrics: computeVoiceMetrics(durationMs, transcript),
+        });
         setSpoken(Number.MAX_SAFE_INTEGER);
       } else {
         await startRecording();
@@ -100,20 +136,70 @@ export function VoiceCheckIn({ phrase, value, onRecorded, labels }: { phrase: st
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={isRecording ? labels.stop : labels.start}
-        accessibilityState={{ busy }}
+        accessibilityState={{ busy, disabled: busy }}
+        disabled={busy}
         onPress={toggle}
         style={{ width: ORB, height: ORB }}
       >
-        <View style={{ position: 'absolute', width: ORB, height: ORB, borderRadius: ORB / 2, borderWidth: 1, borderColor: palette.plum }} />
-        <Animated.View style={[{ position: 'absolute', width: ORB, height: ORB }, glowStyle]} pointerEvents="none">
-          <Glow color={palette.lavenderSoft} opacity={0.25} width={172} blur={30} style={{ position: 'absolute', left: 32, top: 32 }} />
-          <Glow color={palette.mustard} opacity={isRecording ? 1 : 0.85} width={110} blur={16} style={{ position: 'absolute', left: 63, top: 63 }} />
-          <Glow color={palette.cream} opacity={1} width={49.5} blur={8} style={{ position: 'absolute', left: 93.3, top: 93.3 }} />
+        <View
+          style={{
+            position: 'absolute',
+            width: ORB,
+            height: ORB,
+            borderRadius: ORB / 2,
+            borderWidth: 1,
+            borderColor: palette.plum,
+          }}
+        />
+        <Animated.View
+          style={[{ position: 'absolute', width: ORB, height: ORB }, glowStyle]}
+          pointerEvents="none"
+        >
+          <Glow
+            color={palette.lavenderSoft}
+            opacity={0.25}
+            width={172}
+            blur={30}
+            style={{ position: 'absolute', left: 32, top: 32 }}
+          />
+          <Glow
+            color={palette.mustard}
+            opacity={isRecording ? 1 : 0.85}
+            width={110}
+            blur={16}
+            style={{ position: 'absolute', left: 63, top: 63 }}
+          />
+          <Glow
+            color={palette.cream}
+            opacity={1}
+            width={49.5}
+            blur={8}
+            style={{ position: 'absolute', left: 93.3, top: 93.3 }}
+          />
         </Animated.View>
-        <View style={{ position: 'absolute', left: 94, top: 94, width: 48, height: 48, borderRadius: 24, backgroundColor: palette.cream }} />
+        <View
+          style={{
+            position: 'absolute',
+            left: 94,
+            top: 94,
+            width: 48,
+            height: 48,
+            borderRadius: 24,
+            backgroundColor: palette.cream,
+          }}
+        />
       </Pressable>
       <View style={{ gap: 12, alignSelf: 'stretch' }}>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', rowGap: 2 }} accessible accessibilityLabel={phrase}>
+        <AppButton
+          title={isRecording ? labels.stop : labels.start}
+          onPress={toggle}
+          disabled={busy}
+        />
+        <View
+          style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', rowGap: 2 }}
+          accessible
+          accessibilityLabel={phrase}
+        >
           {words.map((w, i) => {
             const on = i < spoken;
             const first = on && (i === 0 || i - 1 >= spoken);
@@ -133,7 +219,12 @@ export function VoiceCheckIn({ phrase, value, onRecorded, labels }: { phrase: st
                   borderBottomRightRadius: last ? 999 : 0,
                 }}
               >
-                <Text style={[Type.titleXl, { letterSpacing: 0, color: on ? palette.white : palette.textMuted }]}>
+                <Text
+                  style={[
+                    Type.titleXl,
+                    { letterSpacing: 0, color: on ? palette.white : palette.textMuted },
+                  ]}
+                >
                   {w}
                   {i < words.length - 1 && (!on || !last) ? ' ' : ''}
                 </Text>
@@ -141,7 +232,10 @@ export function VoiceCheckIn({ phrase, value, onRecorded, labels }: { phrase: st
             );
           })}
         </View>
-        <Text style={[Type.bodySm, { color: palette.textMuted, textAlign: 'center' }]} accessibilityLiveRegion="polite">
+        <Text
+          style={[Type.bodySm, { color: palette.textMuted, textAlign: 'center' }]}
+          accessibilityLiveRegion="polite"
+        >
           {status}
         </Text>
         {value && !isRecording ? <PlayRecording uri={value.uri} labels={labels} /> : null}

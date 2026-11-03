@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import { ActivityIndicator, Pressable, Text, View, useWindowDimensions } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useFocusEffect } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
@@ -9,7 +9,14 @@ import { Type } from '@/constants/typography';
 import { EmptyScreen } from '@/components/EmptyScreen';
 import { LegalNote } from '@/components/ui/controls';
 import { IconButton } from '@/components/ui/IconButton';
-import { DateTile, MiniRing, PillChip, ScoreNav, ScoreRing, ScoreScreen } from '@/components/score/ScoreParts';
+import {
+  DateTile,
+  MiniRing,
+  PillChip,
+  ScoreNav,
+  ScoreRing,
+  ScoreScreen,
+} from '@/components/score/ScoreParts';
 import AuraArt from '@/assets/svg/illustrations/score/aura.svg';
 import { useFreudScore } from '@/hooks/useFreudScore';
 import { useScoreDays, type ScoreDay } from '@/hooks/useScoreDays';
@@ -28,6 +35,7 @@ import type { AISuggestion } from '@/lib/freudScore';
  */
 export default function GlowScoreScreen() {
   const { t, i18n } = useTranslation();
+  const { from } = useLocalSearchParams<{ from?: string }>();
   const queryClient = useQueryClient();
   const { width } = useWindowDimensions();
   const { currentScore, isDataLoading, isLoadingHistory, saveScore, suggestions } = useFreudScore();
@@ -61,17 +69,31 @@ export default function GlowScoreScreen() {
   if (!moodLoading && checkInDays(moodCheckIns) < SCORE_HISTORY_MIN_DAYS) {
     return (
       <EmptyScreen
-        header={{ kind: 'nav', title: t('emptyStates.score.title'), backLabel: t('common.back'), onBack: () => backTo(undefined, '/(tabs)/home') }}
+        header={{
+          kind: 'nav',
+          title: t('emptyStates.score.title'),
+          backLabel: t('common.back'),
+          onBack: () => backTo(undefined, '/(tabs)/home'),
+        }}
         glowColor={palette.mustard}
         title={t('emptyStates.score.emptyTitle')}
         body={t('emptyStates.score.body')}
-        action={{ label: t('emptyStates.score.action'), onPress: () => router.push('/(tabs)/mood/check-in') }}
+        action={{
+          label: t('emptyStates.score.action'),
+          onPress: () =>
+            router.push({
+              pathname: '/(tabs)/mood/check-in',
+              params: { from: from ?? '/(tabs)/home' },
+            }),
+        }}
       />
     );
   }
 
   const score = currentScore.score;
-  const label = t(`freudScore.${labelKey(currentScore.label)}`, { defaultValue: currentScore.label });
+  const label = t(`freudScore.${labelKey(currentScore.label)}`, {
+    defaultValue: currentScore.label,
+  });
   const range = scoreRange(score);
 
   const askWhy = () =>
@@ -113,36 +135,87 @@ export default function GlowScoreScreen() {
       <View style={{ alignItems: 'center', marginTop: 23 }}>
         <ScoreRing size={176} thickness={3} value={isDataLoading ? 0 : score} knob={!isDataLoading}>
           {isDataLoading ? (
-            <ActivityIndicator color={palette.plum} accessibilityLabel={t('freudScore.calculatingScore')} />
+            <ActivityIndicator
+              color={palette.plum}
+              accessibilityLabel={t('freudScore.calculatingScore')}
+            />
           ) : (
-            <View accessible accessibilityLabel={t('glowScore.ringLabel', { score })} style={{ alignItems: 'center' }}>
-              <Text style={[Type.display, { fontSize: 64, lineHeight: 76, color: palette.plumDeep }]}>{score}</Text>
+            <View
+              accessible
+              accessibilityLabel={t('glowScore.ringLabel', { score })}
+              style={{ alignItems: 'center' }}
+            >
+              <Text
+                style={[Type.display, { fontSize: 64, lineHeight: 76, color: palette.plumDeep }]}
+              >
+                {score}
+              </Text>
               <Text style={[Type.chip, { color: palette.textMuted }]}>{t('glowScore.outOf')}</Text>
             </View>
           )}
         </ScoreRing>
       </View>
 
-      <Text accessibilityRole="header" style={[Type.titleLg, { fontSize: 24, lineHeight: 29, color: palette.plumDeep, textAlign: 'center', marginTop: 32 }]}>
+      <Text
+        accessibilityRole="header"
+        style={[
+          Type.titleLg,
+          {
+            fontSize: 24,
+            lineHeight: 29,
+            color: palette.plumDeep,
+            textAlign: 'center',
+            marginTop: 32,
+          },
+        ]}
+      >
         {isDataLoading ? ' ' : label}
       </Text>
-      <View style={{ flexDirection: 'row', justifyContent: 'center', flexWrap: 'wrap', gap: 8, marginTop: 9 }}>
+      <View
+        style={{
+          flexDirection: 'row',
+          justifyContent: 'center',
+          flexWrap: 'wrap',
+          gap: 8,
+          marginTop: 9,
+        }}
+      >
         <PillChip icon={range.face} label={t(`glowScore.range.${range.key}`)} />
         <PillChip icon="line/sparkle" label={t('glowScore.askWhy')} outlined onPress={askWhy} />
       </View>
 
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8, minHeight: 44 }}>
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginTop: 8,
+          minHeight: 44,
+        }}
+      >
         <Text accessibilityRole="header" style={[Type.titleSm, { color: palette.plumDeep }]}>
           {t('glowScore.history')}
         </Text>
-        <Pressable accessibilityRole="link" hitSlop={12} onPress={() => router.push('/(tabs)/freud-score/history')}>
-          <Text style={[Type.label, { fontWeight: '700', color: palette.lavender }]}>{t('glowScore.seeAll')}</Text>
+        <Pressable
+          accessibilityRole="link"
+          hitSlop={12}
+          onPress={() => router.push({ pathname: '/(tabs)/freud-score/history', params: { from } })}
+        >
+          <Text style={[Type.label, { fontWeight: '700', color: palette.lavender }]}>
+            {t('glowScore.seeAll')}
+          </Text>
         </Pressable>
       </View>
 
       <View style={{ gap: 10, marginTop: 2, marginHorizontal: -8 }}>
         {days.slice(0, 3).map((d) => (
-          <HistoryRow key={d.key} day={d} suggestions={suggestions} locale={i18n.language} />
+          <HistoryRow
+            key={d.key}
+            day={d}
+            suggestions={suggestions}
+            locale={i18n.language}
+            from={from}
+          />
         ))}
       </View>
 
@@ -151,9 +224,21 @@ export default function GlowScoreScreen() {
   );
 }
 
-function HistoryRow({ day, suggestions, locale }: { day: ScoreDay; suggestions: AISuggestion[]; locale: string }) {
+function HistoryRow({
+  day,
+  suggestions,
+  locale,
+  from,
+}: {
+  day: ScoreDay;
+  suggestions: AISuggestion[];
+  locale: string;
+  from?: string;
+}) {
   const { t } = useTranslation();
-  const mood = day.checkIn ? t(`moodScale.${moodStep(moodScoreOf(day.checkIn.mood)).key}`) : t('glowScore.noCheckIn');
+  const mood = day.checkIn
+    ? t(`moodScale.${moodStep(moodScoreOf(day.checkIn.mood)).key}`)
+    : t('glowScore.noCheckIn');
   // The day's recommendation is the first suggestion made that day (03 §2.2).
   const suggestion = suggestions.find((s) => dayKey(new Date(s.createdAt)) === day.key);
   const sub = suggestion?.title ?? t('glowScore.noRecommendation');
@@ -161,7 +246,7 @@ function HistoryRow({ day, suggestions, locale }: { day: ScoreDay; suggestions: 
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`${day.date.toLocaleDateString(locale, { day: 'numeric', month: 'long' })}, ${mood}, ${sub}, ${day.score}`}
-      onPress={() => router.push('/(tabs)/freud-score/history')}
+      onPress={() => router.push({ pathname: '/(tabs)/freud-score/history', params: { from } })}
       style={({ pressed }) => ({
         minHeight: 62,
         borderRadius: 999,
@@ -177,8 +262,12 @@ function HistoryRow({ day, suggestions, locale }: { day: ScoreDay; suggestions: 
     >
       <DateTile date={day.date} locale={locale} />
       <View style={{ flex: 1, gap: 2 }}>
-        <Text numberOfLines={1} style={[Type.bodyStrong, { color: palette.plumDeep }]}>{mood}</Text>
-        <Text numberOfLines={1} style={[Type.captionS, { color: palette.textSubtle }]}>{sub}</Text>
+        <Text numberOfLines={1} style={[Type.bodyStrong, { color: palette.plumDeep }]}>
+          {mood}
+        </Text>
+        <Text numberOfLines={1} style={[Type.captionS, { color: palette.textSubtle }]}>
+          {sub}
+        </Text>
       </View>
       <MiniRing value={day.score} color={scoreColor(day.score)} />
     </Pressable>

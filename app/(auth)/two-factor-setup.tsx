@@ -1,7 +1,9 @@
-import { Typography } from '@/constants/typography';
-import { UI } from '@/constants/theme';
+import { Type } from '@/constants/typography';
+import { palette } from '@/constants/theme';
+import { AppButton } from '@/components/ui/AppButton';
+import { IconButton } from '@/components/ui/IconButton';
+import { Icon } from '@/components/icons/Icon';
 import { backTo } from '@/lib/navigation';
-import { WellnessIconText } from '@/components/WellnessIconText';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -11,18 +13,16 @@ import {
   ScrollView,
   Platform,
   ActivityIndicator,
-  Image,
   Share,
   Linking,
-  Alert,
 } from 'react-native';
 // Clipboard: use Share on native, navigator.clipboard on web
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import { router } from 'expo-router';
 import { supabase } from '@/supabase/supabase';
-import MaterialIcons from '@/components/AppIcon';
 import { toast } from '@/components/Toast';
+import { SvgXml } from 'react-native-svg';
+import { setupTotp } from '@/lib/mfa-setup';
 import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
 
 /* ── Authenticator app deep links ── */
@@ -49,24 +49,6 @@ const AUTH_APPS = [
     android: 'https://play.google.com/store/apps/details?id=com.authy.authy',
   },
 ] as const;
-
-/* ── Design tokens ── */
-const C = {
-  pageBg: '#F7F4F2',
-  cardBg: '#FFFFFF',
-  brown: '#a07b55',
-  brownDark: '#3E2723',
-  brownText: '#96784E',
-  brownLight: '#6a5e55',
-  inputBg: '#f2ece6',
-  tagBg: '#E8DDD9',
-  red: '#C45B5B',
-  olive: '#828a6a',
-  oliveLight: '#b8c39d',
-  olivePale: '#dbe3cb',
-  green: '#5B8A5A',
-  purple: '#7B6DC9',
-};
 
 type SetupStep =
   | 'loading'
@@ -133,47 +115,25 @@ export default function TwoFactorSetup() {
 
   async function checkMfaStatus() {
     try {
-      const { data, error } = await supabase.auth.mfa.listFactors();
-      if (error) throw error;
-
-      const totpFactors = data.totp ?? [];
-      const verifiedFactor = totpFactors.find((f) => f.status === 'verified');
-
-      if (verifiedFactor) {
+      setError(null);
+      setStep('loading');
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error('Please sign in again to set up two-factor authentication.');
+      const result = await setupTotp(user.id, supabase.auth.mfa);
+      setFactorId(result.id);
+      if (result.enabled) {
         setStep('already-enabled');
-        setFactorId(verifiedFactor.id);
       } else {
-        // Unenroll any leftover (non-verified) factors first
-        for (const f of totpFactors) {
-          await supabase.auth.mfa.unenroll({ factorId: f.id });
-        }
-        await enrollTotp();
+        setQrUri(result.qr);
+        setSecret(result.secret);
+        setStep('enroll');
       }
     } catch (err: any) {
       console.error('[2FA] Check status error:', err);
       toast.error(t('toasts.twoFactorSetupError'));
       setError(err?.message || 'Failed to check 2FA status');
-      setStep('error');
-    }
-  }
-
-  async function enrollTotp() {
-    try {
-      const { data, error } = await supabase.auth.mfa.enroll({
-        factorType: 'totp',
-        friendlyName: 'InnerGlow Authenticator',
-      });
-
-      if (error) throw error;
-
-      setFactorId(data.id);
-      setQrUri(data.totp.qr_code);
-      setSecret(data.totp.secret);
-      setStep('enroll');
-    } catch (err: any) {
-      console.error('[2FA] Enroll error:', err);
-      toast.error(t('toasts.twoFactorSetupError'));
-      setError(err?.message || 'Failed to set up 2FA');
       setStep('error');
     }
   }
@@ -296,981 +256,210 @@ export default function TwoFactorSetup() {
     }
   }
 
+  const card = { backgroundColor: palette.surface, borderRadius: 24, padding: 24, gap: 16 };
+  const body = { ...Type.bodyM, color: palette.textMuted };
+  const close = () => backTo(undefined, '/(tabs)/profile');
   return (
-    <View style={{ flex: 1, backgroundColor: C.pageBg }}>
-      <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE}
+    <View style={{ flex: 1, backgroundColor: palette.bg }}>
+      <ScrollView
+        keyboardDismissMode={KEYBOARD_DISMISS_MODE}
+        keyboardShouldPersistTaps="handled"
         contentContainerStyle={{
-          flexGrow: 1,
+          paddingTop: insets.top + 10,
           paddingHorizontal: 24,
-          paddingTop: insets.top + 20,
-          paddingBottom: 40,
+          paddingBottom: insets.bottom + 24,
+          gap: 24,
         }}
-        showsVerticalScrollIndicator={false}
       >
-        {/* ── Back button ── */}
-        <Pressable
-          onPress={() => backTo(undefined, '/(tabs)/profile')}
-          style={({ pressed }) => ({
-            width: 44,
-            height: 44,
-            borderRadius: 22,
-            borderWidth: 1,
-            borderColor: C.brownText,
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: C.pageBg,
-            opacity: pressed ? 0.7 : 1,
-            marginBottom: 24,
-          })}
-        >
-          <Text style={{ fontFamily: Typography.family.body, color: C.brownText, fontSize: 22 }}>
-            {'←'}
+        <IconButton variant="nav" accessibilityLabel={t('common.back')} onPress={close} />
+        <View style={{ gap: 8 }}>
+          <Text accessibilityRole="header" style={[Type.titleLg, { color: palette.ink }]}>
+            {t('twoFactor.title')}
           </Text>
-        </Pressable>
-
-        {/* ── Title ── */}
-        <Text style={{ ...Typography.heading, fontSize: 24, color: C.brownLight, marginBottom: 6 }}>
-          {t('twoFactor.title')}
-        </Text>
-        <Text
-          style={{
-            fontFamily: Typography.family.body,
-            fontSize: 14,
-            color: C.brownLight,
-            opacity: 0.6,
-            lineHeight: 22,
-            marginBottom: 28,
-          }}
-        >
-          {t('twoFactor.subtitle')}
-        </Text>
-
-        {step === 'loading' && (
-          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 80 }}>
-            <ActivityIndicator size="large" color={C.olive} />
-          </View>
-        )}
-
+          <Text style={body}>{t('twoFactor.subtitle')}</Text>
+        </View>
+        {step === 'loading' && <ActivityIndicator size="large" color={palette.plum} />}
         {step === 'enroll' && (
-          /* ═══ QR Code Enrollment ═══ */
-          <View style={{ gap: 20 }}>
-            {/* Instructions */}
-            <View
-              style={{
-                backgroundColor: C.cardBg,
-                borderRadius: 32,
-                padding: 24,
-              }}
-            >
-              {/* Step indicators */}
-              <View
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 20 }}
-              >
-                <View
-                  style={{
-                    width: 28,
-                    height: 28,
-                    borderRadius: 14,
-                    backgroundColor: C.olive,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontFamily: Typography.family.body,
-                      color: '#fff',
-                      fontSize: 13,
-                      fontWeight: Typography.weight.semibold,
-                    }}
-                  >
-                    1
-                  </Text>
-                </View>
-                <Text
-                  style={{
-                    fontFamily: Typography.family.body,
-                    fontSize: 15,
-                    fontWeight: Typography.weight.semibold,
-                    color: C.brownLight,
-                  }}
-                >
-                  {t('twoFactor.step1')}
-                </Text>
-              </View>
-
-              {/* QR code */}
-              {qrUri ? (
-                <View style={{ alignItems: 'center', marginBottom: 20 }}>
-                  <View
-                    style={{
-                      backgroundColor: '#fff',
-                      padding: 16,
-                      borderRadius: 20,
-                      borderWidth: 1,
-                      borderColor: C.tagBg,
-                    }}
-                  >
-                    <Image
-                      source={{ uri: qrUri }}
-                      style={{ width: 200, height: 200 }}
-                      resizeMode="contain"
-                    />
-                  </View>
-                </View>
-              ) : (
-                <ActivityIndicator size="small" color={C.olive} style={{ marginBottom: 20 }} />
-              )}
-
-              {/* Manual secret — tap to copy */}
-              <Text
-                style={{
-                  fontFamily: Typography.family.body,
-                  fontSize: 12,
-                  color: C.brownLight,
-                  opacity: 0.5,
-                  textAlign: 'center',
-                  marginBottom: 8,
-                }}
-              >
-                {t('twoFactor.cantScan')}
+          <>
+            <View style={card}>
+              <Text style={[Type.titleSm, { color: palette.plumDeep }]}>
+                {t('twoFactor.step1')}
               </Text>
+              <View style={{ alignItems: 'center', backgroundColor: palette.white, padding: 12 }}>
+                {qrUri ? (
+                  <SvgXml xml={qrUri} width={200} height={200} />
+                ) : (
+                  <ActivityIndicator color={palette.plum} />
+                )}
+              </View>
+              <Text style={body}>{t('twoFactor.cantScan')}</Text>
               <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t('twoFactor.cantScan')}
                 onPress={copySecret}
-                style={({ pressed }) => ({
-                  backgroundColor: secretCopied ? C.green + '12' : C.inputBg,
-                  borderRadius: 14,
-                  paddingHorizontal: 16,
-                  paddingVertical: 14,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 10,
-                  borderWidth: 1,
-                  borderColor: secretCopied ? C.green + '30' : 'transparent',
-                  opacity: pressed ? 0.7 : 1,
-                })}
+                style={{ padding: 16, borderRadius: 16, backgroundColor: palette.selected }}
               >
                 <Text
                   selectable
-                  style={{
-                    fontFamily: Typography.family.body,
-                    fontSize: 14,
-                    fontWeight: Typography.weight.semibold,
-                    color: secretCopied ? C.green : C.brownLight,
-                    letterSpacing: 2,
-                    textAlign: 'center',
-                    flex: 1,
-                  }}
+                  style={[
+                    Type.bodyMSemi,
+                    { color: palette.plum, textAlign: 'center', letterSpacing: 1 },
+                  ]}
                 >
                   {secret}
                 </Text>
-                <MaterialIcons
-                  name={secretCopied ? 'check' : 'content-copy'}
-                  size={16}
-                  color={secretCopied ? C.green : C.brownText}
-                />
               </Pressable>
-              {secretCopied && (
-                <Text
-                  style={{
-                    fontFamily: Typography.family.body,
-                    fontSize: 12,
-                    color: C.green,
-                    textAlign: 'center',
-                    marginTop: 6,
-                    fontWeight: Typography.weight.semibold,
-                  }}
-                >
-                  {t('twoFactor.secretCopied')}
-                </Text>
-              )}
-            </View>
-
-            {/* ── Compatible authenticator apps ── */}
-            <View
-              style={{
-                backgroundColor: C.cardBg,
-                borderRadius: 32,
-                padding: 24,
-              }}
-            >
-              <Text
-                style={{
-                  fontFamily: Typography.family.body,
-                  fontSize: 14,
-                  fontWeight: Typography.weight.semibold,
-                  color: C.brownLight,
-                  marginBottom: 16,
-                }}
-              >
+              {secretCopied && <Text style={body}>{t('twoFactor.secretCopied')}</Text>}
+              <Text style={[Type.label, { color: palette.ink }]}>
                 {t('twoFactor.compatibleApps')}
               </Text>
               {AUTH_APPS.map((app) => (
-                <Pressable
+                <AppButton
                   key={app.name}
-                  onPress={() => openAuthApp(app)}
-                  style={({ pressed }) => ({
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    paddingVertical: 14,
-                    paddingHorizontal: 14,
-                    borderRadius: 16,
-                    backgroundColor: pressed ? C.inputBg : 'transparent',
-                    gap: 14,
-                    marginBottom: 4,
-                  })}
-                >
-                  <View
-                    style={{
-                      width: 44,
-                      height: 44,
-                      borderRadius: 14,
-                      backgroundColor: C.inputBg,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <WellnessIconText style={{ fontFamily: Typography.family.body, fontSize: 22 }}>
-                      {app.icon}
-                    </WellnessIconText>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text
-                      style={{
-                        fontFamily: Typography.family.body,
-                        fontSize: 15,
-                        fontWeight: Typography.weight.semibold,
-                        color: C.brownLight,
-                      }}
-                    >
-                      {app.name}
-                    </Text>
-                    <Text
-                      style={{
-                        fontFamily: Typography.family.body,
-                        fontSize: 12,
-                        color: C.brownText,
-                        opacity: 0.6,
-                        marginTop: 2,
-                      }}
-                    >
-                      {t('twoFactor.tapToOpen')}
-                    </Text>
-                  </View>
-                  <MaterialIcons name="open-in-new" size={18} color={C.brownText} />
-                </Pressable>
+                  variant="outline"
+                  title={app.name}
+                  onPress={() => void openAuthApp(app)}
+                />
               ))}
             </View>
-
-            {/* Verification input */}
-            <View
-              style={{
-                backgroundColor: C.cardBg,
-                borderRadius: 32,
-                padding: 24,
-              }}
-            >
-              <View
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 20 }}
-              >
-                <View
-                  style={{
-                    width: 28,
-                    height: 28,
-                    borderRadius: 14,
-                    backgroundColor: C.olive,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontFamily: Typography.family.body,
-                      color: '#fff',
-                      fontSize: 13,
-                      fontWeight: Typography.weight.semibold,
-                    }}
-                  >
-                    2
-                  </Text>
-                </View>
-                <Text
-                  style={{
-                    fontFamily: Typography.family.body,
-                    fontSize: 15,
-                    fontWeight: Typography.weight.semibold,
-                    color: C.brownLight,
-                  }}
-                >
-                  {t('twoFactor.step2')}
-                </Text>
-              </View>
-
+            <View style={card}>
+              <Text style={[Type.titleSm, { color: palette.plumDeep }]}>
+                {t('twoFactor.step2')}
+              </Text>
               <TextInput
                 value={code}
-                onChangeText={(t) => setCode(t.replace(/\D/g, '').slice(0, 6))}
-                placeholder="000000"
-                placeholderTextColor="rgba(0,0,0,0.2)"
+                onChangeText={(value) => setCode(value.replace(/\D/g, '').slice(0, 6))}
                 keyboardType="number-pad"
+                textContentType="oneTimeCode"
+                autoComplete="one-time-code"
                 maxLength={6}
-                style={{
-                  fontFamily: Typography.family.body,
-                  backgroundColor: C.inputBg,
-                  borderRadius: 16,
-                  paddingHorizontal: 20,
-                  paddingVertical: Platform.OS === 'ios' ? 18 : 14,
-                  fontSize: 28,
-                  fontWeight: Typography.weight.semibold,
-                  color: C.brownLight,
-                  textAlign: 'center',
-                  letterSpacing: 12,
-                }}
-              />
-
-              {error && (
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 8,
-                    backgroundColor: C.red + '12',
-                    borderRadius: 14,
-                    padding: 12,
-                    marginTop: 14,
-                  }}
-                >
-                  <MaterialIcons name="error-outline" size={16} color={C.red} />
-                  <Text
-                    style={{
-                      fontFamily: Typography.family.body,
-                      flex: 1,
-                      fontSize: 13,
-                      fontWeight: Typography.weight.semibold,
-                      color: C.red,
-                    }}
-                  >
-                    {error}
-                  </Text>
-                </View>
-              )}
-            </View>
-
-            {/* Verify CTA */}
-            <Pressable
-              onPress={verifyCode}
-              disabled={loading || code.length !== 6}
-              style={({ pressed }) => ({
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 10,
-                paddingVertical: 20,
-                borderRadius: 35,
-                backgroundColor: loading || code.length !== 6 ? 'rgba(160,123,85,0.5)' : C.brown,
-                opacity: pressed ? 0.9 : 1,
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.1,
-                shadowRadius: 10,
-                elevation: 4,
-              })}
-            >
-              {loading ? <ActivityIndicator size="small" color="#fff" /> : null}
-              <Text
-                style={{
-                  fontFamily: Typography.family.body,
-                  color: 'white',
-                  fontWeight: Typography.weight.semibold,
-                  fontSize: 18,
-                }}
-              >
-                {t('twoFactor.verifyAndEnable')}
-              </Text>
-            </Pressable>
-          </View>
-        )}
-
-        {step === 'recovery-codes' && (
-          /* ═══ Recovery Codes Display ═══ */
-          <View style={{ gap: 20 }}>
-            {/* Header card */}
-            <View
-              style={{
-                backgroundColor: C.cardBg,
-                borderRadius: 32,
-                padding: 24,
-                alignItems: 'center',
-              }}
-            >
-              <View
-                style={{
-                  width: 72,
-                  height: 72,
-                  borderRadius: 36,
-                  backgroundColor: C.purple + '15',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginBottom: 16,
-                }}
-              >
-                <MaterialIcons name="vpn-key" size={36} color={C.purple} />
-              </View>
-              <Text
-                style={{
-                  ...Typography.heading,
-                  fontSize: 24,
-                  color: C.brownLight,
-                  textAlign: 'center',
-                  marginBottom: 8,
-                }}
-              >
-                {t('twoFactor.recoveryCodesTitle')}
-              </Text>
-              <Text
-                style={{
-                  fontFamily: Typography.family.body,
-                  fontSize: 14,
-                  color: C.brownLight,
-                  opacity: 0.6,
-                  textAlign: 'center',
-                  lineHeight: 22,
-                }}
-              >
-                {t('twoFactor.recoveryCodesSubtitle')}
-              </Text>
-            </View>
-
-            {/* Warning banner */}
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 10,
-                backgroundColor: '#FEF3C7',
-                borderRadius: 16,
-                padding: 14,
-              }}
-            >
-              <MaterialIcons name="warning" size={20} color="#D97706" />
-              <Text
-                style={{
-                  fontFamily: Typography.family.body,
-                  flex: 1,
-                  fontSize: 13,
-                  fontWeight: Typography.weight.semibold,
-                  color: '#92400E',
-                  lineHeight: 19,
-                }}
-              >
-                {t('twoFactor.recoveryCodesWarning')}
-              </Text>
-            </View>
-
-            {/* Codes grid */}
-            <View
-              style={{
-                backgroundColor: C.cardBg,
-                borderRadius: 24,
-                padding: 20,
-              }}
-            >
-              <View
-                style={{
-                  flexDirection: 'row',
-                  flexWrap: 'wrap',
-                  justifyContent: 'space-between',
-                  gap: 8,
-                }}
-              >
-                {recoveryCodes.map((rc, i) => (
-                  <View
-                    key={i}
-                    style={{
-                      width: '48%',
-                      backgroundColor: C.inputBg,
-                      borderRadius: 12,
-                      paddingVertical: 12,
-                      paddingHorizontal: 14,
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 8,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        fontFamily: Typography.family.body,
-                        fontSize: 11,
-                        fontWeight: Typography.weight.semibold,
-                        color: C.brownText,
-                        opacity: 0.5,
-                      }}
-                    >
-                      {i + 1}.
-                    </Text>
-                    <Text
-                      selectable
-                      style={{
-                        fontSize: 15,
-                        fontWeight: Typography.weight.semibold,
-                        color: C.brownLight,
-                        letterSpacing: 1.5,
-                        fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-                      }}
-                    >
-                      {rc}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-
-              {/* Action buttons */}
-              <View
-                style={{
-                  flexDirection: 'row',
-                  gap: 10,
-                  marginTop: 18,
-                }}
-              >
-                <Pressable
-                  onPress={copyAllCodes}
-                  style={({ pressed }) => ({
-                    flex: 1,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 6,
-                    paddingVertical: 14,
+                accessibilityLabel={t('twoFactor.enterSixDigits')}
+                style={[
+                  Type.titleMd,
+                  {
+                    backgroundColor: palette.selected,
+                    borderColor: palette.borderStrong,
+                    borderWidth: 1,
                     borderRadius: 16,
-                    backgroundColor: codesCopied ? C.green + '15' : C.inputBg,
-                    opacity: pressed ? 0.7 : 1,
-                  })}
-                >
-                  <MaterialIcons
-                    name={codesCopied ? 'check' : 'content-copy'}
-                    size={18}
-                    color={codesCopied ? C.green : C.brownText}
-                  />
-                  <Text
-                    style={{
-                      fontFamily: Typography.family.body,
-                      fontSize: 14,
-                      fontWeight: Typography.weight.semibold,
-                      color: codesCopied ? C.green : C.brownText,
-                    }}
-                  >
-                    {codesCopied
-                      ? t('twoFactor.recoveryCodesCopied')
-                      : t('twoFactor.recoveryCodesCopy')}
-                  </Text>
-                </Pressable>
-
-                {Platform.OS !== 'web' && (
-                  <Pressable
-                    onPress={shareCodes}
-                    style={({ pressed }) => ({
-                      flex: 1,
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 6,
-                      paddingVertical: 14,
-                      borderRadius: 16,
-                      backgroundColor: C.inputBg,
-                      opacity: pressed ? 0.7 : 1,
-                    })}
-                  >
-                    <MaterialIcons name="share" size={18} color={C.brownText} />
-                    <Text
-                      style={{
-                        fontFamily: Typography.family.body,
-                        fontSize: 14,
-                        fontWeight: Typography.weight.semibold,
-                        color: C.brownText,
-                      }}
-                    >
-                      {t('twoFactor.recoveryCodesShare')}
-                    </Text>
-                  </Pressable>
-                )}
-              </View>
-            </View>
-
-            {/* Confirmation checkbox */}
-            <Pressable
-              onPress={() => setCodesConfirmed(!codesConfirmed)}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 12,
-                paddingHorizontal: 4,
-              }}
-            >
-              <View
-                style={{
-                  width: 26,
-                  height: 26,
-                  borderRadius: 8,
-                  borderWidth: 2,
-                  borderColor: codesConfirmed ? C.green : C.brownText,
-                  backgroundColor: codesConfirmed ? C.green : 'transparent',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                {codesConfirmed && <MaterialIcons name="check" size={18} color="#fff" />}
-              </View>
-              <Text
-                style={{
-                  fontFamily: Typography.family.body,
-                  flex: 1,
-                  fontSize: 14,
-                  fontWeight: Typography.weight.semibold,
-                  color: C.brownLight,
-                  lineHeight: 20,
-                }}
-              >
-                {t('twoFactor.recoveryCodesConfirm')}
-              </Text>
-            </Pressable>
-
-            {/* Continue CTA */}
-            <Pressable
-              onPress={() => setStep('success')}
-              disabled={!codesConfirmed}
-              style={({ pressed }) => ({
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 10,
-                paddingVertical: 20,
-                borderRadius: 35,
-                backgroundColor: !codesConfirmed ? 'rgba(160,123,85,0.35)' : C.brown,
-                opacity: pressed ? 0.9 : 1,
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: codesConfirmed ? 0.1 : 0,
-                shadowRadius: 10,
-                elevation: codesConfirmed ? 4 : 0,
-              })}
-            >
-              <Text
-                style={{
-                  fontFamily: Typography.family.body,
-                  color: 'white',
-                  fontWeight: Typography.weight.semibold,
-                  fontSize: 18,
-                }}
-              >
-                {t('twoFactor.recoveryCodesContinue')}
-              </Text>
-            </Pressable>
-          </View>
-        )}
-
-        {step === 'success' && (
-          /* ═══ Success State ═══ */
-          <View
-            style={{
-              backgroundColor: C.cardBg,
-              borderRadius: 32,
-              padding: 32,
-              alignItems: 'center',
-            }}
-          >
-            <View
-              style={{
-                width: 88,
-                height: 88,
-                borderRadius: 44,
-                backgroundColor: C.green + '15',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: 20,
-              }}
-            >
-              <MaterialIcons name="verified-user" size={44} color={C.green} />
-            </View>
-            <Text
-              style={{
-                ...Typography.heading,
-                color: C.brownLight,
-                textAlign: 'center',
-                marginBottom: 8,
-              }}
-            >
-              {t('twoFactor.enabled')}
-            </Text>
-            <Text
-              style={{
-                ...Typography.heading,
-                color: C.brownLight,
-                opacity: 0.6,
-                textAlign: 'center',
-                lineHeight: 22,
-                paddingHorizontal: 16,
-                marginBottom: 28,
-              }}
-            >
-              {t('twoFactor.enabledSubtitle')}
-            </Text>
-
-            <Pressable
-              onPress={() => backTo(undefined, '/(tabs)/profile')}
-              style={({ pressed }) => ({
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 10,
-                paddingVertical: 20,
-                borderRadius: 35,
-                backgroundColor: C.brown,
-                width: '100%',
-                opacity: pressed ? 0.9 : 1,
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.1,
-                shadowRadius: 10,
-                elevation: 4,
-              })}
-            >
-              <Text
-                style={{
-                  fontFamily: Typography.family.body,
-                  color: 'white',
-                  fontWeight: Typography.weight.semibold,
-                  fontSize: 18,
-                }}
-              >
-                {t('twoFactor.done')}
-              </Text>
-            </Pressable>
-          </View>
-        )}
-
-        {step === 'already-enabled' && (
-          /* ═══ Already Enabled ═══ */
-          <View
-            style={{
-              backgroundColor: C.cardBg,
-              borderRadius: 32,
-              padding: 28,
-              alignItems: 'center',
-            }}
-          >
-            <View
-              style={{
-                width: 80,
-                height: 80,
-                borderRadius: 40,
-                backgroundColor: C.green + '15',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: 20,
-              }}
-            >
-              <MaterialIcons name="shield" size={40} color={C.green} />
-            </View>
-            <Text
-              style={{
-                ...Typography.heading,
-                color: C.brownLight,
-                textAlign: 'center',
-                marginBottom: 8,
-              }}
-            >
-              {t('twoFactor.alreadyEnabled')}
-            </Text>
-            <Text
-              style={{
-                ...Typography.heading,
-                color: C.brownLight,
-                opacity: 0.6,
-                textAlign: 'center',
-                lineHeight: 22,
-                marginBottom: 28,
-              }}
-            >
-              {t('twoFactor.alreadyEnabledSubtitle')}
-            </Text>
-
-            {error && (
-              <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 8,
-                  backgroundColor: C.red + '12',
-                  borderRadius: 14,
-                  padding: 12,
-                  marginBottom: 16,
-                  width: '100%',
-                }}
-              >
-                <MaterialIcons name="error-outline" size={16} color={C.red} />
-                <Text
-                  style={{
-                    fontFamily: Typography.family.body,
-                    flex: 1,
-                    fontSize: 13,
-                    fontWeight: Typography.weight.semibold,
-                    color: C.red,
-                  }}
-                >
+                    padding: 16,
+                    textAlign: 'center',
+                    color: palette.ink,
+                    letterSpacing: 8,
+                  },
+                ]}
+              />
+              {error && (
+                <Text accessibilityRole="alert" style={[body, { color: palette.danger }]}>
                   {error}
                 </Text>
+              )}
+              <AppButton
+                title={t('twoFactor.verifyAndEnable')}
+                onPress={verifyCode}
+                busy={loading}
+                disabled={code.length !== 6}
+              />
+            </View>
+          </>
+        )}
+        {step === 'recovery-codes' && (
+          <View style={card}>
+            <Text style={[Type.titleSm, { color: palette.plumDeep }]}>
+              {t('twoFactor.recoveryCodesTitle')}
+            </Text>
+            <Text style={body}>{t('twoFactor.recoveryCodesSubtitle')}</Text>
+            <Text style={[body, { color: palette.danger }]}>
+              {t('twoFactor.recoveryCodesWarning')}
+            </Text>
+            {recoveryCodes.map((rc) => (
+              <Text
+                key={rc}
+                selectable
+                style={[Type.bodyMSemi, { color: palette.ink, textAlign: 'center' }]}
+              >
+                {rc}
+              </Text>
+            ))}
+            <AppButton
+              variant="outline"
+              title={t(
+                codesCopied ? 'twoFactor.recoveryCodesCopied' : 'twoFactor.recoveryCodesCopy',
+              )}
+              onPress={copyAllCodes}
+            />
+            <AppButton
+              variant="outline"
+              title={t('twoFactor.recoveryCodesShare')}
+              onPress={shareCodes}
+            />
+            <Pressable
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: codesConfirmed }}
+              onPress={() => setCodesConfirmed(!codesConfirmed)}
+              style={{ flexDirection: 'row', gap: 12, paddingVertical: 12 }}
+            >
+              <View
+                style={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: 6,
+                  borderWidth: 1.5,
+                  borderColor: palette.plum,
+                  backgroundColor: codesConfirmed ? palette.plum : palette.white,
+                }}
+              >
+                {codesConfirmed && <Icon name="line/check" size={20} color={palette.white} />}
               </View>
-            )}
-
-            {/* Regenerate recovery codes */}
-            <Pressable
-              onPress={regenerateRecoveryCodes}
-              disabled={loading}
-              style={({ pressed }) => ({
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 10,
-                paddingVertical: 18,
-                borderRadius: 35,
-                backgroundColor: C.brown,
-                width: '100%',
-                opacity: pressed || loading ? 0.7 : 1,
-                marginBottom: 12,
-              })}
-            >
-              {loading ? <ActivityIndicator size="small" color="#fff" /> : null}
-              <MaterialIcons name="vpn-key" size={20} color="#fff" />
-              <Text
-                style={{
-                  fontFamily: Typography.family.body,
-                  color: 'white',
-                  fontWeight: Typography.weight.semibold,
-                  fontSize: 16,
-                }}
-              >
-                {t('twoFactor.regenerateCodes')}
-              </Text>
+              <Text style={[body, { flex: 1 }]}>{t('twoFactor.recoveryCodesConfirm')}</Text>
             </Pressable>
-
-            {/* Disable 2FA */}
-            <Pressable
-              onPress={disableMfa}
-              disabled={loading}
-              style={({ pressed }) => ({
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 10,
-                paddingVertical: 18,
-                borderRadius: 35,
-                borderWidth: 1.5,
-                borderColor: C.red,
-                backgroundColor: 'transparent',
-                width: '100%',
-                opacity: pressed || loading ? 0.7 : 1,
-              })}
-            >
-              {loading ? <ActivityIndicator size="small" color={C.red} /> : null}
-              <MaterialIcons name="remove-circle-outline" size={20} color={C.red} />
-              <Text
-                style={{
-                  fontFamily: Typography.family.body,
-                  color: C.red,
-                  fontWeight: Typography.weight.semibold,
-                  fontSize: 16,
-                }}
-              >
-                {t('twoFactor.disable')}
-              </Text>
-            </Pressable>
-
-            <Pressable
-              onPress={() => backTo(undefined, '/(tabs)/profile')}
-              style={({ pressed }) => ({
-                paddingVertical: 14,
-                marginTop: 12,
-                opacity: pressed ? 0.6 : 1,
-              })}
-            >
-              <Text
-                style={{
-                  fontFamily: Typography.family.body,
-                  fontSize: 15,
-                  fontWeight: Typography.weight.semibold,
-                  color: C.brownText,
-                }}
-              >
-                {t('twoFactor.goBack')}
-              </Text>
-            </Pressable>
+            <AppButton
+              title={t('twoFactor.recoveryCodesContinue')}
+              disabled={!codesConfirmed}
+              onPress={() => setStep('success')}
+            />
           </View>
         )}
-
+        {(step === 'success' || step === 'already-enabled') && (
+          <View style={card}>
+            <Text style={[Type.titleSm, { color: palette.plumDeep }]}>
+              {t(step === 'success' ? 'twoFactor.enabled' : 'twoFactor.alreadyEnabled')}
+            </Text>
+            <Text style={body}>
+              {t(
+                step === 'success'
+                  ? 'twoFactor.enabledSubtitle'
+                  : 'twoFactor.alreadyEnabledSubtitle',
+              )}
+            </Text>
+            {error && (
+              <Text accessibilityRole="alert" style={[body, { color: palette.danger }]}>
+                {error}
+              </Text>
+            )}
+            {step === 'already-enabled' && (
+              <>
+                <AppButton
+                  title={t('twoFactor.regenerateCodes')}
+                  busy={loading}
+                  onPress={regenerateRecoveryCodes}
+                />
+                <AppButton
+                  variant="outline"
+                  title={t('twoFactor.disable')}
+                  disabled={loading}
+                  onPress={disableMfa}
+                />
+              </>
+            )}
+            <AppButton variant="text" title={t('twoFactor.done')} onPress={close} />
+          </View>
+        )}
         {step === 'error' && (
-          <View
-            style={{
-              backgroundColor: C.cardBg,
-              borderRadius: 32,
-              padding: 32,
-              alignItems: 'center',
-            }}
-          >
-            <View
-              style={{
-                width: 80,
-                height: 80,
-                borderRadius: 40,
-                backgroundColor: C.red + '15',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: 20,
-              }}
-            >
-              <MaterialIcons name="error-outline" size={40} color={C.red} />
-            </View>
-            <Text
-              style={{
-                fontFamily: Typography.family.body,
-                fontSize: 16,
-                fontWeight: Typography.weight.semibold,
-                color: C.brownLight,
-                textAlign: 'center',
-                marginBottom: 20,
-              }}
-            >
+          <View style={card}>
+            <Text accessibilityRole="alert" style={[body, { color: palette.danger }]}>
               {error || t('twoFactor.setupError')}
             </Text>
-            <Pressable
-              onPress={() => {
-                setError(null);
-                setStep('loading');
-                checkMfaStatus();
-              }}
-              style={({ pressed }) => ({
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 8,
-                paddingVertical: 18,
-                paddingHorizontal: 32,
-                borderRadius: 35,
-                backgroundColor: C.brown,
-                opacity: pressed ? 0.9 : 1,
-              })}
-            >
-              <MaterialIcons name="replay" size={20} color="#fff" />
-              <Text
-                style={{
-                  fontFamily: Typography.family.body,
-                  color: 'white',
-                  fontWeight: Typography.weight.semibold,
-                  fontSize: 16,
-                }}
-              >
-                {t('twoFactor.tryAgain')}
-              </Text>
-            </Pressable>
+            <AppButton title={t('twoFactor.tryAgain')} onPress={checkMfaStatus} />
           </View>
         )}
       </ScrollView>

@@ -1,4 +1,32 @@
+## Latest submission — 3 November 2026, Build 27
+
+Submitted four items together for App Review: iOS version 1.1, binary 1.0.0 (27), Premium Monthly, Premium Yearly, and the Premium subscription group. Apple confirmed “4 Items Submitted”.
+
+Submission: https://appstoreconnect.apple.com/apps/6760898488/distribution/reviewsubmissions/details/4aef8d08-972d-4e56-8222-f5d7d7105b87
+
+Build 26 was withdrawn by the developer solely to replace the binary. Reviewer notes now describe Build 27 onboarding, assessment selection, microphone recovery and keyboard improvements. Previous Build 23 physical-device evidence remains explicitly identified as historical. Existing automatic release setting was preserved. Build 27 is also distributed through TestFlight. The review monitor now targets this replacement submission.
+
+Apple Developer account still displayed an updated license agreement notice with a November 13 deadline. Its review page was opened for the Account Holder; no agreement was accepted by the agent. It did not prevent this submission.
+
+TestFlight feedback was reconciled into [25 project tasks covering all 42 screenshot reports](specs/testflight-feedback-2026-11-03/README.md), with current dispositions added to the seven historical tasks. Device verification remains outstanding where stated.
+
+---
+
 # Inner Glow App Review reply — Build 23
+
+## Latest submission — 3 November 2026
+
+Apple confirmed **4 Items Submitted** for version 1.1 with binary version 1.0.0, Build 26: the app, Premium Monthly, Premium Yearly and the Premium subscription group.
+
+Submission: https://appstoreconnect.apple.com/apps/6760898488/distribution/reviewsubmissions/details/75ce3a9c-2490-4a09-86f4-9a195aca7b2b
+
+Build: https://expo.dev/accounts/matthill8286/projects/innerglow/builds/875ae804-066e-44e1-9ecb-161c8d71b217
+
+The production provisioning profile was regenerated for HealthKit. The missing NSHealthUpdateUsageDescription was added to app.json and verified in generated iOS configuration; the app continues to request read-only sleep access. Build 26 completed Apple upload processing successfully. Listing text, reviewer notes, eight iPhone screenshots and subscription review screenshots were updated for the current app. Previous lifetime purchases remain supported, but lifetime is not offered as a new purchase in this build.
+
+Confirmation: ../release-assets/build-26/app-review/submitted-build26.png
+
+## Earlier submission record
 
 App Store version 1.1 with Build 23 (binary version 1.0.0) was submitted on 17 October 2026. Apple confirms Waiting for Review for all four items: app version, Premium Monthly, Premium subscription group and Premium Lifetime. Submission ID: 6cfc2ec2-57ef-43e6-a878-6852619ff802.
 

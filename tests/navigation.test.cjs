@@ -28,6 +28,8 @@ const nav = load('lib/navigation.ts', {
     router: {
       navigate: (path) => actions.push(['navigate', path]),
       dismissTo: (path) => actions.push(['dismissTo', path]),
+      dismissAll: () => actions.push(['dismissAll']),
+      canDismiss: () => true,
       canGoBack: () => canBack,
       back: () => actions.push('back'),
       replace: (path) => actions.push(path),
@@ -224,4 +226,26 @@ test('secondary features retain a visible parent tab and primary feature childre
     '/freud-score': 'home',
   }))
     assert.equal(parents.primaryTabForPath(route), owner, route);
+});
+
+test('mood completion preserves Profile origin and rejects arbitrary destinations', () => {
+  assert.equal(nav.moodReturnDestination('/(tabs)/profile'), '/(tabs)/profile');
+  assert.equal(nav.moodReturnDestination('/(tabs)/mood'), '/(tabs)/mood');
+  assert.equal(nav.moodReturnDestination('https://example.com'), '/(tabs)/home');
+  assert.equal(nav.moodReturnDestination('/(tabs)/chat'), '/(tabs)/home');
+});
+test('Home-origin chat returns Home even when an older chat can be popped', () => {
+  actions = []; canBack = true;
+  nav.returnFromChat('/(tabs)/home');
+  assert.equal(actions[0][0], 'dismissAll');
+  assert.equal(actions[1][0], 'navigate');
+  assert.equal(actions[1][1], '/(tabs)/home');
+});
+
+test('mood completion clears nested forms before switching to Profile', () => {
+  actions = [];
+  nav.finishMoodFlow('/(tabs)/profile');
+  assert.equal(actions[0][0], 'dismissAll');
+  assert.equal(actions[1][0], 'navigate');
+  assert.equal(actions[1][1], '/(tabs)/profile');
 });

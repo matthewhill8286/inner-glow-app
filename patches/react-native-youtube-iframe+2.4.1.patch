@@ -1,0 +1,39 @@
+diff --git a/node_modules/react-native-youtube-iframe/index.d.ts b/node_modules/react-native-youtube-iframe/index.d.ts
+index 5e00e80..2ec156b 100644
+--- a/node_modules/react-native-youtube-iframe/index.d.ts
++++ b/node_modules/react-native-youtube-iframe/index.d.ts
+@@ -19,6 +19,8 @@ export enum PLAYER_ERRORS {
+ }
+ 
+ export interface YoutubeIframeRef {
++  playVideo: () => void;
++  pauseVideo: () => void;
+   getDuration: () => Promise<number>;
+   getVideoUrl: () => Promise<string>;
+   getCurrentTime: () => Promise<number>;
+diff --git a/node_modules/react-native-youtube-iframe/lib/commonjs/YoutubeIframe.js b/node_modules/react-native-youtube-iframe/lib/commonjs/YoutubeIframe.js
+index 0be2dad..a0754db 100644
+--- a/node_modules/react-native-youtube-iframe/lib/commonjs/YoutubeIframe.js
++++ b/node_modules/react-native-youtube-iframe/lib/commonjs/YoutubeIframe.js
+@@ -57,6 +57,8 @@ const YoutubeIframe = (props, ref) => {
+     webViewRef.current.postMessage(message);
+   }, [playerReady]);
+   (0, _react.useImperativeHandle)(ref, () => ({
++    playVideo: () => webViewRef.current?.injectJavaScript(_PlayerScripts.PLAYER_FUNCTIONS.playVideo),
++    pauseVideo: () => webViewRef.current?.injectJavaScript(_PlayerScripts.PLAYER_FUNCTIONS.pauseVideo),
+     getVideoUrl: () => {
+       webViewRef.current.injectJavaScript(_PlayerScripts.PLAYER_FUNCTIONS.getVideoUrlScript);
+       return new Promise(resolve => {
+diff --git a/node_modules/react-native-youtube-iframe/src/YoutubeIframe.js b/node_modules/react-native-youtube-iframe/src/YoutubeIframe.js
+index 4bbf487..45b3ceb 100644
+--- a/node_modules/react-native-youtube-iframe/src/YoutubeIframe.js
++++ b/node_modules/react-native-youtube-iframe/src/YoutubeIframe.js
+@@ -70,6 +70,8 @@ const YoutubeIframe = (props, ref) => {
+   useImperativeHandle(
+     ref,
+     () => ({
++      playVideo: () => webViewRef.current?.injectJavaScript(PLAYER_FUNCTIONS.playVideo),
++      pauseVideo: () => webViewRef.current?.injectJavaScript(PLAYER_FUNCTIONS.pauseVideo),
+       getVideoUrl: () => {
+         webViewRef.current.injectJavaScript(PLAYER_FUNCTIONS.getVideoUrlScript);
+         return new Promise(resolve => {

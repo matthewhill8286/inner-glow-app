@@ -1,5 +1,11 @@
 # 05 — Verify existing subscribers bypass repurchase and retain access
 
+## Current disposition — 3 November 2026
+
+Existing subscription reconciliation was implemented and previously checked on Build 23, but the later redesigned paywall requires a Build 27 restore/access regression check. See November task 24.
+
+[Full feedback reconciliation](../../testflight-feedback-2026-11-03/README.md). Earlier implementation notes below are historical.
+
 **Priority:** P1
 
 **Status:** implemented locally; next binary verification pending
