@@ -7,7 +7,7 @@ import { Icon, type IconName } from '@/components/icons/Icon';
 /**
  * Dark confirmation pill ("Saved to favourites", frame `6787:6370`, 00-foundations §11.7):
  * `#241A2E` r999, padding 12/16, gap 10, white 16pt icon, Medium 14 white. Centred 16 above the CTA.
- * This is the presentational pill; `components/Toast.tsx` keeps the queued light toasts.
+ * This is the presentational pill; the queued `toast.*` calls in `components/Toast.tsx` draw the same design.
  */
 export function Toast({ message, icon, style }: { message: string; icon?: IconName; style?: StyleProp<ViewStyle> }) {
   return (
