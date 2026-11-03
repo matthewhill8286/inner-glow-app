@@ -257,3 +257,12 @@ export const CATEGORY_LOOK: Record<
   mindfulness: { icon: 'line/meditate', tint: 'rgba(107,82,121,0.18)', thumb: '#EFE8F4' },
   sleep: { icon: 'line/moon', tint: 'rgba(216,180,216,0.35)', thumb: '#FDEDF0' },
 };
+
+/** Glow colour per category for the chat practice card (`6699:3808`): breathing is sky. */
+export const CATEGORY_GLOW: Record<PracticeCategory, string> = {
+  breathing: '#7FC6F1',
+  'relax-body': '#E2CC40',
+  'relax-mind': '#E2CC40',
+  mindfulness: '#D8B4D8',
+  sleep: '#D8B4D8',
+};

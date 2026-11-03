@@ -6,7 +6,8 @@ import type { ChatMessage } from '@/lib/types';
 import { Type } from '@/constants/typography';
 import { Icon, type IconName } from '@/components/icons/Icon';
 import { IconButton } from '@/components/ui/IconButton';
-import { MiniGlowOrb } from '@/components/glow/Glow';
+import { Glow, MiniGlowOrb } from '@/components/glow/Glow';
+import Svg, { Path } from 'react-native-svg';
 
 /**
  * Chat header (05 §2.2, updated in 09 §3.2): the library back button, the mini orb, "Glow AI" in
@@ -239,16 +240,19 @@ export function TalkCard({
  * User: plum #6B5279, white Regular 15 text. AI: white, ink text, no border. Radius 22 with a 6
  * corner on the speaker's side, padding 16/12, max width 292. No avatars. A day stamp in Medium 11
  * subtle sits above the first message of each day, and "Sent · HH:mm" sits under the latest user
- * message once it has been saved.
+ * message once it has been saved. A message that failed shows "Not sent · Tap to retry" in
+ * SemiBold 12 danger instead (`6817:7082`), and tapping it sends the message again.
  */
 export function MessageBubble({
   item,
   dayStamp,
   receipt,
+  failed,
 }: {
   item: ChatMessage;
   dayStamp?: string;
   receipt?: string;
+  failed?: { label: string; onRetry: () => void; busy?: boolean };
 }) {
   const isUser = item.role === 'user';
   const hasCitations = !isUser && item.citations && item.citations.length > 0;
@@ -289,13 +293,195 @@ export function MessageBubble({
           />
         )}
       </View>
-      {receipt ? (
+      {failed ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={failed.label}
+          disabled={failed.busy}
+          onPress={failed.onRetry}
+          hitSlop={10}
+          style={{
+            alignSelf: 'flex-end',
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 6,
+            opacity: failed.busy ? 0.5 : 1,
+          }}
+        >
+          <Icon name="arrow/replay" size={14} color={palette.danger} strokeWidth={1.6} />
+          <Text style={[Type.caption, { color: palette.danger }]}>{failed.label}</Text>
+        </Pressable>
+      ) : receipt ? (
         <Text
           style={[Type.micro, { lineHeight: 15, color: palette.textSubtle, alignSelf: 'flex-end' }]}
         >
           {receipt}
         </Text>
       ) : null}
+    </View>
+  );
+}
+
+/**
+ * Practice card in the chat (`6699:3808`): white, radius 22, 260 wide, padding 16/16/10, with a
+ * soft category glow on the right. A Medium 10 lavender eyebrow ("BREATHING · 4 MIN"), the
+ * SemiBold 16 ink name and a 24-high plum Start pill with a play icon and SemiBold 12 white label.
+ */
+export function ChatPracticeCard({
+  eyebrow,
+  title,
+  startLabel,
+  glow,
+  onStart,
+}: {
+  eyebrow: string;
+  title: string;
+  startLabel: string;
+  glow: string;
+  onStart: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${startLabel}, ${title}`}
+      onPress={onStart}
+      style={({ pressed }) => ({
+        alignSelf: 'flex-start',
+        width: 260,
+        borderRadius: 22,
+        overflow: 'hidden',
+        backgroundColor: palette.white,
+        paddingTop: 16,
+        paddingHorizontal: 16,
+        paddingBottom: 10,
+        gap: 5,
+        opacity: pressed ? 0.9 : 1,
+      })}
+    >
+      <Glow
+        color={glow}
+        opacity={0.18}
+        width={120}
+        blur={26}
+        style={{ position: 'absolute', left: 150, top: -30 }}
+      />
+      <Text style={[Type.micro, { fontSize: 10, lineHeight: 12, color: palette.lavender }]}>
+        {eyebrow.toUpperCase()}
+      </Text>
+      <Text style={[Type.bodyStrong, { lineHeight: 19, letterSpacing: 0, color: palette.ink }]}>
+        {title}
+      </Text>
+      <View
+        style={{
+          alignSelf: 'flex-start',
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 6,
+          height: 24,
+          paddingLeft: 10,
+          paddingRight: 12,
+          borderRadius: 999,
+          backgroundColor: palette.plum,
+        }}
+      >
+        <Svg width={10} height={10} viewBox="0 0 10 10">
+          <Path
+            d="M3 2.2v5.6a.5.5 0 0 0 .76.43l4.4-2.8a.5.5 0 0 0 0-.86l-4.4-2.8A.5.5 0 0 0 3 2.2Z"
+            fill={palette.white}
+          />
+        </Svg>
+        <Text style={[Type.caption, { lineHeight: 14, color: palette.white }]}>{startLabel}</Text>
+      </View>
+    </Pressable>
+  );
+}
+
+/**
+ * Quick replies under the latest reply (`6699:3808`): pills that wrap with an 8 gap, padding 9/14.
+ * The first is the suggested one: selected fill with a 1.5 plum stroke and SemiBold 13 plum. The
+ * others are white with a 1px `#E6E0EA` stroke and Medium 13 muted text.
+ */
+export function QuickReplies({
+  replies,
+  onPick,
+}: {
+  replies: string[];
+  onPick: (reply: string) => void;
+}) {
+  return (
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+      {replies.map((reply, i) => {
+        const first = i === 0;
+        return (
+          <Pressable
+            key={reply}
+            accessibilityRole="button"
+            accessibilityLabel={reply}
+            onPress={() => onPick(reply)}
+            style={({ pressed }) => ({
+              paddingVertical: 9,
+              paddingHorizontal: 14,
+              borderRadius: 999,
+              backgroundColor: first ? palette.selected : palette.white,
+              borderWidth: first ? 1.5 : 1,
+              borderColor: first ? palette.plum : '#E6E0EA',
+              opacity: pressed ? 0.85 : 1,
+            })}
+          >
+            <Text
+              style={[
+                first ? Type.chipSelected : Type.chip,
+                { lineHeight: 16, color: first ? palette.plum : palette.textMuted },
+              ]}
+            >
+              {reply}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+/**
+ * Offline banner at the top of a talk (`6817:7082`): white, radius 20, a 1.5 rose stroke, padding
+ * 14/14/14/16, a 36 rose @0.30 circle with an 18 icon, then a SemiBold 14 title and Regular 12 body.
+ */
+export function OfflineBanner({ title, body }: { title: string; body: string }) {
+  return (
+    <View
+      accessible
+      accessibilityRole="alert"
+      accessibilityLabel={`${title}. ${body}`}
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        borderRadius: 20,
+        borderWidth: 1.5,
+        borderColor: palette.rose,
+        backgroundColor: palette.white,
+        paddingVertical: 14,
+        paddingRight: 14,
+        paddingLeft: 16,
+      }}
+    >
+      <View
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: 18,
+          backgroundColor: 'rgba(255,179,190,0.30)',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Icon name="line/globe" size={18} color={palette.plumDeep} />
+      </View>
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text style={[Type.label, { letterSpacing: 0, color: palette.ink }]}>{title}</Text>
+        <Text style={[Type.captionS, { color: palette.textMuted }]}>{body}</Text>
+      </View>
     </View>
   );
 }

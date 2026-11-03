@@ -2,6 +2,7 @@ import { functionError } from '@/lib/function-errors';
 import { invokeAI } from '@/lib/ai-privacy';
 import { supabase } from '@/supabase/supabase';
 import { extractCitations, type Citation } from '@/lib/citations';
+import { practiceById } from '@/data/practices';
 
 export type PersonaId = 'freud' | 'calm' | 'sleep' | 'mood';
 
@@ -15,6 +16,10 @@ export type ChatAIResponse = {
   risk: ChatRisk;
   /** Free plan only: talks used this week, including this one. */
   usage?: GlowAiUsage;
+  /** A practice to offer as a card under the reply, when the function suggested one. */
+  practiceId?: string;
+  /** Up to three short replies the person might send next. */
+  quickReplies: string[];
 };
 
 export async function sendChatToAI(
@@ -37,7 +42,27 @@ export async function sendChatToAI(
   // Extract relevant medical citations from the response content
   const citations = extractCitations(text);
 
-  return { text, citations, risk: data.risk === 'high' ? 'high' : 'none', usage: data.usage };
+  return {
+    text,
+    citations,
+    risk: data.risk === 'high' ? 'high' : 'none',
+    usage: data.usage,
+    practiceId:
+      typeof data.practiceId === 'string' && practiceById(data.practiceId)
+        ? data.practiceId
+        : undefined,
+    quickReplies: chatQuickReplies(data.quickReplies),
+  };
+}
+
+/** The function's quick replies, trimmed to three short, distinct strings. Anything else is dropped. */
+export function chatQuickReplies(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  const replies = value
+    .filter((v): v is string => typeof v === 'string')
+    .map((v) => v.replace(/\s+/g, ' ').trim())
+    .filter((v) => v.length > 0 && v.length <= 60);
+  return [...new Set(replies)].slice(0, 3);
 }
 
 export type ChatSummary = {

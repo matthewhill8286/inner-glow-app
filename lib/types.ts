@@ -123,6 +123,10 @@ export type ChatMessage = {
   content: string;
   text?: string;
   createdAt: string;
+  /** A practice Glow AI suggested with this reply, shown as a card under it (`data/practices.ts` id). */
+  practiceId?: string;
+  /** Short replies the person might send next, shown as chips under the latest reply. */
+  quickReplies?: string[];
   /** Optional citations for AI-generated medical/health content */
   citations?: Array<{
     source: string;
