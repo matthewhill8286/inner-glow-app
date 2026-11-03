@@ -1233,6 +1233,15 @@ export default {
       notes: { label: 'Notes', placeholder: 'Music, places, reminders, anything else that helps' },
     },
   },
+  voiceAsk: {
+    listening: 'Listening… it sends when you pause',
+    transcribing: 'Getting your words…',
+    cancel: 'Cancel',
+    send: 'Send your question',
+    hint: 'Tap to talk, or hold to talk and let go to send',
+    nothingHeard: 'I didn’t catch that. Try again a little closer to the mic.',
+    failed: 'We couldn’t hear that clearly. Please try again.',
+  },
   moodHome: {
     title: 'Mood',
     history: 'Mood history',
