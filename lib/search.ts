@@ -5,7 +5,14 @@
 
 export type SearchType = 'practice' | 'journal' | 'talk' | 'insight';
 /** Drives the row icon and tint (05 §4.2). */
-export type SearchKind = 'sleep' | 'breathing' | 'mindfulness' | 'relax' | 'journal' | 'talk' | 'insight';
+export type SearchKind =
+  | 'sleep'
+  | 'breathing'
+  | 'mindfulness'
+  | 'relax'
+  | 'journal'
+  | 'talk'
+  | 'insight';
 export type LengthFilter = 'any' | 'short' | 'mid' | 'long';
 export type TimeFilter = 'all' | 'week' | 'month';
 
@@ -47,28 +54,49 @@ export function score(item: SearchItem, query: string): number {
   return 30;
 }
 
+/**
+ * Length only narrows items that have a length (practices), and Time only items that have a date
+ * (journal entries and talks), so "Practices · This month" still lists practices, as in `6703:4239`.
+ */
 export function passesFilters(item: SearchItem, f: SearchFilters, now: number) {
   if (f.types.length && !f.types.includes(item.type)) return false;
-  if (f.length !== 'any') {
-    if (item.minutes == null) return false;
+  if (f.length !== 'any' && item.minutes != null) {
     if (f.length === 'short' && item.minutes >= 5) return false;
     if (f.length === 'mid' && (item.minutes < 5 || item.minutes > 15)) return false;
     if (f.length === 'long' && item.minutes <= 15) return false;
   }
-  if (f.time !== 'all') {
-    if (item.at == null) return false;
+  if (f.time !== 'all' && item.at != null) {
     const span = f.time === 'week' ? 7 * DAY : 31 * DAY;
     if (now - item.at > span) return false;
   }
   return true;
 }
 
-/** Matches, most relevant first; ties go to the newest, then A to Z. */
-export function search(items: SearchItem[], query: string, f: SearchFilters = DEFAULT_FILTERS, now = Date.now()) {
+/** Whether any filter narrows the list. */
+export function filtersActive(f: SearchFilters) {
+  return f.types.length > 0 || f.length !== 'any' || f.time !== 'all';
+}
+
+/**
+ * Matches, most relevant first; ties go to the newest, then A to Z. With no query, an active filter
+ * browses everything that passes it, so "Show N results" is never 0 just because nothing was typed.
+ */
+export function search(
+  items: SearchItem[],
+  query: string,
+  f: SearchFilters = DEFAULT_FILTERS,
+  now = Date.now(),
+) {
+  const browse = !words(query).length && filtersActive(f);
   return items
-    .map((item) => ({ item, s: score(item, query) }))
+    .map((item) => ({ item, s: browse ? 1 : score(item, query) }))
     .filter((r) => r.s > 0 && passesFilters(r.item, f, now))
-    .sort((a, b) => b.s - a.s || (b.item.at ?? 0) - (a.item.at ?? 0) || a.item.title.localeCompare(b.item.title))
+    .sort(
+      (a, b) =>
+        b.s - a.s ||
+        (b.item.at ?? 0) - (a.item.at ?? 0) ||
+        a.item.title.localeCompare(b.item.title),
+    )
     .map((r) => r.item);
 }
 

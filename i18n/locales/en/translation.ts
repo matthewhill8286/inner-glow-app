@@ -847,8 +847,10 @@ export default {
     },
     emptyTitle: 'Nothing here yet',
     emptyBody: 'We couldn’t find “{{query}}”. Try another word,\nor ask Glow AI in your own words.',
+    emptyFiltered: 'Nothing matches these filters yet. Try fewer filters, or a longer time range.',
     try: { sleep: 'sleep', anxiety: 'anxiety', breathing: 'breathing', focus: 'focus' },
     filter: {
+      done: 'Done',
       title: 'Filter results',
       reset: 'Reset',
       show: 'Show',

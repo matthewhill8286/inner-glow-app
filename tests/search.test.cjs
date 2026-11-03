@@ -36,10 +36,13 @@ test('search ignores accents and case', () => {
 test('filters by type, length and time', () => {
   const f = (o) => Object.assign({}, s.DEFAULT_FILTERS, o);
   assert.equal(ids(s.search(items, 'sleep', f({ types: ['practice'] }), now)), '["p2","p1"]');
-  assert.equal(ids(s.search(items, 'sleep', f({ length: 'long' }), now)), '["p2","p1"]');
+  // Length narrows only items that have one; the talk and the insight have none, so they stay.
+  assert.equal(ids(s.search(items, 'sleep', f({ length: 'long' }), now)), '["i1","p2","p1","t1"]');
+  assert.equal(ids(s.search(items, 'sleep', f({ types: ['practice'], length: 'long' }), now)), '["p2","p1"]');
   assert.equal(ids(s.search(items, 'calm', f({ length: 'short' }), now)), '[]');
   assert.equal(ids(s.search(items, 'calm', f({ length: 'mid' }), now)), '["p3"]');
-  assert.equal(ids(s.search(items, 'sleep', f({ time: 'month' }), now)), '[]');
+  // Time narrows only dated items: the 40-day-old talk drops, the practices and insight stay.
+  assert.equal(ids(s.search(items, 'sleep', f({ time: 'month' }), now)), '["i1","p2","p1"]');
   assert.equal(ids(s.search(items, 'tired', f({ time: 'week' }), now)), '["j1"]');
 });
 
@@ -59,4 +62,20 @@ test('recent searches stay unique and short', () => {
   assert.equal(JSON.stringify(r), '["Sleep Sounds","anxiety"]');
   assert.equal(s.addRecent(r, '  ').length, 2);
   assert.equal(s.addRecent(['a', 'b', 'c'], 'd', 3).length, 3);
+});
+
+test('with nothing typed, an active filter browses everything that passes it', () => {
+  const { search: run, DEFAULT_FILTERS: none } = mod.exports;
+  const items = [
+    { id: 'a', type: 'practice', kind: 'breathing', title: 'Box breathing', minutes: 4 },
+    { id: 'b', type: 'practice', kind: 'sleep', title: 'Deep sleep', minutes: 25 },
+    { id: 'c', type: 'journal', kind: 'journal', title: 'A slower morning', at: Date.now() },
+  ];
+  assert.equal(run(items, '', none).length, 0);
+  assert.deepEqual(run(items, '  ', { ...none, types: ['practice'] }).map((i) => i.id).sort(), ['a', 'b']);
+  // Length narrows only items with a length, and Time only items with a date.
+  assert.deepEqual(run(items, '', { ...none, length: 'short' }).map((i) => i.id).sort(), ['a', 'c']);
+  assert.deepEqual(run(items, '', { ...none, types: ['practice'], time: 'month' }).map((i) => i.id).sort(), ['a', 'b']);
+  const old = { id: 'd', type: 'journal', kind: 'journal', title: 'Old entry', at: Date.now() - 40 * 86_400_000 };
+  assert.deepEqual(run([...items, old], '', { ...none, types: ['journal'], time: 'month' }).map((i) => i.id), ['c']);
 });
