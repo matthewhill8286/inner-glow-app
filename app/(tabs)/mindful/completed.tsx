@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, UI } from '@/constants/theme';
 import MaterialIcons from '@/components/AppIcon';
+import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
 
 const getGoalLabels = (t: any): Record<string, string> => ({
   focus: t('mindfulCompleted.focus'),
@@ -43,7 +44,7 @@ export default function ExerciseCompleted() {
         backgroundColor: colors.background,
       }}
     >
-      <ScrollView
+      <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE}
         contentContainerStyle={{
           flexGrow: 1,
           alignItems: 'center',

@@ -10,6 +10,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, UI } from '@/constants/theme';
 import MaterialIcons from '@/components/AppIcon';
 import Svg, { Circle, G } from 'react-native-svg';
+import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
 
 interface CategoryStat {
   label: string;
@@ -201,7 +202,7 @@ export default function MindfulStats() {
       {isLoading ? (
         <ActivityIndicator color={colors.primary} style={{ marginTop: 80 }} size="large" />
       ) : (
-        <ScrollView
+        <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: screenBottomPadding(insets.bottom) }}
         >

@@ -63,8 +63,7 @@
         "expo-image-picker",
         {
           "photosPermission": "Inner Glow uses your photo library when you choose a profile photo. Only the photo you pick is used, and only you can see it.",
-          "cameraPermission": false,
-          "microphonePermission": false
+          "cameraPermission": false
         }
       ],
       [
@@ -118,7 +117,7 @@
         "@kingstinct/react-native-healthkit",
         {
           "NSHealthShareUsageDescription": "Inner Glow reads your sleep from Apple Health when you connect it, so your nights show up in your sleep history and insights without logging them by hand.",
-          "NSHealthUpdateUsageDescription": false,
+          "NSHealthUpdateUsageDescription": "Inner Glow connects to Apple Health to show your sleep history and insights. It only requests permission to read your sleep records and does not write or change your Apple Health data.",
           "background": false
         }
       ],

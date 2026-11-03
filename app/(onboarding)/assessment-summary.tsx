@@ -15,6 +15,7 @@ import { calculateInitialFreudScore, getFreudColor } from '@/lib/freudScore';
 import type { FreudBreakdown, FreudScoreResult } from '@/lib/freudScore';
 import { useFreudScore } from '@/hooks/useFreudScore';
 import MaterialIcons from '@/components/AppIcon';
+import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
 
 /* ── Design tokens ── */
 const BG = '#6f6660';
@@ -237,7 +238,7 @@ export default function AssessmentSummary() {
         </Text>
       </View>
 
-      <ScrollView
+      <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE}
         style={{ paddingHorizontal: 24 }}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 40 }}

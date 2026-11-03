@@ -18,6 +18,7 @@ import { useSubscription } from '@/hooks/useSubscription';
 import { useProfileStats } from '@/hooks/useProfileStats';
 import { useAvatarUrl } from '@/lib/avatar';
 import { screenBottomPadding } from '@/lib/screen-layout';
+import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
 
 const RING = 68;
 const RING_R = 32;
@@ -70,7 +71,7 @@ export default function Profile() {
           { color: palette.mustard, opacity: 0.18, x: 190, y: 60, width: 240, blur: 90 },
         ]}
       />
-      <ScrollView
+      <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE}
         contentContainerStyle={{
           paddingTop: insets.top + 10,
           paddingHorizontal: 24,

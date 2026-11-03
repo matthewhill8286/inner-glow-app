@@ -9,6 +9,7 @@ import { AppButton } from '@/components/ui/AppButton';
 import { NavBar } from '@/components/ui/IconButton';
 import { screenBottomPadding } from '@/lib/screen-layout';
 import { useTabBarVisible } from '@/components/navigation/TabBarContext';
+import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
 
 /**
  * A whole screen that has nothing to show yet (09 §2.4, §3.5, §3.10–3.12): the corner glows
@@ -49,7 +50,7 @@ export function EmptyScreen({
         ]}
       />
       {header.kind === 'title' ? (
-        <ScrollView contentContainerStyle={{ paddingTop: insets.top + 26, paddingHorizontal: 24, paddingBottom: bottom }}>
+        <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE} contentContainerStyle={{ paddingTop: insets.top + 26, paddingHorizontal: 24, paddingBottom: bottom }}>
           <Text accessibilityRole="header" style={[Type.titleXl, { color: palette.ink }]}>
             {header.title}
           </Text>
@@ -59,7 +60,7 @@ export function EmptyScreen({
       ) : (
         <>
           <NavBar title={header.title} backLabel={header.backLabel} onBack={header.onBack} style={{ marginTop: insets.top + 10, marginHorizontal: 24 }} />
-          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingTop: 18, paddingHorizontal: 24 }}>
+          <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE} style={{ flex: 1 }} contentContainerStyle={{ paddingTop: 18, paddingHorizontal: 24 }}>
             <EmptyState glowColor={glowColor} title={title} body={body} />
           </ScrollView>
           <View style={{ paddingHorizontal: 24, paddingBottom: tabBarVisible ? bottom : insets.bottom + 48 }}>{button}</View>

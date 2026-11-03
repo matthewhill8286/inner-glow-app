@@ -10,7 +10,7 @@ vm.runInNewContext(
   }).outputText,
   { module: moduleUnderTest, exports: moduleUnderTest.exports, Math },
 );
-const { getAssessmentSteps, stepGlow, stressBandScore, stressBandFromLevel, takesMedication } = moduleUnderTest.exports;
+const { getAssessmentSteps, stepGlow, stressBandScore, stressBandFromLevel, takesMedication, takingMedsList, toggleTakingMeds } = moduleUnderTest.exports;
 
 test('only prescription or over-the-counter answers include the medication search', () => {
   for (const answer of ['none', 'prefer_not', 'No', 'Not sure', undefined, null, '']) {
@@ -50,4 +50,17 @@ test('the top glow walks the 14-colour ramp and clamps at the ends', () => {
 test('stress bands score from calm to intense and old 0–10 levels map to a band', () => {
   assert.deepEqual([1, 2, 3, 4, 5].map(stressBandScore), [100, 75, 50, 25, 0]);
   assert.deepEqual([0, 2, 5, 8, 10].map(stressBandFromLevel), [1, 1, 3, 4, 5]);
+});
+
+test('the medication question takes several answers, but "none" and "prefer not" stand alone', () => {
+  let v = toggleTakingMeds(null, 'otc');
+  v = toggleTakingMeds(v, 'prescription');
+  assert.equal(v, 'prescription\notc');
+  assert.deepEqual([...takingMedsList(v)], ['prescription', 'otc']);
+  assert.equal(takesMedication(v), true);
+  assert.equal(getAssessmentSteps(v).includes('medsSpecify'), true);
+  assert.equal(toggleTakingMeds(v, 'none'), 'none');
+  assert.equal(toggleTakingMeds('prefer_not', 'otc'), 'otc');
+  assert.equal(toggleTakingMeds('otc', 'otc'), null);
+  assert.equal(takesMedication('none'), false);
 });

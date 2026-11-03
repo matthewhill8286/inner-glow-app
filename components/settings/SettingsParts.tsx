@@ -7,6 +7,7 @@ import { Type } from '@/constants/typography';
 import { GlowField, type GlowSpec } from '@/components/glow/Glow';
 import { NavBar } from '@/components/ui/IconButton';
 import { useBottomSpace } from '@/components/navigation/TabBarContext';
+import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
 
 /** 08 §1.2 default glows for settings screens. */
 export const SETTINGS_GLOWS: GlowSpec[] = [
@@ -53,7 +54,7 @@ export function SettingsScreen({
         onBack={onBack}
         style={{ marginTop: insets.top + 10, marginHorizontal: 24 }}
       />
-      <ScrollView
+      <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE}
         scrollEnabled={scrollEnabled}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={[

@@ -3,7 +3,7 @@ import { Pressable, Text, View, type StyleProp, type ViewStyle } from 'react-nat
 import { palette } from '@/constants/theme';
 import { Type } from '@/constants/typography';
 import { Icon, type IconName } from '@/components/icons/Icon';
-import { Radio } from '@/components/ui/controls';
+import { Checkbox, Radio } from '@/components/ui/controls';
 import { Glow } from '@/components/glow/Glow';
 import MaleAura from '@/assets/svg/illustrations/assessment/gender-male-aura.svg';
 import FemaleAura from '@/assets/svg/illustrations/assessment/gender-female-aura.svg';
@@ -16,22 +16,25 @@ export const FOCUS_RING = '0px 0px 0px 4px rgba(107,82,121,0.30)';
 /**
  * Pill option row (A1 `4002:14608`, A9 `4002:14839`): 56 high, padding 16, label left and a radio right.
  * A1 labels are SemiBold 16, A9 Medium 16; plum-deep by default, ink when selected.
+ * `multiple` rows show a checkbox instead of the radio, for questions that take several answers.
  */
 export function OptionRow({
   label,
   selected,
   onPress,
   weight = 'semibold',
+  multiple = false,
 }: {
   label: string;
   selected: boolean;
   onPress: () => void;
   weight?: 'semibold' | 'medium';
+  multiple?: boolean;
 }) {
   return (
     <Pressable
-      accessibilityRole="radio"
-      accessibilityState={{ selected }}
+      accessibilityRole={multiple ? 'checkbox' : 'radio'}
+      accessibilityState={multiple ? { checked: selected } : { selected }}
       accessibilityLabel={label}
       onPress={onPress}
       style={({ pressed }) => ({
@@ -50,7 +53,13 @@ export function OptionRow({
       })}
     >
       <Text style={[weight === 'semibold' ? Type.buttonL : { ...Type.buttonL, fontWeight: '500' }, { flex: 1, color: selected ? palette.ink : palette.plumDeep }]}>{label}</Text>
-      <Radio selected={selected} />
+      {multiple ? (
+        <View pointerEvents="none" importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
+          <Checkbox checked={selected} onChange={onPress} />
+        </View>
+      ) : (
+        <Radio selected={selected} />
+      )}
     </Pressable>
   );
 }

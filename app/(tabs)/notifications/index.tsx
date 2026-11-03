@@ -19,6 +19,7 @@ import { feedLook, feedRoute, gridDot, groupFeed, journalMonth } from '@/lib/not
 import { clockFrom, formatDuration, isBestThisMonth, isRecent, lastNight } from '@/lib/sleep-home';
 import { signed } from '@/lib/glow-score';
 import { backTo } from '@/lib/navigation';
+import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
 
 type Highlight = { key: string; value: string; caption: string; route: string; art: React.ReactNode; dark?: boolean };
 
@@ -105,7 +106,7 @@ export default function NotificationsScreen() {
           { color: palette.mustard, opacity: 0.25, x: -50, y: 0, width: 260, blur: 90 },
         ]}
       />
-      <ScrollView contentContainerStyle={{ paddingTop: insets.top + 7, paddingHorizontal: 24, paddingBottom: bottom }} showsVerticalScrollIndicator={false}>
+      <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE} contentContainerStyle={{ paddingTop: insets.top + 7, paddingHorizontal: 24, paddingBottom: bottom }} showsVerticalScrollIndicator={false}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
           <IconButton variant="nav" accessibilityLabel={t('common.back')} onPress={() => backTo(undefined, '/(tabs)/home')} />
           <IconButton

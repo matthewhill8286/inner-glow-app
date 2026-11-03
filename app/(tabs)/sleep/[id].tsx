@@ -17,6 +17,7 @@ import { showAlert } from '@/lib/state';
 import { formatClock, formatDuration, isRecent, summariseNight } from '@/lib/sleep-home';
 import { factorImpacts, nightsInPeriod } from '@/lib/sleep-periods';
 import { goalPercent, hypnogram, minuteOfDay, nightAxis, stageMinutes, windowMinutes } from '@/lib/sleep-flow';
+import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
 
 const CHART_H = 112;
 const STAGE_ROWS = [
@@ -86,7 +87,7 @@ export default function LastNightScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: palette.bg }}>
       <ScreenStatusBar style="light" />
-      <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 24 }} bounces={false}>
+      <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE} contentContainerStyle={{ paddingBottom: insets.bottom + 24 }} bounces={false}>
         <View style={{ height: blockH, backgroundColor: palette.ink, overflow: 'hidden' }}>
           <StarField width={width} height={blockH} style={{ position: 'absolute', top: 0 }} />
           <GlowField glows={[{ color: palette.lavenderSoft, opacity: 0.18, x: 88, y: 20, width: 200, blur: 70 }]} />

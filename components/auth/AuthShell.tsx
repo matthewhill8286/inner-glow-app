@@ -5,6 +5,7 @@ import { palette } from '@/constants/theme';
 import { Type } from '@/constants/typography';
 import { GlowField } from '@/components/glow/Glow';
 import { LogoMark } from '@/components/brand/LogoMark';
+import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
 
 /**
  * Shared page for Sign in and Sign up (01 §2.8, §2.9): gold glow, the "inner glow" lockup at
@@ -15,7 +16,7 @@ export function AuthShell({ title, children, footer }: { title: string; children
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: palette.bg }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <GlowField glows={[{ color: palette.mustard, opacity: 0.22, x: 37, y: -20, width: 300, blur: 90 }]} />
-      <ScrollView
+      <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE}
         contentContainerStyle={{ flexGrow: 1, paddingTop: insets.top + 26, paddingHorizontal: 16, paddingBottom: insets.bottom + 24 }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}

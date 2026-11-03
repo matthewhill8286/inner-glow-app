@@ -12,6 +12,7 @@ import { useDailyGoal } from '@/hooks/usePractices';
 import { CategoryCard, type Kind } from '@/components/practices/CategoryCard';
 import { screenBottomPadding } from '@/lib/screen-layout';
 import AuraContours from '@/assets/svg/illustrations/practices/aura.svg';
+import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
 
 const RING = 220;
 const R = (RING - 5.5) / 2;
@@ -59,7 +60,7 @@ export default function PracticesHub() {
         ]}
       />
       <AuraContours width={width} height={(480 * width) / 375} style={{ position: 'absolute', top: 0 }} pointerEvents="none" />
-      <ScrollView
+      <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE}
         contentContainerStyle={{
           paddingTop: insets.top + 10,
           paddingBottom: screenBottomPadding(insets.bottom),

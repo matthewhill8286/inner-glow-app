@@ -1,6 +1,7 @@
 import { Typography } from '@/constants/typography';
 import React, { useMemo, useState } from 'react';
 import { View, Text, Pressable, Modal, FlatList, TextInput } from 'react-native';
+import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
 
 type Option = { label: string; value: string };
 
@@ -106,7 +107,7 @@ export default function SelectField({
               </Pressable>
             </View>
 
-            <FlatList
+            <FlatList keyboardDismissMode={KEYBOARD_DISMISS_MODE}
               data={list}
               keyExtractor={(i) => i.value}
               contentContainerStyle={{ paddingVertical: 10, gap: 8 }}

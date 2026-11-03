@@ -33,6 +33,7 @@ import {
   type SearchType,
   type TimeFilter,
 } from '@/lib/search';
+import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
 
 const RECENT_KEY = 'search:recent:v1';
 const POPULAR = ['deep-sleep', 'four-seven-eight', 'grounding'];
@@ -263,7 +264,7 @@ export default function SearchScreen() {
         />
       </View>
 
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 20, paddingBottom: screenBottomPadding(insets.bottom) }}>
+      <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 20, paddingBottom: screenBottomPadding(insets.bottom) }}>
         {mode === 'idle' && (
           <>
             {recent.length > 0 && (

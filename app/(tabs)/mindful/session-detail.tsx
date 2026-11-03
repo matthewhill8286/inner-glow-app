@@ -10,6 +10,7 @@ import { useMindfulness } from '@/hooks/useMindfulness';
 import { Colors, UI } from '@/constants/theme';
 import MaterialIcons from '@/components/AppIcon';
 import ScreenHeader from '@/components/ScreenHeader';
+import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
 
 const SESSION_ICONS: Record<string, { icon: string; color: string; label: string }> = {
   meditation: { icon: 'self-improvement', color: '#7B6DC9', label: 'Meditation' },
@@ -103,7 +104,7 @@ export default function SessionDetail() {
         <ScreenHeader title="Session Detail" showBack />
       </View>
 
-      <ScrollView
+      <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE}
         contentContainerStyle={{
           paddingHorizontal: UI.spacing.xl,
           paddingBottom: bottomSpace,

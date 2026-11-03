@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, UI } from '@/constants/theme';
 import MaterialIcons from '@/components/AppIcon';
+import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
 
 /* ── safe back navigation ────────────────────────── */
 function goBack(from?: string) {
@@ -169,7 +170,7 @@ export default function AIProfileScreen() {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE} contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
         {/* ── Hero Card ──────────────────────────── */}
         <View style={[s.heroCard, { backgroundColor: member.color }]}>
           <View style={[s.heroCircle1, { backgroundColor: 'rgba(255,255,255,0.08)' }]} />

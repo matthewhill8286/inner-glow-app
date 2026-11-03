@@ -17,6 +17,7 @@ import { latestLog, weekDays } from '@/lib/mood-week';
 import { weekMood } from '@/lib/profile-stats';
 import { screenBottomPadding } from '@/lib/screen-layout';
 import type { MoodCheckIn } from '@/lib/types';
+import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
 
 const TRACK_H = 80;
 /** The week card draws Okay in `#E6E0EA` (09 §3.13); the legend dot is `#DDD3E8`. */
@@ -64,7 +65,7 @@ export default function MoodHome() {
           { color: palette.lavenderSoft, opacity: 0.25, x: 180, y: 60, width: 220, blur: 80 },
         ]}
       />
-      <ScrollView
+      <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE}
         contentContainerStyle={{
           paddingTop: insets.top + 10,
           paddingHorizontal: 24,

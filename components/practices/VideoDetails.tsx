@@ -15,6 +15,7 @@ import type { Practice } from '@/data/practices';
 import { useFavouriteHeart } from '@/hooks/useFavouriteHeart';
 import { backTo } from '@/lib/navigation';
 import { mmss } from '@/lib/practices';
+import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
 
 export const thumbnailUrl = (youtubeId: string) =>
   `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`;
@@ -73,7 +74,7 @@ export function VideoDetails({ practice }: { practice: Practice }) {
         trailing={heart.button}
         style={{ marginTop: insets.top + 10, marginHorizontal: 24 }}
       />
-      <ScrollView
+      <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE}
         contentContainerStyle={{
           paddingHorizontal: 24,
           paddingTop: 16,

@@ -19,6 +19,7 @@ import { openPractice } from '@/lib/practice-routes';
 import { backTo } from '@/lib/navigation';
 import { playSoundscape, stopSoundscapeAfter } from '@/lib/soundscape';
 import { STOP_AFTER_CHOICES } from '@/lib/sleep-flow';
+import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
 
 type Choice = { key: 'rain' | 'breathing' | 'quietMind' | 'write'; icon: IconName; minutes: number; practice?: string };
 
@@ -90,7 +91,7 @@ export default function WindDownScreen() {
         tone="dark"
         style={{ marginTop: insets.top + 10, marginHorizontal: 24 }}
       />
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 22, paddingBottom: 24, gap: 10 }}>
+      <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE} contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 22, paddingBottom: 24, gap: 10 }}>
         <Text accessibilityRole="header" style={[Type.titleLg, { fontSize: 28, lineHeight: 39, color: palette.white }]}>
           {t('sleepFlow.windDown.title')}
         </Text>

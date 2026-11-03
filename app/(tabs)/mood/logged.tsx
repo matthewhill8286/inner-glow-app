@@ -12,6 +12,7 @@ import { MoodOrb } from '@/components/mood/MoodOrb';
 import { useMood } from '@/hooks/useMood';
 import { moodStep, type MoodScore } from '@/lib/mood-scale';
 import { goodDaysThisWeek, joinNatural, moodTone, MOOD_FACTORS } from '@/lib/mood-logged';
+import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
 
 /** Mood logged (04 §M5, `6695:3624`): summary, a nudge to journal, Glow AI, and done. */
 export default function MoodLoggedScreen() {
@@ -38,7 +39,7 @@ export default function MoodLoggedScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: palette.bg }}>
-      <ScrollView contentContainerStyle={{ paddingTop: insets.top + 10, paddingHorizontal: 24, paddingBottom: insets.bottom + 24 }}>
+      <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE} contentContainerStyle={{ paddingTop: insets.top + 10, paddingHorizontal: 24, paddingBottom: insets.bottom + 24 }}>
         <View style={{ alignItems: 'flex-end' }}>
           <IconButton icon="arrow/close" variant="nav" accessibilityLabel={t('moodCheckIn2.close')} onPress={done} />
         </View>

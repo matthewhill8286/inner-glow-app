@@ -17,6 +17,7 @@ import { useJournal } from '@/hooks/useJournal';
 import { monthDots } from '@/lib/journal-entry';
 import { activeDays, streak } from '@/lib/profile-stats';
 import { screenBottomPadding } from '@/lib/screen-layout';
+import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
 
 const DOT = 8;
 const ROW_GAP = 40;
@@ -186,7 +187,7 @@ export default function JournalHome() {
           { color: palette.lavenderSoft, opacity: 0.25, x: 180, y: 60, width: 220, blur: 80 },
         ]}
       />
-      <ScrollView
+      <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE}
         ref={scrollRef}
         contentContainerStyle={{
           paddingTop: insets.top + 12,

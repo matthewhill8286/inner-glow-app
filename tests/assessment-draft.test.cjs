@@ -48,3 +48,8 @@ test('malformed drafts are ignored and out-of-range values dropped', () => {
   assert.equal(out.answers.gender, null);
   assert.equal(out.answers.weight, null);
 });
+
+test('a draft keeps several medication answers and drops unknown ones', () => {
+  const out = normaliseDraft({ answers: { createdAt: 'x', takingMeds: 'otc\nprescription\nbogus' } });
+  assert.equal(out.answers.takingMeds, 'prescription\notc');
+});

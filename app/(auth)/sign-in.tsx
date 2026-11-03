@@ -61,7 +61,8 @@ export default function SignIn() {
           <AuthLinkLine
             lead={t('authNew.noAccount')}
             link={t('authNew.signUp')}
-            onPress={() => router.replace('/(auth)/sign-up')}
+            // A new account goes through the welcome, agreement and intro steps before sign-up.
+            onPress={() => router.replace('/(onboarding)/welcome')}
           />
           <Pressable
             accessibilityRole="link"

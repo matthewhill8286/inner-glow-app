@@ -17,6 +17,7 @@ import { useTopics } from '@/hooks/useTopics';
 import { useGlowAiGate, useGlowAiUsage } from '@/hooks/useGlowAi';
 import { screenBottomPadding } from '@/lib/screen-layout';
 import { talkDate, talkIcon, talkSummary, talkTitle } from '@/lib/talks';
+import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
 
 /**
  * Glow AI home (05 §3.1): "Glow AI" title with a settings button, the S=209 orb, the greeting, one
@@ -66,7 +67,7 @@ export default function GlowAiHome() {
           { color: palette.lavenderSoft, opacity: 0.25, x: 180, y: 60, width: 220, blur: 80 },
         ]}
       />
-      <ScrollView
+      <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE}
         contentContainerStyle={{
           paddingTop: insets.top + 16,
           paddingHorizontal: 24,

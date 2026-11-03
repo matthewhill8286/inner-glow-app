@@ -6,6 +6,7 @@ import { palette } from '@/constants/theme';
 import { Type } from '@/constants/typography';
 import { GlowField, type GlowSpec } from '@/components/glow/Glow';
 import { IconButton } from '@/components/ui/IconButton';
+import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
 
 /** Every profile setup frame starts with these two corner glows (`6676:3017` and on). */
 export const SHELL_GLOWS: GlowSpec[] = [
@@ -100,7 +101,7 @@ export function ProfileShell({
           </Pressable>
         </View>
         {scroll ? (
-          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 24 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE} style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 24 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
             {body}
           </ScrollView>
         ) : (

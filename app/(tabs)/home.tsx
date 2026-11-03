@@ -38,6 +38,7 @@ import {
   trend,
   type Trend,
 } from '@/lib/home';
+import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
 
 /** Home · Free `6709:4319` and Home · Pro `6710:4161` (03 §2.1), with the first-day state (09 §3.9). */
 export default function HomeScreen() {
@@ -80,7 +81,7 @@ export default function HomeScreen() {
           { color: palette.sky, opacity: 0.2, x: 180, y: 40, width: 240, blur: 90 },
         ]}
       />
-      <ScrollView
+      <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE}
         ref={scrollRef}
         contentContainerStyle={{ paddingTop: insets.top + 16, paddingHorizontal: 16, paddingBottom: screenBottomPadding(insets.bottom) }}
         showsVerticalScrollIndicator={false}
@@ -441,7 +442,7 @@ function FirstDay({ greeting, name, bottom, topInset }: { greeting: string; name
           { color: palette.lavenderSoft, opacity: 0.25, x: -70, y: -50, width: 280, blur: 90 },
         ]}
       />
-      <ScrollView contentContainerStyle={{ paddingTop: topInset + 26, paddingHorizontal: 24, paddingBottom: bottom }}>
+      <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE} contentContainerStyle={{ paddingTop: topInset + 26, paddingHorizontal: 24, paddingBottom: bottom }}>
         <Text accessibilityRole="header" style={{ ...Type.titleLg, color: palette.ink }}>
           {name ? `${greeting}, ${name}` : greeting}
         </Text>

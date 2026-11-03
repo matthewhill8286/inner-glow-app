@@ -5,6 +5,7 @@ import { Stack, router, useRootNavigationState } from 'expo-router';
 import { AlertModal } from '@/components/AlertModal';
 import { ToastContainer } from '@/components/Toast';
 import { AppLockGate } from '@/components/AppLockGate';
+import { KeyboardSwipeDismiss } from '@/components/KeyboardSwipeDismiss';
 
 import { useEffect, useRef } from 'react';
 import * as Notifications from 'expo-notifications';
@@ -14,7 +15,7 @@ import './../i18n';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { supabase } from '@/supabase/supabase';
 import * as Linking from 'expo-linking';
-import { Platform, View, AppState } from 'react-native';
+import { Platform, AppState } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import configureRevenueCat, { subscribeToPurchaseUpdates } from '@/lib/revenuecat';
@@ -205,7 +206,7 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <AppErrorBoundary>
           <QueryClientProvider client={queryClient}>
-            <View
+            <KeyboardSwipeDismiss
               style={{
                 flex: 1,
                 width: '100%',
@@ -227,7 +228,7 @@ export default function RootLayout() {
                 <Stack.Screen name="(legacy)" />
                 <Stack.Screen name="(suggestion-actions)" />
               </Stack>
-            </View>
+            </KeyboardSwipeDismiss>
             {Platform.OS !== 'web' && <NativeNotificationResponses />}
             {Platform.OS !== 'web' && <AppLockGate />}
             <AlertModal />

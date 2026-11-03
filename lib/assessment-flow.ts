@@ -35,9 +35,31 @@ const ASSESSMENT_STEPS: AssessmentStep[] = [
 export const TAKING_MEDS = ['prescription', 'otc', 'none', 'prefer_not'] as const;
 export type TakingMeds = (typeof TAKING_MEDS)[number];
 
+/** "Not taking any" and "Prefer not to share" stand alone; the two medication kinds can be picked together. */
+const EXCLUSIVE_MEDS: readonly string[] = ['none', 'prefer_not'];
+
+/** The picked A9 answers. They are stored one per line, like the other multi-select answers. */
+export function takingMedsList(takingMeds?: string | null): TakingMeds[] {
+  const lines = (takingMeds ?? '').split('\n').map((line) => line.trim());
+  return TAKING_MEDS.filter((k) => lines.includes(k));
+}
+
+/** Toggle one A9 answer. Picking a standalone answer clears the others, and picking a kind clears the standalone ones. */
+export function toggleTakingMeds(takingMeds: string | null | undefined, option: TakingMeds): string | null {
+  const current = takingMedsList(takingMeds);
+  const next = current.includes(option)
+    ? current.filter((k) => k !== option)
+    : EXCLUSIVE_MEDS.includes(option)
+      ? [option]
+      : [...current.filter((k) => !EXCLUSIVE_MEDS.includes(k)), option];
+  return next.length ? TAKING_MEDS.filter((k) => next.includes(k)).join('\n') : null;
+}
+
 /** Older drafts and rows stored Yes / No / Not sure; Yes still means "takes medication". */
 export function takesMedication(takingMeds?: string | null): boolean {
-  return takingMeds === 'prescription' || takingMeds === 'otc' || takingMeds === 'Yes';
+  if (takingMeds === 'Yes') return true;
+  const picked = takingMedsList(takingMeds);
+  return picked.includes('prescription') || picked.includes('otc');
 }
 
 /** Use the same visible steps for Next, Back, the "N of M" tag and completion. */

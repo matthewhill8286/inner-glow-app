@@ -10,6 +10,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, UI } from '@/constants/theme';
 import MaterialIcons from '@/components/AppIcon';
 import { NOTIF_TYPE_META, type NotificationType } from '@/lib/notificationStore';
+import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -191,7 +192,7 @@ export default function NotificationDetail() {
         </View>
       </View>
 
-      <ScrollView
+      <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE}
         contentContainerStyle={[
           s.scrollContent,
           { paddingBottom: screenBottomPadding(insets.bottom) },

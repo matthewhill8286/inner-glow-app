@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Alert, Linking, Pressable, Text, View } from 'react-native';
 import Animated, { cancelAnimation, Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { palette } from '@/constants/theme';
 import { Type } from '@/constants/typography';
 import { Glow } from '@/components/glow/Glow';
 import { AppButton } from '@/components/ui/AppButton';
 import { toast } from '@/components/Toast';
-import { computeVoiceMetrics, usePlayer, useRecorder } from '@/lib/recorder';
+import { computeVoiceMetrics, MicPermissionError, usePlayer, useRecorder } from '@/lib/recorder';
 
 export type SoundCheck = {
   uri: string;
@@ -19,7 +19,19 @@ export type SoundCheck = {
 const MS_PER_WORD = 420;
 const ORB = 236;
 
-type Labels = { idle: string; recording: string; recorded: string; start: string; stop: string; play: string; pause: string; micDenied: string; saveFailed: string };
+type Labels = {
+  idle: string;
+  recording: string;
+  recorded: string;
+  start: string;
+  stop: string;
+  play: string;
+  pause: string;
+  micDenied: string;
+  saveFailed: string;
+  /** Shown when the microphone was turned off earlier and only Settings can turn it back on. */
+  micOff: { title: string; body: string; openSettings: string; cancel: string };
+};
 
 function PlayRecording({ uri, labels }: { uri: string; labels: Labels }) {
   const { play, pause, isPlaying } = usePlayer(uri);
@@ -66,6 +78,14 @@ export function VoiceCheckIn({ phrase, value, onRecorded, labels }: { phrase: st
         await startRecording();
       }
     } catch (e) {
+      if (e instanceof MicPermissionError && !e.canAskAgain) {
+        // iOS asks only once; after a "Don't Allow" the request fails silently, so point to Settings.
+        Alert.alert(labels.micOff.title, labels.micOff.body, [
+          { text: labels.micOff.cancel, style: 'cancel' },
+          { text: labels.micOff.openSettings, onPress: () => void Linking.openSettings() },
+        ]);
+        return;
+      }
       toast.error(isRecording ? labels.saveFailed : labels.micDenied);
       console.error('Voice check-in recording failed:', e);
     } finally {

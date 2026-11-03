@@ -9,6 +9,7 @@ import { Type } from '@/constants/typography';
 import { GlowField, type GlowSpec } from '@/components/glow/Glow';
 import { AppButton } from '@/components/ui/AppButton';
 import { IconButton } from '@/components/ui/IconButton';
+import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
 
 type Action = { label: string; onPress: () => void; busy?: boolean };
 
@@ -57,7 +58,7 @@ export function MomentShell({
         onPress={closeMoment}
         style={{ position: 'absolute', right: 24, top: insets.top + 10, zIndex: 2 }}
       />
-      <ScrollView
+      <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE}
         style={{ flex: 1 }}
         contentContainerStyle={[{ paddingTop: insets.top + 74, paddingHorizontal: 24, paddingBottom: 24 }, contentStyle]}
         showsVerticalScrollIndicator={false}
