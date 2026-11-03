@@ -1,5 +1,15 @@
-import React, { useState } from 'react';
-import { ActivityIndicator, Image, Pressable, Text, TextInput, View, type TextInputProps, useWindowDimensions } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  Image,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+  type TextInputProps,
+  useWindowDimensions,
+} from 'react-native';
 import { palette } from '@/constants/theme';
 import { Type } from '@/constants/typography';
 import { Icon, type IconName } from '@/components/icons/Icon';
@@ -9,7 +19,12 @@ import { Toggle } from '@/components/ui/controls';
 import CheckinAura from '@/assets/svg/illustrations/setup/checkin-aura.svg';
 import PrivateAura from '@/assets/svg/illustrations/profile/private-aura.svg';
 import FaceIdGlyph from '@/assets/svg/illustrations/profile/face-id.svg';
-import type { CheckinSlot, NotificationChoice } from '@/lib/profile-setup';
+import {
+  CHECKIN_TIMES,
+  checkinIndex,
+  type CheckinSlot,
+  type NotificationChoice,
+} from '@/lib/profile-setup';
 
 /* ── P1 · Let's get to know you (`6676:3017`) ─────────────────────────────────────── */
 
@@ -32,17 +47,69 @@ export function AvatarPicker({
 }) {
   return (
     <View style={{ alignItems: 'center', gap: 14 }}>
-      <Pressable accessibilityRole="button" accessibilityLabel={accessibilityLabel} onPress={onPress} disabled={busy} style={{ width: 120, height: 118 }}>
-        <View style={{ width: 112, height: 112, borderRadius: 56, backgroundColor: palette.white, borderWidth: 1.5, borderColor: palette.plum, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' }}>
-          {photoUrl ? <Image source={{ uri: photoUrl }} style={{ width: 112, height: 112 }} /> : <Icon name="line/user" size={40} />}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel}
+        onPress={onPress}
+        disabled={busy}
+        style={{ width: 120, height: 118 }}
+      >
+        <View
+          style={{
+            width: 112,
+            height: 112,
+            borderRadius: 56,
+            backgroundColor: palette.white,
+            borderWidth: 1.5,
+            borderColor: palette.plum,
+            overflow: 'hidden',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          {photoUrl ? (
+            <Image source={{ uri: photoUrl }} style={{ width: 112, height: 112 }} />
+          ) : (
+            <Icon name="line/user" size={40} />
+          )}
           {busy && (
-            <View style={{ position: 'absolute', inset: 0, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.6)' }}>
+            <View
+              style={{
+                position: 'absolute',
+                inset: 0,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: 'rgba(255,255,255,0.6)',
+              }}
+            >
               <ActivityIndicator color={palette.plum} />
             </View>
           )}
         </View>
-        {!photoUrl && <Glow color={palette.mustard} opacity={0.28} width={170} blur={30} style={{ position: 'absolute', left: -29.5, top: -29 }} />}
-        <View style={{ position: 'absolute', left: 84, top: 82, width: 36, height: 36, borderRadius: 18, backgroundColor: palette.plum, borderWidth: 3, borderColor: palette.bg, alignItems: 'center', justifyContent: 'center' }}>
+        {!photoUrl && (
+          <Glow
+            color={palette.mustard}
+            opacity={0.28}
+            width={170}
+            blur={30}
+            style={{ position: 'absolute', left: -29.5, top: -29 }}
+          />
+        )}
+        <View
+          style={{
+            position: 'absolute',
+            left: 84,
+            top: 82,
+            width: 36,
+            height: 36,
+            borderRadius: 18,
+            backgroundColor: palette.plum,
+            borderWidth: 3,
+            borderColor: palette.bg,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
           <Icon name="line/plus" size={18} color={palette.white} />
         </View>
       </Pressable>
@@ -55,7 +122,11 @@ export function AvatarPicker({
  * P1 field: SemiBold 13 ink label 8 above a 52 white box, radius 16, with a 1.5 plum stroke while
  * focused (no stroke otherwise), Medium 15 ink text and a Regular 15 subtle placeholder.
  */
-export function ProfileField({ label, error, ...props }: TextInputProps & { label: string; error?: string | null }) {
+export function ProfileField({
+  label,
+  error,
+  ...props
+}: TextInputProps & { label: string; error?: string | null }) {
   const [focused, setFocused] = useState(false);
   return (
     <View style={{ gap: 8 }}>
@@ -98,42 +169,166 @@ export function ProfileField({ label, error, ...props }: TextInputProps & { labe
 
 /** Positions are in the 375 frame; the scene sits under the title, which ends at y 188. */
 const CHECKIN_TOP = 188;
+/** One scroll step of the wheel. */
+const ROW = 58;
+/** The visible times, from the frames: the centre is SemiBold 88, the next ones Regular 48, then 26. */
+const WHEEL = [
+  { offset: -2, top: 3, size: 26 },
+  { offset: -1, top: 30, size: 48 },
+  { offset: 0, top: 84, size: 88 },
+  { offset: 1, top: 196, size: 48 },
+  { offset: 2, top: 254, size: 26 },
+];
 
+/**
+ * The check-in time wheel (`6787:5765`, `6787:5819`, `6676:3066`, TestFlight report 16): the day in
+ * 15-minute steps, scrolled in place with the chosen time large in the middle, so it is obvious the
+ * time can change. The chips jump to the morning, afternoon and evening presets.
+ */
 export function CheckinScene({
   time,
-  caption,
   slot,
   slots,
   onPickSlot,
-  onPressTime,
+  onChangeTime,
   timeLabel,
 }: {
   time: string;
-  caption: string;
   slot: CheckinSlot | null;
   slots: { key: CheckinSlot; label: string }[];
   onPickSlot: (slot: CheckinSlot) => void;
-  onPressTime: () => void;
+  onChangeTime: (time: string) => void;
   timeLabel: string;
 }) {
   const { width } = useWindowDimensions();
   const sx = width / 375;
+  const index = checkinIndex(time);
+  const [centre, setCentre] = useState(index);
+  const list = useRef<ScrollView>(null);
+  const settled = useRef(index);
+
+  // A chip, or a saved time loading, moves the wheel.
+  useEffect(() => {
+    if (index === settled.current) return;
+    settled.current = index;
+    setCentre(index);
+    list.current?.scrollTo({ y: index * ROW, animated: true });
+  }, [index]);
+
+  const settle = (y: number) => {
+    const i = Math.max(0, Math.min(CHECKIN_TIMES.length - 1, Math.round(y / ROW)));
+    settled.current = i;
+    setCentre(i);
+    if (CHECKIN_TIMES[i] !== time) onChangeTime(CHECKIN_TIMES[i]);
+  };
+  const step = (by: number) => {
+    const i = Math.max(0, Math.min(CHECKIN_TIMES.length - 1, centre + by));
+    list.current?.scrollTo({ y: i * ROW, animated: true });
+    settle(i * ROW);
+  };
+
   return (
-    <View style={{ height: 495 - CHECKIN_TOP, marginHorizontal: -24 }}>
-      <Glow color={palette.mustard} opacity={0.28} width={240} blur={50} style={{ position: 'absolute', left: 67.5 * sx, top: 210 - CHECKIN_TOP }} />
-      <CheckinAura width={234.5} height={216} style={{ position: 'absolute', left: 188.75 * sx - 117.25, top: 226.8 - CHECKIN_TOP }} />
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`${timeLabel}, ${time}, ${caption}`}
-        onPress={onPressTime}
-        style={{ position: 'absolute', top: 290 - CHECKIN_TOP, left: 0, right: 0, alignItems: 'center', gap: 3 }}
+    <View style={{ height: 580 - CHECKIN_TOP, marginHorizontal: -24 }}>
+      <Glow
+        color={palette.mustard}
+        opacity={0.28}
+        width={240}
+        blur={50}
+        style={{ position: 'absolute', left: 67.5 * sx, top: 250 - CHECKIN_TOP }}
+      />
+      <CheckinAura
+        width={234.5}
+        height={216}
+        style={{ position: 'absolute', left: 188.75 * sx - 117.25, top: 255 - CHECKIN_TOP }}
+      />
+      <View
+        accessible
+        accessibilityRole="adjustable"
+        accessibilityLabel={timeLabel}
+        accessibilityValue={{ text: CHECKIN_TIMES[centre] }}
+        accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
+        onAccessibilityAction={(e) => step(e.nativeEvent.actionName === 'increment' ? 1 : -1)}
+        style={{ position: 'absolute', top: 218 - CHECKIN_TOP, left: 0, right: 0, height: ROW * 5 }}
       >
-        <Text style={{ ...Type.display, fontWeight: '400', fontSize: 56, lineHeight: 67, color: palette.plum }}>{time}</Text>
-        <Text style={[Type.bodySMedium, { color: palette.textMuted }]}>{caption}</Text>
-      </Pressable>
-      <View style={{ position: 'absolute', top: 460 - CHECKIN_TOP, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', gap: 8 }} accessibilityRole="radiogroup">
+        {/* The five visible times at the frame's places: 26 · 48 · SemiBold 88 · 48 · 26. */}
+        <View
+          pointerEvents="none"
+          style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }}
+        >
+          {WHEEL.map(({ offset, top, size }) => {
+            const value = CHECKIN_TIMES[centre + offset];
+            if (!value) return null;
+            return (
+              <Text
+                key={offset}
+                numberOfLines={1}
+                style={{
+                  ...Type.display,
+                  position: 'absolute',
+                  left: 0,
+                  right: 0,
+                  top,
+                  textAlign: 'center',
+                  fontWeight: offset === 0 ? '600' : '400',
+                  fontSize: size,
+                  lineHeight: Math.round(size * 1.2),
+                  letterSpacing: offset === 0 ? -1 : 0,
+                  color: palette.plum,
+                }}
+              >
+                {value}
+              </Text>
+            );
+          })}
+        </View>
+        <ScrollView
+          ref={list}
+          showsVerticalScrollIndicator={false}
+          snapToInterval={ROW}
+          decelerationRate="fast"
+          contentOffset={{ x: 0, y: index * ROW }}
+          contentContainerStyle={{ paddingVertical: ROW * 2 }}
+          scrollEventThrottle={16}
+          onScroll={(e) => {
+            const i = Math.round(e.nativeEvent.contentOffset.y / ROW);
+            if (i !== centre && i >= 0 && i < CHECKIN_TIMES.length) setCentre(i);
+          }}
+          onMomentumScrollEnd={(e) => settle(e.nativeEvent.contentOffset.y)}
+          onScrollEndDrag={(e) => {
+            if (!e.nativeEvent.velocity?.y) settle(e.nativeEvent.contentOffset.y);
+          }}
+        >
+          {/* Invisible rows: they only give the wheel its scroll and snap; the times are drawn below. */}
+          {CHECKIN_TIMES.map((value, i) => (
+            <Pressable
+              key={value}
+              accessible={false}
+              onPress={() => step(i - centre)}
+              style={{ height: ROW }}
+            />
+          ))}
+        </ScrollView>
+      </View>
+      <View
+        style={{
+          position: 'absolute',
+          top: 540 - CHECKIN_TOP,
+          left: 0,
+          right: 0,
+          flexDirection: 'row',
+          justifyContent: 'center',
+          gap: 8,
+        }}
+        accessibilityRole="radiogroup"
+      >
         {slots.map((s) => (
-          <Chip key={s.key} kind="preset" label={s.label} selected={slot === s.key} onPress={() => onPickSlot(s.key)} />
+          <Chip
+            key={s.key}
+            kind="preset"
+            label={s.label}
+            selected={slot === s.key}
+            onPress={() => onPickSlot(s.key)}
+          />
         ))}
       </View>
     </View>
@@ -156,7 +351,15 @@ export function NotificationCard({
   onChange: (key: NotificationChoice, value: boolean) => void;
 }) {
   return (
-    <View style={{ marginTop: 42, backgroundColor: palette.white, borderRadius: 24, paddingVertical: 6, paddingHorizontal: 16 }}>
+    <View
+      style={{
+        marginTop: 42,
+        backgroundColor: palette.white,
+        borderRadius: 24,
+        paddingVertical: 6,
+        paddingHorizontal: 16,
+      }}
+    >
       {rows.map((row, i) => (
         <View key={row.key}>
           {i > 0 && <View style={{ height: 1, backgroundColor: palette.surfaceLilac }} />}
@@ -167,7 +370,16 @@ export function NotificationCard({
             onPress={() => onChange(row.key, !values[row.key])}
             style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14 }}
           >
-            <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(142,127,166,0.25)', alignItems: 'center', justifyContent: 'center' }}>
+            <View
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                backgroundColor: 'rgba(142,127,166,0.25)',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
               <Icon name={row.icon} size={20} />
             </View>
             <View style={{ flex: 1, gap: 2 }}>
@@ -192,11 +404,35 @@ export function PrivacyScene() {
   const { width } = useWindowDimensions();
   const sx = width / 375;
   return (
-    <View style={{ height: 470 - PRIVACY_TOP, marginHorizontal: -24 }} pointerEvents="none" accessibilityElementsHidden>
-      <Glow color={palette.lavenderSoft} opacity={0.25} width={240} blur={50} style={{ position: 'absolute', left: 67.5 * sx, top: 240 - PRIVACY_TOP }} />
-      <Glow color={palette.mustard} opacity={0.28} width={150} blur={40} style={{ position: 'absolute', left: 142.5 * sx, top: 305 - PRIVACY_TOP }} />
-      <PrivateAura width={217.5} height={193.1} style={{ position: 'absolute', left: 179.25 * sx - 108.75, top: 268.1 - PRIVACY_TOP }} />
-      <FaceIdGlyph width={64} height={64} style={{ position: 'absolute', left: 187.5 * sx - 32, top: 328 - PRIVACY_TOP }} />
+    <View
+      style={{ height: 470 - PRIVACY_TOP, marginHorizontal: -24 }}
+      pointerEvents="none"
+      accessibilityElementsHidden
+    >
+      <Glow
+        color={palette.lavenderSoft}
+        opacity={0.25}
+        width={240}
+        blur={50}
+        style={{ position: 'absolute', left: 67.5 * sx, top: 240 - PRIVACY_TOP }}
+      />
+      <Glow
+        color={palette.mustard}
+        opacity={0.28}
+        width={150}
+        blur={40}
+        style={{ position: 'absolute', left: 142.5 * sx, top: 305 - PRIVACY_TOP }}
+      />
+      <PrivateAura
+        width={217.5}
+        height={193.1}
+        style={{ position: 'absolute', left: 179.25 * sx - 108.75, top: 268.1 - PRIVACY_TOP }}
+      />
+      <FaceIdGlyph
+        width={64}
+        height={64}
+        style={{ position: 'absolute', left: 187.5 * sx - 32, top: 328 - PRIVACY_TOP }}
+      />
     </View>
   );
 }

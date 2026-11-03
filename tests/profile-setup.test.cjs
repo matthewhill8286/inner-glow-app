@@ -7,7 +7,7 @@ const compile = (file) => ts.transpileModule(fs.readFileSync(file, 'utf8'), { co
 const suggest = { exports: {} };
 vm.runInNewContext(compile('lib/suggestCategories.ts'), { module: suggest, exports: suggest.exports, require: () => ({}), Number, String, Map, Array });
 const mod = { exports: {} };
-vm.runInNewContext(compile('lib/profile-setup.ts'), { module: mod, exports: mod.exports, Date, Number, String, require: () => suggest.exports });
+vm.runInNewContext(compile('lib/profile-setup.ts'), { module: mod, exports: mod.exports, Date, Number, String, Array, Math, require: () => suggest.exports });
 const p = mod.exports;
 const plain = (v) => JSON.parse(JSON.stringify(v));
 
@@ -54,4 +54,15 @@ test('finishing setup picks up to three topics from the assessment', () => {
   assert.deepEqual(plain(p.suggestedIssues({ mood: 'Tense', stressBand: 3, sleepQuality: 4 })), ['anxiety', 'stress']);
   assert.deepEqual(plain(p.suggestedIssues({ mood: 'Okay', stressBand: 1, sleepQuality: 5 })), ['stress']);
   assert.deepEqual(plain(p.suggestedIssues(null)), []);
+});
+
+test('the check-in wheel steps through the day every 15 minutes', () => {
+  assert.equal(p.CHECKIN_TIMES.length, 96);
+  assert.equal(p.CHECKIN_TIMES[0], '00:00');
+  assert.equal(p.CHECKIN_TIMES[34], '08:30');
+  assert.equal(p.CHECKIN_TIMES[95], '23:45');
+  assert.equal(p.checkinIndex('21:00'), 84);
+  assert.equal(p.CHECKIN_TIMES[p.checkinIndex('08:37')], '08:30');
+  assert.equal(p.CHECKIN_TIMES[p.checkinIndex('08:38')], '08:45');
+  assert.equal(p.checkinIndex('23:55'), 0);
 });

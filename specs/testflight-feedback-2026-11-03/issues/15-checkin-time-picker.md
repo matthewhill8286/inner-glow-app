@@ -2,7 +2,7 @@
 
 Priority: P2
 
-Status: Waiting for design — reproduction still required
+Status: Implemented — an inline wheel of 15-minute times with the chosen time large in the middle, as in 6787:5765, 6787:5819 and 6676:3066; the chips jump to the presets. Checked in the iPhone simulator
 
 ## Source feedback
 

@@ -30,6 +30,7 @@ import {
   resumeSoundscape,
   setSoundscapeVolume,
   stopSoundscape,
+  SOUNDSCAPE_VOLUME,
 } from '@/lib/soundscape';
 
 /** Calm players breathe slowly (4 s in, 6 s out) when the practice has no pattern of its own. */
@@ -165,7 +166,7 @@ function PracticePlayer() {
       }
       setElapsed((prev) => (Math.floor(prev) !== Math.floor(e) ? e : prev));
       if (fadeOut && total - e < FADE_SECONDS)
-        setSoundscapeVolume(0.6 * Math.max(0, (total - e) / FADE_SECONDS));
+        setSoundscapeVolume(SOUNDSCAPE_VOLUME * Math.max(0, (total - e) / FADE_SECONDS));
       if (e >= total) {
         setDone(true);
         void finish(true);
