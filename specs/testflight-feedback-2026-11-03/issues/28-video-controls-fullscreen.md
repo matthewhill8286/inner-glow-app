@@ -2,7 +2,7 @@
 
 Priority: P2
 
-Status: Partial — pause button implemented and checked in the iPhone simulator; full screen outstanding
+Status: Implemented — pause button and full screen checked in the iPhone simulator; device retest required
 
 ## Source feedback
 
@@ -12,6 +12,6 @@ Status: Partial — pause button implemented and checked in the iPhone simulator
 
 `components/practices/VideoPlayer.tsx` fades the pause button 2.5 seconds after playback starts. While it is hidden, the first tap on the video brings it back and the next one pauses.
 
-## Outstanding
+## Full screen
 
-Full screen needs a design decision. It could be a landscape player with `expo-screen-orientation`, which is a native module and needs a new build, or a full-window card in portrait.
+A full-screen button sits at the bottom right of the video once it has started, and it hides along with the pause button. Full screen grows the same card to fill the window and rotates it to landscape, and it hides the status bar. The app is portrait-only, so the card turns instead of the device. The player is never remounted, so playback carries on without reloading. The button or Android Back returns to the card. No native module is needed, so this works in the current build.

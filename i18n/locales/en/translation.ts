@@ -1276,6 +1276,8 @@ export default {
       mindTag: 'Relax · Mind',
     },
     video: {
+      fullScreen: 'Full screen',
+      exitFullScreen: 'Exit full screen',
       showControls: 'Shows the pause button',
       badge: 'Video',
       length: '{{length}} video',
