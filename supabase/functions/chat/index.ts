@@ -14,6 +14,85 @@ const TONES: Record<Tone, string> = {
 };
 
 /* ------------------------------------------------------------------ */
+/*  Structured replies (09 §3 conversation `6699:3808`)                */
+/* ------------------------------------------------------------------ */
+
+/** Practices the app can open, by id (`data/practices.ts`). Glow AI may suggest one as a card. */
+const PRACTICES: Record<string, string> = {
+  'box-breathing': 'Box breathing, 4 min, breathing for focus',
+  'four-seven-eight': '4-7-8 Calm, 5 min, breathing for anxiety and sleep',
+  coherent: 'Coherent breathing, 6 min, breathing for balance',
+  'sigh-reset': 'Sigh reset, 1 min, breathing for quick relief',
+  'shoulder-release': 'Shoulder release, 20 min, body relaxation video',
+  'full-body-relax': 'Full-body relax, 15 min, body relaxation video',
+  'quiet-thoughts': 'Quiet thoughts, 10 min, video to calm the mind',
+  'anxiety-reset': 'Anxiety reset, 10 min, video for anxious moments',
+  grounding: 'Grounding, 5 to 25 min, mindfulness to be present',
+  'mindful-focus': 'Mindful focus, 7 min, mindfulness for focus',
+  'soothing-melodies': 'Soothing melodies, 9 min, calming soundscape',
+  'sound-therapy': 'Sound therapy, 10 min, sound waves',
+  'deep-focus': 'Deep focus, 10 min, concentration audio',
+  'sleep-sounds': 'Sleep sounds, 20 min, rain and ocean for sleep',
+  'quiet-mind': 'Quiet mind, 10 min, letting go before sleep',
+  'bedtime-breathing': 'Bedtime breathing, 6 min, slow breaths before sleep',
+  'deep-sleep': 'Deep sleep, 25 min, sleep soundscape',
+};
+const MAX_QUICK_REPLIES = 3;
+
+const REPLY_RULES = `Reply format:
+- Put your message in "reply".
+- Set "practice_id" only when one practice from this list would clearly help the person right now, and you invite them to try it in your reply. Otherwise set it to null. Suggest a practice at most once every few messages.
+${Object.entries(PRACTICES)
+  .map(([id, label]) => `  ${id}: ${label}`)
+  .join('\n')}
+- Put up to ${MAX_QUICK_REPLIES} short replies the person might send next in "quick_replies": first person, in their language, at most 5 words each, such as "Reply to one email" or "I don't know". Use an empty list when the person needs space, for example in a crisis.`;
+
+/** OpenAI structured output, so the app gets the text, an optional practice and the quick replies. */
+const REPLY_FORMAT = {
+  type: 'json_schema',
+  json_schema: {
+    name: 'glow_ai_reply',
+    strict: true,
+    schema: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['reply', 'practice_id', 'quick_replies'],
+      properties: {
+        reply: { type: 'string' },
+        practice_id: { type: ['string', 'null'], enum: [...Object.keys(PRACTICES), null] },
+        quick_replies: { type: 'array', items: { type: 'string' } },
+      },
+    },
+  },
+};
+
+/** Reads the model's JSON. A reply that is not valid JSON is used as plain text with no extras. */
+function parseReply(raw: string): {
+  text: string;
+  practiceId: string | null;
+  quickReplies: string[];
+} {
+  try {
+    const parsed = JSON.parse(raw);
+    const text = typeof parsed.reply === 'string' ? parsed.reply.trim() : '';
+    if (!text) throw new Error('empty reply');
+    const practiceId =
+      typeof parsed.practice_id === 'string' && parsed.practice_id in PRACTICES
+        ? parsed.practice_id
+        : null;
+    const quickReplies = Array.isArray(parsed.quick_replies)
+      ? parsed.quick_replies
+          .filter((q: unknown): q is string => typeof q === 'string' && !!q.trim())
+          .map((q: string) => q.trim().slice(0, 60))
+          .slice(0, MAX_QUICK_REPLIES)
+      : [];
+    return { text, practiceId, quickReplies };
+  } catch {
+    return { text: raw, practiceId: null, quickReplies: [] };
+  }
+}
+
+/* ------------------------------------------------------------------ */
 /*  Persona definitions                                                */
 /* ------------------------------------------------------------------ */
 
@@ -117,7 +196,9 @@ Important safety rules:
 - Use simple, accessible language. Avoid clinical jargon unless explaining a concept.
 
 Tone: ${p.tone}
-${TONES[tone]}${context.length ? `\n\n${context.join('\n\n')}` : ''}`;
+${TONES[tone]}
+
+${REPLY_RULES}${context.length ? `\n\n${context.join('\n\n')}` : ''}`;
 }
 
 /* ------------------------------------------------------------------ */
@@ -306,6 +387,7 @@ Deno.serve(async (req: Request) => {
           max_tokens: 800,
           presence_penalty: 0.3,
           frequency_penalty: 0.3,
+          response_format: REPLY_FORMAT,
         }),
       }),
       riskOf(lastUser),
@@ -317,18 +399,29 @@ Deno.serve(async (req: Request) => {
     }
 
     const data = await response.json();
-    const text = data.choices?.[0]?.message?.content;
+    const raw = data.choices?.[0]?.message?.content;
 
-    if (!text) {
+    if (!raw) {
       throw new Error('No content in OpenAI response');
     }
+    const { text, practiceId, quickReplies } = parseReply(raw);
 
-    return new Response(JSON.stringify({ text, risk, usage }), {
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
+    // Older app builds read only `text`; the practice card and quick replies are extra fields.
+    return new Response(
+      JSON.stringify({
+        text,
+        practiceId,
+        quickReplies: risk === 'high' ? [] : quickReplies,
+        risk,
+        usage,
+      }),
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+        },
       },
-    });
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     console.error('[chat]', message);

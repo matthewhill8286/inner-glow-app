@@ -621,6 +621,7 @@ test('AI access errors retain the backend reason instead of the generic function
     },
     '@/supabase/supabase': { supabase: {} },
     '@/lib/citations': { extractCitations: () => [] },
+    '@/data/practices': { practiceById: () => undefined },
     '@/lib/function-errors': loadTS('lib/function-errors.ts', {
       '@/lib/diagnostics': { recordDiagnostic: () => 'test-reference' },
       './diagnostic-events': loadTS('lib/diagnostic-events.ts'),

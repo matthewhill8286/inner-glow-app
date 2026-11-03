@@ -1949,6 +1949,11 @@ export default {
       sent: 'Sent · {{time}}',
       day: '{{day}} {{time}}',
       end: 'End talk',
+      notSent: 'Not sent · Tap to retry',
+      offlineTitle: 'You’re offline',
+      offlineBody: 'We’ll send your messages when you’re back online.',
+      practiceEyebrow: '{{category}} · {{minutes}} min',
+      practiceStart: 'Start',
     },
     quota: 'Free plan · {{left}} of {{limit}} chats left this week',
     summary: {

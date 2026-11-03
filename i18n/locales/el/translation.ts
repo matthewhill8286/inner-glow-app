@@ -1967,6 +1967,11 @@ export default {
       sent: 'Στάλθηκε · {{time}}',
       day: '{{day}} {{time}}',
       end: 'Τέλος συζήτησης',
+      notSent: 'Δεν στάλθηκε · Πατήστε για επανάληψη',
+      offlineTitle: 'Είστε εκτός σύνδεσης',
+      offlineBody: 'Θα στείλουμε τα μηνύματά σας μόλις συνδεθείτε ξανά.',
+      practiceEyebrow: '{{category}} · {{minutes}} λεπ.',
+      practiceStart: 'Έναρξη',
     },
     quota: 'Δωρεάν πρόγραμμα · απομένουν {{left}} από {{limit}} συζητήσεις αυτή την εβδομάδα',
     summary: {

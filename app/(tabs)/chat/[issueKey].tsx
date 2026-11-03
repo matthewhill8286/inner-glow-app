@@ -16,12 +16,19 @@ import { useSubscription } from '@/hooks/useSubscription';
 import { useUser } from '@/hooks/useUser';
 import { queryKeys } from '@/lib/queryKeys';
 import { CrisisSheet } from '@/components/chat/CrisisSheet';
-import { StatusState } from '@/components/ui/StatusState';
 import { LegalNote } from '@/components/ui/controls';
 import { GlowField, GlowOrb } from '@/components/glow/Glow';
-import { ChatHeader, Composer, MessageBubble, StarterRow } from '@/components/chat/ChatParts';
+import {
+  ChatHeader,
+  ChatPracticeCard,
+  Composer,
+  MessageBubble,
+  OfflineBanner,
+  QuickReplies,
+  StarterRow,
+} from '@/components/chat/ChatParts';
 import { prepareChatTurn } from '@/lib/conversation-display';
-import { ServiceError } from '@/lib/function-errors';
+import { isOfflineError, ServiceError } from '@/lib/function-errors';
 import { takeChatDraft } from '@/lib/chat-drafts';
 import { returnFromChat } from '@/lib/navigation';
 import { showAlert } from '@/lib/state';
@@ -34,6 +41,8 @@ import { useChat } from '@/hooks/useChat';
 import { ChatMessage } from '@/lib/types';
 import { useTopics } from '@/hooks/useTopics';
 import { parseChatKey } from '@/lib/chatKeys';
+import { CATEGORY_GLOW, practiceById } from '@/data/practices';
+import { openPractice } from '@/lib/practice-routes';
 
 /* ── Helpers ────────────────────────────────────────── */
 
@@ -45,6 +54,9 @@ function clock(iso: string) {
   return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
+/** How often a message is sent again while the talk is offline. */
+const OFFLINE_RETRY_MS = 8000;
+
 function sameDay(a: string, b: string) {
   return new Date(a).toDateString() === new Date(b).toDateString();
 }
@@ -52,9 +64,11 @@ function sameDay(a: string, b: string) {
 /* ── Main Screen ────────────────────────────────────── */
 
 /**
- * Glow AI · Conversation (05 §3.3, 09 §3.2): the chat header, day stamps, plum and white bubbles, the
- * typing bubble with its caption, the send receipt and the composer pill. Voice, quick replies and
- * practice cards wait for voice mode and structured replies from the chat function.
+ * Glow AI · Conversation (05 §3.3, 09 §3.2, `6699:3808`): the chat header, day stamps, plum and
+ * white bubbles, practice cards under the replies that suggest one, the typing bubble with its
+ * caption, the send receipt, quick replies under the latest reply and the composer pill. A failed
+ * message is marked "Not sent · Tap to retry" (`6817:7082`); offline, a banner tops the talk and the
+ * message is sent again every few seconds until it goes through. Voice waits for voice mode.
  */
 export default function Chat() {
   const insets = useSafeAreaInsets();
@@ -93,8 +107,8 @@ export default function Chat() {
   const [inputText, setInputText] = useState('');
   const [failedMessage, setFailedMessage] = useState<{
     text: string;
-    message: string;
-    saved: boolean;
+    /** No connection: the offline banner shows and the message is retried automatically. */
+    offline: boolean;
   } | null>(null);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const flatListRef = useRef<FlatList>(null);
@@ -214,6 +228,8 @@ export default function Chat() {
           content: aiResponse.text,
           createdAt: new Date().toISOString(),
           citations: aiResponse.citations.length > 0 ? aiResponse.citations : undefined,
+          practiceId: aiResponse.practiceId,
+          quickReplies: aiResponse.quickReplies.length ? aiResponse.quickReplies : undefined,
         };
 
         const withAiMsg = [...withUserMsg, aiMsg];
@@ -223,11 +239,8 @@ export default function Chat() {
       } catch (err) {
         if (lastLoadedKey.current !== issueKey) return;
         const message = err instanceof Error ? err.message : t('chat.errorMessage');
-        setFailedMessage({
-          text: msgText,
-          saved,
-          message: err instanceof ServiceError ? `${message} Reference: ${err.reference}` : message,
-        });
+        if (!saved) console.warn('[Chat] The message was not saved before the request failed.');
+        setFailedMessage({ text: msgText, offline: isOfflineError(err) });
         if (err instanceof ServiceError && err.status === 402) {
           void queryClient.invalidateQueries({ queryKey: queryKeys.chat.usage(user?.id) });
           router.push('/(tabs)/chat/free-limit');
@@ -259,6 +272,13 @@ export default function Chat() {
       user?.id,
     ],
   );
+
+  // Offline: try the failed message again every few seconds, as the banner promises.
+  useEffect(() => {
+    if (!failedMessage?.offline || isAiTyping) return;
+    const id = setTimeout(() => void sendMessage(failedMessage.text, true), OFFLINE_RETRY_MS);
+    return () => clearTimeout(id);
+  }, [failedMessage, isAiTyping, sendMessage]);
 
   // Start prompt-based conversations in the same update as history hydration.
   // Passing the hydrated history avoids a stale render dropping saved messages.
@@ -318,6 +338,19 @@ export default function Chat() {
 
   const lastUser = [...messages].reverse().find((m) => m.role === 'user');
   const lastUserSaved = !!lastUser && (history[issueKey] ?? []).some((m) => m.id === lastUser.id);
+  const lastMessage = messages.at(-1);
+  // The failed message is the last one; older failures were replaced by the retry.
+  const failedId =
+    failedMessage && lastMessage?.role === 'user' && lastMessage.content === failedMessage.text
+      ? lastMessage.id
+      : null;
+  const quickReplies =
+    !isTyping && !failedMessage && lastMessage?.role === 'assistant'
+      ? (lastMessage.quickReplies ?? [])
+      : [];
+  const retryFailed = () => {
+    if (failedMessage) void sendMessage(failedMessage.text, true);
+  };
 
   return (
     <KeyboardAvoidingView
@@ -355,24 +388,58 @@ export default function Chat() {
             ))}
           </View>
         }
-        renderItem={({ item, index }) => (
-          <MessageBubble
-            item={item}
-            dayStamp={
-              index === 0 || !sameDay(messages[index - 1].createdAt, item.createdAt)
-                ? t('glowAi.chat.day', {
-                    day: talkDate(item.createdAt, i18n.language, t('glowAi.today')),
-                    time: clock(item.createdAt),
-                  })
-                : undefined
-            }
-            receipt={
-              item.id === lastUser?.id && lastUserSaved
-                ? t('glowAi.chat.sent', { time: clock(item.createdAt) })
-                : undefined
-            }
-          />
-        )}
+        ListHeaderComponent={
+          failedMessage?.offline ? (
+            <View style={{ marginBottom: 12 }}>
+              <OfflineBanner
+                title={t('glowAi.chat.offlineTitle')}
+                body={t('glowAi.chat.offlineBody')}
+              />
+            </View>
+          ) : null
+        }
+        renderItem={({ item, index }) => {
+          const practice = item.role === 'assistant' ? practiceById(item.practiceId) : undefined;
+          return (
+            <View style={{ gap: 12 }}>
+              <MessageBubble
+                item={item}
+                dayStamp={
+                  index === 0 || !sameDay(messages[index - 1].createdAt, item.createdAt)
+                    ? t('glowAi.chat.day', {
+                        day: talkDate(item.createdAt, i18n.language, t('glowAi.today')),
+                        time: clock(item.createdAt),
+                      })
+                    : undefined
+                }
+                receipt={
+                  item.id === lastUser?.id && lastUserSaved
+                    ? t('glowAi.chat.sent', { time: clock(item.createdAt) })
+                    : undefined
+                }
+                failed={
+                  item.id === failedId
+                    ? { label: t('glowAi.chat.notSent'), onRetry: retryFailed, busy: isTyping }
+                    : undefined
+                }
+              />
+              {practice && (
+                <ChatPracticeCard
+                  eyebrow={t('glowAi.chat.practiceEyebrow', {
+                    category: t(
+                      `practices.categories.${practice.category.startsWith('relax') ? 'relax' : practice.category}.title`,
+                    ),
+                    minutes: practice.listMinutes,
+                  })}
+                  title={t(`practices.items.${practice.id}.title`)}
+                  startLabel={t('glowAi.chat.practiceStart')}
+                  glow={CATEGORY_GLOW[practice.category]}
+                  onStart={() => openPractice(practice)}
+                />
+              )}
+            </View>
+          );
+        }}
         ListFooterComponent={
           isTyping ? (
             <View style={{ gap: 6, marginTop: 12 }}>
@@ -380,6 +447,10 @@ export default function Chat() {
               <Text style={[Type.micro, { lineHeight: 15, color: palette.textSubtle }]}>
                 {t('glowAi.chat.typing')}
               </Text>
+            </View>
+          ) : quickReplies.length ? (
+            <View style={{ marginTop: 12 }}>
+              <QuickReplies replies={quickReplies} onPick={(reply) => void sendMessage(reply)} />
             </View>
           ) : null
         }
@@ -393,18 +464,6 @@ export default function Chat() {
           gap: 12,
         }}
       >
-        {failedMessage && (
-          <StatusState
-            title={
-              failedMessage.saved ? 'Your message is saved' : 'Your message could not be saved'
-            }
-            message={failedMessage.message}
-            onRetry={() => {
-              void sendMessage(failedMessage.text, true);
-            }}
-            busy={isAiTyping}
-          />
-        )}
         <Composer
           value={inputText}
           onChangeText={setInputText}
