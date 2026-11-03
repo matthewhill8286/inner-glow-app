@@ -1406,7 +1406,7 @@ export default {
         title: 'Sleep',
         meta: '6–25 min · Wind down',
         heading: 'Wind down',
-        body: 'Soft sounds and slow breaths to drift off.',
+        body: 'Slow down with soft sounds and gentle guides for restful sleep.',
       },
     },
     tip: 'Not sure? Try 4-7-8 Calm. It helps most people unwind in under 5 minutes.',

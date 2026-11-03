@@ -70,7 +70,7 @@ function RelaxChoice() {
         overflow: 'hidden',
         borderWidth: pressed ? 1 : 0,
         borderColor: palette.plum,
-        boxShadow: '0px 8px 16px rgba(75,52,37,0.05)',
+        boxShadow: '0px 8px 16px rgba(36,26,46,0.05)',
       })}
     >
       {kind === 'body' ? (
@@ -290,7 +290,7 @@ function Illustration({ kind }: { kind: 'mindfulness' | 'sleep' }) {
 function PillRow({ practice }: { practice: Practice }) {
   const { t } = useTranslation();
   const text = usePracticeText()(practice);
-  const sub = `${t('practices.minutes', { count: practice.listMinutes })} • ${t(`practices.choose.${practice.id}`)}`;
+  const sub = `${t('practices.minutes', { count: practice.listMinutes })} · ${t(`practices.choose.${practice.id}`)}`;
   return (
     <Pressable
       accessibilityRole="button"
@@ -299,7 +299,7 @@ function PillRow({ practice }: { practice: Practice }) {
       style={({ pressed }) => ({
         minHeight: 56,
         borderRadius: 999,
-        backgroundColor: pressed ? palette.surfaceLilac : '#F3EFED',
+        backgroundColor: pressed ? palette.surfaceLilac : '#EFEAF2',
         flexDirection: 'row',
         alignItems: 'center',
         paddingVertical: 9,
@@ -319,8 +319,42 @@ function PillRow({ practice }: { practice: Practice }) {
           {sub}
         </Text>
       </View>
-      <Icon name="arrow/chevron-right" size={20} />
+      {/* The design's long plain arrow (`6190:4171`), 20 wide in plum. */}
+      <Svg width={22} height={14} viewBox="0 0 22 14">
+        <Path
+          d="M1 7h19M14 1.5 20 7l-6 5.5"
+          stroke={palette.plum}
+          strokeWidth={2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          fill="none"
+        />
+      </Svg>
     </Pressable>
+  );
+}
+
+/**
+ * Be present / Wind down list group (`6186:3168`, `6190:4171`): a white sheet with 40 radius,
+ * a soft upward shadow and 15 padding, holding the rows 12 apart.
+ */
+function ListSheet({ children }: { children: React.ReactNode }) {
+  return (
+    <View
+      style={{
+        marginTop: 24,
+        marginHorizontal: -23,
+        backgroundColor: palette.white,
+        borderRadius: 40,
+        paddingHorizontal: 15,
+        paddingTop: 14,
+        paddingBottom: 28,
+        gap: 12,
+        boxShadow: '0px -17px 38px rgba(36,26,46,0.05)',
+      }}
+    >
+      {children}
+    </View>
   );
 }
 
@@ -360,7 +394,8 @@ export default function CategoryPractices() {
 
   return (
     <SettingsScreen
-      title={t('practices.all.mindful')}
+      // Be present and Wind down show only the back button in the nav bar, as in their frames.
+      title={category === 'mindfulness' || category === 'sleep' ? '' : t('practices.all.mindful')}
       backLabel={t('common.back')}
       onBack={back}
       glows={glows}
@@ -387,11 +422,11 @@ export default function CategoryPractices() {
             body={t(`practices.categories.${category}.body`)}
           />
           <Illustration kind={category} />
-          <View style={{ gap: 12, marginTop: 24 }}>
+          <ListSheet>
             {items.map((p) => (
               <PillRow key={p.id} practice={p} />
             ))}
-          </View>
+          </ListSheet>
         </>
       )}
       {category === 'breathing' && (
