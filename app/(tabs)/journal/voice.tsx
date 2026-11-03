@@ -14,7 +14,6 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import * as FileSystem from 'expo-file-system';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -52,28 +51,9 @@ import {
   titleFromTranscript,
 } from '@/lib/voice-entry';
 import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
+import { audioBase64, audioMimeType } from '@/lib/audio-file';
 
 type Step = 'recording' | 'transcribing' | 'review' | 'error';
-const MIME: Record<string, string> = {
-  m4a: 'audio/m4a',
-  mp4: 'audio/mp4',
-  mp3: 'audio/mpeg',
-  wav: 'audio/wav',
-  webm: 'audio/webm',
-  caf: 'audio/x-caf',
-};
-
-async function base64Of(uri: string): Promise<string> {
-  if (Platform.OS !== 'web') return new FileSystem.File(uri).base64();
-  const blob = await (await fetch(uri)).blob();
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(String(reader.result).split(',')[1] ?? '');
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
-}
-
 /** Recording orb (04 J3): two glows, three ripples that drift outward, and an inner light that follows the voice. */
 function RecordingOrb({ level, running }: { level: number; running: boolean }) {
   const reduceMotion = useReducedMotion();
@@ -311,9 +291,8 @@ export default function VoiceEntry() {
       setUri(result.uri);
       setDurationMs(result.durationMs);
       setStep('transcribing');
-      const ext = result.uri.split('.').pop()?.toLowerCase() ?? 'm4a';
       const { data, error: aiError } = await invokeAI('transcribe-audio', {
-        body: { audioBase64: await base64Of(result.uri), mimeType: MIME[ext] ?? 'audio/m4a' },
+        body: { audioBase64: await audioBase64(result.uri), mimeType: audioMimeType(result.uri) },
       });
       if (aiError || !data?.text) throw new Error(aiError?.message);
       const transcript = String(data.text).trim();
