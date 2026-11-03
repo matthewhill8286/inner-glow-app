@@ -2,7 +2,7 @@
 
 Priority: P2
 
-Status: Partial — icon sizes aligned; score centring still outstanding
+Status: Implemented — icon sizes aligned, and the score number now centres on the aura's rings (commit 06d4232, in #46); device retest required
 
 ## Source feedback
 

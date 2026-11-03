@@ -59,15 +59,15 @@ The app already has these elements: the header with the mini orb, "Glow AI" and 
 These elements are missing:
 
 34. **Practice card in the chat** **[app][backend]**
-    **Status: built on `feature/glow-ai-chat-elements`.** The chat function returns `practiceId` and `quickReplies` through OpenAI structured output, and older app builds ignore both fields. The function still has to be deployed.
+    **Status: done, merged in #45/#46.** The chat function returns `practiceId` and `quickReplies` through OpenAI structured output, and older app builds ignore both fields. The function still has to be deployed.
     Glow AI suggests a practice as a white card (260 × 91, radius 22). The card shows a "BREATHING · 4 MIN" eyebrow, the practice name and a Start button that opens the player. The chat function needs to return structured replies, for example a `practice` block with a practice id. The app then renders the card and maps the id through `openPractice`.
 35. **Quick replies after a reply** **[app][backend]**
-    **Status: built on `feature/glow-ai-chat-elements`.** The chat function returns `practiceId` and `quickReplies` through OpenAI structured output, and older app builds ignore both fields. The function still has to be deployed.
+    **Status: done, merged in #45/#46.** The chat function returns `practiceId` and `quickReplies` through OpenAI structured output, and older app builds ignore both fields. The function still has to be deployed.
     Under the latest AI reply, show up to three reply chips, such as "Reply to one email", "Make a to-do list" and "I don't know". The first chip is lilac (`#F1ECF5`) with plum text, and the others are white. Today chips show only as starters on an empty chat. The chat function needs to return them in the same structured reply as task 34.
 36. **"Was this helpful?" under the reply** **[app][backend]**
     Add a feedback row with a caption and Yes / No pills (26 high) under the latest AI reply. This is the inline part of task 12.
 37. **"Not sent · Tap to retry" on the bubble, and an offline banner** **[app]**
-    **Status: built on `feature/glow-ai-chat-elements`.** While offline, the failed message is retried every 8 seconds. Offline is detected from the failed request, because the app has no network listener.
+    **Status: done, merged in #45/#46.** While offline, the failed message is retried every 8 seconds. Offline is detected from the failed request, because the app has no network listener.
     A failed message today shows a separate status card above the composer. The design marks the bubble itself and retries when it is tapped. When offline, a white banner card (327 × 78, radius 20) sits at the top of the talk. This is the in-chat part of task 13.
 38. **Voice mode** `6699:3875` `6787:5388` `6787:5420` **[app][backend]**
     The header's voice button and the composer's mic are drawn in every chat frame. The voice screens have listening, thinking and paused states. Neither button is built, and the header slot is used for other actions. The `transcribe-audio` function exists, and replies would use the Voice replies setting. Voice mode needs the microphone primer (task 15) first.
@@ -120,7 +120,7 @@ These elements are missing:
 
 39. **Full-screen video** (TestFlight report 45) **[app][native]**
     A tester asked for a full-screen option in the Relax video player.
-    **Status: built on `feature/glow-ai-chat-elements`.** The card fills the window and rotates to landscape, with no native module. There is no Figma frame for it, so the control style follows the video card.
+    **Status: done, merged in #45/#46.** The card fills the window and rotates to landscape, with no native module. There is no Figma frame for it, so the control style follows the video card.
 
 ## Overlap with the TestFlight feedback on main
 
