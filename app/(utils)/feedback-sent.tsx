@@ -1,7 +1,7 @@
 import React from 'react';
 import { Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { StatusBar } from 'expo-status-bar';
+import { ScreenStatusBar } from '@/components/ui/ScreenStatusBar';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
@@ -30,7 +30,7 @@ export default function FeedbackSentScreen() {
   const top = insets.top - 44;
   return (
     <View style={{ flex: 1, backgroundColor: palette.bg }}>
-      <StatusBar style="dark" />
+      <ScreenStatusBar style="dark" />
       <GlowField
         glows={[
           { color: palette.mustard, opacity: 0.28, x: 57, y: 170 + top, width: 260, blur: 80 },

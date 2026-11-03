@@ -141,23 +141,26 @@ function Divider() {
  * out because there are no narration recordings yet.
  */
 export default function PracticeScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, duration } = useLocalSearchParams<{ id: string; duration?: string }>();
   const practice = practiceById(id);
   if (!practice) return null;
+  // A reminder can open the set-up on one of the practice's lengths, such as the sunset's 10 minutes.
+  const minutes = Number(duration);
+  const start = practice.durations?.includes(minutes) ? minutes : practice.defaultDuration;
   return practice.kind === 'video' ? (
     <VideoDetails practice={practice} />
   ) : (
-    <PracticeSetup practice={practice} />
+    <PracticeSetup practice={practice} startDuration={start} />
   );
 }
 
-function PracticeSetup({ practice }: { practice: Practice }) {
+function PracticeSetup({ practice, startDuration }: { practice: Practice; startDuration?: number }) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const text = usePracticeText();
   const heart = useFavouriteHeart(practice.id, insets.bottom + 90);
   const [pace, setPace] = useState<Pace>('slow');
-  const [duration, setDuration] = useState(practice.defaultDuration ?? 5);
+  const [duration, setDuration] = useState(startDuration ?? 5);
   const [sound, setSound] = useState<SoundKey>(practice.options.sound ?? 'silence');
   const [haptics, setHaptics] = useState(practice.options.haptics ?? false);
   const [fadeOut, setFadeOut] = useState(practice.options.fadeOut ?? false);

@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { StatusBar } from 'expo-status-bar';
+import { ScreenStatusBar } from '@/components/ui/ScreenStatusBar';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { palette } from '@/constants/theme';
 import { Type } from '@/constants/typography';
@@ -121,7 +121,7 @@ export default function SleepCheckInScreen() {
       contentStyle={{ gap: 12 }}
       cta={<AppButton title={t('sleepFlow.checkIn.save')} icon="line/check" iconPosition="left" busy={saving} onPress={save} />}
     >
-      <StatusBar style="dark" />
+      <ScreenStatusBar style="dark" />
       <Text accessibilityRole="header" style={[Type.titleLg, { fontSize: 28, lineHeight: 34, color: palette.ink }]}>
         {t('sleepFlow.checkIn.title')}
       </Text>

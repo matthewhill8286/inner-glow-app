@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Platform, Pressable, Text, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
+import { ScreenStatusBar } from '@/components/ui/ScreenStatusBar';
 import { useTranslation } from 'react-i18next';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { palette } from '@/constants/theme';
@@ -150,7 +150,7 @@ export default function SleepScheduleScreen() {
       scrollEnabled={!dragging}
       cta={<AppButton title={t('sleepFlow.schedule.save')} icon="line/check" iconPosition="left" busy={saving} onPress={save} />}
     >
-      <StatusBar style="dark" />
+      <ScreenStatusBar style="dark" />
       <Text accessibilityRole="header" style={[Type.titleLg, { lineHeight: 36, color: palette.ink }]}>
         {t('sleepFlow.schedule.question')}
       </Text>

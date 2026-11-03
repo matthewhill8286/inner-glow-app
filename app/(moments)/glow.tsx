@@ -68,10 +68,13 @@ export default function GlowRisingMoment() {
     >
       <View style={{ height: SCALE_H + 60, marginTop: 8 }}>
         {scale.ticks.map((tick) => (
-          <View key={tick.value} style={{ position: 'absolute', left: 0, top: tick.y + 20, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <View style={{ width: tick.major ? 18 : 10, height: 2, backgroundColor: palette.plum, opacity: tick.major ? 0.5 : 0.25 }} />
-            {tick.major && <Text style={[Type.microBold, { color: palette.textSubtle }]}>{tick.value}</Text>}
-          </View>
+          // Figma 6774:4892: labels at 48, ticks ending at 92 (the beam's centre is at 164).
+          <React.Fragment key={tick.value}>
+            {tick.major && (
+              <Text style={[Type.micro, { fontWeight: '600', position: 'absolute', left: cx - 116, top: tick.y + 20 - 6.5, color: palette.textSubtle }]}>{tick.value}</Text>
+            )}
+            <View style={{ position: 'absolute', left: cx - (tick.major ? 90 : 82), top: tick.y + 20 - 1, width: tick.major ? 18 : 10, height: 2, borderRadius: 1, backgroundColor: palette.plum }} />
+          </React.Fragment>
         ))}
         <Svg width={72} height={beamH} style={{ position: 'absolute', left: cx - 36, top: top + 20 }}>
           <Defs>
@@ -99,7 +102,7 @@ export default function GlowRisingMoment() {
             boxShadow: '0px 0px 40px 10px rgba(226,204,64,0.60)',
           }}
         >
-          <Text style={[Type.display, { fontSize: 48, lineHeight: 58, color: palette.plumDeep }]}>{current}</Text>
+          <Text style={[Type.display, { fontWeight: '400', color: palette.plumDeep }]}>{current}</Text>
         </View>
         {delta !== 0 && (
           <View style={{ position: 'absolute', right: 0, top: scale.y(current), flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: palette.lavender, borderRadius: 999, paddingVertical: 5, paddingLeft: 10, paddingRight: 12 }}>
@@ -108,17 +111,17 @@ export default function GlowRisingMoment() {
           </View>
         )}
         <View style={{ position: 'absolute', left: cx - 60, width: 120, top: scale.y(previous) + 20 + (delta ? 50 : 70), alignItems: 'center' }}>
-          {delta !== 0 && <Text style={[Type.titleXl, { color: 'rgba(78,58,94,0.30)', letterSpacing: 0 }]}>{previous}</Text>}
+          {delta !== 0 && <Text style={[Type.titleXl, { fontWeight: '400', color: palette.plumDeep, letterSpacing: 0 }]}>{previous}</Text>}
           <Text style={[Type.micro, { color: palette.textSubtle }]}>{fromLabel}</Text>
         </View>
       </View>
 
-      <Text accessibilityRole="header" style={[Type.titleLg, { fontSize: 28, lineHeight: 34, color: palette.plumDeep, marginTop: 24 }]}>
+      <Text accessibilityRole="header" style={[Type.titleLg, { color: palette.plumDeep, marginTop: 24 }]}>
         {t(`moments.glow.title.${titleKey}`)}
       </Text>
       <Text style={[Type.body, { fontWeight: '400', lineHeight: 22, color: palette.textMuted, marginTop: 10 }]}>
-        {t('moments.glow.body', { from: previous, to: current })}
-        {factor ? ` ${t('moments.glow.helped', { factor: factor.toLowerCase() })}` : ''}
+        {t(`moments.glow.body.${titleKey}`, { from: previous, to: current })}
+        {factor ? ` ${t('moments.glow.helped', { factor })}` : ''}
       </Text>
     </MomentShell>
   );

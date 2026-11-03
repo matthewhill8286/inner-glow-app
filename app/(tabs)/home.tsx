@@ -6,10 +6,10 @@ import { router } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import Svg, { Circle, Defs, LinearGradient, Line, Rect, Stop } from 'react-native-svg';
 import { palette } from '@/constants/theme';
 import { Type } from '@/constants/typography';
 import { queryKeys } from '@/lib/queryKeys';
+import { CategoryCard } from '@/components/practices/CategoryCard';
 import { screenBottomPadding } from '@/lib/screen-layout';
 import { Glow, GlowField } from '@/components/glow/Glow';
 import { Icon } from '@/components/icons/Icon';
@@ -356,17 +356,17 @@ function ForYouToday() {
           <Text style={{ ...Type.label, fontSize: 13, color: palette.lavender }}>{t('homeGlow.allPractices')}</Text>
         </Pressable>
       </View>
-      <View style={{ flexDirection: 'row', gap: 9, marginTop: 14 }}>
-        <PracticeCard
+      <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
+        <CategoryCard
+          kind="breathing"
           title={t('homeGlow.breathing')}
           meta={t('homeGlow.breathingMeta')}
-          cover="breathing"
           onPress={() => router.push({ pathname: '/(tabs)/mindful/category/[category]', params: { category: 'breathing' } })}
         />
-        <PracticeCard
+        <CategoryCard
+          kind="sleep"
           title={t('homeGlow.windDown')}
           meta={t('homeGlow.windDownMeta')}
-          cover="sleep"
           onPress={() => router.push('/(tabs)/sleep')}
         />
       </View>
@@ -374,71 +374,8 @@ function ForYouToday() {
   );
 }
 
-function PracticeCard({ title, meta, cover, onPress }: { title: string; meta: string; cover: 'breathing' | 'sleep'; onPress: () => void }) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`${title}, ${meta}`}
-      onPress={onPress}
-      style={({ pressed }) => ({ flex: 1, height: 112, borderRadius: 24, backgroundColor: palette.surface, padding: 6, opacity: pressed ? 0.85 : 1 })}
-    >
-      <View style={{ height: 58, borderRadius: 18, overflow: 'hidden', backgroundColor: '#FBF8F5', alignItems: 'center', justifyContent: 'center' }}>
-        {cover === 'breathing' ? <BreathingCover /> : <SleepCover />}
-        <View
-          style={{ position: 'absolute', right: 6, top: 6, width: 26, height: 26, borderRadius: 13, backgroundColor: palette.plum, alignItems: 'center', justifyContent: 'center' }}
-        >
-          <Icon name="line/play" size={14} color={palette.white} />
-        </View>
-      </View>
-      <Text numberOfLines={1} style={{ ...Type.bodyMSemi, color: palette.ink, marginTop: 6, marginHorizontal: 8 }}>
-        {title}
-      </Text>
-      <Text numberOfLines={1} style={{ ...Type.micro, fontWeight: '400', color: palette.textSubtle, marginTop: 4, marginHorizontal: 8 }}>
-        {meta}
-      </Text>
-    </Pressable>
-  );
-}
 
-/** Breathing cover: sky glow, four rings fading outward, gold centre (03 §2.1). */
-function BreathingCover() {
-  return (
-    <>
-      <Glow color={palette.sky} opacity={0.55} width={120} height={58} blur={24} style={{ position: 'absolute' }} />
-      <Svg width={80} height={58} style={{ position: 'absolute' }}>
-        {[
-          [14, 0.5],
-          [22, 0.35],
-          [30, 0.25],
-          [38, 0.15],
-        ].map(([r, o]) => (
-          <Circle key={r} cx={40} cy={29} r={r} stroke={palette.plum} strokeOpacity={o} strokeWidth={1} fill="none" />
-        ))}
-      </Svg>
-      <Glow color={palette.gold} opacity={0.9} width={16} blur={4} />
-    </>
-  );
-}
 
-/** Sleep cover: lilac dusk gradient, glow, moon and a thin horizon. */
-function SleepCover() {
-  return (
-    <>
-      <Svg width="100%" height={58} style={{ position: 'absolute' }}>
-        <Defs>
-          <LinearGradient id="sleepCover" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0" stopColor="#E6DDEE" />
-            <Stop offset="1" stopColor="#F3E6EE" />
-          </LinearGradient>
-        </Defs>
-        <Rect x={0} y={0} width="100%" height={58} fill="url(#sleepCover)" />
-        <Line x1={0} y1={46.4} x2="100%" y2={46.4} stroke={palette.plum} strokeOpacity={0.3} strokeWidth={1} />
-      </Svg>
-      <Glow color={palette.lavenderSoft} opacity={0.7} width={110} height={58} blur={20} style={{ position: 'absolute' }} />
-      <Icon name="line/moon" size={22} color="rgba(107,82,121,0.75)" />
-    </>
-  );
-}
 
 /* ── Free plan ───────────────────────────────────── */
 
