@@ -97,6 +97,12 @@ export default function SupportMessageScreen() {
           textAlignVertical="top"
           style={[Type.bodyM, field, { minHeight: 160, paddingTop: 16, paddingBottom: 16, lineHeight: 21 }]}
         />
+        {/* Send stays disabled until the minimum is met, so say how far there is to go (TestFlight report 43). */}
+        {message.trim().length > 0 && message.trim().length < MIN && (
+          <Text accessibilityLiveRegion="polite" style={[Type.captionS, { color: palette.textMuted }]}>
+            {t('supportMessage.minHint', { count: MIN - message.trim().length })}
+          </Text>
+        )}
       </View>
       <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: consent }} onPress={() => setConsent(!consent)} style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-start' }}>
         <Checkbox checked={consent} onChange={setConsent} accessibilityLabel={t('supportMessage.consent')} />
