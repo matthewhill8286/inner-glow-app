@@ -24,6 +24,7 @@ import {
   addRecent,
   DEFAULT_FILTERS,
   highlight,
+  filtersActive,
   search,
   suggestions,
   type LengthFilter,
@@ -66,7 +67,13 @@ const INSIGHTS: { id: string; route: string }[] = [
 ];
 
 const kindOf = (p: Practice): SearchKind =>
-  p.category === 'sleep' ? 'sleep' : p.category === 'breathing' ? 'breathing' : p.category === 'mindfulness' ? 'mindfulness' : 'relax';
+  p.category === 'sleep'
+    ? 'sleep'
+    : p.category === 'breathing'
+      ? 'breathing'
+      : p.category === 'mindfulness'
+        ? 'mindfulness'
+        : 'relax';
 
 /**
  * Search (05 §4): idle (recent searches, popular practices, Ask Glow AI), typing suggestions,
@@ -137,12 +144,20 @@ export default function SearchScreen() {
         at: c.updatedAt,
       });
       routes.set(id, () =>
-        router.push({ pathname: '/(tabs)/chat/[issueKey]', params: { issueKey: c.raw, persona: c.personaId, from: '/(tabs)/search' } }),
+        router.push({
+          pathname: '/(tabs)/chat/[issueKey]',
+          params: { issueKey: c.raw, persona: c.personaId, from: '/(tabs)/search' },
+        }),
       );
     }
     for (const ins of INSIGHTS) {
       const id = `insight:${ins.id}`;
-      list.push({ id, type: 'insight', kind: 'insight', title: t(`searchFlow.insights.${ins.id}`) });
+      list.push({
+        id,
+        type: 'insight',
+        kind: 'insight',
+        title: t(`searchFlow.insights.${ins.id}`),
+      });
       routes.set(id, () => router.push(ins.route as never));
     }
     return { items: list, open: routes };
@@ -151,7 +166,9 @@ export default function SearchScreen() {
   const results = useMemo(() => search(items, query, filters), [items, query, filters]);
   const draftCount = useMemo(() => search(items, query, draft).length, [items, query, draft]);
   const typed = suggestions(items, query);
-  const popular = POPULAR.map((id) => items.find((i) => i.id === `practice:${id}`)).filter((x): x is SearchItem => !!x);
+  const popular = POPULAR.map((id) => items.find((i) => i.id === `practice:${id}`)).filter(
+    (x): x is SearchItem => !!x,
+  );
 
   const submit = (q = query) => {
     const value = q.trim();
@@ -184,7 +201,19 @@ export default function SearchScreen() {
     return t('searchFlow.types.insight');
   };
 
-  const mode = !query.trim() ? 'idle' : !submitted ? 'typing' : results.length ? 'results' : 'empty';
+  // A filter applied with nothing typed shows what it matches; a typed query waits for submit.
+  const browsing = !query.trim() && filtersActive(filters);
+  const mode = browsing
+    ? results.length
+      ? 'results'
+      : 'empty'
+    : !query.trim()
+      ? 'idle'
+      : !submitted
+        ? 'typing'
+        : results.length
+          ? 'results'
+          : 'empty';
 
   return (
     <View style={{ flex: 1, backgroundColor: palette.bg }}>
@@ -198,8 +227,20 @@ export default function SearchScreen() {
         />
       )}
       {/* Header (05 §4.1): back, the pill field and the filter button. */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 24, marginTop: insets.top + 14 }}>
-        <IconButton variant="nav" accessibilityLabel={t('common.back')} onPress={() => backTo(undefined, '/(tabs)/home')} />
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 10,
+          paddingHorizontal: 24,
+          marginTop: insets.top + 14,
+        }}
+      >
+        <IconButton
+          variant="nav"
+          accessibilityLabel={t('common.back')}
+          onPress={() => backTo(undefined, '/(tabs)/home')}
+        />
         <View
           style={{
             flex: 1,
@@ -246,7 +287,14 @@ export default function SearchScreen() {
                 setSubmitted(false);
                 input.current?.focus();
               }}
-              style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: palette.selected, alignItems: 'center', justifyContent: 'center' }}
+              style={{
+                width: 22,
+                height: 22,
+                borderRadius: 11,
+                backgroundColor: palette.selected,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
             >
               <Icon name="arrow/close" size={12} color={palette.plum} />
             </Pressable>
@@ -264,13 +312,33 @@ export default function SearchScreen() {
         />
       </View>
 
-      <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 20, paddingBottom: screenBottomPadding(insets.bottom) }}>
+      <ScrollView
+        keyboardDismissMode={KEYBOARD_DISMISS_MODE}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{
+          paddingHorizontal: 24,
+          paddingTop: 20,
+          paddingBottom: screenBottomPadding(insets.bottom),
+        }}
+      >
         {mode === 'idle' && (
           <>
             {recent.length > 0 && (
               <>
-                <SectionTitle label={t('searchFlow.recent')} action={t('searchFlow.clearRecent')} onAction={() => saveRecent([])} />
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12, marginBottom: 28 }}>
+                <SectionTitle
+                  label={t('searchFlow.recent')}
+                  action={t('searchFlow.clearRecent')}
+                  onAction={() => saveRecent([])}
+                />
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    flexWrap: 'wrap',
+                    gap: 8,
+                    marginTop: 12,
+                    marginBottom: 28,
+                  }}
+                >
                   {recent.map((r) => (
                     <WordChip key={r} label={r} onPress={() => submit(r)} />
                   ))}
@@ -280,7 +348,13 @@ export default function SearchScreen() {
             <SectionTitle label={t('searchFlow.popular')} />
             <View style={{ gap: 10, marginTop: 12 }}>
               {popular.map((item) => (
-                <ResultRow key={item.id} item={item} tag={tag(item)} query="" onPress={() => choose(item)} />
+                <ResultRow
+                  key={item.id}
+                  item={item}
+                  tag={tag(item)}
+                  query=""
+                  onPress={() => choose(item)}
+                />
               ))}
             </View>
             <View style={{ marginTop: 28 }}>
@@ -293,16 +367,29 @@ export default function SearchScreen() {
         {mode === 'typing' && (
           <>
             {typed.length > 0 && (
-              <View style={{ backgroundColor: palette.white, borderRadius: 22, paddingVertical: 6 }}>
+              <View
+                style={{ backgroundColor: palette.white, borderRadius: 22, paddingVertical: 6 }}
+              >
                 {typed.map((s) => (
                   <Pressable
                     key={s}
                     accessibilityRole="button"
                     onPress={() => submit(s)}
-                    style={({ pressed }) => ({ minHeight: 45, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, opacity: pressed ? 0.7 : 1 })}
+                    style={({ pressed }) => ({
+                      minHeight: 45,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 12,
+                      paddingHorizontal: 16,
+                      opacity: pressed ? 0.7 : 1,
+                    })}
                   >
                     <Icon name="line/search" size={20} color={palette.lavender} />
-                    <Highlighted text={s} query={query} style={[Type.bodyMMedium, { color: palette.ink }]} />
+                    <Highlighted
+                      text={s}
+                      query={query}
+                      style={[Type.bodyMMedium, { color: palette.ink }]}
+                    />
                   </Pressable>
                 ))}
               </View>
@@ -314,12 +401,24 @@ export default function SearchScreen() {
         {mode === 'results' && (
           <>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={[Type.chipSelected, { color: palette.ink }]}>{t('searchFlow.results', { count: results.length })}</Text>
-              <Text style={[Type.chip, { color: palette.lavender }]}>{t('searchFlow.relevant')}</Text>
+              <Text style={[Type.chipSelected, { color: palette.ink }]}>
+                {t('searchFlow.results', { count: results.length })}
+              </Text>
+              <Text style={[Type.chip, { color: palette.lavender }]}>
+                {t('searchFlow.relevant')}
+              </Text>
             </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12, marginHorizontal: -24 }} contentContainerStyle={{ gap: 8, paddingHorizontal: 24 }}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={{ marginTop: 12, marginHorizontal: -24 }}
+              contentContainerStyle={{ gap: 8, paddingHorizontal: 24 }}
+            >
               {(['all', 'practice', 'journal', 'talk'] as const).map((k) => {
-                const on = k === 'all' ? filters.types.length === 0 : filters.types.length === 1 && filters.types[0] === k;
+                const on =
+                  k === 'all'
+                    ? filters.types.length === 0
+                    : filters.types.length === 1 && filters.types[0] === k;
                 return (
                   <TypeChip
                     key={k}
@@ -333,7 +432,13 @@ export default function SearchScreen() {
             </ScrollView>
             <View style={{ gap: 10, marginTop: 16 }}>
               {results.map((item) => (
-                <ResultRow key={item.id} item={item} tag={tag(item)} query={query} onPress={() => choose(item)} />
+                <ResultRow
+                  key={item.id}
+                  item={item}
+                  tag={tag(item)}
+                  query={query}
+                  onPress={() => choose(item)}
+                />
               ))}
             </View>
           </>
@@ -342,28 +447,80 @@ export default function SearchScreen() {
         {mode === 'empty' && (
           <View style={{ alignItems: 'center' }}>
             <SearchingRings size={Math.min(260, width - 48)} />
-            <Text accessibilityRole="header" style={[Type.titleLg, { lineHeight: 36, color: palette.ink, marginTop: 12 }]}>
+            <Text
+              accessibilityRole="header"
+              style={[Type.titleLg, { lineHeight: 36, color: palette.ink, marginTop: 12 }]}
+            >
               {t('searchFlow.emptyTitle')}
             </Text>
-            <Text style={[Type.bodyS, { color: palette.textMuted, textAlign: 'center', marginTop: 8 }]}>
-              {t('searchFlow.emptyBody', { query: query.trim() })}
+            <Text
+              style={[Type.bodyS, { color: palette.textMuted, textAlign: 'center', marginTop: 8 }]}
+            >
+              {browsing
+                ? t('searchFlow.emptyFiltered')
+                : t('searchFlow.emptyBody', { query: query.trim() })}
             </Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, marginTop: 24 }}>
+            <View
+              style={{
+                flexDirection: 'row',
+                flexWrap: 'wrap',
+                justifyContent: 'center',
+                gap: 8,
+                marginTop: 24,
+              }}
+            >
               {TRY_WORDS.map((w) => (
-                <WordChip key={w} label={t(`searchFlow.try.${w}`)} onPress={() => submit(t(`searchFlow.try.${w}`))} />
+                <WordChip
+                  key={w}
+                  label={t(`searchFlow.try.${w}`)}
+                  onPress={() => submit(t(`searchFlow.try.${w}`))}
+                />
               ))}
             </View>
-            <AppButton title={t('searchFlow.ask')} icon="line/sparkle" iconPosition="left" onPress={ask} style={{ alignSelf: 'stretch', marginTop: 40 }} />
+            {browsing ? (
+              <AppButton
+                title={t('searchFlow.filter.reset')}
+                variant="secondary"
+                onPress={() => setFilters(DEFAULT_FILTERS)}
+                style={{ alignSelf: 'stretch', marginTop: 40 }}
+              />
+            ) : (
+              <AppButton
+                title={t('searchFlow.ask')}
+                icon="line/sparkle"
+                iconPosition="left"
+                onPress={ask}
+                style={{ alignSelf: 'stretch', marginTop: 40 }}
+              />
+            )}
           </View>
         )}
       </ScrollView>
 
       {/* Filter sheet (05 §4.8): Show, Length and Time, with a live count. */}
-      <BottomSheet visible={sheet} onClose={() => setSheet(false)} closeLabel={t('common.close')} overlayOpacity={0.5}>
-        <View style={{ alignSelf: 'stretch', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+      <BottomSheet
+        visible={sheet}
+        onClose={() => setSheet(false)}
+        closeLabel={t('common.close')}
+        overlayOpacity={0.5}
+      >
+        <View
+          style={{
+            alignSelf: 'stretch',
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
           <Text style={[Type.titleMd, { color: palette.ink }]}>{t('searchFlow.filter.title')}</Text>
-          <Pressable accessibilityRole="button" hitSlop={10} onPress={() => setDraft(DEFAULT_FILTERS)}>
-            <Text style={[Type.buttonS, { color: palette.lavender }]}>{t('searchFlow.filter.reset')}</Text>
+          <Pressable
+            accessibilityRole="button"
+            hitSlop={10}
+            onPress={() => setDraft(DEFAULT_FILTERS)}
+          >
+            <Text style={[Type.buttonS, { color: palette.lavender }]}>
+              {t('searchFlow.filter.reset')}
+            </Text>
           </Pressable>
         </View>
         <FilterGroup label={t('searchFlow.filter.show')}>
@@ -374,7 +531,10 @@ export default function SearchScreen() {
               icon={TYPE_ICON[k]}
               selected={draft.types.includes(k)}
               onPress={() =>
-                setDraft((d) => ({ ...d, types: d.types.includes(k) ? d.types.filter((x) => x !== k) : [...d.types, k] }))
+                setDraft((d) => ({
+                  ...d,
+                  types: d.types.includes(k) ? d.types.filter((x) => x !== k) : [...d.types, k],
+                }))
               }
             />
           ))}
@@ -391,11 +551,21 @@ export default function SearchScreen() {
         </FilterGroup>
         <FilterGroup label={t('searchFlow.filter.time')}>
           {(['week', 'month', 'all'] as TimeFilter[]).map((k) => (
-            <TypeChip key={k} label={t(`searchFlow.filter.times.${k}`)} selected={draft.time === k} onPress={() => setDraft((d) => ({ ...d, time: k }))} />
+            <TypeChip
+              key={k}
+              label={t(`searchFlow.filter.times.${k}`)}
+              selected={draft.time === k}
+              onPress={() => setDraft((d) => ({ ...d, time: k }))}
+            />
           ))}
         </FilterGroup>
         <AppButton
-          title={t('searchFlow.filter.show_results', { count: draftCount })}
+          // Nothing typed and nothing filtered: there is no result set to count, so the button just closes.
+          title={
+            !query.trim() && !filtersActive(draft)
+              ? t('searchFlow.filter.done')
+              : t('searchFlow.filter.show_results', { count: draftCount })
+          }
           onPress={() => {
             setFilters(draft);
             setSheet(false);
@@ -408,10 +578,20 @@ export default function SearchScreen() {
   );
 }
 
-function SectionTitle({ label, action, onAction }: { label: string; action?: string; onAction?: () => void }) {
+function SectionTitle({
+  label,
+  action,
+  onAction,
+}: {
+  label: string;
+  action?: string;
+  onAction?: () => void;
+}) {
   return (
     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-      <Text accessibilityRole="header" style={[Type.chipSelected, { color: palette.ink }]}>{label}</Text>
+      <Text accessibilityRole="header" style={[Type.chipSelected, { color: palette.ink }]}>
+        {label}
+      </Text>
       {action ? (
         <Pressable accessibilityRole="button" hitSlop={10} onPress={onAction}>
           <Text style={[Type.chipSelected, { color: palette.lavender }]}>{action}</Text>
@@ -426,14 +606,33 @@ function WordChip({ label, onPress }: { label: string; onPress: () => void }) {
     <Pressable
       accessibilityRole="button"
       onPress={onPress}
-      style={({ pressed }) => ({ height: 36, paddingHorizontal: 14, borderRadius: 999, justifyContent: 'center', backgroundColor: palette.white, borderWidth: 1, borderColor: palette.border, opacity: pressed ? 0.75 : 1 })}
+      style={({ pressed }) => ({
+        height: 36,
+        paddingHorizontal: 14,
+        borderRadius: 999,
+        justifyContent: 'center',
+        backgroundColor: palette.white,
+        borderWidth: 1,
+        borderColor: palette.border,
+        opacity: pressed ? 0.75 : 1,
+      })}
     >
       <Text style={[Type.chip, { color: palette.textMuted }]}>{label}</Text>
     </Pressable>
   );
 }
 
-function TypeChip({ label, icon, selected, onPress }: { label: string; icon?: IconName; selected: boolean; onPress: () => void }) {
+function TypeChip({
+  label,
+  icon,
+  selected,
+  onPress,
+}: {
+  label: string;
+  icon?: IconName;
+  selected: boolean;
+  onPress: () => void;
+}) {
   return (
     <Pressable
       accessibilityRole="button"
@@ -454,7 +653,14 @@ function TypeChip({ label, icon, selected, onPress }: { label: string; icon?: Ic
       })}
     >
       {icon && <Icon name={icon} size={16} color={selected ? palette.plum : palette.textMuted} />}
-      <Text style={[selected ? Type.chipSelected : Type.chip, { color: selected ? palette.plum : palette.textMuted }]}>{label}</Text>
+      <Text
+        style={[
+          selected ? Type.chipSelected : Type.chip,
+          { color: selected ? palette.plum : palette.textMuted },
+        ]}
+      >
+        {label}
+      </Text>
     </Pressable>
   );
 }
@@ -469,9 +675,22 @@ function FilterGroup({ label, children }: { label: string; children: React.React
 }
 
 /** The matched part of a title in bold plum (05 §4.2). */
-function Highlighted({ text, query, style }: { text: string; query: string; style: React.ComponentProps<typeof Text>['style'] }) {
+function Highlighted({
+  text,
+  query,
+  style,
+}: {
+  text: string;
+  query: string;
+  style: React.ComponentProps<typeof Text>['style'];
+}) {
   const at = highlight(text, query);
-  if (!at) return <Text numberOfLines={1} style={[style, { flex: 1 }]}>{text}</Text>;
+  if (!at)
+    return (
+      <Text numberOfLines={1} style={[style, { flex: 1 }]}>
+        {text}
+      </Text>
+    );
   return (
     <Text numberOfLines={1} style={[style, { flex: 1 }]}>
       {text.slice(0, at[0])}
@@ -481,23 +700,62 @@ function Highlighted({ text, query, style }: { text: string; query: string; styl
   );
 }
 
-function ResultRow({ item, tag, query, onPress }: { item: SearchItem; tag: string; query: string; onPress: () => void }) {
+function ResultRow({
+  item,
+  tag,
+  query,
+  onPress,
+}: {
+  item: SearchItem;
+  tag: string;
+  query: string;
+  onPress: () => void;
+}) {
   const look = LOOK[item.kind];
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`${item.title}, ${tag}`}
       onPress={onPress}
-      style={({ pressed }) => ({ minHeight: 72, borderRadius: 22, backgroundColor: palette.white, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, opacity: pressed ? 0.85 : 1 })}
+      style={({ pressed }) => ({
+        minHeight: 72,
+        borderRadius: 22,
+        backgroundColor: palette.white,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        paddingHorizontal: 14,
+        opacity: pressed ? 0.85 : 1,
+      })}
     >
-      <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: look.tint, alignItems: 'center', justifyContent: 'center' }}>
+      <View
+        style={{
+          width: 44,
+          height: 44,
+          borderRadius: 22,
+          backgroundColor: look.tint,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
         <Icon name={look.icon} size={20} color={palette.plum} />
       </View>
       <View style={{ flex: 1, gap: 4, alignItems: 'flex-start' }}>
         <View style={{ flexDirection: 'row' }}>
-          <Highlighted text={item.title} query={query} style={[Type.bodyMSemi, { color: palette.ink }]} />
+          <Highlighted
+            text={item.title}
+            query={query}
+            style={[Type.bodyMSemi, { color: palette.ink }]}
+          />
         </View>
-        <View style={{ backgroundColor: palette.selected, borderRadius: 999, paddingVertical: 2, paddingHorizontal: 8 }}>
+        <View
+          style={{
+            backgroundColor: palette.selected,
+            borderRadius: 999,
+            paddingVertical: 2,
+            paddingHorizontal: 8,
+          }}
+        >
           <Text style={[Type.microBold, { fontWeight: '600', color: palette.plum }]}>{tag}</Text>
         </View>
       </View>
@@ -506,24 +764,62 @@ function ResultRow({ item, tag, query, onPress }: { item: SearchItem; tag: strin
   );
 }
 
-function AskCard({ subtitle, onPress, style }: { subtitle: string; onPress: () => void; style?: object }) {
+function AskCard({
+  subtitle,
+  onPress,
+  style,
+}: {
+  subtitle: string;
+  onPress: () => void;
+  style?: object;
+}) {
   const { t } = useTranslation();
   return (
     <Pressable
       accessibilityRole="button"
       onPress={onPress}
       style={({ pressed }) => [
-        { minHeight: 72, borderRadius: 22, backgroundColor: palette.white, borderWidth: 1, borderColor: 'rgba(107,82,121,0.35)', overflow: 'hidden', flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, opacity: pressed ? 0.85 : 1, boxShadow: shadow.soft },
+        {
+          minHeight: 72,
+          borderRadius: 22,
+          backgroundColor: palette.white,
+          borderWidth: 1,
+          borderColor: 'rgba(107,82,121,0.35)',
+          overflow: 'hidden',
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 12,
+          paddingHorizontal: 14,
+          opacity: pressed ? 0.85 : 1,
+          boxShadow: shadow.soft,
+        },
         style,
       ]}
     >
-      <Glow color={palette.mustard} opacity={0.4} width={110} blur={24} style={{ position: 'absolute', right: -20, top: -35 }} />
-      <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: palette.plum, alignItems: 'center', justifyContent: 'center' }}>
+      <Glow
+        color={palette.mustard}
+        opacity={0.4}
+        width={110}
+        blur={24}
+        style={{ position: 'absolute', right: -20, top: -35 }}
+      />
+      <View
+        style={{
+          width: 44,
+          height: 44,
+          borderRadius: 22,
+          backgroundColor: palette.plum,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
         <Icon name="line/sparkle" size={20} color={palette.white} />
       </View>
       <View style={{ flex: 1, gap: 2 }}>
         <Text style={[Type.bodyMSemi, { color: palette.ink }]}>{t('searchFlow.ask')}</Text>
-        <Text numberOfLines={1} style={[Type.captionS, { color: palette.textMuted }]}>{subtitle}</Text>
+        <Text numberOfLines={1} style={[Type.captionS, { color: palette.textMuted }]}>
+          {subtitle}
+        </Text>
       </View>
       <Icon name="arrow/chevron-right" size={18} />
     </Pressable>
@@ -542,10 +838,23 @@ function SearchingRings({ size }: { size: number }) {
     { d: 192, o: 0.08, dash: true },
   ];
   return (
-    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }} accessibilityElementsHidden>
+    <View
+      style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}
+      accessibilityElementsHidden
+    >
       <Svg width={size} height={size} style={{ position: 'absolute' }}>
         {rings.map((r) => (
-          <Circle key={r.d} cx={c} cy={c} r={r.d / 2} stroke={palette.plum} strokeOpacity={r.o} strokeWidth={1} strokeDasharray={r.dash ? '3 6' : undefined} fill="none" />
+          <Circle
+            key={r.d}
+            cx={c}
+            cy={c}
+            r={r.d / 2}
+            stroke={palette.plum}
+            strokeOpacity={r.o}
+            strokeWidth={1}
+            strokeDasharray={r.dash ? '3 6' : undefined}
+            fill="none"
+          />
         ))}
       </Svg>
       <Icon name="line/search" size={20} color={palette.plum} />

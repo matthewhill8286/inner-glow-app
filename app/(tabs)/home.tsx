@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { greetingName } from '@/lib/profile-stats';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
@@ -25,7 +25,12 @@ import { useMood } from '@/hooks/useMood';
 import { useProfile } from '@/hooks/useProfile';
 import { useSleep } from '@/hooks/useSleep';
 import { useSubscription } from '@/hooks/useSubscription';
-import { useGlowAiUsage } from '@/hooks/useGlowAi';
+import { useGlowAiGate, useGlowAiUsage } from '@/hooks/useGlowAi';
+import { useVoiceAsk } from '@/hooks/useVoiceAsk';
+import { getPersona } from '@/lib/chat';
+import { buildNewChatKey } from '@/lib/chatKeys';
+import { stageChatDraft } from '@/lib/chat-drafts';
+import { barHeight, clockFromMs } from '@/lib/voice-entry';
 import { moodScoreOf, moodStep, type MoodScore } from '@/lib/mood-scale';
 import {
   formatSleep,
@@ -360,13 +365,34 @@ function MoodCard({
 function GlowAiInput() {
   const { t } = useTranslation();
   const { left } = useGlowAiUsage();
+  const { canStartTalk } = useGlowAiGate();
   const open = () =>
     router.push({ pathname: '/(tabs)/chat/new-conversation', params: { from: '/(tabs)/home' } });
+  // A spoken question opens a new talk with the words as its first message, which sends at once.
+  const ask = useCallback((text: string) => {
+    const persona = getPersona();
+    router.push({
+      pathname: '/(tabs)/chat/[issueKey]',
+      params: {
+        issueKey: stageChatDraft(buildNewChatKey(persona.id), text),
+        from: '/(tabs)/home',
+        persona: persona.id,
+      },
+    });
+  }, []);
+  const voice = useVoiceAsk(ask);
+  const held = useRef(false);
+  const listen = () => {
+    if (canStartTalk()) void voice.start();
+  };
+  const busy = voice.state !== 'idle';
+
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={t('homeGlow.askGlow')}
       onPress={open}
+      disabled={busy}
       style={({ pressed }) => ({
         marginTop: 13,
         height: 60,
@@ -379,22 +405,78 @@ function GlowAiInput() {
         opacity: pressed ? 0.85 : 1,
       })}
     >
-      <View
-        style={{
-          width: 44,
-          height: 44,
-          borderRadius: 22,
-          backgroundColor: palette.lavender,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <Icon name="line/sparkle" size={22} color={palette.white} accent={palette.gold} />
-      </View>
-      <Text style={{ ...Type.bodyM, color: palette.textSubtle, flex: 1 }}>
-        {t('homeGlow.askGlow')}
-      </Text>
-      {left !== null && (
+      {voice.state === 'listening' ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('voiceAsk.cancel')}
+          onPress={voice.cancel}
+          hitSlop={4}
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: 22,
+            backgroundColor: palette.selected,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Icon name="arrow/close" size={20} color={palette.plum} />
+        </Pressable>
+      ) : (
+        <View
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: 22,
+            backgroundColor: palette.lavender,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Icon name="line/sparkle" size={22} color={palette.white} accent={palette.gold} />
+        </View>
+      )}
+      {voice.state === 'listening' ? (
+        // Listening (`useVoiceAsk`): the latest levels as bars and the elapsed time. It stops by itself after a pause.
+        <View
+          accessibilityLiveRegion="polite"
+          accessibilityLabel={t('voiceAsk.listening')}
+          style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 }}
+        >
+          <View style={{ flex: 1, height: 36, flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+            {voice.levels.map((level, i) => (
+              <View
+                key={i}
+                style={{
+                  width: 3,
+                  height: Math.max(4, barHeight(level) * 0.8),
+                  borderRadius: 2,
+                  backgroundColor: palette.plum,
+                  opacity: 0.35 + 0.65 * Math.min(1, level * 1.4),
+                }}
+              />
+            ))}
+          </View>
+          <Text style={{ ...Type.micro, color: palette.textMuted }}>
+            {clockFromMs(voice.durationMs)}
+          </Text>
+        </View>
+      ) : voice.state === 'transcribing' ? (
+        <View
+          accessibilityLiveRegion="polite"
+          style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }}
+        >
+          <ActivityIndicator size="small" color={palette.plum} />
+          <Text style={{ ...Type.bodyM, color: palette.textMuted }}>
+            {t('voiceAsk.transcribing')}
+          </Text>
+        </View>
+      ) : (
+        <Text style={{ ...Type.bodyM, color: palette.textSubtle, flex: 1 }}>
+          {t('homeGlow.askGlow')}
+        </Text>
+      )}
+      {!busy && left !== null && (
         <View
           style={{
             backgroundColor: palette.selected,
@@ -408,21 +490,55 @@ function GlowAiInput() {
           </Text>
         </View>
       )}
+      {/* Tap to talk, and it sends after a pause; or hold to talk and let go to send. */}
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={t('homeGlow.voice')}
-        onPress={open}
-        hitSlop={4}
-        style={{
-          width: 44,
-          height: 44,
-          borderRadius: 22,
-          backgroundColor: palette.plum,
-          alignItems: 'center',
-          justifyContent: 'center',
+        accessibilityLabel={voice.state === 'listening' ? t('voiceAsk.send') : t('homeGlow.voice')}
+        accessibilityHint={voice.state === 'idle' ? t('voiceAsk.hint') : undefined}
+        disabled={voice.state === 'transcribing'}
+        onPress={() => (voice.state === 'listening' ? voice.send() : listen())}
+        onLongPress={() => {
+          if (voice.state !== 'idle') return;
+          held.current = true;
+          listen();
         }}
+        onPressOut={() => {
+          if (!held.current) return;
+          held.current = false;
+          voice.send();
+        }}
+        delayLongPress={350}
+        hitSlop={4}
+        style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
       >
-        <Icon name="line/mic" size={20} color={palette.white} />
+        {voice.state === 'listening' && (
+          <Glow
+            color={palette.plum}
+            opacity={0.35}
+            width={44 + Math.round(16 * (voice.levels.at(-1) ?? 0))}
+            blur={10}
+            style={{ position: 'absolute' }}
+          />
+        )}
+        <View
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: 22,
+            backgroundColor: palette.plum,
+            alignItems: 'center',
+            justifyContent: 'center',
+            opacity: voice.state === 'transcribing' ? 0.5 : 1,
+          }}
+        >
+          {voice.state === 'listening' ? (
+            <View
+              style={{ width: 14, height: 14, borderRadius: 3, backgroundColor: palette.white }}
+            />
+          ) : (
+            <Icon name="line/mic" size={20} color={palette.white} />
+          )}
+        </View>
       </Pressable>
     </Pressable>
   );

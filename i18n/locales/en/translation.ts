@@ -847,8 +847,10 @@ export default {
     },
     emptyTitle: 'Nothing here yet',
     emptyBody: 'We couldn’t find “{{query}}”. Try another word,\nor ask Glow AI in your own words.',
+    emptyFiltered: 'Nothing matches these filters yet. Try fewer filters, or a longer time range.',
     try: { sleep: 'sleep', anxiety: 'anxiety', breathing: 'breathing', focus: 'focus' },
     filter: {
+      done: 'Done',
       title: 'Filter results',
       reset: 'Reset',
       show: 'Show',
@@ -1232,6 +1234,15 @@ export default {
       people: { label: 'Who I can reach out to', hint: 'You don’t have to handle it alone.', placeholder: 'Add a person' },
       notes: { label: 'Notes', placeholder: 'Music, places, reminders, anything else that helps' },
     },
+  },
+  voiceAsk: {
+    listening: 'Listening… it sends when you pause',
+    transcribing: 'Getting your words…',
+    cancel: 'Cancel',
+    send: 'Send your question',
+    hint: 'Tap to talk, or hold to talk and let go to send',
+    nothingHeard: 'I didn’t catch that. Try again a little closer to the mic.',
+    failed: 'We couldn’t hear that clearly. Please try again.',
   },
   moodHome: {
     title: 'Mood',

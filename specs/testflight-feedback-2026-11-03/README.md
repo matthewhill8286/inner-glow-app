@@ -17,7 +17,7 @@ Reviewed against main `89dfc04`, released as Build 27, with fixes in `97c7d7b`. 
 | [07 — Align sleep icon and wind-down list with the approved design](issues/07-sleep-winddown-design.md) | P2 | Outstanding — design comparison required | 6, 7 |
 | [08 — Repair breathing player rewind and forward controls](issues/08-practice-transport.md) | P2 | Outstanding — reproduce | 8 |
 | [09 — Render the practice goal ring correctly at zero](issues/09-practice-progress-ring.md) | P2 | Outstanding | 9 |
-| [10 — Align Home score and header icons](issues/10-home-alignment.md) | P2 | Partial — icon sizes aligned; score centring still outstanding | 10, 12 |
+| [10 — Align Home score and header icons](issues/10-home-alignment.md) | P2 | Implemented — icons aligned and score centred; device retest required | 10, 12 |
 | [11 — Return from Ask Glow to Home](issues/11-home-ai-return.md) | P2 | Implemented locally — awaiting device verification | 11 |
 | [12 — Match the Glow AI composer design](issues/12-chat-composer-design.md) | P2 | Outstanding — design comparison required | 13 |
 | [13 — Save the Home mood slider inline](issues/13-home-inline-mood.md) | P2 | Implemented locally — awaiting device verification | 14 |
