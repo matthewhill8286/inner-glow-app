@@ -110,10 +110,13 @@ export function hypnogram(
   if (!(end > start)) return null;
   const x = (ms: number) => ((ms - start) / (end - start)) * width;
   const f = (n: number) => n.toFixed(2);
+  // Stages under eight minutes (a brief wake, a short REM blip) would draw needle-thin spikes.
+  const long = stages.filter((st) => Date.parse(st.endISO) - Date.parse(st.startISO) >= 8 * 60_000);
+  const shown = long.length ? long : stages;
   const points = [
-    { x: 0, y: LEVEL[stages[0].stage] },
-    ...stages.map((st) => ({ x: x((Date.parse(st.startISO) + Date.parse(st.endISO)) / 2), y: LEVEL[st.stage] })),
-    { x: width, y: LEVEL[stages[stages.length - 1].stage] },
+    { x: 0, y: LEVEL[shown[0].stage] },
+    ...shown.map((st) => ({ x: x((Date.parse(st.startISO) + Date.parse(st.endISO)) / 2), y: LEVEL[st.stage] })),
+    { x: width, y: LEVEL[shown[shown.length - 1].stage] },
   ];
   let d = `M0,${points[0].y}`;
   for (let i = 1; i < points.length - 1; i++) {

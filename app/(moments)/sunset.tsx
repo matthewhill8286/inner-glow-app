@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Pressable, Text, View, useWindowDimensions } from 'react-native';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -13,7 +13,7 @@ import { MomentShell, closeMoment } from '@/components/moments/MomentShell';
 import { toast } from '@/components/Toast';
 import { PRACTICES, practiceById } from '@/data/practices';
 import { openPractice } from '@/lib/practice-routes';
-import { scheduleNotification } from '@/lib/notifications';
+import { loadReminderSettings, scheduleNotification } from '@/lib/notifications';
 import { clockFrom } from '@/lib/sleep-home';
 
 /**
@@ -24,7 +24,13 @@ export default function SunsetMoment() {
   const { t } = useTranslation();
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const now = useMemo(() => new Date(), []);
+  // The reminder's own time, as in Figma ("19:00"), not the moment the screen opened.
+  const [time, setTime] = useState<{ hour: number; minute: number } | null>(null);
+  useEffect(() => {
+    loadReminderSettings()
+      .then((r) => setTime({ hour: r.stress_alert.hour, minute: r.stress_alert.minute }))
+      .catch(() => {});
+  }, []);
   const practice = practiceById('grounding') ?? PRACTICES.find((p) => p.category === 'mindfulness') ?? PRACTICES[0];
   // Figma 6628:2822 offers the 10-minute grounding; other practices fall back to their default length.
   const minutes = practice.durations?.includes(10) ? 10 : (practice.defaultDuration ?? practice.listMinutes);
@@ -92,7 +98,7 @@ export default function SunsetMoment() {
       link={{ label: t('moments.sunset.snooze'), onPress: () => void snooze() }}
     >
       <View style={{ alignItems: 'center', minHeight: horizon - insets.top - 74 + 59 }}>
-        <Text style={[Type.bodyStrong, { color: palette.plumDeep, marginTop: 52 }]}>{clockFrom(now.getHours(), now.getMinutes())}</Text>
+        <Text style={[Type.bodyStrong, { color: palette.plumDeep, marginTop: 52 }]}>{time ? clockFrom(time.hour, time.minute) : ' '}</Text>
         <Text accessibilityRole="header" style={[Type.display, { fontSize: 32, lineHeight: 38, color: palette.plumDeep, marginTop: 5, textAlign: 'center' }]}>
           {t('moments.sunset.title')}
         </Text>
