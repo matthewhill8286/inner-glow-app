@@ -1,9 +1,10 @@
-import { Typography } from '@/constants/typography';
 import React, { useEffect, useRef } from 'react';
-import { Animated, Text, StyleSheet, Pressable, View } from 'react-native';
+import { Animated, Pressable, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import MaterialIcons from '@/components/AppIcon';
+import Svg, { Circle, Path } from 'react-native-svg';
 import { create } from 'zustand';
+import { palette } from '@/constants/theme';
+import { Type } from '@/constants/typography';
 
 /* ── Types ───────────────────────────────────────── */
 
@@ -48,17 +49,58 @@ export const toast = {
   warning: (msg: string, ms?: number) => useToast.getState().show(msg, 'warning', ms ?? 3000),
 };
 
-/* ── Config per variant ──────────────────────────── */
+/* ── Look ────────────────────────────────────────── */
 
-const VARIANT_CONFIG: Record<
-  ToastVariant,
-  { bg: string; fg: string; icon: string; border: string }
-> = {
-  success: { bg: '#F0F9F4', fg: '#2D6A4F', icon: 'check-circle', border: '#C8E6D0' },
-  error: { bg: '#FEF2F2', fg: '#B91C1C', icon: 'error', border: '#FECACA' },
-  info: { bg: '#EFF6FF', fg: '#1D4ED8', icon: 'info', border: '#BFDBFE' },
-  warning: { bg: '#FFFBEB', fg: '#B45309', icon: 'warning', border: '#FDE68A' },
+/**
+ * Toast (`6839:8191` "Feedback sent", `6787:6370` "Saved to favourites"): an ink `#241A2E` pill with a
+ * white 16 line icon, 10 gap and Medium 14 white text, padding 12–14/16. Short messages are a pill;
+ * longer ones wrap to two lines on a radius 20 card. It sits centred near the bottom, above the tab
+ * bar. The variant only changes the icon, and its colour for errors and warnings, so every toast
+ * stays one calm design.
+ */
+const ICON_COLOR: Record<ToastVariant, string> = {
+  success: palette.white,
+  info: palette.white,
+  warning: palette.mustard,
+  error: palette.rose,
 };
+
+function ToastIcon({ variant }: { variant: ToastVariant }) {
+  const color = ICON_COLOR[variant];
+  const line = {
+    stroke: color,
+    strokeWidth: 1.6,
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
+    fill: 'none',
+  };
+  return (
+    <Svg width={16} height={16} viewBox="0 0 18 18">
+      {variant === 'success' ? (
+        <Path d="M3.5 9.5 7 13l7.5-8" {...line} />
+      ) : (
+        <>
+          <Circle cx={9} cy={9} r={7.2} {...line} />
+          {variant === 'info' ? (
+            <>
+              <Path d="M9 8.2v4.3" {...line} />
+              <Circle cx={9} cy={5.6} r={0.9} fill={color} />
+            </>
+          ) : (
+            <>
+              <Path d="M9 5.2v4.4" {...line} />
+              <Circle cx={9} cy={12.4} r={0.9} fill={color} />
+            </>
+          )}
+        </>
+      )}
+    </Svg>
+  );
+}
+
+/** Messages up to this length fit on one line, so they get the pill shape. */
+const PILL_CHARS = 34;
+const HIDDEN_Y = 24;
 
 /* ── Component ───────────────────────────────────── */
 
@@ -67,151 +109,82 @@ export function ToastContainer() {
   const data = useToast((s) => s.toast);
   const hide = useToast((s) => s.hide);
 
-  const translateY = useRef(new Animated.Value(-100)).current;
+  const translateY = useRef(new Animated.Value(HIDDEN_Y)).current;
   const opacity = useRef(new Animated.Value(0)).current;
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const currentId = useRef<string | null>(null);
 
-  useEffect(() => {
-    if (!data) return;
-
-    // If same toast, skip
-    if (currentId.current === data.id) return;
-    currentId.current = data.id;
-
-    // Clear previous timer
+  const dismiss = (duration = 220) => {
     if (timerRef.current) clearTimeout(timerRef.current);
-
-    // Animate in
     Animated.parallel([
-      Animated.spring(translateY, {
-        toValue: 0,
-        useNativeDriver: true,
-        tension: 80,
-        friction: 12,
-      }),
-      Animated.timing(opacity, {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: true,
-      }),
+      Animated.timing(translateY, { toValue: HIDDEN_Y, duration, useNativeDriver: true }),
+      Animated.timing(opacity, { toValue: 0, duration, useNativeDriver: true }),
+    ]).start(() => {
+      hide();
+      currentId.current = null;
+    });
+  };
+
+  useEffect(() => {
+    if (!data || currentId.current === data.id) return;
+    currentId.current = data.id;
+    if (timerRef.current) clearTimeout(timerRef.current);
+    translateY.setValue(HIDDEN_Y);
+    Animated.parallel([
+      Animated.spring(translateY, { toValue: 0, useNativeDriver: true, tension: 90, friction: 12 }),
+      Animated.timing(opacity, { toValue: 1, duration: 180, useNativeDriver: true }),
     ]).start();
-
-    // Auto-dismiss
-    timerRef.current = setTimeout(() => {
-      Animated.parallel([
-        Animated.timing(translateY, {
-          toValue: -100,
-          duration: 250,
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacity, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        hide();
-        currentId.current = null;
-      });
-    }, data.duration);
-
+    timerRef.current = setTimeout(() => dismiss(), data.duration);
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data?.id]);
 
   if (!data) return null;
-
-  const cfg = VARIANT_CONFIG[data.variant];
+  const pill = data.message.length <= PILL_CHARS;
 
   return (
     <Animated.View
-      style={[
-        s.wrapper,
-        {
-          top: insets.top + 8,
-          transform: [{ translateY }],
-          opacity,
-        },
-      ]}
       pointerEvents="box-none"
+      style={{
+        position: 'absolute',
+        left: 24,
+        right: 24,
+        // Above the tab bar and the home indicator, where the frames place it.
+        bottom: insets.bottom + 96,
+        zIndex: 9999,
+        alignItems: 'center',
+        transform: [{ translateY }],
+        opacity,
+      }}
     >
       <Pressable
-        onPress={() => {
-          if (timerRef.current) clearTimeout(timerRef.current);
-          Animated.parallel([
-            Animated.timing(translateY, {
-              toValue: -100,
-              duration: 200,
-              useNativeDriver: true,
-            }),
-            Animated.timing(opacity, {
-              toValue: 0,
-              duration: 150,
-              useNativeDriver: true,
-            }),
-          ]).start(() => {
-            hide();
-            currentId.current = null;
-          });
+        accessibilityRole="alert"
+        accessibilityLiveRegion="polite"
+        accessibilityLabel={data.message}
+        accessibilityHint="Double tap to dismiss"
+        onPress={() => dismiss(160)}
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 10,
+          maxWidth: '100%',
+          paddingVertical: pill ? 12 : 14,
+          paddingHorizontal: 16,
+          borderRadius: pill ? 999 : 20,
+          backgroundColor: palette.ink,
+          boxShadow: '0px 8px 24px rgba(36,26,46,0.18)',
         }}
-        style={[
-          s.card,
-          {
-            backgroundColor: cfg.bg,
-            borderColor: cfg.border,
-          },
-        ]}
       >
-        <View style={[s.iconWrap, { backgroundColor: cfg.fg + '14' }]}>
-          <MaterialIcons name={cfg.icon as any} size={18} color={cfg.fg} />
-        </View>
-        <Text style={[s.message, { color: cfg.fg }]} numberOfLines={2}>
+        <ToastIcon variant={data.variant} />
+        <Text
+          numberOfLines={2}
+          style={[Type.bodySMedium, { flexShrink: 1, lineHeight: 18, color: palette.white }]}
+        >
           {data.message}
         </Text>
       </Pressable>
     </Animated.View>
   );
 }
-
-/* ── Styles ──────────────────────────────────────── */
-
-const s = StyleSheet.create({
-  wrapper: {
-    position: 'absolute',
-    left: 20,
-    right: 20,
-    zIndex: 9999,
-    alignItems: 'center',
-  },
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: '100%',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    gap: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-  iconWrap: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  message: {
-    fontFamily: Typography.family.body,
-    flex: 1,
-    fontSize: 14,
-    fontWeight: Typography.weight.semibold,
-    lineHeight: 19,
-  },
-});
