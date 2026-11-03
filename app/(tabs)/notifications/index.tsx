@@ -107,12 +107,12 @@ export default function NotificationsScreen() {
       />
       <ScrollView contentContainerStyle={{ paddingTop: insets.top + 7, paddingHorizontal: 24, paddingBottom: bottom }} showsVerticalScrollIndicator={false}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <IconButton size={50} accessibilityLabel={t('common.back')} onPress={() => backTo(undefined, '/(tabs)/home')} />
+          <IconButton variant="nav" accessibilityLabel={t('common.back')} onPress={() => backTo(undefined, '/(tabs)/home')} />
           <IconButton
-            size={50}
+            size={44}
             variant="solid"
             icon="line/settings"
-            iconSize={22}
+            iconSize={20}
             accessibilityLabel={t('notificationFeed.settings')}
             onPress={() => router.push('/(tabs)/profile/notifications')}
           />

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { StatusBar } from 'expo-status-bar';
+import { ScreenStatusBar } from '@/components/ui/ScreenStatusBar';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -187,7 +187,7 @@ export default function SearchScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: palette.bg }}>
-      <StatusBar style="dark" />
+      <ScreenStatusBar style="dark" />
       {mode === 'empty' && (
         <GlowField
           glows={[

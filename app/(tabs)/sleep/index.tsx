@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { StatusBar } from 'expo-status-bar';
+import { ScreenStatusBar } from '@/components/ui/ScreenStatusBar';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
@@ -61,7 +61,7 @@ export default function SleepScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: palette.bg }}>
-      <StatusBar style="light" />
+      <ScreenStatusBar style="light" />
       <GlowField
         glows={[
           { color: palette.lavenderSoft, opacity: 0.3, x: -50, y: -20, width: 280, blur: 80 },

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, ScrollView, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { StatusBar } from 'expo-status-bar';
+import { ScreenStatusBar } from '@/components/ui/ScreenStatusBar';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { palette } from '@/constants/theme';
@@ -21,7 +21,7 @@ export function closeMoment() {
 /**
  * Moment chrome (03 §3.2): full screen with no tab bar, glows behind, a close button top right,
  * then a primary button, an optional outlined button and a text link pinned at the bottom.
- * `dark` is the night look (white close at 12 %, light button, white link).
+ * `dark` is the night look (light button, white link); the close button is white on every moment.
  */
 export function MomentShell({
   glows = [],
@@ -47,13 +47,11 @@ export function MomentShell({
   const insets = useSafeAreaInsets();
   return (
     <View style={{ flex: 1, backgroundColor: dark ? palette.ink : palette.bg }}>
-      <StatusBar style={dark ? 'light' : 'dark'} />
+      <ScreenStatusBar style={dark ? 'light' : 'dark'} />
       {background}
       <GlowField glows={glows.map((g) => ({ ...g, y: g.y + insets.top - 44 }))} />
       <IconButton
-        size={44}
-        variant="glass"
-        tone={dark ? 'white' : 'plum'}
+        variant="nav"
         icon="arrow/close"
         accessibilityLabel={t('common.close')}
         onPress={closeMoment}

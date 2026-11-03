@@ -47,7 +47,7 @@ export default function NightMoment() {
       background={
         <View pointerEvents="none" style={{ position: 'absolute', inset: 0 }}>
           <StarField width={width} height={height * 0.6} style={{ position: 'absolute' }} />
-          <Moon size={72} style={{ position: 'absolute', right: 48, top: 110 }} />
+          <Moon size={90} style={{ position: 'absolute', right: 49, top: 90 }} />
         </View>
       }
       glows={[{ color: palette.lavenderSoft, opacity: 0.35, x: 150, y: 40, width: 260, blur: 80 }]}
@@ -55,7 +55,7 @@ export default function NightMoment() {
       link={{ label: t('moments.notNow'), onPress: closeMoment }}
     >
       <Eyebrow dark text={t('moments.night.eyebrow', { from: formatClock(night.startMs), to: formatClock(night.endMs) })} style={{ marginTop: 100 }} />
-      <Text accessibilityRole="header" style={[Type.display, { fontSize: 56, lineHeight: 66, color: palette.white, marginTop: 2 }]}>
+      <Text accessibilityRole="header" style={[Type.display, { fontSize: 56, lineHeight: 66, fontWeight: '400', color: palette.white, marginTop: 2 }]}>
         {formatDuration(night.asleepMinutes)}
       </Text>
       {best && (
@@ -74,7 +74,6 @@ export default function NightMoment() {
             </LinearGradient>
           </Defs>
           <Path d={curve.area} fill="url(#nightArea)" />
-          {chart && <Path d={chart.line} stroke={palette.mustard} strokeOpacity={0.8} strokeWidth={1.5} fill="none" />}
         </Svg>
       </View>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 }}>

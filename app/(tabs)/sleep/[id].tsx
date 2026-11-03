@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { StatusBar } from 'expo-status-bar';
+import { ScreenStatusBar } from '@/components/ui/ScreenStatusBar';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import Svg, { Circle, Defs, LinearGradient, Path, Rect, Stop, Text as SvgText } from 'react-native-svg';
@@ -85,7 +85,7 @@ export default function LastNightScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: palette.bg }}>
-      <StatusBar style="light" />
+      <ScreenStatusBar style="light" />
       <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 24 }} bounces={false}>
         <View style={{ height: blockH, backgroundColor: palette.ink, overflow: 'hidden' }}>
           <StarField width={width} height={blockH} style={{ position: 'absolute', top: 0 }} />

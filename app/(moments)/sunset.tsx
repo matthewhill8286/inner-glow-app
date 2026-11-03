@@ -1,10 +1,10 @@
 import React, { useMemo } from 'react';
-import { Text, View, useWindowDimensions } from 'react-native';
+import { Pressable, Text, View, useWindowDimensions } from 'react-native';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Notifications from 'expo-notifications';
-import Svg, { Defs, Ellipse, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
+import Svg, { Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 import { palette } from '@/constants/theme';
 import { Type } from '@/constants/typography';
 import { Glow } from '@/components/glow/Glow';
@@ -26,8 +26,8 @@ export default function SunsetMoment() {
   const insets = useSafeAreaInsets();
   const now = useMemo(() => new Date(), []);
   const practice = practiceById('grounding') ?? PRACTICES.find((p) => p.category === 'mindfulness') ?? PRACTICES[0];
-  const minutes = practice.defaultDuration ?? practice.listMinutes;
-  const voice = practice.options.voice;
+  // Figma 6628:2822 offers the 10-minute grounding; other practices fall back to their default length.
+  const minutes = practice.durations?.includes(10) ? 10 : (practice.defaultDuration ?? practice.listMinutes);
 
   const snooze = async () => {
     try {
@@ -42,9 +42,10 @@ export default function SunsetMoment() {
     }
   };
 
-  // The scene sits on the horizon at 470 in the 375 frame.
-  const horizon = insets.top - 44 + 470;
+  // The scene sits on the horizon at 467 in the 375 frame (Figma 6628:2822).
+  const horizon = insets.top - 44 + 467;
   const cx = width / 2;
+  const sx = width / 375;
   return (
     <MomentShell
       background={
@@ -60,7 +61,7 @@ export default function SunsetMoment() {
             </Defs>
             <Rect x={0} y={0} width={width} height={height} fill="url(#dusk)" />
           </Svg>
-          <Glow color={palette.mustard} opacity={0.55} width={260} blur={60} style={{ position: 'absolute', left: cx - 130, top: horizon - 130 }} />
+          <Glow color={palette.mustard} opacity={0.55} width={260} blur={60} style={{ position: 'absolute', left: cx - 130, top: horizon - 147 }} />
           <Svg width={width} height={height} style={{ position: 'absolute' }}>
             <Defs>
               <LinearGradient id="sun" x1="0" y1="0" x2="0" y2="1">
@@ -73,35 +74,41 @@ export default function SunsetMoment() {
               [120, 0.35],
               [90, 0.5],
             ].map(([r, o]) => (
-              <Path key={r} d={`M${cx - r},${horizon} A${r},${r * 0.55} 0 0 1 ${cx + r},${horizon}`} stroke={palette.white} strokeOpacity={o} strokeWidth={1.5} fill="none" />
+              <Path key={r} d={`M${cx - r},${horizon} A${r},${r} 0 0 1 ${cx + r},${horizon}`} stroke={palette.white} strokeOpacity={o} strokeWidth={1.5} fill="none" />
             ))}
             <Path d={`M${cx - 70},${horizon} A70,70 0 0 1 ${cx + 70},${horizon} Z`} fill="url(#sun)" />
-            <Rect x={0} y={horizon} width={width} height={2} fill={palette.plum} fillOpacity={0.35} />
-            {[0, 1, 2].map((i) => (
-              <Ellipse key={i} cx={cx} cy={horizon + 12 + i * 10} rx={50 - i * 14} ry={1} fill={palette.mustard} fillOpacity={0.5} />
+            <Rect x={0} y={horizon - 1} width={width} height={2} fill={palette.plum} />
+            {[
+              [40, 80],
+              [150, 120],
+              [290, 60],
+            ].map(([x, w]) => (
+              <Rect key={x} x={x * sx} y={horizon + 13} width={w * sx} height={2} rx={1} fill={palette.mustard} />
             ))}
           </Svg>
         </View>
       }
-      cta={{ label: t('moments.sunset.start'), onPress: () => { closeMoment(); openPractice(practice); } }}
-      secondary={{ label: t('moments.sunset.snooze'), onPress: () => void snooze() }}
-      link={{ label: t('moments.sunset.change'), onPress: () => router.replace('/(tabs)/profile/notifications') }}
+      cta={{ label: t('moments.sunset.start'), onPress: () => { closeMoment(); openPractice(practice, minutes); } }}
+      link={{ label: t('moments.sunset.snooze'), onPress: () => void snooze() }}
     >
-      <View style={{ alignItems: 'center', minHeight: horizon - insets.top - 74 + 70 }}>
-        <Text style={[Type.bodyStrong, { letterSpacing: 0.96, color: palette.plumDeep, marginTop: 8 }]}>{clockFrom(now.getHours(), now.getMinutes())}</Text>
-        <Text accessibilityRole="header" style={[Type.display, { fontSize: 32, lineHeight: 38, color: palette.plumDeep, marginTop: 4, textAlign: 'center' }]}>
+      <View style={{ alignItems: 'center', minHeight: horizon - insets.top - 74 + 59 }}>
+        <Text style={[Type.bodyStrong, { color: palette.plumDeep, marginTop: 52 }]}>{clockFrom(now.getHours(), now.getMinutes())}</Text>
+        <Text accessibilityRole="header" style={[Type.display, { fontSize: 32, lineHeight: 38, color: palette.plumDeep, marginTop: 5, textAlign: 'center' }]}>
           {t('moments.sunset.title')}
         </Text>
-        <Text style={[Type.body, { fontWeight: '400', lineHeight: 22, color: palette.textMuted, marginTop: 10, textAlign: 'center', maxWidth: 287 }]}>
+        <Text style={[Type.bodyM, { lineHeight: 20, color: palette.textMuted, marginTop: 5, textAlign: 'center', maxWidth: 287 }]}>
           {t('moments.sunset.body', { minutes })}
         </Text>
       </View>
-      <View style={{ alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(255,255,255,0.85)', borderRadius: 999, paddingVertical: 8, paddingLeft: 12, paddingRight: 14, marginTop: 8 }}>
+      <View style={{ alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: palette.white, borderRadius: 999, paddingVertical: 8, paddingLeft: 12, paddingRight: 14 }}>
         <Icon name="line/meditate" size={16} color={palette.plum} />
         <Text style={[Type.chipSelected, { color: palette.ink }]}>
-          {t(voice ? 'moments.sunset.chipVoice' : 'moments.sunset.chip', { practice: t(`practices.items.${practice.id}.title`), minutes })}
+          {t('moments.sunset.chip', { practice: t(`practices.items.${practice.id}.title`), minutes })}
         </Text>
       </View>
+      <Pressable accessibilityRole="button" onPress={() => router.replace('/(tabs)/profile/notifications')} hitSlop={8} style={{ alignSelf: 'center', marginTop: 16, minHeight: 36, justifyContent: 'center' }}>
+        <Text style={[Type.buttonS, { color: palette.lavender }]}>{t('moments.sunset.change')}</Text>
+      </Pressable>
     </MomentShell>
   );
 }

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { StatusBar } from 'expo-status-bar';
+import { ScreenStatusBar } from '@/components/ui/ScreenStatusBar';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { palette } from '@/constants/theme';
@@ -80,7 +80,7 @@ export default function WindDownScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: palette.ink }}>
-      <StatusBar style="light" />
+      <ScreenStatusBar style="light" />
       <GlowField glows={[{ color: palette.lavender, opacity: 0.35, x: 37.5, y: 100, width: 300, blur: 80 }]} />
       <StarField width={width} height={540} style={{ position: 'absolute', top: 0 }} />
       <NavBar

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, PanResponder, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { StatusBar } from 'expo-status-bar';
+import { ScreenStatusBar } from '@/components/ui/ScreenStatusBar';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { palette } from '@/constants/theme';
@@ -68,7 +68,7 @@ export default function SleepModeScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: palette.ink }}>
-      <StatusBar style="light" />
+      <ScreenStatusBar style="light" />
       <StarField width={width} height={740} style={{ position: 'absolute', top: 0 }} />
       <GlowField glows={[{ color: palette.lavenderSoft, opacity: 0.3, x: 57.5, y: 170, width: 260, blur: 70 }]} />
       <View style={{ flex: 1, alignItems: 'center', paddingTop: insets.top + 208 }}>

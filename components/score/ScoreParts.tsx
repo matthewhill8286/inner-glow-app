@@ -11,7 +11,7 @@ import Animated, {
 import { palette } from '@/constants/theme';
 import { Type } from '@/constants/typography';
 import { GlowField, type GlowSpec } from '@/components/glow/Glow';
-import { IconButton, TitlePill } from '@/components/ui/IconButton';
+import { IconButton } from '@/components/ui/IconButton';
 import { Icon, type IconName } from '@/components/icons/Icon';
 import { screenBottomPadding } from '@/lib/screen-layout';
 import { useTranslation } from 'react-i18next';
@@ -123,10 +123,12 @@ export function ScoreNav({
   backIcon?: IconName;
 }) {
   return (
-    <View style={{ height: 50, flexDirection: 'row', alignItems: 'center' }}>
-      <IconButton size={50} icon={backIcon} accessibilityLabel={backLabel} onPress={onBack} />
-      <View style={{ flex: 1, alignItems: 'center' }}>{label ? <TitlePill label={label} /> : null}</View>
-      <View style={{ width: 50, alignItems: 'flex-end' }}>{trailing}</View>
+    <View style={{ height: 44, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+      <IconButton variant="nav" icon={backIcon} accessibilityLabel={backLabel} onPress={onBack} />
+      <Text accessibilityRole="header" numberOfLines={1} style={[Type.bodyMSemi, { flex: 1, textAlign: 'center', color: palette.plumDeep }]}>
+        {label}
+      </Text>
+      <View style={{ width: 44, alignItems: 'flex-end' }}>{trailing}</View>
     </View>
   );
 }

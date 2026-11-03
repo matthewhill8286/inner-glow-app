@@ -82,7 +82,7 @@ export default function JournalMoment() {
       link={writtenToday ? undefined : { label: t('moments.journal.remind', { time: `${REMIND_HOUR}:00` }), onPress: () => void remind() }}
     >
       <Eyebrow text={now.toLocaleDateString(i18n.language, { month: 'long' })} />
-      <Text accessibilityRole="header" style={[Type.display, { color: palette.plumDeep, marginTop: 4 }]}>
+      <Text accessibilityRole="header" style={[Type.display, { fontWeight: '400', color: palette.plumDeep, marginTop: 4 }]}>
         {t('moments.journal.count', { written: written.size, days })}
       </Text>
 

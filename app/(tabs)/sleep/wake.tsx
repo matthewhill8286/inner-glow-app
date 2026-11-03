@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Notifications from 'expo-notifications';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { StatusBar } from 'expo-status-bar';
+import { ScreenStatusBar } from '@/components/ui/ScreenStatusBar';
 import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
 import { palette } from '@/constants/theme';
 import { Type } from '@/constants/typography';
@@ -82,7 +82,7 @@ export default function WakeUpScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: palette.bg }}>
-      <StatusBar style="dark" />
+      <ScreenStatusBar style="dark" />
       <GlowField
         glows={[
           { color: palette.lavenderSoft, opacity: 0.22, x: -40, y: -60, width: 260, blur: 90 },

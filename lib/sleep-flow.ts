@@ -95,8 +95,9 @@ export type StageKind = 'awake' | 'rem' | 'light' | 'deep';
 const LEVEL: Record<StageKind, number> = { awake: 24, rem: 48, light: 72, deep: 96 };
 
 /**
- * Hypnogram (06 §4.5): each stage held flat for its real time, with a 6pt smooth step between
- * stages. Returns the line path and the area path (closed down to `height`).
+ * Hypnogram (Figma `6716:4411`): one point at the middle of each stage, at that stage's depth,
+ * joined by a smooth curve with flat tangents, so the night reads as gentle waves rather than
+ * steps. Returns the line path and the area path (closed down to `height`).
  */
 export function hypnogram(
   stages: { stage: StageKind; startISO: string; endISO: string }[],
@@ -107,19 +108,21 @@ export function hypnogram(
   const start = Date.parse(stages[0].startISO);
   const end = Date.parse(stages[stages.length - 1].endISO);
   if (!(end > start)) return null;
-  const x = (iso: string) => ((Date.parse(iso) - start) / (end - start)) * width;
+  const x = (ms: number) => ((ms - start) / (end - start)) * width;
   const f = (n: number) => n.toFixed(2);
-  let d = `M0,${LEVEL[stages[0].stage]}`;
-  for (let i = 1; i < stages.length; i++) {
-    const t = x(stages[i].startISO);
-    const y0 = LEVEL[stages[i - 1].stage];
-    const y1 = LEVEL[stages[i].stage];
-    if (y0 === y1) continue;
-    const a = Math.max(0, t - 3);
-    const b = Math.min(width, t + 3);
-    d += ` L${f(a)},${y0} C${f(t)},${y0} ${f(t)},${y1} ${f(b)},${y1}`;
+  const points = [
+    { x: 0, y: LEVEL[stages[0].stage] },
+    ...stages.map((st) => ({ x: x((Date.parse(st.startISO) + Date.parse(st.endISO)) / 2), y: LEVEL[st.stage] })),
+    { x: width, y: LEVEL[stages[stages.length - 1].stage] },
+  ];
+  let d = `M0,${points[0].y}`;
+  for (let i = 1; i < points.length - 1; i++) {
+    const a = points[i - 1];
+    const b = points[i];
+    const mid = (a.x + b.x) / 2;
+    d += ` C${f(mid)},${a.y} ${f(mid)},${b.y} ${f(b.x)},${b.y}`;
   }
-  d += ` L${f(width)},${LEVEL[stages[stages.length - 1].stage]}`;
+  d += ` L${f(width)},${points[points.length - 1].y}`;
   return { line: d, area: `${d} L${f(width)},${height} L0,${height} Z`, startMs: start, endMs: end };
 }
 

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { StatusBar } from 'expo-status-bar';
+import { ScreenStatusBar } from '@/components/ui/ScreenStatusBar';
 import Svg, { Circle, G, Path } from 'react-native-svg';
 import { palette } from '@/constants/theme';
 import { Type } from '@/constants/typography';
@@ -153,7 +153,7 @@ export function UtilityState({
   const left = (width - 375) / 2;
   return (
     <View style={{ flex: 1, backgroundColor: palette.bg }}>
-      <StatusBar style="dark" />
+      <ScreenStatusBar style="dark" />
       <GlowField glows={GLOWS[kind].map((g) => ({ ...g, y: g.y + top }))} />
       <View pointerEvents="none" style={{ position: 'absolute', left, top, width: 375, height: 460 }}>
         {LIGHTS[kind].map((l, i) => (

@@ -53,7 +53,7 @@ test('goal share and swipe threshold', () => {
   assert.equal(s.swipeComplete(200, 270), false);
 });
 
-test('the hypnogram holds each stage flat and closes the area', () => {
+test('the hypnogram curves through each stage at its depth and closes the area', () => {
   const t = (h, m) => new Date(2026, 9, 27, h, m).toISOString();
   const stages = [
     { stage: 'light', startISO: t(23, 0), endISO: t(23, 30) },
@@ -63,6 +63,7 @@ test('the hypnogram holds each stage flat and closes the area', () => {
   const h = s.hypnogram(stages, 300);
   assert.ok(h.line.startsWith('M0,72'));
   assert.ok(h.line.endsWith('L300.00,48'));
+  assert.ok(h.line.includes(' 150.00,96') && h.line.includes(' 250.00,48'));
   assert.ok(h.area.endsWith('L300.00,112 L0,112 Z'));
   const mins = s.stageMinutes(stages);
   assert.equal(mins.deep, 30);
