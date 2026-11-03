@@ -118,6 +118,10 @@ These elements are missing:
 33. **Help Centre FAQ final copy** `6764:4845` **[app]**
     Replace the FAQ answers with the final copy from the frame, in English and Greek.
 
+39. **Full-screen video** (TestFlight report 45) **[app][native]**
+    A tester asked for a full-screen option in the Relax video player.
+    **Status: built on `feature/glow-ai-chat-elements`.** The card fills the window and rotates to landscape, with no native module. There is no Figma frame for it, so the control style follows the video card.
+
 ## Overlap with the TestFlight feedback on main
 
 `specs/testflight-feedback-2026-11-03/` (commit `77bd5fa`) has 25 issues from Build 26 and 27 testers. Most are fixes to screens that already exist, so they don't repeat the tasks above. Three of them touch these tasks:

@@ -519,7 +519,19 @@ function InnerGlowCard({
           style={{ position: 'absolute', left: 62, top: 74 }}
         />
         <AuraArt width={343} height={212} style={{ position: 'absolute', left: 0, top: 0 }} />
-        <View style={{ position: 'absolute', left: 0, width: 188, top: 62, alignItems: 'center' }}>
+        {/* The aura's rings and the gold glow centre on (94, 106), half the card's height, so the
+            number and label centre on the same point. */}
+        <View
+          style={{
+            position: 'absolute',
+            left: 0,
+            width: 188,
+            top: 0,
+            bottom: 0,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
           <Text style={{ ...Type.display, fontSize: 32, lineHeight: 38, color: palette.plumDeep }}>
             {score}
           </Text>

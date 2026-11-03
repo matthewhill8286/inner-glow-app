@@ -104,3 +104,13 @@ Tasks 02, 11, 13, 17 and 22 have local fixes pending iPhone verification. Task 1
 ## Native verification follow-up
 
 See the [3 November simulator verification record](verification.md). Video pause was reproduced and fixed at the native WebView command boundary. The authenticator screen was restyled and QR rendering checked. Current mood saving passed both a backend probe and native UI testing; the historical save error was not reproduced. Remaining design/asset and physical-device checks stay open.
+
+## Build 27 reports (swept 3 November 2026, 13:30 UTC)
+
+Three new screenshot reports arrived on Build 27 after the first sweep. No new crash reports were present.
+
+| Report | Time (UTC) | Comment | Disposition | Task |
+| --- | --- | --- | --- | --- |
+| 43 | 12:45 | "Send button doesn't work" on Message our team | Fixed on `feature/glow-ai-chat-elements`: the form needs 20 characters and gave no sign of it. A live hint now says how many more are needed. | [26](issues/26-support-message-minimum.md) |
+| 44 | 12:46 | "I need to make changes here" on the Help Centre | Fixed on `feature/glow-ai-chat-elements`: FAQ and Contact us are one screen, and the heading and tabs stay fixed while only the content changes. | [27](issues/27-help-centre-tabs.md) |
+| 45 | 13:13 | Relax video: the pause button never hides; consider full screen | Fixed on `feature/glow-ai-chat-elements`: the pause button fades 2.5 s after play starts and a tap brings it back, and a full-screen button turns the video to landscape without reloading it. | [28](issues/28-video-controls-fullscreen.md) |
