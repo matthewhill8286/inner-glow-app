@@ -10,6 +10,7 @@ import { palette } from '@/constants/theme';
 import { Type } from '@/constants/typography';
 import { queryKeys } from '@/lib/queryKeys';
 import { CategoryCard } from '@/components/practices/CategoryCard';
+import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { screenBottomPadding } from '@/lib/screen-layout';
 import { Glow, GlowField } from '@/components/glow/Glow';
 import { Icon } from '@/components/icons/Icon';
@@ -23,6 +24,7 @@ import { useMood } from '@/hooks/useMood';
 import { useProfile } from '@/hooks/useProfile';
 import { useSleep } from '@/hooks/useSleep';
 import { useSubscription } from '@/hooks/useSubscription';
+import { useGlowAiUsage } from '@/hooks/useGlowAi';
 import { moodScoreOf, moodStep, type MoodScore } from '@/lib/mood-scale';
 import {
   formatSleep,
@@ -90,15 +92,19 @@ export default function HomeScreen() {
           onEditToday={(id, score) => updateMoodCheckIn({ id, mood: moodStep(score).checkIn })}
         />
         <GlowAiInput />
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 28, paddingHorizontal: 6 }}>
-          <Text style={{ ...Type.headline, fontWeight: '500', color: palette.ink }}>{t('homeGlow.innerGlowToday')}</Text>
-          <IconButton
-            icon="line/more"
-            variant="glass"
-            size={40}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 28, marginBottom: 5, paddingHorizontal: 6 }}>
+          <Text style={{ ...Type.bodyLg, lineHeight: 20, color: palette.ink }}>{t('homeGlow.innerGlowToday')}</Text>
+          <Pressable
+            accessibilityRole="button"
             accessibilityLabel={t('homeGlow.scoreOptions')}
+            hitSlop={10}
             onPress={() => router.push('/(tabs)/freud-score')}
-          />
+            style={{ width: 24, height: 24, alignItems: 'center', justifyContent: 'center', gap: 3.8 }}
+          >
+            {[0, 1, 2].map((i) => (
+              <View key={i} style={{ width: 3.2, height: 3.2, borderRadius: 1.6, backgroundColor: palette.ink }} />
+            ))}
+          </Pressable>
         </View>
         <InnerGlowCard
           score={Math.round(currentScore.score)}
@@ -110,7 +116,28 @@ export default function HomeScreen() {
         <ForYouToday />
         {!hasFullAccess && <FreePlanCard />}
       </ScrollView>
+      <StatusBackdrop height={insets.top} />
     </View>
+  );
+}
+
+/**
+ * The canvas colour behind the status bar, fading out just below it, so the header and cards that
+ * scroll up never sit under the clock and battery.
+ */
+function StatusBackdrop({ height }: { height: number }) {
+  const fade = 16;
+  return (
+    <Svg pointerEvents="none" width="100%" height={height + fade} style={{ position: 'absolute', top: 0, left: 0, right: 0 }}>
+      <Defs>
+        <LinearGradient id="statusBackdrop" x1="0" y1="0" x2="0" y2="1">
+          <Stop offset="0" stopColor={palette.bg} stopOpacity={1} />
+          <Stop offset={String(height / (height + fade))} stopColor={palette.bg} stopOpacity={0.96} />
+          <Stop offset="1" stopColor={palette.bg} stopOpacity={0} />
+        </LinearGradient>
+      </Defs>
+      <Rect x={0} y={0} width="100%" height={height + fade} fill="url(#statusBackdrop)" />
+    </Svg>
   );
 }
 
@@ -157,8 +184,8 @@ function Header({ greeting, name, isPro }: { greeting: string; name: string; isP
           )}
         </View>
       </View>
-      <IconButton icon="line/search" variant="nav" accessibilityLabel={t('homeGlow.search')} onPress={() => router.push('/(tabs)/search')} />
-      <IconButton icon="line/bell" variant="nav" accessibilityLabel={t('homeGlow.notifications')} onPress={() => router.push('/(tabs)/notifications')} />
+      <IconButton icon="line/search" size={44} iconSize={20} accessibilityLabel={t('homeGlow.search')} onPress={() => router.push('/(tabs)/search')} />
+      <IconButton icon="line/bell" size={44} iconSize={24} accessibilityLabel={t('homeGlow.notifications')} onPress={() => router.push('/(tabs)/notifications')} />
     </View>
   );
 }
@@ -191,17 +218,17 @@ function MoodCard({
   };
 
   return (
-    <View style={{ backgroundColor: palette.surface, borderRadius: 28, padding: 20, paddingTop: 18, marginTop: 20 }}>
+    <View style={{ backgroundColor: palette.surface, borderRadius: 28, padding: 20, paddingTop: 18, paddingBottom: 13, marginTop: 20 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
         <Text style={{ ...Type.bodyStrong, color: palette.ink }}>{t('homeGlow.howAreYou')}</Text>
         <Text style={{ ...Type.caption, fontWeight: '500', color: palette.textSubtle }}>
           {new Intl.DateTimeFormat(locale, { weekday: 'short', day: 'numeric', month: 'short' }).format(new Date())}
         </Text>
       </View>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 11 }}>
         <Icon name={step.face} size={26} />
         <Text style={{ ...Type.titleMd, color: palette.plum }}>{t(`moodScale.${step.key}`)}</Text>
-        <Text style={{ ...Type.captionS, color: palette.textSubtle, marginLeft: 4, marginTop: 4 }}>{t('homeGlow.slideToAdjust')}</Text>
+        <Text style={{ ...Type.captionS, color: palette.textSubtle, marginTop: 4 }}>{t('homeGlow.slideToAdjust')}</Text>
       </View>
       <MoodSlider
         value={value}
@@ -220,6 +247,7 @@ function MoodCard({
 
 function GlowAiInput() {
   const { t } = useTranslation();
+  const { left } = useGlowAiUsage();
   const open = () => router.push('/(tabs)/chat/new-conversation');
   return (
     <Pressable
@@ -227,7 +255,7 @@ function GlowAiInput() {
       accessibilityLabel={t('homeGlow.askGlow')}
       onPress={open}
       style={({ pressed }) => ({
-        marginTop: 16,
+        marginTop: 13,
         height: 60,
         borderRadius: 30,
         backgroundColor: palette.surface,
@@ -242,7 +270,11 @@ function GlowAiInput() {
         <Icon name="line/sparkle" size={22} color={palette.white} accent={palette.gold} />
       </View>
       <Text style={{ ...Type.bodyM, color: palette.textSubtle, flex: 1 }}>{t('homeGlow.askGlow')}</Text>
-      {/* The weekly free-chat count ("3 left") needs the quota backend (t172), so it is not shown yet. */}
+      {left !== null && (
+        <View style={{ backgroundColor: palette.selected, borderRadius: 999, paddingVertical: 3, paddingHorizontal: 8 }}>
+          <Text style={{ ...Type.micro, fontWeight: '600', color: palette.plum }}>{t('homeGlow.chatsLeft', { count: left })}</Text>
+        </View>
+      )}
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={t('homeGlow.voice')}
@@ -351,12 +383,12 @@ function ForYouToday() {
   return (
     <View style={{ marginTop: 28 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', paddingHorizontal: 8 }}>
-        <Text style={{ ...Type.bodyStrong, color: palette.ink }}>{t('homeGlow.forYouToday')}</Text>
+        <Text style={{ ...Type.bodyStrong, lineHeight: 20, color: palette.ink }}>{t('homeGlow.forYouToday')}</Text>
         <Pressable accessibilityRole="link" hitSlop={8} onPress={() => router.push('/(tabs)/mindful')}>
-          <Text style={{ ...Type.label, fontSize: 13, color: palette.lavender }}>{t('homeGlow.allPractices')}</Text>
+          <Text style={{ ...Type.chipSelected, color: palette.lavender }}>{t('homeGlow.allPractices')}</Text>
         </Pressable>
       </View>
-      <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
+      <View style={{ flexDirection: 'row', gap: 9, marginTop: 13 }}>
         <CategoryCard
           kind="breathing"
           title={t('homeGlow.breathing')}
