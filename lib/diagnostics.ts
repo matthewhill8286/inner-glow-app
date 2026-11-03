@@ -7,7 +7,6 @@ const KEY = 'diagnostics:safe:v1';
 let queue: ReturnType<typeof safeDiagnostic>[] = [];
 let writing = Promise.resolve();
 let flushing = false;
-
 export function recordDiagnostic(
   event: DiagnosticEvent,
   code: DiagnosticCode = 'UNEXPECTED',
