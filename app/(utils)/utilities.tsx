@@ -7,6 +7,7 @@ import { router } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, UI } from '@/constants/theme';
 import MaterialIcons from '@/components/AppIcon';
+import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
 
 const SCREENS: { title: string; subtitle: string; path: string; icon: string; iconBg: string }[] = [
   {
@@ -107,7 +108,7 @@ export default function UtilitiesScreen() {
       </View>
 
       {/* Screen List */}
-      <ScrollView
+      <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE}
         contentContainerStyle={{
           paddingHorizontal: UI.spacing.xl,
           paddingTop: 8,

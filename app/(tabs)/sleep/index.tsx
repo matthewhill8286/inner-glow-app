@@ -27,6 +27,7 @@ import {
   weekBars,
   windDownClock,
 } from '@/lib/sleep-home';
+import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
 
 /** Figma frames include a 44pt status bar; hero positions below are measured from under it. */
 const FIGMA_STATUS = 44;
@@ -68,7 +69,7 @@ export default function SleepScreen() {
           { color: palette.sky, opacity: 0.22, x: 180, y: 60, width: 220, blur: 80 },
         ]}
       />
-      <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 120 }} showsVerticalScrollIndicator={false}>
+      <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE} contentContainerStyle={{ paddingBottom: insets.bottom + 120 }} showsVerticalScrollIndicator={false}>
         {/* ── Night hero ─────────────────────────────── */}
         <View
           style={{

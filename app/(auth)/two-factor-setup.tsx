@@ -23,6 +23,7 @@ import { router } from 'expo-router';
 import { supabase } from '@/supabase/supabase';
 import MaterialIcons from '@/components/AppIcon';
 import { toast } from '@/components/Toast';
+import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
 
 /* ── Authenticator app deep links ── */
 const AUTH_APPS = [
@@ -297,7 +298,7 @@ export default function TwoFactorSetup() {
 
   return (
     <View style={{ flex: 1, backgroundColor: C.pageBg }}>
-      <ScrollView
+      <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE}
         contentContainerStyle={{
           flexGrow: 1,
           paddingHorizontal: 24,

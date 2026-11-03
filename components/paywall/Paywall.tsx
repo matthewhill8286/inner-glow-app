@@ -9,6 +9,7 @@ import { LogoMark } from '@/components/brand/LogoMark';
 import { AppButton } from '@/components/ui/AppButton';
 import { IconButton } from '@/components/ui/IconButton';
 import type { PaywallPlan } from '@/lib/paywall';
+import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
 
 export type PaywallPlanCard = {
   name: string;
@@ -137,7 +138,7 @@ export function Paywall({
           { color: palette.lavenderSoft, opacity: 0.25, x: 160, y: 90, width: 200, blur: 80 },
         ]}
       />
-      <ScrollView
+      <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE}
         contentContainerStyle={{
           flexGrow: 1,
           paddingTop: insets.top + 52,

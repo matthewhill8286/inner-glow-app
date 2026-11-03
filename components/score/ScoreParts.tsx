@@ -16,6 +16,7 @@ import { Icon, type IconName } from '@/components/icons/Icon';
 import { screenBottomPadding } from '@/lib/screen-layout';
 import { useTranslation } from 'react-i18next';
 import { periodStart, ringPoint, signed, SCORE_PERIODS, type PlanCategory, type ScorePeriod } from '@/lib/glow-score';
+import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -156,7 +157,7 @@ export function ScoreScreen({
   return (
     <View style={{ flex: 1, backgroundColor: palette.bg }}>
       <GlowField glows={glows} />
-      <ScrollView
+      <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
           { paddingTop: insets.top + 7, paddingHorizontal: 24, paddingBottom: screenBottomPadding(insets.bottom, tabBar) },

@@ -25,6 +25,7 @@ import { useJournal } from '@/hooks/useJournal';
 import { journalDate, journalMoodScore, movedDate, needsCrisisSupport } from '@/lib/journal-entry';
 import { moodStep, type MoodScore } from '@/lib/mood-scale';
 import { backTo } from '@/lib/navigation';
+import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
 
 const TAG_KEYS = ['work', 'breathing', 'sleep', 'family', 'friends'] as const;
 
@@ -183,7 +184,7 @@ export default function WriteEntry() {
           }
         />
       </View>
-      <ScrollView
+      <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE}
         contentContainerStyle={{ paddingBottom: insets.bottom + 24, flexGrow: 1 }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}

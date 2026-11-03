@@ -12,6 +12,7 @@ import { ListGroup, ListRow } from '@/components/ui/ListRow';
 import { LegalNote } from '@/components/ui/controls';
 import { toast } from '@/components/Toast';
 import { useHealthSleep } from '@/hooks/useHealthSleep';
+import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
 
 /**
  * Connected apps (06 §P7). Only the platform health store ships; the Smart watch,
@@ -56,7 +57,7 @@ export default function ConnectedAppsScreen() {
           { color: palette.mustard, opacity: 0.15, x: 200, y: 40, width: 220, blur: 90 },
         ]}
       />
-      <ScrollView contentContainerStyle={{ paddingTop: insets.top + 10, paddingHorizontal: 24, paddingBottom: insets.bottom + 120 }}>
+      <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE} contentContainerStyle={{ paddingTop: insets.top + 10, paddingHorizontal: 24, paddingBottom: insets.bottom + 120 }}>
         <IconButton accessibilityLabel={t('connectedApps.back')} onPress={() => backTo(undefined, '/(tabs)/profile')} />
         <Text accessibilityRole="header" style={[Type.titleMd, { color: palette.ink, marginTop: 18, maxWidth: 310 }]}>
           {t('connectedApps.headline')}

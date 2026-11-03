@@ -17,6 +17,7 @@ import { VideoDetails } from '@/components/practices/VideoDetails';
 import { useFavouriteHeart } from '@/hooks/useFavouriteHeart';
 import { backTo } from '@/lib/navigation';
 import type { Pace } from '@/lib/practices';
+import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
 
 const ACCENT = {
   breathing: palette.sky,
@@ -204,7 +205,7 @@ function PracticeSetup({ practice, startDuration }: { practice: Practice; startD
         trailing={heart.button}
         style={{ marginTop: insets.top + 10, marginHorizontal: 24 }}
       />
-      <ScrollView
+      <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE}
         contentContainerStyle={{
           paddingHorizontal: 24,
           paddingTop: 16,

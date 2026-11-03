@@ -13,10 +13,10 @@ import { calculateInitialFreudScore } from '@/lib/freudScore';
 import { useUser } from '@/hooks/useUser';
 import { userScopedKey } from '@/lib/storage';
 import { backTo } from '@/lib/navigation';
-import { getAssessmentSteps, stepGlow, TAKING_MEDS, type AssessmentStep } from '@/lib/assessment-flow';
+import { getAssessmentSteps, stepGlow, TAKING_MEDS, takingMedsList, toggleTakingMeds, type AssessmentStep } from '@/lib/assessment-flow';
 import { normaliseDraft, type AssessmentAnswers } from '@/lib/assessment-draft';
 import { medicationsText, type MedicationClassKey } from '@/lib/medications';
-import { writeAssessmentAnswer } from '@/lib/assessment-answers';
+import { readAssessmentAnswer, toggleAssessmentAnswer, writeAssessmentAnswer } from '@/lib/assessment-answers';
 import { MOOD_SCALE, moodStep, type MoodScore } from '@/lib/mood-scale';
 import type { GlowSpec } from '@/components/glow/Glow';
 import { Glow } from '@/components/glow/Glow';
@@ -199,11 +199,21 @@ export default function AssessmentScreen() {
     case 'goal':
       return (
         <AssessmentShell {...shell} title={t('assessmentFlow.goal.title')}>
-          <View style={{ gap: 12 }} accessibilityRole="radiogroup">
-            {GOAL_KEYS.map((k) => {
-              const value = en(`assessment.goalOptions.${k}`);
-              return <OptionRow key={k} label={t(`assessment.goalOptions.${k}`)} selected={a.goal === value} onPress={() => set({ goal: value })} />;
-            })}
+          <View style={{ gap: 12 }}>
+            {(() => {
+              // Several goals can be picked; they are stored one per line in English.
+              const values = GOAL_KEYS.map((k) => en(`assessment.goalOptions.${k}`));
+              const picked = readAssessmentAnswer(a.goal, values).selected;
+              return GOAL_KEYS.map((k, i) => (
+                <OptionRow
+                  key={k}
+                  multiple
+                  label={t(`assessment.goalOptions.${k}`)}
+                  selected={picked.includes(values[i])}
+                  onPress={() => set({ goal: toggleAssessmentAnswer(a.goal, values[i], values) || null })}
+                />
+              ));
+            })()}
           </View>
           <LegalNote text={t('assessmentFlow.goal.note')} style={{ marginTop: 16, marginHorizontal: 8 }} />
         </AssessmentShell>
@@ -348,9 +358,16 @@ export default function AssessmentScreen() {
     case 'meds':
       return (
         <AssessmentShell {...shell} title={t('assessmentFlow.meds.title')} titleGap={40}>
-          <View style={{ gap: 8 }} accessibilityRole="radiogroup">
+          <View style={{ gap: 8 }}>
             {TAKING_MEDS.map((k) => (
-              <OptionRow key={k} weight="medium" label={t(`assessmentFlow.meds.options.${k}`)} selected={a.takingMeds === k} onPress={() => set({ takingMeds: k })} />
+              <OptionRow
+                key={k}
+                multiple
+                weight="medium"
+                label={t(`assessmentFlow.meds.options.${k}`)}
+                selected={takingMedsList(a.takingMeds).includes(k)}
+                onPress={() => set({ takingMeds: toggleTakingMeds(a.takingMeds, k) })}
+              />
             ))}
           </View>
           <LegalNote text={t('assessmentFlow.meds.note')} style={{ marginTop: 16, marginHorizontal: 24 }} />
@@ -455,6 +472,7 @@ export default function AssessmentScreen() {
                 pause: t('assessmentFlow.voice.pause'),
                 micDenied: t('common.allowMicAccess'),
                 saveFailed: t('common.couldNotSaveRecording'),
+                micOff: { title: t('common.micNeeded'), body: t('common.micInSettings'), openSettings: t('common.openSettings'), cancel: t('common.cancel') },
               }}
             />
           </View>

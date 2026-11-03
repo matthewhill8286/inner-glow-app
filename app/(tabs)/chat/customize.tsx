@@ -16,6 +16,7 @@ import { useProfile } from '@/hooks/useProfile';
 import { backTo } from '@/lib/navigation';
 import { showAlert } from '@/lib/state';
 import type { UserProfile } from '@/lib/types';
+import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
 
 const TONES = ['gentle', 'direct', 'playful'] as const;
 /** The design's destructive text colour (05 §3.8). */
@@ -65,7 +66,7 @@ export default function GlowAiSettings() {
         onBack={() => backTo(from, '/(tabs)/chat')}
         style={{ marginTop: insets.top + 10, marginHorizontal: 24 }}
       />
-      <ScrollView
+      <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE}
         contentContainerStyle={{
           paddingTop: 26,
           paddingHorizontal: 24,

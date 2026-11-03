@@ -49,6 +49,7 @@ import {
   pushLevel,
   titleFromTranscript,
 } from '@/lib/voice-entry';
+import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
 
 type Step = 'recording' | 'transcribing' | 'review' | 'error';
 const MIME: Record<string, string> = {
@@ -391,7 +392,7 @@ export default function VoiceEntry() {
       </View>
 
       {reviewing ? (
-        <ScrollView
+        <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE}
           contentContainerStyle={{
             flexGrow: 1,
             paddingHorizontal: 24,

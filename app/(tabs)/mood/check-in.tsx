@@ -18,6 +18,7 @@ import { useJournal } from '@/hooks/useJournal';
 import { moodStep, type MoodScore } from '@/lib/mood-scale';
 import { MOOD_FACTORS } from '@/lib/mood-logged';
 import type { MoodFactor } from '@/lib/types';
+import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
 
 /**
  * Mood check-in (04 §M2–M4). Step 1 picks the mood on the orb and slider; step 2 adds
@@ -104,7 +105,7 @@ export default function MoodCheckInScreen() {
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: palette.bg }}>
-      <ScrollView
+      <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ paddingTop: insets.top + 10, paddingHorizontal: 24, paddingBottom: insets.bottom + 24 }}
       >

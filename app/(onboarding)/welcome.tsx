@@ -7,6 +7,7 @@ import { palette } from '@/constants/theme';
 import { Type } from '@/constants/typography';
 import { AppButton } from '@/components/ui/AppButton';
 import { LandingArt } from '@/components/onboarding/OnboardingArt';
+import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
 
 /** Welcome landing `4002:13785` (01 §2.4). Get Started opens the consent screen. */
 export default function Welcome() {
@@ -14,7 +15,7 @@ export default function Welcome() {
   const insets = useSafeAreaInsets();
   return (
     <View style={{ flex: 1, backgroundColor: palette.bg }}>
-      <ScrollView contentContainerStyle={{ paddingTop: insets.top - 44, paddingBottom: insets.bottom + 24, flexGrow: 1 }} bounces={false}>
+      <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE} contentContainerStyle={{ paddingTop: insets.top - 44, paddingBottom: insets.bottom + 24, flexGrow: 1 }} bounces={false}>
         <LandingArt />
         <View style={{ paddingHorizontal: 24, alignItems: 'center', marginTop: 4 }}>
           <Text accessibilityRole="header" style={{ ...Type.display, fontSize: 30, lineHeight: 38, letterSpacing: -1.2, color: palette.plumDeep, textAlign: 'center' }}>

@@ -6,6 +6,7 @@ import { palette } from '@/constants/theme';
 import { Type } from '@/constants/typography';
 import { GlowField } from '@/components/glow/Glow';
 import { NavBar } from '@/components/ui/IconButton';
+import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
 
 /**
  * Shared page for the password reset screens (08 §1.2): the lavender and gold glows, the Nav Bar
@@ -41,7 +42,7 @@ export function ResetShell({
           { color: palette.mustard, opacity: 0.15, x: 200, y: 40, width: 220, blur: 90 },
         ]}
       />
-      <ScrollView
+      <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE}
         contentContainerStyle={{
           flexGrow: 1,
           paddingTop: insets.top + 6,

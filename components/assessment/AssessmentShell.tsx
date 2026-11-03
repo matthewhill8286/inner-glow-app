@@ -6,6 +6,7 @@ import { Type } from '@/constants/typography';
 import { GlowField, type GlowSpec } from '@/components/glow/Glow';
 import { TopNav } from '@/components/ui/IconButton';
 import { Tag } from '@/components/ui/Chip';
+import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
 
 /**
  * Assessment shell (02 §2, re-extracted Nov 2026): the step-colour top glow, the Top Nav with a
@@ -70,7 +71,7 @@ export function AssessmentShell({
           trailing={<Tag label={stepLabel} style={{ alignSelf: 'center' }} />}
         />
         {scroll ? (
-          <ScrollView
+          <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE}
             style={{ flex: 1 }}
             contentContainerStyle={{ paddingTop: 40, paddingHorizontal: 16, paddingBottom: 24 }}
             keyboardShouldPersistTaps="handled"

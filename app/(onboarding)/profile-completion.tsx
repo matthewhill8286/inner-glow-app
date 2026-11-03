@@ -46,7 +46,8 @@ export default function ProfileCompletion() {
     try {
       const row = (assessment ?? null) as Record<string, any> | null;
       await updateProfile({
-        intention: row?.goal || profile?.intention || 'Just checking things out',
+        // The assessment can hold several goals, one per line; the first one becomes the intention.
+        intention: (row?.goal as string | undefined)?.split('\n')[0]?.trim() || profile?.intention || 'Just checking things out',
         selectedIssues: suggestedIssues(row ? { mood: row.mood, stressBand: row.stress_band, sleepQuality: row.sleep_quality } : null),
       });
       router.replace('/(tabs)/home');

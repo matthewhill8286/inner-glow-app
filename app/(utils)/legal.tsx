@@ -5,6 +5,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
 
 const policies = {
   privacy: [
@@ -55,7 +56,7 @@ export default function LegalScreen() {
   const colors = Colors[useColorScheme() ?? 'light'];
   const insets = useSafeAreaInsets();
   return (
-    <ScrollView
+    <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE}
       style={{ backgroundColor: colors.background }}
       contentContainerStyle={{
         padding: 24,

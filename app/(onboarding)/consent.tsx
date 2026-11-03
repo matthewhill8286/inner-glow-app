@@ -10,6 +10,7 @@ import { LogoMark } from '@/components/brand/LogoMark';
 import { AppButton } from '@/components/ui/AppButton';
 import { Checkbox } from '@/components/ui/controls';
 import { saveLocalConsent } from '@/lib/consent';
+import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
 
 const POINTS = ['medical', 'emergency', 'data'] as const;
 
@@ -33,7 +34,7 @@ export default function Consent() {
           { color: palette.lavenderSoft, opacity: 0.3, x: 160, y: 90, width: 200, blur: 80 },
         ]}
       />
-      <ScrollView contentContainerStyle={{ paddingTop: insets.top + 60, paddingHorizontal: 24, paddingBottom: insets.bottom + 24 }}>
+      <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE} contentContainerStyle={{ paddingTop: insets.top + 60, paddingHorizontal: 24, paddingBottom: insets.bottom + 24 }}>
         <LogoMark size={64} style={{ alignSelf: 'center' }} />
         <Text accessibilityRole="header" style={{ ...Type.titleLg, lineHeight: 36, color: palette.ink, textAlign: 'center', marginTop: 28 }}>
           {t('onboarding.consentTitle')}

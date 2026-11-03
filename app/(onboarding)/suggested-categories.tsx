@@ -11,6 +11,7 @@ import { suggestWithReasons } from '@/lib/suggestCategories';
 import { MostCommonChips } from '@/components/MostCommonChips';
 import { SkeletonRect } from '@/components/Skeleton';
 import { useProfile } from '@/hooks/useProfile';
+import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
 
 export default function SuggestedCategories() {
   const { t } = useTranslation();
@@ -72,7 +73,7 @@ export default function SuggestedCategories() {
         </Text>
       </View>
 
-      <ScrollView
+      <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 40 }}
       >

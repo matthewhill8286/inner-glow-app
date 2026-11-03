@@ -20,6 +20,7 @@ import { summariseChat } from '@/lib/chat';
 import { checkInAgainTime } from '@/lib/talks';
 import { scheduleNotification } from '@/lib/notifications';
 import { queryKeys } from '@/lib/queryKeys';
+import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
 
 /** Mood pill fills at 50% (05 §3.5), following the mood spectrum. */
 const MOOD_FILL: Record<string, string> = {
@@ -157,7 +158,7 @@ export default function SessionSummary() {
           { color: palette.lavenderSoft, opacity: 0.28, x: 180, y: 60, width: 220, blur: 80 },
         ]}
       />
-      <ScrollView
+      <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE}
         contentContainerStyle={{
           paddingTop: insets.top + 10,
           paddingHorizontal: 24,

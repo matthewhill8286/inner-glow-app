@@ -2094,6 +2094,8 @@ export default {
     nonBinary: 'Non-binary',
     preferNotToSay: 'Prefer not to say',
     allowMicAccess: 'Please allow microphone access to record.',
+    micInSettings: 'Microphone access is off for Inner Glow. Turn it on in Settings to record.',
+    openSettings: 'Open Settings',
     couldNotSaveRecording: 'Could not save the recording. Please try again.',
     micNeeded: 'Microphone needed',
     recordingError: 'Recording error',

@@ -11,6 +11,7 @@ import MaterialIcons from '@/components/AppIcon';
 import { useSleep } from '@/hooks/useSleep';
 import { SleepEntry } from '@/lib/types';
 import { useTranslation } from 'react-i18next';
+import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
 
 /* ── colors ──────────────────────────────────────── */
 const SLEEP_COLORS = {
@@ -224,7 +225,7 @@ export default function SleepHistoryScreen() {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE} contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
         {loading ? (
           <View style={{ gap: 12, paddingTop: 20 }}>
             {[200, 80, 100].map((h, i) => (

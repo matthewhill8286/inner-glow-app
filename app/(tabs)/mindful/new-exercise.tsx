@@ -9,6 +9,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, UI } from '@/constants/theme';
 import MaterialIcons from '@/components/AppIcon';
 import { createAudioPlayer, type AudioPlayer } from 'expo-audio';
+import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
 
 // ─── Goal options ────────────────────────────
 const getGoals = (t: any) => [
@@ -212,7 +213,7 @@ export default function NewExercise() {
       </View>
 
       {/* Step content */}
-      <ScrollView
+      <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ flexGrow: 1, paddingBottom: 120 }}
       >

@@ -12,6 +12,7 @@ import { Colors, UI } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useProfile } from '@/hooks/useProfile';
 import { SkeletonRect } from '@/components/Skeleton';
+import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
 
 export default function Settings() {
   const { t } = useTranslation();
@@ -72,7 +73,7 @@ export default function Settings() {
             <SkeletonRect height={60} borderRadius={18} />
           </View>
         ) : (
-          <FlatList
+          <FlatList keyboardDismissMode={KEYBOARD_DISMISS_MODE}
             data={ISSUES}
             keyExtractor={(i) => i.key}
             contentContainerStyle={{ gap: 10, padding: 6 }}

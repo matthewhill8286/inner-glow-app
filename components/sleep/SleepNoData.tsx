@@ -10,6 +10,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { ListGroup, ListRow } from '@/components/ui/ListRow';
 import { toast } from '@/components/Toast';
 import { useHealthSleep } from '@/hooks/useHealthSleep';
+import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
 
 /** Sleep · No data yet (09 §3.8): shown on the Sleep screen while the user has no entries. */
 export function SleepNoData() {
@@ -36,7 +37,7 @@ export function SleepNoData() {
           { color: palette.lavenderSoft, opacity: 0.25, x: -70, y: -50, width: 280, blur: 90 },
         ]}
       />
-      <ScrollView contentContainerStyle={{ paddingTop: insets.top + 26, paddingHorizontal: 24, paddingBottom: insets.bottom + 120 }}>
+      <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE} contentContainerStyle={{ paddingTop: insets.top + 26, paddingHorizontal: 24, paddingBottom: insets.bottom + 120 }}>
         <Text accessibilityRole="header" style={[Type.titleXl, { color: palette.ink }]}>
           {t('sleepEmpty.title')}
         </Text>

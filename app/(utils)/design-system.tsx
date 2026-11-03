@@ -25,6 +25,7 @@ import { GlowField, GlowOrb } from '@/components/glow/Glow';
 import { LogoLockup, LogoMark } from '@/components/brand/LogoMark';
 import { GlowTabBar, type GlowTab } from '@/components/navigation/GlowTabBar';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
 
 /**
  * Developer gallery of the design foundations (docs/design-handoff/00-foundations.md),
@@ -52,7 +53,7 @@ export default function DesignSystemScreen() {
           { color: palette.lavenderSoft, opacity: 0.28, x: 200, y: 20, width: 220, blur: 80 },
         ]}
       />
-      <ScrollView contentContainerStyle={{ paddingTop: insets.top + 10, paddingHorizontal: 24, paddingBottom: insets.bottom + 48, gap: 28 }}>
+      <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE} contentContainerStyle={{ paddingTop: insets.top + 10, paddingHorizontal: 24, paddingBottom: insets.bottom + 48, gap: 28 }}>
         <TopNav title="Design system" backLabel="Back" onBack={() => {}} trailing={<StepTag label="1 of 14" />} />
 
         <Section title="Library · Nav bar and icon buttons">

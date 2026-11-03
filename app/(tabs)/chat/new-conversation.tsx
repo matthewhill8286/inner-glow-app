@@ -15,6 +15,7 @@ import { getPersona } from '@/lib/chat';
 import { buildNewChatKey } from '@/lib/chatKeys';
 import { backTo } from '@/lib/navigation';
 import type { IconName } from '@/components/icons/iconData';
+import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
 
 const STARTERS: { key: 'anxious' | 'sleep' | 'vent' | 'reflect'; icon: IconName }[] = [
   { key: 'anxious', icon: 'line/activity' },
@@ -73,7 +74,7 @@ export default function NewConversation() {
         onBack={() => backTo(from, '/(tabs)/chat')}
         style={{ marginTop: insets.top + 10, marginHorizontal: 24 }}
       />
-      <ScrollView
+      <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 16 }}
       >

@@ -1,5 +1,5 @@
 import type { PickedMedication } from './medications';
-import { stressBandFromLevel, TAKING_MEDS, type AssessmentStep, type TakingMeds } from './assessment-flow';
+import { stressBandFromLevel, takingMedsList, type AssessmentStep } from './assessment-flow';
 
 export type SoundCheckAnswer = {
   uri: string;
@@ -21,7 +21,8 @@ export type AssessmentAnswers = {
   soughtHelpBefore?: 'Yes' | 'No' | null;
   physicalDistress?: 'Yes' | 'No' | null;
   sleepQuality?: number | null;
-  takingMeds?: TakingMeds | null;
+  /** One or more A9 keys, one per line (`takingMedsList`). */
+  takingMeds?: string | null;
   medications?: PickedMedication[];
   otherSymptoms?: string | null;
   stressBand?: number | null;
@@ -55,8 +56,9 @@ export function normaliseDraft(raw: unknown): AssessmentDraft | null {
   const help = str(a.soughtHelpBefore);
   const physical = str(a.physicalDistress);
   const takingRaw = str(a.takingMeds);
-  const takingMeds: TakingMeds | null = (TAKING_MEDS as readonly string[]).includes(takingRaw ?? '')
-    ? (takingRaw as TakingMeds)
+  const picked = takingMedsList(takingRaw);
+  const takingMeds: string | null = picked.length
+    ? picked.join('\n')
     : takingRaw === 'Yes'
       ? 'prescription'
       : takingRaw === 'No'

@@ -8,6 +8,13 @@ import {
   useAudioRecorderState,
 } from 'expo-audio';
 
+/** Thrown when the microphone is off. `canAskAgain` is false once the user has said no, so only Settings can turn it on. */
+export class MicPermissionError extends Error {
+  constructor(readonly canAskAgain: boolean) {
+    super('Microphone permission not granted');
+  }
+}
+
 /** `metering` adds the live microphone level (dBFS), read every `intervalMs`, for waveforms. */
 export function useRecorder(
   preset = RecordingPresets.HIGH_QUALITY,
@@ -18,7 +25,7 @@ export function useRecorder(
 
   async function startRecording() {
     const perm = await AudioModule.requestRecordingPermissionsAsync();
-    if (!perm.granted) throw new Error('Microphone permission not granted');
+    if (!perm.granted) throw new MicPermissionError(perm.canAskAgain);
     await setAudioModeAsync({
       allowsRecording: true,
       playsInSilentMode: true,

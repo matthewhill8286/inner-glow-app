@@ -17,6 +17,7 @@ import { router } from 'expo-router';
 import { supabase } from '@/supabase/supabase';
 import { authTokenVar } from '@/lib/state';
 import MaterialIcons from '@/components/AppIcon';
+import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
 
 /* ── Design tokens ── */
 const C = {
@@ -179,7 +180,7 @@ export default function TwoFactorVerify() {
       style={{ flex: 1, backgroundColor: C.pageBg }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScrollView
+      <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE}
         contentContainerStyle={{
           flexGrow: 1,
           paddingHorizontal: 24,

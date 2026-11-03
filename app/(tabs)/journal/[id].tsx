@@ -31,6 +31,7 @@ import { moodStep } from '@/lib/mood-scale';
 import { backTo } from '@/lib/navigation';
 import { showAlert } from '@/lib/state';
 import type { JournalEntry } from '@/lib/types';
+import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
 
 function clock(iso: string, lang: string) {
   return new Date(iso).toLocaleTimeString(lang, {
@@ -123,7 +124,7 @@ export default function JournalDetail() {
           }
         />
       </View>
-      <ScrollView
+      <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE}
         contentContainerStyle={{
           paddingHorizontal: 24,
           paddingTop: 22,
