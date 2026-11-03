@@ -1,11 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Platform, View } from 'react-native';
+import { View } from 'react-native';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { toast } from '@/components/Toast';
 import { AppButton } from '@/components/ui/AppButton';
-import { BottomSheet } from '@/components/ui/BottomSheet';
 import { ProfileShell } from '@/components/profile-setup/ProfileShell';
 import { AvatarPicker, CheckinScene, NotificationCard, PrivacyScene, ProfileField } from '@/components/profile-setup/steps';
 import { useProfile } from '@/hooks/useProfile';
@@ -19,12 +17,10 @@ import {
   CHECKIN_PRESETS,
   DEFAULT_CHECKIN_TIME,
   DEFAULT_NOTIFICATION_PREFS,
-  formatTime,
   maskBirthday,
   NOTIFICATION_CHOICES,
   parseBirthday,
   parseTime,
-  presetForTime,
   profileSteps,
   slotForTime,
   type BiometricKind,
@@ -63,7 +59,6 @@ export default function ProfileSetupScreen() {
   const [birthdayError, setBirthdayError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [time, setTime] = useState(DEFAULT_CHECKIN_TIME);
-  const [picking, setPicking] = useState(false);
   const [prefs, setPrefs] = useState<Record<NotificationChoice, boolean>>(DEFAULT_NOTIFICATION_PREFS);
   const { data: photoUrl } = useAvatarUrl(profile?.avatarPath);
 
@@ -116,19 +111,6 @@ export default function ProfileSetupScreen() {
     } finally {
       setUploading(false);
     }
-  }
-
-  function openTimePicker() {
-    const { hour, minute } = parseTime(time);
-    const value = new Date(2000, 0, 1, hour, minute);
-    if (Platform.OS === 'android') {
-      DateTimePickerAndroid.open({
-        value,
-        mode: 'time',
-        is24Hour: true,
-        onChange: (event, date) => event.type === 'set' && date && setTime(formatTime(date.getHours(), date.getMinutes())),
-      });
-    } else setPicking(true);
   }
 
   const shell = {
@@ -184,7 +166,6 @@ export default function ProfileSetupScreen() {
   }
 
   if (step === 'checkin') {
-    const slot = presetForTime(time);
     return (
       <ProfileShell
         {...shell}
@@ -211,26 +192,13 @@ export default function ProfileSetupScreen() {
       >
         <CheckinScene
           time={time}
-          caption={t(`profileFlow.checkin.captions.${slotForTime(time)}`)}
-          slot={slot}
+          // The chip of the part of the day the time falls in stays selected as the wheel moves.
+          slot={slotForTime(time)}
           slots={SLOTS.map((key) => ({ key, label: t(`profileFlow.checkin.slots.${key}`) }))}
           onPickSlot={(key) => setTime(CHECKIN_PRESETS[key])}
-          onPressTime={openTimePicker}
+          onChangeTime={setTime}
           timeLabel={t('profileFlow.checkin.timeA11y')}
         />
-        {Platform.OS === 'ios' && (
-          <BottomSheet visible={picking} onClose={() => setPicking(false)}>
-            <DateTimePicker
-              value={new Date(2000, 0, 1, parseTime(time).hour, parseTime(time).minute)}
-              mode="time"
-              display="spinner"
-              minuteInterval={5}
-              onChange={(_, date) => date && setTime(formatTime(date.getHours(), date.getMinutes()))}
-              accessibilityLabel={t('profileFlow.checkin.pickTime')}
-            />
-            <AppButton title={t('profileFlow.checkin.done')} onPress={() => setPicking(false)} style={{ alignSelf: 'stretch' }} />
-          </BottomSheet>
-        )}
       </ProfileShell>
     );
   }

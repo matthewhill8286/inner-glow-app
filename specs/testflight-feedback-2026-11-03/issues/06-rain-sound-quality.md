@@ -2,7 +2,7 @@
 
 Priority: P2
 
-Status: Outstanding
+Status: Implemented — rain is now a 3 min 14 s seamless loop built from the original (was 54 s), about 2.5 dB louder, and soundscapes play at 85% instead of 60%; listen on a device to confirm
 
 ## Source feedback
 

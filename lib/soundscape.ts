@@ -16,6 +16,9 @@ let currentPlayer: AudioPlayer | null = null;
 let playbackGeneration = 0;
 let paused = false;
 
+/** Soundscapes play at this share of the phone's volume. 0.6 was too quiet for rain (TestFlight report 4). */
+export const SOUNDSCAPE_VOLUME = 0.85;
+
 /**
  * Start playing a soundscape in a loop.
  * If a sound is already playing, it will be stopped first.
@@ -38,7 +41,7 @@ export async function playSoundscape(key: string): Promise<void> {
     if (generation !== playbackGeneration) return;
     const player = createAudioPlayer(source);
     player.loop = true;
-    player.volume = 0.6;
+    player.volume = SOUNDSCAPE_VOLUME;
     currentPlayer = player;
     if (!paused) player.play();
   } catch (err) {
@@ -66,7 +69,7 @@ export function stopSoundscapeAfter(minutes: number | null): void {
   const fadeMs = 30_000;
   stopTimer = setTimeout(
     () => {
-      const start = currentPlayer?.volume ?? 0.6;
+      const start = currentPlayer?.volume ?? SOUNDSCAPE_VOLUME;
       let step = 0;
       fadeTimer = setInterval(() => {
         step++;
@@ -116,7 +119,7 @@ export function resumeSoundscape(): void {
   }
 }
 
-/** Volume of the current soundscape, 0–1 (the default is 0.6). Used for "Fade out at the end". */
+/** Volume of the current soundscape, 0–1 (the default is `SOUNDSCAPE_VOLUME`). Used for "Fade out at the end". */
 export function setSoundscapeVolume(volume: number): void {
   if (currentPlayer) {
     try {

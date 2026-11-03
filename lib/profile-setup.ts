@@ -121,3 +121,15 @@ export function suggestedIssues(assessment: { mood?: string | null; stressBand?:
     .slice(0, 3)
     .map((s) => s.key);
 }
+
+/** The check-in wheel (`6787:5765`) steps through the day every 15 minutes. */
+export const CHECKIN_STEP_MINUTES = 15;
+export const CHECKIN_TIMES: string[] = Array.from({ length: (24 * 60) / CHECKIN_STEP_MINUTES }, (_, i) =>
+  formatTime(Math.floor((i * CHECKIN_STEP_MINUTES) / 60), (i * CHECKIN_STEP_MINUTES) % 60),
+);
+
+/** The wheel row for a time, rounding a saved time that is off the 15-minute grid to the nearest. */
+export function checkinIndex(time: string): number {
+  const { hour, minute } = parseTime(time);
+  return Math.round((hour * 60 + minute) / CHECKIN_STEP_MINUTES) % CHECKIN_TIMES.length;
+}

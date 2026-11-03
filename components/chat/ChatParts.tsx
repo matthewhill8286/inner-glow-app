@@ -1,5 +1,13 @@
 import React from 'react';
-import { Pressable, Text, TextInput, View, type StyleProp, type ViewStyle } from 'react-native';
+import {
+  ActivityIndicator,
+  Pressable,
+  Text,
+  TextInput,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 import { Colors, palette, shadow } from '@/constants/theme';
 import CitationSection from '@/components/CitationSection';
 import type { ChatMessage } from '@/lib/types';
@@ -55,10 +63,19 @@ export function ChatHeader({
 }
 
 /**
- * Composer (05 §2.3): one white 56 pill, radius 28, soft shadow, Regular 15 text, and a 44 plum
- * button inside it. The design's empty state shows a mic for voice mode, which is not built yet, so
- * the button is always "send" and dims while the field is empty.
+ * Composer (05 §2.3, `6699:3725`): one white 56 pill, radius 28, soft shadow, Regular 15 text, and
+ * a 44 plum button inside it. Empty, the button is the mic and asks by voice (`useVoiceAsk`); with
+ * text it sends. While listening, the field shows the level bars with cancel, and the button sends.
  */
+export type ComposerVoice = {
+  state: 'idle' | 'listening' | 'transcribing';
+  levels: number[];
+  start: () => void;
+  send: () => void;
+  cancel: () => void;
+  labels: { mic: string; cancel: string; send: string; listening: string; transcribing: string };
+};
+
 export function Composer({
   value,
   onChangeText,
@@ -66,6 +83,7 @@ export function Composer({
   placeholder,
   sendLabel,
   disabled = false,
+  voice,
   style,
 }: {
   value: string;
@@ -74,9 +92,14 @@ export function Composer({
   placeholder: string;
   sendLabel: string;
   disabled?: boolean;
+  /** Shows the mic while the field is empty. Without it the button is always send. */
+  voice?: ComposerVoice;
   style?: StyleProp<ViewStyle>;
 }) {
   const canSend = !!value.trim() && !disabled;
+  const listening = voice?.state === 'listening';
+  const transcribing = voice?.state === 'transcribing';
+  const showMic = !!voice && !value.trim() && !listening;
   return (
     <View
       style={[
@@ -94,32 +117,71 @@ export function Composer({
         style,
       ]}
     >
-      <TextInput
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor={palette.textSubtle}
-        multiline
-        maxLength={2000}
-        accessibilityLabel={placeholder}
-        style={[
-          Type.bodyM,
-          {
-            lineHeight: 21,
-            flex: 1,
-            color: palette.ink,
-            paddingTop: 11,
-            paddingBottom: 11,
-            maxHeight: 120,
-          },
-        ]}
-      />
+      {listening ? (
+        <View
+          accessibilityLiveRegion="polite"
+          accessibilityLabel={voice.labels.listening}
+          style={{ flex: 1, height: 44, flexDirection: 'row', alignItems: 'center', gap: 10 }}
+        >
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={voice.labels.cancel}
+            onPress={voice.cancel}
+            hitSlop={8}
+            style={{ marginLeft: -8 }}
+          >
+            <Icon name="arrow/close" size={20} color={palette.plum} />
+          </Pressable>
+          <View style={{ flex: 1, height: 32, flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+            {voice.levels.map((level, i) => (
+              <View
+                key={i}
+                style={{
+                  width: 3,
+                  height: Math.max(4, Math.round(4 + 24 * Math.min(1, level))),
+                  borderRadius: 2,
+                  backgroundColor: palette.plum,
+                  opacity: 0.35 + 0.65 * Math.min(1, level * 1.4),
+                }}
+              />
+            ))}
+          </View>
+        </View>
+      ) : transcribing ? (
+        <View style={{ flex: 1, height: 44, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <ActivityIndicator size="small" color={palette.plum} />
+          <Text style={[Type.bodyM, { color: palette.textMuted }]}>
+            {voice.labels.transcribing}
+          </Text>
+        </View>
+      ) : (
+        <TextInput
+          value={value}
+          onChangeText={onChangeText}
+          placeholder={placeholder}
+          placeholderTextColor={palette.textSubtle}
+          multiline
+          maxLength={2000}
+          accessibilityLabel={placeholder}
+          style={[
+            Type.bodyM,
+            {
+              lineHeight: 21,
+              flex: 1,
+              color: palette.ink,
+              paddingTop: 11,
+              paddingBottom: 11,
+              maxHeight: 120,
+            },
+          ]}
+        />
+      )}
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={sendLabel}
-        accessibilityState={{ disabled: !canSend }}
-        disabled={!canSend}
-        onPress={onSend}
+        accessibilityLabel={showMic ? voice.labels.mic : listening ? voice.labels.send : sendLabel}
+        accessibilityState={{ disabled: showMic || listening ? disabled : !canSend }}
+        disabled={transcribing || (showMic || listening ? disabled : !canSend)}
+        onPress={showMic ? voice.start : listening ? voice.send : onSend}
         style={({ pressed }) => ({
           width: 44,
           height: 44,
@@ -127,10 +189,16 @@ export function Composer({
           backgroundColor: pressed ? palette.plumDeep : palette.plum,
           alignItems: 'center',
           justifyContent: 'center',
-          opacity: canSend ? 1 : 0.45,
+          opacity: showMic || listening ? (disabled ? 0.45 : 1) : canSend ? 1 : 0.45,
         })}
       >
-        <Icon name="line/send" size={20} color={palette.white} />
+        {listening ? (
+          <View
+            style={{ width: 14, height: 14, borderRadius: 3, backgroundColor: palette.white }}
+          />
+        ) : (
+          <Icon name={showMic ? 'line/mic' : 'line/send'} size={20} color={palette.white} />
+        )}
       </Pressable>
     </View>
   );

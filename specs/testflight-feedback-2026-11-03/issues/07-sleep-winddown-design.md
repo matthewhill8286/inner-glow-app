@@ -2,7 +2,7 @@
 
 Priority: P2
 
-Status: Outstanding — design comparison required
+Status: Implemented — Wind down and Be present match frames 6190:4171 and 6186:3168, and the setup hero uses the filled moon from 6615:3328; checked in the iPhone simulator. The Voice guidance toggle in 6615:3328 waits for narration (issue 05)
 
 ## Source feedback
 

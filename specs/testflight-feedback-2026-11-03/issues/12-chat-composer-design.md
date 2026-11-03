@@ -2,7 +2,7 @@
 
 Priority: P2
 
-Status: Outstanding — design comparison required
+Status: Implemented — the empty composer shows the design's mic (6699:3725) and asks by voice; with text it sends. Checked in the iPhone simulator
 
 ## Source feedback
 
