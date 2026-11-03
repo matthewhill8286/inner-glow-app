@@ -2,7 +2,7 @@
 
 Priority: P2
 
-Status: Outstanding
+Status: Implemented — ending a session returns to the screen it was opened from, checked in the iPhone simulator; device retest required
 
 ## Source feedback
 

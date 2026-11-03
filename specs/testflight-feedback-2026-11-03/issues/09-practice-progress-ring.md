@@ -2,7 +2,7 @@
 
 Priority: P2
 
-Status: Outstanding
+Status: Implemented — the goal ring's drawing has room for the knob, so it is no longer clipped at 0 min; device retest required
 
 ## Source feedback
 

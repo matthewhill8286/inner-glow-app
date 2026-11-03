@@ -2,7 +2,7 @@
 
 Priority: P2
 
-Status: Outstanding — reproduce
+Status: Implemented — rewind and forward step whole breaths at the chosen pace (15 s for sleep and mindfulness), with the design's mirrored forward icon, checked in the iPhone simulator; device retest required
 
 ## Source feedback
 

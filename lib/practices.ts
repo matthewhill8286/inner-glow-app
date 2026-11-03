@@ -156,3 +156,22 @@ export function practiceWeek(
     count,
   };
 }
+
+/** Seconds a sleep or mindfulness session moves per rewind or forward tap. */
+export const SKIP_SECONDS = 15;
+/** A rewind this soon after a breath starts goes back to the breath before. */
+const REWIND_GRACE = 1.5;
+
+/**
+ * Where rewind and forward land (TestFlight report 8, design `6764:5374`). For breathing, `cycle` is
+ * the paced breath length: rewind restarts the current breath, or the one before when it has only
+ * just begun, and forward starts the next. Without a cycle they move `SKIP_SECONDS`. Forward never
+ * reaches the end, so it does not finish the session.
+ */
+export function stepTarget(elapsed: number, total: number, dir: -1 | 1, cycle?: number): number {
+  const last = Math.max(0, total - 1);
+  if (!cycle) return Math.min(last, Math.max(0, elapsed + dir * SKIP_SECONDS));
+  const start = Math.floor(elapsed / cycle) * cycle;
+  if (dir === 1) return Math.min(last, start + cycle);
+  return Math.max(0, elapsed - start < REWIND_GRACE ? start - cycle : start);
+}
