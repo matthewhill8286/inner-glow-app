@@ -105,3 +105,14 @@ test('the sessions week sums Monday to Sunday and colours each day by its longes
   assert.equal(w.minutes, 27);
   assert.equal(w.count, 3);
 });
+
+test('rewind and forward step whole breaths at the chosen pace, and 15 seconds otherwise', () => {
+  const cycle = 16; // box breathing, 4 · 4 · 4 · 4
+  assert.equal(p.stepTarget(37, 240, 1, cycle), 48); // forward: the next breath
+  assert.equal(p.stepTarget(37, 240, -1, cycle), 32); // rewind: restart this breath
+  assert.equal(p.stepTarget(32.5, 240, -1, cycle), 16); // just started: the breath before
+  assert.equal(p.stepTarget(5, 240, -1, cycle), 0);
+  assert.equal(p.stepTarget(230, 240, 1, cycle), 239); // never finishes the session
+  assert.equal(p.stepTarget(100, 600, 1), 115);
+  assert.equal(p.stepTarget(10, 600, -1), 0);
+});

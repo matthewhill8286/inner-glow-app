@@ -17,6 +17,9 @@ import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
 const RING = 220;
 const R = (RING - 5.5) / 2;
 const C = 2 * Math.PI * R;
+/** The 9-point goal knob sits on the ring, so the drawing gets this margin or the knob is clipped at 0 min (TestFlight report 9). */
+const KNOB_PAD = 10;
+const MID = RING / 2 + KNOB_PAD;
 
 const CARDS: { kind: Kind; href: Href }[] = [
   {
@@ -59,8 +62,14 @@ export default function PracticesHub() {
           { color: palette.sky, opacity: 0.3, x: 170, y: 120, width: 240, blur: 90 },
         ]}
       />
-      <AuraContours width={width} height={(480 * width) / 375} style={{ position: 'absolute', top: 0 }} pointerEvents="none" />
-      <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE}
+      <AuraContours
+        width={width}
+        height={(480 * width) / 375}
+        style={{ position: 'absolute', top: 0 }}
+        pointerEvents="none"
+      />
+      <ScrollView
+        keyboardDismissMode={KEYBOARD_DISMISS_MODE}
         contentContainerStyle={{
           paddingTop: insets.top + 10,
           paddingBottom: screenBottomPadding(insets.bottom),
@@ -104,19 +113,16 @@ export default function PracticesHub() {
             justifyContent: 'center',
           }}
         >
-          <Svg width={RING} height={RING} style={{ position: 'absolute' }}>
-            <Circle
-              cx={RING / 2}
-              cy={RING / 2}
-              r={R}
-              stroke={palette.border}
-              strokeWidth={5.5}
-              fill="none"
-            />
+          <Svg
+            width={RING + 2 * KNOB_PAD}
+            height={RING + 2 * KNOB_PAD}
+            style={{ position: 'absolute', left: -KNOB_PAD, top: -KNOB_PAD }}
+          >
+            <Circle cx={MID} cy={MID} r={R} stroke={palette.border} strokeWidth={5.5} fill="none" />
             {fraction > 0 && (
               <Circle
-                cx={RING / 2}
-                cy={RING / 2}
+                cx={MID}
+                cy={MID}
                 r={R}
                 stroke={palette.plum}
                 strokeWidth={5.5}
@@ -124,12 +130,12 @@ export default function PracticesHub() {
                 strokeLinecap="round"
                 strokeDasharray={`${C} ${C}`}
                 strokeDashoffset={C * (1 - fraction)}
-                transform={`rotate(-90 ${RING / 2} ${RING / 2})`}
+                transform={`rotate(-90 ${MID} ${MID})`}
               />
             )}
             <Circle
-              cx={RING / 2 + R * Math.cos(end)}
-              cy={RING / 2 + R * Math.sin(end)}
+              cx={MID + R * Math.cos(end)}
+              cy={MID + R * Math.sin(end)}
               r={9}
               fill={palette.mustard}
             />

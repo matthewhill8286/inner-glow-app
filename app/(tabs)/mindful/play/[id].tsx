@@ -23,7 +23,16 @@ import { useMindfulness } from '@/hooks/useMindfulness';
 import { useStressHistory } from '@/hooks/useStressHistory';
 import { useDailyGoal } from '@/hooks/usePractices';
 import { useAccessibilityPrefs } from '@/lib/accessibility-prefs';
-import { breathAt, mmss, orbScale, totalBreaths, type Pace, type Phase } from '@/lib/practices';
+import {
+  breathAt,
+  cycleSeconds,
+  mmss,
+  orbScale,
+  stepTarget,
+  totalBreaths,
+  type Pace,
+  type Phase,
+} from '@/lib/practices';
 import {
   pauseSoundscape,
   playSoundscape,
@@ -182,6 +191,28 @@ function PracticePlayer() {
     if (on) pauseSoundscape();
     else resumeSoundscape();
   };
+  // Rewind and forward also move the orb, phase and breath count, so a paused player shows the jump.
+  const seek = (dir: -1 | 1) => {
+    const breathPace = isBreathing ? pace : 'normal';
+    const next = stepTarget(
+      elapsedRef.current,
+      total,
+      dir,
+      isBreathing ? cycleSeconds(pattern, breathPace) : undefined,
+    );
+    elapsedRef.current = next;
+    setElapsed(next);
+    const at = breathAt(pattern, breathPace, next);
+    scale.setValue(orbScale(at.phase, at.progress));
+    lastPhase.current = `${at.breath}:${at.phase}`;
+    setPhase(at.phase);
+    setBreath(at.breath);
+  };
+  // Leaving returns to the screen the practice was opened from (TestFlight report 4).
+  const leave = () => {
+    if (router.canGoBack()) router.back();
+    else router.replace('/(tabs)/mindful');
+  };
   const askToLeave = useCallback(() => {
     if (done) return false;
     pause(true);
@@ -335,11 +366,10 @@ function PracticePlayer() {
         >
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={t('practices.player.replay')}
-            onPress={() => {
-              elapsedRef.current = Math.floor(elapsedRef.current / cycle) * cycle;
-              setElapsed(elapsedRef.current);
-            }}
+            accessibilityLabel={t(
+              isBreathing ? 'practices.player.replay' : 'practices.player.back15',
+            )}
+            onPress={() => seek(-1)}
             style={{
               width: 56,
               height: 56,
@@ -371,11 +401,10 @@ function PracticePlayer() {
           </Pressable>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={t('practices.player.forward')}
-            onPress={() => {
-              elapsedRef.current = Math.min(total - 1, elapsedRef.current + 10);
-              setElapsed(elapsedRef.current);
-            }}
+            accessibilityLabel={t(
+              isBreathing ? 'practices.player.forward' : 'practices.player.forward15',
+            )}
+            onPress={() => seek(1)}
             style={{
               width: 56,
               height: 56,
@@ -386,7 +415,10 @@ function PracticePlayer() {
               justifyContent: 'center',
             }}
           >
-            <Text style={[Type.buttonS, { fontSize: 14, color: palette.plum }]}>+10</Text>
+            {/* The design's forward control is the replay arrow mirrored. */}
+            <View style={{ transform: [{ scaleX: -1 }] }}>
+              <Icon name="arrow/replay" size={24} color={palette.plum} />
+            </View>
           </Pressable>
         </View>
       </View>
@@ -401,7 +433,7 @@ function PracticePlayer() {
         }}
         onEnd={() => {
           setEndOpen(false);
-          void finish(false).then(() => router.dismissTo('/(tabs)/mindful'));
+          void finish(false).then(leave);
         }}
       />
       <CompleteModal

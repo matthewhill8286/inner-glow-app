@@ -1464,7 +1464,9 @@ export default {
       play: 'Play',
       pause: 'Pause',
       replay: 'Restart this breath',
-      forward: 'Skip ahead 10 seconds',
+      forward: 'Next breath',
+      back15: 'Back 15 seconds',
+      forward15: 'Forward 15 seconds',
     },
     endEarly: {
       title: 'End practice early?',
