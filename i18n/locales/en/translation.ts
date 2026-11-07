@@ -1774,6 +1774,7 @@ export default {
       manage: 'Manage subscription',
       manageError: 'We could not open subscription settings. Please try again.',
       appStore: 'App Store',
+      playStore: 'Google Play',
       googlePlay: 'Google Play',
       web: 'Web billing',
       legalFree: 'Subscriptions renew automatically. Cancel any time in your {{store}} settings.',

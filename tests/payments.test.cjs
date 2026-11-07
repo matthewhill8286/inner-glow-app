@@ -187,6 +187,7 @@ function hookHarness() {
       __esModule: true,
       default: configure,
       getCustomerInfo: configure.getCustomerInfo,
+      hasNativeStore: () => true,
     },
     '@/lib/subscription-state': states,
     '@/lib/diagnostics': { recordDiagnostic: () => 'test-reference' },
@@ -740,6 +741,7 @@ test('web subscription management follows its provider URL without returning to 
     'lib/billing-management.ts',
     {
       'react-native': { Platform: { OS: 'web' }, Linking: {} },
+      '@/lib/revenuecat': { hasNativeStore: () => false },
       '@/supabase/supabase': {
         supabase: {
           functions: {
@@ -1052,4 +1054,14 @@ test('native purchase preflight reuses active receipts and reconciles Apple alre
   assert.equal(invalidated, 5);
   failure = { code: 'network' };
   await assert.rejects(rc.purchasePlan('monthly'));
+});
+
+test('Google Play product ids with a base plan match the same plans as App Store ids', () => {
+  assert.equal(products.isProduct('innerglow_premium_yearly:yearly', 'innerglow_premium_yearly'), true);
+  assert.equal(products.isProduct('innerglow_premium_yearly', 'innerglow_premium_yearly'), true);
+  assert.equal(products.isProduct('innerglow_premium_yearlyx', 'innerglow_premium_yearly'), false);
+  assert.equal(
+    products.productMatchesPlan('monthly', { identifier: 'innerglow_premium_monthly:monthly', subscriptionPeriod: 'P1M' }),
+    true,
+  );
 });

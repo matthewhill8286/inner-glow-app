@@ -39,13 +39,15 @@ export function subscriptionFromEntitlement(
     | undefined,
 ): Subscription | null {
   if (!entitlement?.isActive) return null;
-  if (entitlement.productIdentifier === 'innerglow_premium_lifetime') {
+  // Google Play ids may carry the base plan ("innerglow_premium_yearly:yearly").
+  const product = entitlement.productIdentifier.split(':')[0];
+  if (product === 'innerglow_premium_lifetime') {
     return { type: 'lifetime', status: 'active', expiryDate: null };
   }
   const type =
-    entitlement.productIdentifier === 'innerglow_premium_yearly'
+    product === 'innerglow_premium_yearly'
       ? 'yearly'
-      : entitlement.productIdentifier === 'innerglow_premium_monthly'
+      : product === 'innerglow_premium_monthly'
         ? 'monthly'
         : null;
   if (!type) return null;

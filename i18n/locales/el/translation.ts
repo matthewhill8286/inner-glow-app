@@ -1788,6 +1788,7 @@ export default {
       manage: 'Διαχείριση συνδρομής',
       manageError: 'Δεν μπορέσαμε να ανοίξουμε τις ρυθμίσεις συνδρομής. Δοκίμασε ξανά.',
       appStore: 'App Store',
+      playStore: 'Google Play',
       googlePlay: 'Google Play',
       web: 'Χρέωση μέσω web',
       legalFree:

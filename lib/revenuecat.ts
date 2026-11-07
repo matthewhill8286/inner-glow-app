@@ -1,4 +1,9 @@
-import { PRODUCT_IDS, productMatchesPlan, type PurchasablePlan } from '@/lib/purchase-products';
+import {
+  isProduct,
+  PRODUCT_IDS,
+  productMatchesPlan,
+  type PurchasablePlan,
+} from '@/lib/purchase-products';
 /**
  * RevenueCat integration for Apple In-App Purchase (and Google Play Billing).
  *
@@ -12,7 +17,9 @@ import { PRODUCT_IDS, productMatchesPlan, type PurchasablePlan } from '@/lib/pur
  * handles receipt validation, entitlements, restore-purchases, and webhooks.
  *
  * On iOS  → mandatory (Apple IAP)
- * On Android → optional, but using it keeps the codebase symmetrical
+ * On Android → Google Play Billing, also required by Google Play's payments policy, once
+ *              EXPO_PUBLIC_REVENUECAT_ANDROID_KEY (goog_…) is set; until then Android falls back
+ *              to Stripe Checkout
  * On Web   → not supported; the app continues to use Stripe Checkout
  *
  * Configure the products + entitlement in the RevenueCat dashboard:
@@ -40,18 +47,35 @@ export const PLAN_TO_PACKAGE: Record<PurchasablePlan, string> = {
   monthly: '$rc_monthly',
 };
 
+/** The store's RevenueCat public key on this platform, or null where purchases go through Stripe. */
+function storeKey(): string | null {
+  const key =
+    Platform.OS === 'ios'
+      ? process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY
+      : Platform.OS === 'android'
+        ? process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY
+        : undefined;
+  const prefix = Platform.OS === 'ios' ? 'appl_' : 'goog_';
+  return key && key.startsWith(prefix) && !/xxx|placeholder/i.test(key) ? key : null;
+}
+
+/** True when this platform buys through its app store (Apple IAP or Google Play Billing). */
+export function hasNativeStore(): boolean {
+  return storeKey() !== null;
+}
+
 let configured = false;
 let currentUserId: string | null = null;
 let identityQueue: Promise<void> = Promise.resolve();
 
 /** Serialize identity changes so purchases cannot run for the previous account. */
 export default function configureRevenueCat(appUserId?: string | null): Promise<void> {
-  if (Platform.OS !== 'ios') return Promise.resolve();
+  if (Platform.OS !== 'ios' && !hasNativeStore()) return Promise.resolve();
   const requestedUser = appUserId ?? null;
   const task = identityQueue.then(async () => {
-    const apiKey = process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY;
-    if (!apiKey || !apiKey.startsWith('appl_') || /xxx|placeholder/i.test(apiKey)) {
-      throw new Error('Apple purchases are unavailable. Please try again later.');
+    const apiKey = storeKey();
+    if (!apiKey) {
+      throw new Error('In-app purchases are unavailable. Please try again later.');
     }
     if (!configured) {
       if (__DEV__) Purchases.setLogLevel(LOG_LEVEL.DEBUG);
@@ -70,12 +94,12 @@ export default function configureRevenueCat(appUserId?: string | null): Promise<
 
 async function requireReady(): Promise<void> {
   await identityQueue;
-  if (!configured || Platform.OS !== 'ios') throw new Error('Apple purchases are unavailable.');
+  if (!configured || !hasNativeStore()) throw new Error('In-app purchases are unavailable.');
 }
 
 /** Fetch the current "default" offering and its packages. */
 export async function getDefaultOffering(): Promise<PurchasesOffering | null> {
-  if (Platform.OS !== 'ios') return null;
+  if (!hasNativeStore()) return null;
   try {
     await requireReady();
     const offerings = await Purchases.getOfferings();
@@ -91,9 +115,17 @@ export async function getDefaultOffering(): Promise<PurchasesOffering | null> {
  * Unknown counts as not eligible, so the paywall never promises a trial Apple won't give.
  */
 export async function isYearlyTrialEligible(): Promise<boolean> {
-  if (Platform.OS !== 'ios') return false;
+  if (!hasNativeStore()) return false;
   try {
     await requireReady();
+    if (Platform.OS === 'android') {
+      // Google Play only offers the free phase to accounts that can still take it.
+      const offering = await getDefaultOffering();
+      const yearly = offering?.availablePackages.find(
+        (p) => p.identifier === PLAN_TO_PACKAGE.yearly,
+      );
+      return !!yearly?.product.defaultOption?.freePhase;
+    }
     const result = await Purchases.checkTrialOrIntroductoryPriceEligibility([PRODUCT_IDS.yearly]);
     return (
       result[PRODUCT_IDS.yearly]?.status ===
@@ -119,8 +151,8 @@ export async function purchasePlan(plan: PurchasablePlan): Promise<CustomerInfo 
   const entitlement = existing.entitlements.active[PREMIUM_ENTITLEMENT_ID];
   if (
     entitlement?.isActive &&
-    (entitlement.productIdentifier === PRODUCT_IDS.lifetime ||
-      entitlement.productIdentifier === PRODUCT_IDS[plan])
+    (isProduct(entitlement.productIdentifier, PRODUCT_IDS.lifetime) ||
+      isProduct(entitlement.productIdentifier, PRODUCT_IDS[plan]))
   )
     return existing;
 
@@ -159,7 +191,7 @@ export async function purchasePlan(plan: PurchasablePlan): Promise<CustomerInfo 
 
 /** Restore previous purchases (REQUIRED by Apple guideline 3.1.1). */
 export async function restorePurchases(): Promise<CustomerInfo | null> {
-  if (Platform.OS !== 'ios') return null;
+  if (!hasNativeStore()) return null;
   try {
     await requireReady();
     return await Purchases.restorePurchases();
@@ -177,7 +209,7 @@ export function hasPremiumEntitlement(info: CustomerInfo | null | undefined): bo
 
 /** Convenience: pull the current customer info from RevenueCat. */
 export async function getCustomerInfo(): Promise<CustomerInfo | null> {
-  if (Platform.OS !== 'ios') return null;
+  if (!hasNativeStore()) return null;
   try {
     await requireReady();
     return await Purchases.getCustomerInfo();
@@ -189,7 +221,7 @@ export async function getCustomerInfo(): Promise<CustomerInfo | null> {
 
 /** Events only trigger a fresh identity-checked load; they never grant access directly. */
 export function subscribeToPurchaseUpdates(onChange: () => void): () => void {
-  if (Platform.OS !== 'ios') return () => {};
+  if (!hasNativeStore()) return () => {};
   const listener = () => onChange();
   Purchases.addCustomerInfoUpdateListener(listener);
   return () => Purchases.removeCustomerInfoUpdateListener(listener);

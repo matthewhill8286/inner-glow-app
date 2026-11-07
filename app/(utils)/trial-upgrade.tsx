@@ -29,6 +29,7 @@ import configureRevenueCat, {
   purchasePlan,
   restorePurchases,
   PLAN_TO_PACKAGE,
+  hasNativeStore,
 } from '@/lib/revenuecat';
 import { alreadyOwnsPlan } from '@/lib/subscription-state';
 import { supabase } from '@/supabase/supabase';
@@ -61,9 +62,10 @@ export default function TrialUpgrade() {
   );
   const [loading, setLoading] = useState<PaywallPlan | 'restore' | null>(null);
   const [offering, setOffering] = useState<PurchasesOffering | null>(null);
-  const [offeringLoading, setOfferingLoading] = useState(Platform.OS === 'ios');
+  const [offeringLoading, setOfferingLoading] = useState(hasNativeStore());
   const [appleTrialEligible, setAppleTrialEligible] = useState(false);
-  const useNativeIAP = Platform.OS === 'ios'; // Apple guideline 3.1.1
+  // Apple guideline 3.1.1 and Google Play's payments policy: buy through the store when it is set up.
+  const useNativeIAP = hasNativeStore();
 
   const trialEligible = useNativeIAP
     ? appleTrialEligible
