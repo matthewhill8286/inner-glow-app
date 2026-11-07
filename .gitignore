@@ -49,3 +49,6 @@ supabase/.temp/
 
 # Medication class lookups cached by scripts/build-medication-catalogue.py
 scripts/.medication-classes.json
+
+# Google Play upload key for eas submit (never commit)
+google-play-service-account.json
