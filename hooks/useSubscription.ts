@@ -5,7 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '@/supabase/supabase';
 import { userScopedKey } from '@/lib/storage';
 import { recordDiagnostic } from '@/lib/diagnostics';
-import configureRevenueCat, { getCustomerInfo } from '@/lib/revenuecat';
+import configureRevenueCat, { getCustomerInfo, hasNativeStore } from '@/lib/revenuecat';
 import {
   parseSubscriptionCache,
   subscriptionHasAccess,
@@ -77,7 +77,7 @@ const useSubscriptionStore = create<SubscriptionStore>((set, get) => ({
               }
             : null;
 
-        if (Platform.OS === 'ios') {
+        if (hasNativeStore()) {
           try {
             await configureRevenueCat(userId);
             const info = await getCustomerInfo();

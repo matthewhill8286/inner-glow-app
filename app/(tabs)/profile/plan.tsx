@@ -22,6 +22,7 @@ import configureRevenueCat, {
   getDefaultOffering,
   PLAN_TO_PACKAGE,
   restorePurchases,
+  hasNativeStore,
 } from '@/lib/revenuecat';
 import { supabase } from '@/supabase/supabase';
 
@@ -35,7 +36,7 @@ function useStorePrices() {
     monthly?: string;
   }>({});
   useEffect(() => {
-    if (Platform.OS !== 'ios') return;
+    if (!hasNativeStore()) return;
     let live = true;
     (async () => {
       const {
@@ -72,9 +73,11 @@ export default function MyPlan() {
   const prices = useStorePrices();
   const [restoring, setRestoring] = useState(false);
   const store =
-    subscription?.stripeCustomerId || Platform.OS !== 'ios'
+    subscription?.stripeCustomerId || !hasNativeStore()
       ? t('me.plan.web')
-      : t('me.plan.appStore');
+      : Platform.OS === 'android'
+        ? t('me.plan.playStore')
+        : t('me.plan.appStore');
   const date = subscription?.expiryDate
     ? new Date(subscription.expiryDate).toLocaleDateString(i18n.language, {
         day: 'numeric',
@@ -107,7 +110,9 @@ export default function MyPlan() {
     }
   }
   const manage = () =>
-    void openSubscriptionManagement().catch(() => toast.error(t('me.plan.manageError')));
+    void openSubscriptionManagement(!!subscription?.stripeCustomerId).catch(() =>
+      toast.error(t('me.plan.manageError')),
+    );
   const changePlan = () => {
     if (subscription?.type === 'monthly')
       router.push({ pathname: '/(utils)/trial-upgrade', params: { plan: 'yearly' } });
@@ -129,7 +134,7 @@ export default function MyPlan() {
           onPress={changePlan}
         />
       )}
-      {Platform.OS === 'ios' && (
+      {hasNativeStore() && (
         <ListRow
           label={restoring ? `${t('me.plan.restore')}…` : t('me.plan.restore')}
           onPress={restoring ? undefined : () => void restore()}

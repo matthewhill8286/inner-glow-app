@@ -30,10 +30,15 @@ export type Subscriber = {
 
 export function subscriberState(subscriber: Subscriber, now = Date.now()) {
   const premium = subscriber.entitlements?.premium;
-  if (!premium || !Object.hasOwn(PRODUCTS, premium.product_identifier)) return null;
-  const product = premium.product_identifier as keyof typeof PRODUCTS;
-  const subscription = subscriber.subscriptions?.[product];
-  const purchase = subscriber.non_subscriptions?.[product]?.at(-1);
+  // Google Play ids may carry the base plan ("innerglow_premium_yearly:yearly"); the plan is the part before ":".
+  const id = premium?.product_identifier ?? '';
+  const base = id.split(':')[0];
+  if (!premium || !Object.hasOwn(PRODUCTS, base)) return null;
+  const product = base as keyof typeof PRODUCTS;
+  const subscription = subscriber.subscriptions?.[id] ?? subscriber.subscriptions?.[product];
+  const purchase = (
+    subscriber.non_subscriptions?.[id] ?? subscriber.non_subscriptions?.[product]
+  )?.at(-1);
   const expires =
     subscription?.grace_period_expires_date ||
     premium.grace_period_expires_date ||

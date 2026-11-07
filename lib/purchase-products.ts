@@ -11,9 +11,19 @@ export const PURCHASABLE_PLANS: readonly PurchasablePlan[] = ['yearly', 'monthly
 
 const PERIODS: Record<PurchasablePlan, string> = { yearly: 'P1Y', monthly: 'P1M' };
 
+/**
+ * Google Play names a subscription product `subscriptionId:basePlanId` (for example
+ * `innerglow_premium_yearly:yearly`); the App Store uses the bare id. Both match.
+ */
+export function isProduct(identifier: string | null | undefined, id: string): boolean {
+  return !!identifier && (identifier === id || identifier.startsWith(`${id}:`));
+}
+
 export function productMatchesPlan(
   plan: PurchasablePlan,
   product: { identifier: string; subscriptionPeriod?: string | null },
 ): boolean {
-  return product.identifier === PRODUCT_IDS[plan] && product.subscriptionPeriod === PERIODS[plan];
+  return (
+    isProduct(product.identifier, PRODUCT_IDS[plan]) && product.subscriptionPeriod === PERIODS[plan]
+  );
 }
