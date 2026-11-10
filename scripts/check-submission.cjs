@@ -11,7 +11,9 @@ function requireValue(key, check) {
 requireValue('EXPO_PUBLIC_REVENUECAT_IOS_KEY', (value) => value.startsWith('appl_'));
 requireValue(
   'EXPO_PUBLIC_SUPABASE_URL',
-  (value) => value.startsWith('https://') && value.endsWith('.supabase.co'),
+  (value) =>
+    value.startsWith('https://') &&
+    (value.endsWith('.supabase.co') || value === 'https://innerglow.impkt-apps.duckdns.org'),
 );
 requireValue('EXPO_PUBLIC_SUPABASE_KEY', (value) => {
   if (value.startsWith('sb_publishable_')) return true;
