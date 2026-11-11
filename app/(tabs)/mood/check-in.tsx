@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -15,7 +15,7 @@ import { MoodOrb } from '@/components/mood/MoodOrb';
 import { MoodSlider } from '@/components/mood/MoodSlider';
 import { useMood } from '@/hooks/useMood';
 import { useJournal } from '@/hooks/useJournal';
-import { moodStep, type MoodScore } from '@/lib/mood-scale';
+import { moodScoreOf, moodStep, type MoodScore } from '@/lib/mood-scale';
 import { MOOD_FACTORS } from '@/lib/mood-logged';
 import type { MoodFactor } from '@/lib/types';
 import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
@@ -27,11 +27,17 @@ import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
 export default function MoodCheckInScreen() {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const { addMoodCheckIn } = useMood();
+  const { addMoodCheckIn, editMoodCheckIn, moodCheckIns } = useMood();
   const { createJournalEntry } = useJournal();
 
   // Home's mood slider can open this with its chosen mood (1–5); otherwise start at Okay.
-  const { mood: moodParam, from } = useLocalSearchParams<{ mood?: string; from?: string }>();
+  const {
+    mood: moodParam,
+    from,
+    id,
+  } = useLocalSearchParams<{ mood?: string; from?: string; id?: string }>();
+  // "Edit this check-in" from the day sheet opens this with the log's id and its saved answers.
+  const editing = id ? moodCheckIns.find((m) => m.id === id) : undefined;
   const [score, setScore] = useState<MoodScore>(() => {
     const s = Number(moodParam);
     return (Number.isInteger(s) && s >= 1 && s <= 5 ? s : 3) as MoodScore;
@@ -39,6 +45,14 @@ export default function MoodCheckInScreen() {
   const [step, setStep] = useState<'mood' | 'details'>('mood');
   const [factors, setFactors] = useState<MoodFactor[]>([]);
   const [note, setNote] = useState('');
+  const prefilled = useRef(false);
+  useEffect(() => {
+    if (!editing || prefilled.current) return;
+    prefilled.current = true;
+    setScore(moodScoreOf(editing.mood));
+    setFactors(editing.factors ?? []);
+    setNote(editing.note ?? '');
+  }, [editing]);
   const [saving, setSaving] = useState(false);
   const saving$ = useRef(false);
   const mood = moodStep(score);
@@ -51,6 +65,17 @@ export default function MoodCheckInScreen() {
     saving$.current = true;
     setSaving(true);
     try {
+      if (editing) {
+        await editMoodCheckIn({
+          id: editing.id,
+          mood: mood.checkIn,
+          factors,
+          note: note.trim() || undefined,
+        });
+        toast.success(t('moodDay.edited'));
+        router.back();
+        return;
+      }
       const entry = await addMoodCheckIn({
         mood: mood.checkIn,
         factors,

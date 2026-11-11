@@ -14,6 +14,7 @@ import { Glow } from '@/components/glow/Glow';
 import { AppButton } from '@/components/ui/AppButton';
 import { toast } from '@/components/Toast';
 import { computeVoiceMetrics, MicPermissionError, usePlayer, useRecorder } from '@/lib/recorder';
+import { MicPrimerDismissed } from '@/lib/mic-primer';
 
 export type SoundCheck = {
   uri: string;
@@ -114,6 +115,7 @@ export function VoiceCheckIn({
         await startRecording();
       }
     } catch (e) {
+      if (e instanceof MicPrimerDismissed) return;
       if (e instanceof MicPermissionError && !e.canAskAgain) {
         // iOS asks only once; after a "Don't Allow" the request fails silently, so point to Settings.
         Alert.alert(labels.micOff.title, labels.micOff.body, [

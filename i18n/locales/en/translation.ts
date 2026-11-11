@@ -47,6 +47,17 @@ export default {
       5: { tag: 'Step Five', title: 'Support When You Need It' },
     },
   },
+  micPrimer: {
+    title: 'Talk instead of typing',
+    body: 'We’ll ask to use your microphone so you can speak to Glow AI or record a journal entry.',
+    points: {
+      tap: 'Recording only starts when you tap the mic',
+      deleted: 'Voice is turned into text, then the audio is deleted',
+      settings: 'You can turn it off any time in Settings',
+    },
+    allow: 'Allow microphone',
+    notNow: 'Not now',
+  },
   yourAssessment: {
     title: 'Your assessment',
     intro: 'Your answers shape suggestions and your Glow score. Update them any time — your history stays.',
@@ -1358,6 +1369,8 @@ export default {
     dayEmpty: '{{day}}, no check-in',
   },
   moodDay: {
+    edit: 'Edit this check-in',
+    edited: 'Check-in updated',
     yourNote: 'Your note',
     openJournal: 'Open journal entry',
     talk: 'Talk about this day with Glow AI',
@@ -2904,6 +2917,9 @@ export default {
     manageError: 'We couldn’t open subscription settings. Try again.',
   },
   journalWrite: {
+    editingTitle: 'Editing · {{date}}',
+    done: 'Done',
+    saveChanges: 'Save changes',
     save: 'Save',
     saveEntry: 'Save entry',
     titleLabel: 'Title',

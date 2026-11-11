@@ -109,6 +109,14 @@ export function DayDetailsSheet({
           </View>
         ) : null}
         <ListGroup>
+          <ListRow
+            icon="line/edit"
+            label={t('moodDay.edit')}
+            onPress={() => {
+              onClose();
+              router.push({ pathname: '/(tabs)/mood/check-in', params: { id: log.id } });
+            }}
+          />
           {journal && (
             <ListRow
               icon="line/journal"

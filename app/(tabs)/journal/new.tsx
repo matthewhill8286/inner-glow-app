@@ -171,7 +171,7 @@ export default function WriteEntry() {
         <NavBar
           backLabel={t('common.back')}
           onBack={() => backTo(undefined, '/(tabs)/journal')}
-          title={navDate}
+          title={editing ? t('journalWrite.editingTitle', { date: navDate }) : navDate}
           trailing={
             <Text
               accessibilityRole="button"
@@ -179,12 +179,13 @@ export default function WriteEntry() {
               suppressHighlighting
               style={[Type.bodyMSemi, { color: canSave ? palette.plum : palette.textSubtle }]}
             >
-              {t('journalWrite.save')}
+              {editing ? t('journalWrite.done') : t('journalWrite.save')}
             </Text>
           }
         />
       </View>
-      <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE}
+      <ScrollView
+        keyboardDismissMode={KEYBOARD_DISMISS_MODE}
         contentContainerStyle={{ paddingBottom: insets.bottom + 24, flexGrow: 1 }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
@@ -338,7 +339,7 @@ export default function WriteEntry() {
 
         <View style={{ flex: 1, minHeight: 32 }} />
         <AppButton
-          title={t('journalWrite.saveEntry')}
+          title={editing ? t('journalWrite.saveChanges') : t('journalWrite.saveEntry')}
           size="lg"
           icon="line/check"
           iconPosition="left"

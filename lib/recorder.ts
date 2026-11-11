@@ -7,6 +7,7 @@ import {
   useAudioRecorder,
   useAudioRecorderState,
 } from 'expo-audio';
+import { askMicPrimer, MicPrimerDismissed } from '@/lib/mic-primer';
 
 /** Thrown when the microphone is off. `canAskAgain` is false once the user has said no, so only Settings can turn it on. */
 export class MicPermissionError extends Error {
@@ -24,6 +25,10 @@ export function useRecorder(
   const state = useAudioRecorderState(recorder, intervalMs);
 
   async function startRecording() {
+    const current = await AudioModule.getRecordingPermissionsAsync();
+    // Before iOS asks for the first time, explain why (`6801:6542`).
+    if (!current.granted && current.canAskAgain && !(await askMicPrimer()))
+      throw new MicPrimerDismissed();
     const perm = await AudioModule.requestRecordingPermissionsAsync();
     if (!perm.granted) throw new MicPermissionError(perm.canAskAgain);
     await setAudioModeAsync({
