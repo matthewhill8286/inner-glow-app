@@ -7,6 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { View } from 'react-native';
 import { authTokenVar } from '@/lib/state';
 import { supabase } from '@/supabase/supabase';
+import { expiredSessionEmail } from '@/lib/session-expiry';
 
 export default function Index() {
   useEffect(() => {
@@ -24,6 +25,9 @@ export default function Index() {
         if (sessionError) throw sessionError;
 
         if (!session) {
+          const expiredEmail = await expiredSessionEmail();
+          if (expiredEmail)
+            return navigate({ pathname: '/(auth)/session-expired', params: { email: expiredEmail } });
           /* ── 2. First-launch onboarding slides (only for unauthenticated users) ── */
           const onboardingSeen = await withStartupDeadline(
             AsyncStorage.getItem('onboarding:seen:v1'),

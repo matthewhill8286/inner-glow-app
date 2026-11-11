@@ -14,6 +14,7 @@ import { LegalNote } from '@/components/ui/controls';
 import { SettingsScreen } from '@/components/settings/SettingsParts';
 import { toast } from '@/components/Toast';
 import { supabase } from '@/supabase/supabase';
+import { signOutOnPurpose } from '@/lib/session-expiry';
 import { resetSubscription } from '@/hooks/useSubscription';
 import { authTokenVar, showAlert } from '@/lib/state';
 import { backTo } from '@/lib/navigation';
@@ -46,6 +47,7 @@ export default function DeleteAccount() {
       });
       if (error || !data?.deleted)
         throw new Error(t('deleteFlow.failed'));
+      await signOutOnPurpose();
       await supabase.auth.signOut({ scope: 'local' });
       await AsyncStorage.clear();
       if (Platform.OS !== 'web' && FileSystem.cacheDirectory) {
@@ -61,8 +63,7 @@ export default function DeleteAccount() {
       resetSubscription();
       queryClient.clear();
       authTokenVar(null);
-      router.replace('/(auth)/sign-in');
-      toast.success(t('deleteFlow.deleted'));
+      router.replace('/(auth)/account-deleted');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('deleteFlow.failed'));
     } finally {

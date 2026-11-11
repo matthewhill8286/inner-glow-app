@@ -5,6 +5,7 @@ import { router } from 'expo-router';
 import { supabase } from '@/supabase/supabase';
 import { authTokenVar } from '@/lib/state';
 import { passwordMeetsPolicy } from '@/lib/password-policy';
+import { authErrorKind, isTakenSignUp } from '@/lib/auth-errors';
 import { palette } from '@/constants/theme';
 import { Type } from '@/constants/typography';
 import { AppField } from '@/components/ui/AppField';
@@ -24,9 +25,11 @@ export default function SignUp() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mismatch, setMismatch] = useState(false);
+  const [emailTaken, setEmailTaken] = useState(false);
 
   async function onCreate() {
     setMismatch(false);
+    setEmailTaken(false);
     if (!email || !pass) {
       setError(t('auth.emailPasswordRequired'));
       return;
@@ -46,11 +49,17 @@ export default function SignUp() {
       const { data, error } = await supabase.auth.signUp({ email, password: pass });
       if (error) throw error;
       if (!data.session && !data.user) throw new Error('Failed to create account');
+      if (isTakenSignUp(data.user)) {
+        setEmailTaken(true);
+        return;
+      }
       const token = data.session?.access_token || '';
       if (token) authTokenVar(token);
       router.replace('/(onboarding)/assessment');
     } catch (err) {
-      setError((err as Error).message);
+      const kind = authErrorKind(err);
+      if (kind === 'emailInUse') setEmailTaken(true);
+      else setError(t(`authErrors.${kind}`));
     } finally {
       setLoading(false);
     }
@@ -88,11 +97,16 @@ export default function SignUp() {
           label={t('authNew.emailLabel')}
           placeholder={t('authNew.emailPlaceholder')}
           value={email}
-          onChangeText={setEmail}
+          onChangeText={(v) => {
+            setEmail(v);
+            setEmailTaken(false);
+          }}
           autoCapitalize="none"
           autoComplete="email"
           keyboardType="email-address"
           textContentType="emailAddress"
+          error={emailTaken ? t('authErrors.emailInUse') : undefined}
+          onErrorPress={() => router.replace({ pathname: '/(auth)/sign-in', params: { email } })}
         />
         <AppField
           label={t('authNew.passwordLabel')}

@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { router } from 'expo-router';
 import { supabase } from '@/supabase/supabase';
+import { signOutOnPurpose } from '@/lib/session-expiry';
 import { authTokenVar } from '@/lib/state';
 import MaterialIcons from '@/components/AppIcon';
 import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
@@ -100,7 +101,7 @@ export default function TwoFactorVerify() {
       router.replace('/');
     } catch (err: any) {
       console.error('[2FA Verify] Error:', err);
-      setError(err?.message || t('twoFactor.invalidCode'));
+      setError(t('twoFactor.invalidCode'));
       setCode('');
     } finally {
       setLoading(false);
@@ -494,6 +495,7 @@ export default function TwoFactorVerify() {
         {/* ── Sign out link ── */}
         <Pressable
           onPress={async () => {
+            await signOutOnPurpose();
             await supabase.auth.signOut();
             authTokenVar(null);
             router.replace('/(auth)/sign-in');
