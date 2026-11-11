@@ -1,0 +1,59 @@
+# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+
+# dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Native
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+*.pem
+
+# local env files
+.env*.local
+
+# typescript
+*.tsbuildinfo
+
+app-example
+
+# generated native folders
+/ios
+/android
+
+/.idea/
+
+# Supabase CLI cache
+supabase/.temp/
+
+# Medication class lookups cached by scripts/build-medication-catalogue.py
+scripts/.medication-classes.json
+
+# Google Play upload key for eas submit (never commit)
+google-play-service-account.json
+
+# Not needed in EAS builds (an .easignore replaces .gitignore for EAS)
+marketing/
+specs/
+docs/
