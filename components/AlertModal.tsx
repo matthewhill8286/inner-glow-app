@@ -1,91 +1,110 @@
-import { Typography } from '@/constants/typography';
-import { UI } from '@/constants/theme';
 import React from 'react';
-import { Modal, View, Text, Pressable, StyleSheet } from 'react-native';
-import { useAlert, hideAlert } from '@/lib/state';
+import { Modal, Text, View } from 'react-native';
+import { palette } from '@/constants/theme';
+import { Type } from '@/constants/typography';
+import { Icon } from '@/components/icons/Icon';
+import { AppButton } from '@/components/ui/AppButton';
+import { useAlert, hideAlert, type AlertAction } from '@/lib/state';
 
+/**
+ * Confirm dialog, from Clear all conversations? (`6809:7325`) and Delete this entry? (`6809:7249`):
+ * a centred card over the dimmed screen. A destructive confirm gets the soft danger orb with a trash
+ * icon and a danger button. Cancel actions are text buttons below the main one.
+ */
 export const AlertModal: React.FC = () => {
   const alert = useAlert();
-
   if (!alert.visible) return null;
+
+  const actions: AlertAction[] = alert.actions?.length ? alert.actions : [{ text: 'OK' }];
+  const cancels = actions.filter((a) => a.style === 'cancel');
+  const mains = actions.filter((a) => a.style !== 'cancel');
+  const destructive = mains.some((a) => a.style === 'destructive');
+  const press = (a: AlertAction) => {
+    hideAlert();
+    a.onPress?.();
+  };
 
   return (
     <Modal
       transparent
       visible={alert.visible}
       animationType="fade"
+      statusBarTranslucent
       onRequestClose={() => {
         hideAlert();
-        alert.actions.find((action) => action.style === 'cancel')?.onPress?.();
+        cancels[0]?.onPress?.();
       }}
     >
-      <View style={styles.backdrop}>
-        <View style={styles.card}>
-          {!!alert.title && <Text style={styles.title}>{alert.title}</Text>}
-          {!!alert.message && <Text style={styles.message}>{alert.message}</Text>}
-          <View style={styles.actions}>
-            {(alert.actions && alert.actions.length ? alert.actions : [{ text: 'OK' }]).map(
-              (a, i) => (
-                <Pressable
-                  key={i}
-                  onPress={() => {
-                    hideAlert();
-                    a.onPress?.();
-                  }}
-                  style={[styles.button, a.style === 'destructive' && styles.destructive]}
-                >
-                  <Text
-                    style={[styles.buttonText, a.style === 'destructive' && styles.destructiveText]}
-                  >
-                    {a.text}
-                  </Text>
-                </Pressable>
-              ),
-            )}
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: 'rgba(36,26,46,0.45)',
+          justifyContent: 'center',
+          padding: 24,
+        }}
+      >
+        <View
+          accessibilityViewIsModal
+          style={{
+            borderRadius: 32,
+            backgroundColor: palette.bg,
+            paddingHorizontal: 24,
+            paddingTop: 28,
+            paddingBottom: 16,
+            alignItems: 'center',
+            gap: 12,
+          }}
+        >
+          {destructive ? (
+            <View
+              style={{
+                width: 52,
+                height: 52,
+                borderRadius: 26,
+                backgroundColor: palette.dangerSoft,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Icon name="line/trash" size={22} color={palette.danger} />
+            </View>
+          ) : null}
+          {!!alert.title && (
+            <Text
+              accessibilityRole="header"
+              style={[
+                Type.titleSm,
+                { fontSize: 22, lineHeight: 28, color: palette.ink, textAlign: 'center' },
+              ]}
+            >
+              {alert.title}
+            </Text>
+          )}
+          {!!alert.message && (
+            <Text
+              style={[
+                Type.captionM,
+                { fontSize: 14, lineHeight: 19, color: palette.textMuted, textAlign: 'center' },
+              ]}
+            >
+              {alert.message}
+            </Text>
+          )}
+          <View style={{ alignSelf: 'stretch', gap: 4, marginTop: 8 }}>
+            {mains.map((a, i) => (
+              <AppButton
+                key={`m${i}`}
+                title={a.text}
+                variant={a.style === 'destructive' ? 'danger' : i === 0 ? 'primary' : 'outline'}
+                onPress={() => press(a)}
+              />
+            ))}
+            {cancels.map((a, i) => (
+              <AppButton key={`c${i}`} title={a.text} variant="text" onPress={() => press(a)} />
+            ))}
           </View>
         </View>
       </View>
     </Modal>
   );
 };
-
-const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  card: {
-    width: '100%',
-    backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 20,
-  },
-  title: { ...Typography.heading, fontSize: 20, marginBottom: 8, color: '#333' },
-  message: { fontFamily: Typography.family.body, fontSize: 14, color: '#555', marginBottom: 16 },
-  actions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'flex-end',
-    gap: 12,
-  },
-  button: {
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-    backgroundColor: '#eee',
-  },
-  buttonText: {
-    fontFamily: Typography.family.body,
-    fontWeight: Typography.weight.semibold,
-    color: '#333',
-  },
-  destructive: {
-    backgroundColor: '#ffe8e8',
-  },
-  destructiveText: {
-    color: '#cc0000',
-  },
-});

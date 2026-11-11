@@ -6,6 +6,7 @@ import { toast } from '@/components/Toast';
 import { invokeAI } from '@/lib/ai-privacy';
 import { audioBase64, audioMimeType } from '@/lib/audio-file';
 import { MicPermissionError, useRecorder } from '@/lib/recorder';
+import { MicPrimerDismissed } from '@/lib/mic-primer';
 import { levelFromDb, pushLevel } from '@/lib/voice-entry';
 import {
   askStopReason,
@@ -85,6 +86,7 @@ export function useVoiceAsk(onAsk: (text: string) => void) {
       setState('listening');
     } catch (e) {
       setState('idle');
+      if (e instanceof MicPrimerDismissed) return;
       if (e instanceof MicPermissionError && !e.canAskAgain) {
         Alert.alert(t('common.micNeeded'), t('common.micInSettings'), [
           { text: t('common.cancel'), style: 'cancel' },

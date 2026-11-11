@@ -36,6 +36,7 @@ import { needsCrisisSupport } from '@/lib/journal-entry';
 import { MOOD_SCALE, moodStep, type MoodScore } from '@/lib/mood-scale';
 import { backTo } from '@/lib/navigation';
 import { MicPermissionError, useRecorder } from '@/lib/recorder';
+import { MicPrimerDismissed } from '@/lib/mic-primer';
 import { uploadJournalAudio } from '@/lib/journal-audio';
 import { useUser } from '@/hooks/useUser';
 import { RecordingPill } from '@/components/journal/RecordingPill';
@@ -257,6 +258,10 @@ export default function VoiceEntry() {
     try {
       await recorder.startRecording();
     } catch (err) {
+      if (err instanceof MicPrimerDismissed) {
+        backTo(undefined, '/(tabs)/journal');
+        return;
+      }
       if (err instanceof MicPermissionError && !err.canAskAgain) {
         Alert.alert(t('journalVoice.recordTitle'), t('journalVoice.micPermissionError'), [
           { text: t('common.cancel'), style: 'cancel' },

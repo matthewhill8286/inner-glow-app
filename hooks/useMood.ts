@@ -159,14 +159,19 @@ export const useMood = () => {
   /** Changes only the mood of an existing check-in (the Home slider edits today's entry). */
   const updateMoodMutation = useMutation({
     mutationFn: async ({ id, mood }: { id: string; mood: MoodCheckIn['mood'] }) => {
-      const { error } = await supabase.from('mood_logs').update({ mood_score: moodScoreOf(mood) }).eq('id', id);
+      const { error } = await supabase
+        .from('mood_logs')
+        .update({ mood_score: moodScoreOf(mood) })
+        .eq('id', id);
       if (error) throw error;
       return { id, mood };
     },
     onMutate: async ({ id, mood }) => {
       await queryClient.cancelQueries({ queryKey: key });
       const previous = queryClient.getQueryData<MoodCheckIn[]>(key);
-      queryClient.setQueryData<MoodCheckIn[]>(key, (old) => (old || []).map((m) => (m.id === id ? { ...m, mood } : m)));
+      queryClient.setQueryData<MoodCheckIn[]>(key, (old) =>
+        (old || []).map((m) => (m.id === id ? { ...m, mood } : m)),
+      );
       return { previous };
     },
     onError: (_err, _input, context) => {
@@ -177,7 +182,32 @@ export const useMood = () => {
     },
   });
 
+  /** Edit this check-in (`6817:7401`): the mood, factors and note of an existing log. */
+  const editMoodMutation = useMutation({
+    mutationFn: async (input: {
+      id: string;
+      mood: MoodCheckIn['mood'];
+      factors: MoodFactor[];
+      note?: string;
+    }) => {
+      const { error } = await supabase
+        .from('mood_logs')
+        .update({
+          mood_score: moodScoreOf(input.mood),
+          factors: input.factors,
+          note: input.note ?? null,
+        })
+        .eq('id', input.id);
+      if (error) throw error;
+      return input;
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: key });
+    },
+  });
+
   return {
+    editMoodCheckIn: editMoodMutation.mutateAsync,
     moodCheckIns: moodQuery.data || [],
     isLoading: moodQuery.isLoading,
     isFetching: moodQuery.isFetching,
