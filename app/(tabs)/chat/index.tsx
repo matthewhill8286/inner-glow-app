@@ -54,9 +54,12 @@ export default function GlowAiHome() {
     [conversations, topics, firstTalk, i18n.language, t],
   );
 
-  const startTalking = () => {
+  const startTalking = (voice = false) => {
     if (isLoading || !canStartTalk()) return;
-    router.push({ pathname: '/(tabs)/chat/new-conversation', params: { from: '/(tabs)/chat' } });
+    router.push({
+      pathname: '/(tabs)/chat/new-conversation',
+      params: { from: '/(tabs)/chat', ...(voice ? { voice: '1' } : {}) },
+    });
   };
 
   return (
@@ -67,7 +70,8 @@ export default function GlowAiHome() {
           { color: palette.lavenderSoft, opacity: 0.25, x: 180, y: 60, width: 220, blur: 80 },
         ]}
       />
-      <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE}
+      <ScrollView
+        keyboardDismissMode={KEYBOARD_DISMISS_MODE}
         contentContainerStyle={{
           paddingTop: insets.top + 16,
           paddingHorizontal: 24,
@@ -109,13 +113,22 @@ export default function GlowAiHome() {
         >
           {t('glowAi.subtitle')}
         </Text>
-        <AppButton
-          title={t('glowAi.start')}
-          icon="line/chat"
-          iconPosition="left"
-          onPress={startTalking}
-          style={{ marginTop: 24 }}
-        />
+        <View style={{ flexDirection: 'row', gap: 10, marginTop: 24 }}>
+          <AppButton
+            title={t('glowAi.start')}
+            icon="line/chat"
+            iconPosition="left"
+            onPress={() => startTalking()}
+            style={{ flex: 1 }}
+          />
+          <AppButton
+            title={t('voiceMode.voice')}
+            icon="line/mic"
+            iconPosition="left"
+            variant="outline"
+            onPress={() => startTalking(true)}
+          />
+        </View>
         {usage.left !== null && (
           <Text
             style={[

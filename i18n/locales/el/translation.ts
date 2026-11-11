@@ -97,6 +97,7 @@ export default {
     cta: 'Επιβεβαίωση και συνέχεια',
   },
   voiceMode: {
+    voice: 'Φωνή',
     open: 'Μίλα με φωνή',
     listening: 'Ακούει…',
     thinking: 'Σκέφτεται…',

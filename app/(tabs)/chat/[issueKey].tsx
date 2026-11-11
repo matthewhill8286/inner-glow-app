@@ -84,11 +84,13 @@ export default function Chat() {
     from,
     initialMessage,
     persona: personaParam,
+    voice: voiceParam,
   } = useLocalSearchParams<{
     issueKey: string;
     from?: string;
     initialMessage?: string;
     persona?: string;
+    voice?: string;
   }>();
 
   /* ── Parse the composite key for topic + persona ── */
@@ -110,6 +112,9 @@ export default function Chat() {
   const [isAiTyping, setIsAiTyping] = useState(false);
   const [voiceOpen, setVoiceOpen] = useState(false);
   const { profile: voiceProfile } = useProfile({ lazy: true });
+  useEffect(() => {
+    if (voiceParam === '1') setVoiceOpen(true);
+  }, [voiceParam]);
   const [inputText, setInputText] = useState('');
   const [failedMessage, setFailedMessage] = useState<{
     text: string;
