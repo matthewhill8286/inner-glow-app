@@ -2,6 +2,7 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { inQuietHours, triggerPlan, type ReminderSchedule } from './reminder-schedule';
+import { WAKE_CATEGORY } from '@/lib/wake-feeling';
 
 const BEDTIME_NOTIF_IDS_KEY = 'bedtime-notification-ids';
 const WAKEUP_NOTIF_IDS_KEY = 'wakeup-notification-ids';
@@ -243,8 +244,9 @@ export async function scheduleWakeUpAlarms(opts: {
       const id = await Notifications.scheduleNotificationAsync({
         content: {
           title: 'Time to wake up!',
-          body: 'Good morning! Rise and shine — your day is waiting.',
+          body: 'Good morning. How did you wake up?',
           data: { type: 'wakeup_alarm', route: '/(tabs)/sleep' },
+          categoryIdentifier: WAKE_CATEGORY,
           sound: 'default',
           priority: Notifications.AndroidNotificationPriority.MAX,
         },
@@ -576,7 +578,11 @@ export async function goalNudgeEnabled(): Promise<boolean> {
  * One gentle nudge at `at` (19:00 today until the goal is met, otherwise tomorrow). Called when the
  * setting changes and after each session, so a met goal moves the nudge to the next day.
  */
-export async function setGoalNudge(enabled: boolean, at?: Date, body?: { title: string; body: string }) {
+export async function setGoalNudge(
+  enabled: boolean,
+  at?: Date,
+  body?: { title: string; body: string },
+) {
   if (Platform.OS === 'web') return;
   let saved: { enabled?: boolean; id?: string } = {};
   try {
@@ -587,7 +593,12 @@ export async function setGoalNudge(enabled: boolean, at?: Date, body?: { title: 
   if (saved.id) await Notifications.cancelScheduledNotificationAsync(saved.id).catch(() => {});
   const id =
     enabled && at && body
-      ? await scheduleNotification(body.title, body.body, { route: '/(tabs)/mindful' }, { type: Notifications.SchedulableTriggerInputTypes.DATE, date: at })
+      ? await scheduleNotification(
+          body.title,
+          body.body,
+          { route: '/(tabs)/mindful' },
+          { type: Notifications.SchedulableTriggerInputTypes.DATE, date: at },
+        )
       : undefined;
   await AsyncStorage.setItem(GOAL_NUDGE_KEY, JSON.stringify({ enabled, id }));
 }

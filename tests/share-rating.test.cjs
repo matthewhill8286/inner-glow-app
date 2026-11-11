@@ -37,3 +37,12 @@ test('week cards count only the last seven days and never expose moods', () => {
   assert.equal(cards.weekHeadline([1, 2]), 'gentle');
   assert.equal(cards.weekHeadline([]), 'gentle');
 });
+
+test('update required only blocks real builds below a positive minimum', () => {
+  const u = load('lib/update-required.ts');
+  assert.equal(u.needsUpdate('30', 31), true);
+  assert.equal(u.needsUpdate('31', 31), false);
+  assert.equal(u.needsUpdate('30', 0), false);
+  assert.equal(u.needsUpdate(null, 40), false);
+  assert.equal(u.needsUpdate('30', 'abc'), false);
+});

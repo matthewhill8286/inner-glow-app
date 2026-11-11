@@ -16,8 +16,15 @@
         "NSMicrophoneUsageDescription": "Inner Glow uses your microphone when you choose to record a voice journal, such as a reflection about your day, or a sleep sound recording. With your separate AI permission, voice journals can be sent to OpenAI for transcription.",
         "NSAlarmKitUsageDescription": "Inner Glow schedules the wake-up alarms you enable in your sleep schedule. These alarms ring even when Silent Mode or Focus is on.",
         "NSCalendarsFullAccessUsageDescription": "Inner Glow reads your calendar, if you connect it, to notice busy days alongside your mood. Nothing is written to your calendar.",
-        "NSPhotoLibraryAddUsageDescription": "Inner Glow saves share cards you create to your photos."
-      }
+        "NSPhotoLibraryAddUsageDescription": "Inner Glow saves share cards you create to your photos.",
+        "NSSupportsLiveActivities": true
+      },
+      "entitlements": {
+        "com.apple.security.application-groups": [
+          "group.com.innerglowai.app"
+        ]
+      },
+      "appleTeamId": "TBSF92ANV7"
     },
     "android": {
       "adaptiveIcon": {
@@ -146,7 +153,8 @@
           "savePhotosPermission": "Inner Glow saves share cards you create to your photos.",
           "isAccessMediaLocationEnabled": false
         }
-      ]
+      ],
+      "@bacons/apple-targets"
     ],
     "experiments": {
       "typedRoutes": true,

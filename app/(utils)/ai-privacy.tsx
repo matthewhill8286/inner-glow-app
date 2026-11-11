@@ -163,7 +163,7 @@ export default function GlowAiDataScreen() {
           <ListRow
             icon="line/download"
             label={exporting ? t('aiData.exporting') : t('aiData.download')}
-            onPress={exporting ? undefined : download}
+            onPress={() => router.push('/(utils)/your-data')}
           />
           <ListRow icon="line/chat" label={t('aiData.clear')} tone="danger" onPress={clear} />
         </ListGroup>

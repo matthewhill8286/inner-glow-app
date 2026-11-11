@@ -4,9 +4,11 @@ import { entryRouteForProfile } from '@/lib/navigation';
 import { useEffect } from 'react';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { View } from 'react-native';
+import { Platform, View } from 'react-native';
 import { authTokenVar } from '@/lib/state';
 import { supabase } from '@/supabase/supabase';
+import Constants from 'expo-constants';
+import { needsUpdate } from '@/lib/update-required';
 import { expiredSessionEmail } from '@/lib/session-expiry';
 
 export default function Index() {
@@ -17,6 +19,21 @@ export default function Index() {
     };
     void (async () => {
       try {
+        /* ── 0. Is this build still supported? (Update required, `6832:8215`) ── */
+        if (Platform.OS !== 'web') {
+          const { data: config } = await withStartupDeadline(
+            Promise.resolve(
+              supabase
+                .from('app_config')
+                .select('value')
+                .eq('key', Platform.OS === 'ios' ? 'min_ios_build' : 'min_android_build')
+                .maybeSingle(),
+            ),
+          ).catch(() => ({ data: null }));
+          if (needsUpdate(Constants.nativeBuildVersion, config?.value))
+            return navigate('/(utils)/update-required');
+        }
+
         /* ── 1. Authenticated session? ── */
         const {
           data: { session },
@@ -27,7 +44,10 @@ export default function Index() {
         if (!session) {
           const expiredEmail = await expiredSessionEmail();
           if (expiredEmail)
-            return navigate({ pathname: '/(auth)/session-expired', params: { email: expiredEmail } });
+            return navigate({
+              pathname: '/(auth)/session-expired',
+              params: { email: expiredEmail },
+            });
           /* ── 2. First-launch onboarding slides (only for unauthenticated users) ── */
           const onboardingSeen = await withStartupDeadline(
             AsyncStorage.getItem('onboarding:seen:v1'),

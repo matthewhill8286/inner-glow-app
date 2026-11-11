@@ -26,6 +26,8 @@ import { useProfile } from '@/hooks/useProfile';
 import { useSleep } from '@/hooks/useSleep';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useProEnded } from '@/hooks/useProEnded';
+import { useWidgetSync } from '@/hooks/useWidgetSync';
+import { useProfileStats } from '@/hooks/useProfileStats';
 import { trialEndsIn } from '@/lib/trial';
 import { HomeSkeleton } from '@/components/ScreenSkeletons';
 import { useGlowAiGate, useGlowAiUsage } from '@/hooks/useGlowAi';
@@ -73,7 +75,8 @@ export default function HomeScreen() {
   useProEnded();
   const trialEnds = isTrialActive ? trialEndsIn(subscription?.expiryDate) : null;
   const { moodCheckIns, isLoading: moodLoading, updateMoodCheckIn, addMoodCheckIn } = useMood();
-  const { sleepEntries } = useSleep();
+  const { sleepEntries, schedule } = useSleep();
+  const stats = useProfileStats();
   const { currentScore, scoreHistory, isLoadingHistory } = useFreudScore({
     lazy: true,
     withHistory: true,
@@ -82,6 +85,16 @@ export default function HomeScreen() {
   const firstName = greetingName(profile);
   const greeting = t(`home.${greetingKey(new Date().getHours())}`);
   const loading = moodLoading || isLoadingHistory;
+  useWidgetSync({
+    score: currentScore.score,
+    scoreTrend: trend(currentScore.score, previousDayScore(scoreHistory)),
+    scoreHistory,
+    checkIns: moodCheckIns,
+    sleepEntries,
+    streak: stats.streak.count,
+    windDown: schedule ? { hour: schedule.sleepHour, minute: schedule.sleepMin } : null,
+    ready: !loading,
+  });
 
   if (!loading && isFirstDay(moodCheckIns.length, scoreHistory.length)) {
     return (

@@ -6,7 +6,7 @@ function load(os, notifications, storage=new Map()) {
  const mocks={
   'react-native':{Platform:{OS:os}},'expo-device':{isDevice:true},'expo-notifications':notifications,
   '@react-native-async-storage/async-storage':{default:{getItem:async k=>storage.get(k)||null,setItem:async(k,v)=>storage.set(k,v),removeItem:async k=>storage.delete(k)}},
-  './reminder-schedule':schedule,
+  './reminder-schedule':schedule,'@/lib/wake-feeling':{WAKE_CATEGORY:'wake_feeling'},
  };
  vm.runInNewContext(ts.transpileModule(fs.readFileSync('lib/notifications.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{module,exports:module.exports,require:n=>mocks[n],console,Date,Set,Map,Error});
  return module.exports;

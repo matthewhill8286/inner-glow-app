@@ -28,6 +28,7 @@ export function ChatHeader({
   backLabel,
   title,
   action,
+  voice,
   style,
 }: {
   status: string;
@@ -35,6 +36,8 @@ export function ChatHeader({
   backLabel: string;
   title: string;
   action?: { icon: IconName; label: string; onPress: () => void };
+  /** The header's voice button (`6699:3725`), which opens voice mode. */
+  voice?: { label: string; onPress: () => void };
   style?: StyleProp<ViewStyle>;
 }) {
   return (
@@ -50,6 +53,14 @@ export function ChatHeader({
         </Text>
         <Text style={[Type.micro, { lineHeight: 15, color: palette.lavender }]}>● {status}</Text>
       </View>
+      {voice && (
+        <IconButton
+          variant="filled"
+          icon="line/mic"
+          accessibilityLabel={voice.label}
+          onPress={voice.onPress}
+        />
+      )}
       {action && (
         <IconButton
           variant="filled"

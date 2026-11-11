@@ -30,6 +30,7 @@
     "postinstall": "patch-package"
   },
   "dependencies": {
+    "@bacons/apple-targets": "5.0.0",
     "@expo-google-fonts/urbanist": "^0.4.2",
     "@expo/vector-icons": "^15.0.3",
     "@kingstinct/react-native-healthkit": "^16.2.0",
@@ -61,9 +62,11 @@
     "expo-localization": "~17.0.9",
     "expo-media-library": "~18.2.1",
     "expo-notifications": "~0.32.17",
+    "expo-print": "~15.0.8",
     "expo-router": "~6.0.24",
     "expo-secure-store": "~15.0.8",
     "expo-sharing": "~14.0.8",
+    "expo-speech": "~14.0.8",
     "expo-splash-screen": "~31.0.13",
     "expo-status-bar": "~3.0.9",
     "expo-store-review": "~9.0.9",

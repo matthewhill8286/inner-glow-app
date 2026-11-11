@@ -189,6 +189,12 @@ export default function GlowScoreScreen() {
           outlined
           onPress={() => router.push('/(tabs)/freud-score/about')}
         />
+        <PillChip
+          icon="line/calendar"
+          label={t('yourWeek.link')}
+          outlined
+          onPress={() => router.push('/(tabs)/freud-score/week')}
+        />
       </View>
 
       <View

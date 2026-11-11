@@ -1,9 +1,11 @@
+import { useTranslation } from 'react-i18next';
 import { canonicalRoute } from '@/lib/legacy-routes';
 import { runOptionalStartup } from '@/lib/startup';
 import { isAppRoute } from '@/lib/navigation';
 import { Stack, router, useRootNavigationState } from 'expo-router';
 import { AlertModal } from '@/components/AlertModal';
 import { PermissionPrimer } from '@/components/PermissionPrimer';
+import { registerWakeCategory, wakeMoodScore } from '@/lib/wake-feeling';
 import { ToastContainer } from '@/components/Toast';
 import { AppLockGate } from '@/components/AppLockGate';
 import { KeyboardSwipeDismiss } from '@/components/KeyboardSwipeDismiss';
@@ -266,7 +268,16 @@ async function recordReminder(notification: Notifications.Notification) {
 }
 
 function NativeNotificationResponses() {
+  const { t } = useTranslation();
   const navigationState = useRootNavigationState();
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    void registerWakeCategory({
+      heavy: t('wakeFeeling.heavy'),
+      okay: t('wakeFeeling.okay'),
+      bright: t('wakeFeeling.bright'),
+    });
+  }, [t]);
   const lastResponse = Notifications.useLastNotificationResponse();
   const handledResponse = useRef<string | null>(null);
   // The hook covers notification taps while running and taps that launch a closed app.
@@ -282,8 +293,11 @@ function NativeNotificationResponses() {
         recordDiagnostic('service_failure', 'SERVICE_UNAVAILABLE');
       },
     );
+    const wakeScore = wakeMoodScore(lastResponse.actionIdentifier);
     const target = notification.request.content.data?.route;
-    if (isAppRoute(target))
+    if (wakeScore)
+      router.push({ pathname: '/(tabs)/mood/check-in', params: { mood: String(wakeScore) } });
+    else if (isAppRoute(target))
       router.push(canonicalRoute(target as string) as import('expo-router').Href);
     void Notifications.clearLastNotificationResponse();
   }, [navigationState?.key, lastResponse]);
