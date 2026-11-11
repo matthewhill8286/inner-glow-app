@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
+import { authErrorKind } from '@/lib/auth-errors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '@/supabase/supabase';
 import { authTokenVar } from '@/lib/state';
@@ -14,7 +15,8 @@ import { AuthLinkLine, AuthShell } from '@/components/auth/AuthShell';
 /** Sign in `4002:14430` (01 §2.8). */
 export default function SignIn() {
   const { t } = useTranslation();
-  const [email, setEmail] = useState('');
+  const params = useLocalSearchParams<{ email?: string }>();
+  const [email, setEmail] = useState(params.email ?? '');
   const [pass, setPass] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,7 +49,7 @@ export default function SignIn() {
       }
       router.replace('/');
     } catch (err) {
-      setError((err as Error).message);
+      setError(t(`authErrors.${authErrorKind(err)}`));
     } finally {
       setLoading(false);
     }

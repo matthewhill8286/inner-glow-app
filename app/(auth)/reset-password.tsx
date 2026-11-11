@@ -11,6 +11,7 @@ import { AppButton } from '@/components/ui/AppButton';
 import { AppField } from '@/components/ui/AppField';
 import { ResetShell } from '@/components/auth/ResetShell';
 import { supabase } from '@/supabase/supabase';
+import { signOutOnPurpose } from '@/lib/session-expiry';
 import { backTo } from '@/lib/navigation';
 import { passwordRules } from '@/lib/password-reset';
 import { passwordMeetsPolicy } from '@/lib/password-policy';
@@ -79,6 +80,7 @@ export default function ResetPassword() {
   }
 
   async function backToSignIn() {
+    await signOutOnPurpose();
     await supabase.auth.signOut().catch(() => undefined);
     router.replace('/(auth)/sign-in');
   }

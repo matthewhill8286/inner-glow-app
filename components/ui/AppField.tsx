@@ -26,6 +26,7 @@ export function AppField({
   onEndIconPress,
   revealable,
   secureTextEntry,
+  onErrorPress,
   variant = 'pill',
   onFocus,
   onBlur,
@@ -33,6 +34,8 @@ export function AppField({
 }: TextInputProps & {
   label?: string;
   error?: string;
+  /** Makes the error caption a link, such as "Sign in instead?". */
+  onErrorPress?: () => void;
   containerStyle?: StyleProp<ViewStyle>;
   startIcon?: IconName;
   endIcon?: IconName;
@@ -124,7 +127,12 @@ export function AppField({
         )}
       </View>
       {error ? (
-        <Text accessibilityLiveRegion="polite" style={[Type.caption, { color: palette.danger }]}>
+        <Text
+          accessibilityLiveRegion="polite"
+          accessibilityRole={onErrorPress ? 'link' : undefined}
+          onPress={onErrorPress}
+          style={[Type.caption, { color: palette.danger }]}
+        >
           {error}
         </Text>
       ) : null}

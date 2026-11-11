@@ -14,6 +14,7 @@ import { configureNotificationPresentation } from '@/lib/notifications';
 import './../i18n';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { supabase } from '@/supabase/supabase';
+import { expiredSessionEmail, rememberSessionEmail } from '@/lib/session-expiry';
 import * as Linking from 'expo-linking';
 import { Platform, AppState } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -139,6 +140,12 @@ export default function RootLayout() {
       const identityChanged =
         authIdentity.current !== undefined && authIdentity.current !== nextIdentity;
       authIdentity.current = nextIdentity;
+      if (session?.user.email) void rememberSessionEmail(session.user.email);
+      if (event === 'SIGNED_OUT') {
+        void expiredSessionEmail().then((email) => {
+          if (email) router.replace({ pathname: '/(auth)/session-expired', params: { email } });
+        });
+      }
       if (event === 'PASSWORD_RECOVERY') {
         // Supabase detected a recovery token — navigate to reset password
         router.replace('/(auth)/reset-password');

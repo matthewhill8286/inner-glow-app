@@ -23,6 +23,7 @@ import { notificationPermission } from '@/lib/notifications';
 import { authTokenVar } from '@/lib/state';
 import { SESSION_KEY } from '@/lib/storage';
 import { supabase } from '@/supabase/supabase';
+import { signOutOnPurpose } from '@/lib/session-expiry';
 
 /** Log out of Inner Glow? (`6801:6965`): a bottom sheet with Log out (danger) and Stay signed in. */
 function LogOutSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
@@ -32,6 +33,7 @@ function LogOutSheet({ visible, onClose }: { visible: boolean; onClose: () => vo
   async function logOut() {
     setBusy(true);
     try {
+      await signOutOnPurpose();
       await supabase.auth.signOut();
       await AsyncStorage.removeItem(SESSION_KEY);
       // The sheet promises reminders on this phone stop until the person signs back in.
