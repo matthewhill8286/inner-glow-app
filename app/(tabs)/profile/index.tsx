@@ -374,6 +374,11 @@ export default function Profile() {
             onPress={() => router.push('/(tabs)/profile/plan')}
           />
           <ListRow
+            icon="line/note"
+            label={t('yourAssessment.title')}
+            onPress={() => router.push('/(tabs)/profile/assessment')}
+          />
+          <ListRow
             icon="line/filter"
             label={t('me.profile.settings')}
             onPress={() => router.push('/(tabs)/profile/settings')}

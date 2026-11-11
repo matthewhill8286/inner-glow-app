@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { toast } from '@/components/Toast';
 import { palette } from '@/constants/theme';
@@ -13,10 +13,21 @@ import { calculateInitialFreudScore } from '@/lib/freudScore';
 import { useUser } from '@/hooks/useUser';
 import { userScopedKey } from '@/lib/storage';
 import { backTo } from '@/lib/navigation';
-import { getAssessmentSteps, stepGlow, TAKING_MEDS, takingMedsList, toggleTakingMeds, type AssessmentStep } from '@/lib/assessment-flow';
+import {
+  getAssessmentSteps,
+  stepGlow,
+  TAKING_MEDS,
+  takingMedsList,
+  toggleTakingMeds,
+  type AssessmentStep,
+} from '@/lib/assessment-flow';
 import { normaliseDraft, type AssessmentAnswers } from '@/lib/assessment-draft';
 import { medicationsText, type MedicationClassKey } from '@/lib/medications';
-import { readAssessmentAnswer, toggleAssessmentAnswer, writeAssessmentAnswer } from '@/lib/assessment-answers';
+import {
+  readAssessmentAnswer,
+  toggleAssessmentAnswer,
+  writeAssessmentAnswer,
+} from '@/lib/assessment-answers';
 import { MOOD_SCALE, moodStep, type MoodScore } from '@/lib/mood-scale';
 import type { GlowSpec } from '@/components/glow/Glow';
 import { Glow } from '@/components/glow/Glow';
@@ -41,7 +52,13 @@ import ThoughtsToCalm from '@/assets/svg/illustrations/assessment/thoughts-to-ca
  */
 
 const DRAFT_KEY = 'assessment:draft:v1';
-const GOAL_KEYS = ['reduceStress', 'tryAISupport', 'workThroughExperiences', 'growAndUnderstand', 'justChecking'] as const;
+const GOAL_KEYS = [
+  'reduceStress',
+  'tryAISupport',
+  'workThroughExperiences',
+  'growAndUnderstand',
+  'justChecking',
+] as const;
 const CONCERN_KEYS = ['depressed', 'angry', 'anxious', 'lonely', 'numb', 'withdrawn'] as const;
 const DEFAULT_AGE = 25;
 const SHELL_DY = 44; // Figma frames assume a 44pt status bar
@@ -53,7 +70,14 @@ function useFrameOffset() {
 }
 
 function freshAnswers(): AssessmentAnswers {
-  return { createdAt: new Date().toISOString(), weight: 70, weightUnit: 'kg', moodScore: 3, mood: 'Okay', medications: [] };
+  return {
+    createdAt: new Date().toISOString(),
+    weight: 70,
+    weightUnit: 'kg',
+    moodScore: 3,
+    mood: 'Okay',
+    medications: [],
+  };
 }
 
 export default function AssessmentScreen() {
@@ -61,6 +85,7 @@ export default function AssessmentScreen() {
   const { saveScore } = useFreudScore({ lazy: true });
   const { data: user } = useUser();
   const { t } = useTranslation();
+  const retake = useLocalSearchParams<{ retake?: string }>().retake === '1';
   const { width } = useWindowDimensions();
   const dy = useFrameOffset();
   const sx = width / 375;
@@ -88,7 +113,10 @@ export default function AssessmentScreen() {
         try {
           const draft = raw ? normaliseDraft(JSON.parse(raw)) : null;
           if (draft) {
-            setA({ ...freshAnswers(), ...Object.fromEntries(Object.entries(draft.answers).filter(([, v]) => v != null)) } as AssessmentAnswers);
+            setA({
+              ...freshAnswers(),
+              ...Object.fromEntries(Object.entries(draft.answers).filter(([, v]) => v != null)),
+            } as AssessmentAnswers);
             const visible = getAssessmentSteps(draft.answers.takingMeds);
             setStep(Math.max(0, draft.step ? visible.indexOf(draft.step) : 0));
           }
@@ -109,7 +137,9 @@ export default function AssessmentScreen() {
   useEffect(() => {
     if (!draftOwner || draftOwner !== user?.id || finishing.current) return;
     const value = JSON.stringify({ answers: a, step: getAssessmentSteps(a.takingMeds)[step] });
-    draftWrites.current = draftWrites.current.then(() => AsyncStorage.setItem(userScopedKey(DRAFT_KEY, draftOwner), value)).catch(() => {});
+    draftWrites.current = draftWrites.current
+      .then(() => AsyncStorage.setItem(userScopedKey(DRAFT_KEY, draftOwner), value))
+      .catch(() => {});
   }, [a, step, draftOwner, user?.id]);
 
   const steps = useMemo(() => getAssessmentSteps(a.takingMeds), [a.takingMeds]);
@@ -154,9 +184,16 @@ export default function AssessmentScreen() {
       await AsyncStorage.removeItem(userScopedKey(DRAFT_KEY, user?.id));
       // The starting Glow score that profile setup shows on "You're all set". A failure here must not
       // block onboarding; the score is recalculated from check-ins later.
-      await saveScore({ result: calculateInitialFreudScore(payload), generateSuggestions: true }).catch((err) =>
-        console.warn('[Assessment] Failed to save the starting score:', err),
-      );
+      await saveScore({
+        result: calculateInitialFreudScore(payload),
+        generateSuggestions: true,
+      }).catch((err) => console.warn('[Assessment] Failed to save the starting score:', err));
+      if (retake) {
+        // A retake from Profile · Your assessment goes back there with the new answers.
+        toast.success(t('yourAssessment.saved'));
+        router.replace('/(tabs)/profile/assessment');
+        return;
+      }
       // "Your plan is ready" (02 A15); closing it or buying continues to profile setup.
       router.replace({ pathname: '/(utils)/trial-upgrade', params: { variant: 'plan' } });
     } catch {
@@ -182,9 +219,21 @@ export default function AssessmentScreen() {
   }
 
   const continueButton = (
-    <AppButton title={t('assessmentFlow.continue')} onPress={next} disabled={!canContinue} busy={isSavingAssessment && step === steps.length - 1} />
+    <AppButton
+      title={t('assessmentFlow.continue')}
+      onPress={next}
+      disabled={!canContinue}
+      busy={isSavingAssessment && step === steps.length - 1}
+    />
   );
-  const rampGlow: GlowSpec = { color: stepGlow(step), opacity: step === 0 ? 0.28 : key === 'write' ? 0.18 : 0.14, x: 37, y: -20, width: 300, blur: 90 };
+  const rampGlow: GlowSpec = {
+    color: stepGlow(step),
+    opacity: step === 0 ? 0.28 : key === 'write' ? 0.18 : 0.14,
+    x: 37,
+    y: -20,
+    width: 300,
+    blur: 90,
+  };
 
   const shell = {
     navTitle: t('assessmentFlow.title'),
@@ -210,12 +259,17 @@ export default function AssessmentScreen() {
                   multiple
                   label={t(`assessment.goalOptions.${k}`)}
                   selected={picked.includes(values[i])}
-                  onPress={() => set({ goal: toggleAssessmentAnswer(a.goal, values[i], values) || null })}
+                  onPress={() =>
+                    set({ goal: toggleAssessmentAnswer(a.goal, values[i], values) || null })
+                  }
                 />
               ));
             })()}
           </View>
-          <LegalNote text={t('assessmentFlow.goal.note')} style={{ marginTop: 16, marginHorizontal: 8 }} />
+          <LegalNote
+            text={t('assessmentFlow.goal.note')}
+            style={{ marginTop: 16, marginHorizontal: 8 }}
+          />
         </AssessmentShell>
       );
 
@@ -240,8 +294,18 @@ export default function AssessmentScreen() {
           }
         >
           <View style={{ gap: 8 }} accessibilityRole="radiogroup">
-            <GenderCard kind="male" label={t('assessmentFlow.gender.male')} selected={a.gender === 'Man'} onPress={() => set({ gender: 'Man' })} />
-            <GenderCard kind="female" label={t('assessmentFlow.gender.female')} selected={a.gender === 'Woman'} onPress={() => set({ gender: 'Woman' })} />
+            <GenderCard
+              kind="male"
+              label={t('assessmentFlow.gender.male')}
+              selected={a.gender === 'Man'}
+              onPress={() => set({ gender: 'Man' })}
+            />
+            <GenderCard
+              kind="female"
+              label={t('assessmentFlow.gender.female')}
+              selected={a.gender === 'Woman'}
+              onPress={() => set({ gender: 'Woman' })}
+            />
           </View>
         </AssessmentShell>
       );
@@ -254,14 +318,37 @@ export default function AssessmentScreen() {
           title={t('assessmentFlow.age.title')}
           scroll={false}
           background={
-            <View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }}>
-              <Glow color={palette.mustard} opacity={0.28} width={260} blur={50} style={{ position: 'absolute', left: 57.5 * sx, top: 306 + dy }} />
-              <Glow color={palette.lavenderSoft} opacity={0.25} width={170} blur={40} style={{ position: 'absolute', left: 152.5 * sx, top: 371 + dy }} />
-              <AgeAura width={264.8} height={247.1} style={{ position: 'absolute', left: 184.8 * sx - 132.4, top: 318.3 + dy }} />
+            <View
+              pointerEvents="none"
+              style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }}
+            >
+              <Glow
+                color={palette.mustard}
+                opacity={0.28}
+                width={260}
+                blur={50}
+                style={{ position: 'absolute', left: 57.5 * sx, top: 306 + dy }}
+              />
+              <Glow
+                color={palette.lavenderSoft}
+                opacity={0.25}
+                width={170}
+                blur={40}
+                style={{ position: 'absolute', left: 152.5 * sx, top: 371 + dy }}
+              />
+              <AgeAura
+                width={264.8}
+                height={247.1}
+                style={{ position: 'absolute', left: 184.8 * sx - 132.4, top: 318.3 + dy }}
+              />
             </View>
           }
         >
-          <AgeWheel value={age} onChange={(v) => set({ age: String(v) })} accessibilityLabel={t('assessmentFlow.age.a11y')} />
+          <AgeWheel
+            value={age}
+            onChange={(v) => set({ age: String(v) })}
+            accessibilityLabel={t('assessmentFlow.age.a11y')}
+          />
         </AssessmentShell>
       );
     }
@@ -273,7 +360,11 @@ export default function AssessmentScreen() {
             value={a.weight ?? 70}
             unit={a.weightUnit ?? 'kg'}
             onChange={(weight, weightUnit) => set({ weight, weightUnit })}
-            labels={{ kg: t('assessmentFlow.weight.kg'), lbs: t('assessmentFlow.weight.lbs'), a11y: t('assessmentFlow.weight.a11y') }}
+            labels={{
+              kg: t('assessmentFlow.weight.kg'),
+              lbs: t('assessmentFlow.weight.lbs'),
+              a11y: t('assessmentFlow.weight.a11y'),
+            }}
           />
         </AssessmentShell>
       );
@@ -287,9 +378,17 @@ export default function AssessmentScreen() {
           titleWidth={290}
           titleGap={270}
           scroll={false}
-          background={<MoodOrb score={score} style={{ position: 'absolute', left: (width - 320) / 2, top: 370 - 160 + dy }} />}
+          background={
+            <MoodOrb
+              score={score}
+              style={{ position: 'absolute', left: (width - 320) / 2, top: 370 - 160 + dy }}
+            />
+          }
         >
-          <Text style={[Type.titleXl, { letterSpacing: 0, color: palette.ink, textAlign: 'center' }]} accessibilityLiveRegion="polite">
+          <Text
+            style={[Type.titleXl, { letterSpacing: 0, color: palette.ink, textAlign: 'center' }]}
+            accessibilityLiveRegion="polite"
+          >
             {t(`moodScale.${moodStep(score).key}`)}
           </Text>
           <MoodSlider
@@ -309,14 +408,43 @@ export default function AssessmentScreen() {
       return (
         <AssessmentShell {...shell} title={t('assessmentFlow.help.title')}>
           <View style={{ width: 286, height: 286, alignSelf: 'center' }} pointerEvents="none">
-            <Glow color={palette.mustard} opacity={0.28} width={240} blur={50} style={{ position: 'absolute', left: 23, top: 23 }} />
-            <Glow color={palette.lavenderSoft} opacity={0.25} width={160} blur={40} style={{ position: 'absolute', left: 113, top: 83 }} />
+            <Glow
+              color={palette.mustard}
+              opacity={0.28}
+              width={240}
+              blur={50}
+              style={{ position: 'absolute', left: 23, top: 23 }}
+            />
+            <Glow
+              color={palette.lavenderSoft}
+              opacity={0.25}
+              width={160}
+              blur={40}
+              style={{ position: 'absolute', left: 113, top: 83 }}
+            />
             <ThoughtsToCalm width={286} height={286} style={{ position: 'absolute' }} />
-            <Glow color={palette.gold} opacity={1} width={22} blur={6} style={{ position: 'absolute', left: 142, top: 150 }} />
+            <Glow
+              color={palette.gold}
+              opacity={1}
+              width={22}
+              blur={6}
+              style={{ position: 'absolute', left: 142, top: 150 }}
+            />
           </View>
-          <View style={{ flexDirection: 'row', gap: 12, marginTop: 48 }} accessibilityRole="radiogroup">
-            <PairOption label={t('assessmentFlow.help.yes')} selected={a.soughtHelpBefore === 'Yes'} onPress={() => set({ soughtHelpBefore: 'Yes' })} />
-            <PairOption label={t('assessmentFlow.help.no')} selected={a.soughtHelpBefore === 'No'} onPress={() => set({ soughtHelpBefore: 'No' })} />
+          <View
+            style={{ flexDirection: 'row', gap: 12, marginTop: 48 }}
+            accessibilityRole="radiogroup"
+          >
+            <PairOption
+              label={t('assessmentFlow.help.yes')}
+              selected={a.soughtHelpBefore === 'Yes'}
+              onPress={() => set({ soughtHelpBefore: 'Yes' })}
+            />
+            <PairOption
+              label={t('assessmentFlow.help.no')}
+              selected={a.soughtHelpBefore === 'No'}
+              onPress={() => set({ soughtHelpBefore: 'No' })}
+            />
           </View>
         </AssessmentShell>
       );
@@ -345,7 +473,12 @@ export default function AssessmentScreen() {
 
     case 'sleep':
       return (
-        <AssessmentShell {...shell} title={t('assessmentFlow.sleep.title')} titleWidth={340} titleGap={110}>
+        <AssessmentShell
+          {...shell}
+          title={t('assessmentFlow.sleep.title')}
+          titleWidth={340}
+          titleGap={110}
+        >
           <SleepMoons
             value={a.sleepQuality}
             onChange={(sleepQuality) => set({ sleepQuality })}
@@ -370,7 +503,10 @@ export default function AssessmentScreen() {
               />
             ))}
           </View>
-          <LegalNote text={t('assessmentFlow.meds.note')} style={{ marginTop: 16, marginHorizontal: 24 }} />
+          <LegalNote
+            text={t('assessmentFlow.meds.note')}
+            style={{ marginTop: 16, marginHorizontal: 24 }}
+          />
         </AssessmentShell>
       );
 
@@ -422,12 +558,17 @@ export default function AssessmentScreen() {
 
     case 'symptoms': {
       const suggestions = CONCERN_KEYS.map((k) => t(`assessmentFlow.symptoms.suggestions.${k}`));
-      const values = (a.otherSymptoms ?? '').split('\n').map((v) => v.trim()).filter(Boolean);
+      const values = (a.otherSymptoms ?? '')
+        .split('\n')
+        .map((v) => v.trim())
+        .filter(Boolean);
       return (
         <AssessmentShell {...shell} title={t('assessmentFlow.symptoms.title')} titleGap={32}>
           <ConcernsInput
             values={values}
-            onChange={(list) => set({ otherSymptoms: list.length ? writeAssessmentAnswer(list) : null })}
+            onChange={(list) =>
+              set({ otherSymptoms: list.length ? writeAssessmentAnswer(list) : null })
+            }
             suggestions={suggestions}
             labels={{
               placeholder: t('assessmentFlow.symptoms.placeholder'),
@@ -442,21 +583,33 @@ export default function AssessmentScreen() {
 
     case 'stress':
       return (
-        <AssessmentShell {...shell} title={t('assessmentFlow.stress.title')} titleWidth={340} titleGap={85}>
+        <AssessmentShell
+          {...shell}
+          title={t('assessmentFlow.stress.title')}
+          titleWidth={340}
+          titleGap={85}
+        >
           <StressLights
             value={a.stressBand}
             onChange={(stressBand) => set({ stressBand })}
             labels={[1, 2, 3, 4, 5].map((n) => t(`assessmentFlow.stress.levels.${n}`))}
             caption={a.stressBand ? t(`assessmentFlow.stress.captions.${a.stressBand}`) : null}
           />
-          <LegalNote text={t('assessmentFlow.stress.note')} style={{ marginTop: 24, marginHorizontal: 8 }} />
+          <LegalNote
+            text={t('assessmentFlow.stress.note')}
+            style={{ marginTop: 24, marginHorizontal: 8 }}
+          />
         </AssessmentShell>
       );
 
     case 'sound':
       return (
         <AssessmentShell {...shell} title={t('assessmentFlow.voice.title')} titleGap={12}>
-          <Text style={[Type.bodyLg, { lineHeight: 19, color: palette.textMuted, textAlign: 'center' }]}>{t('assessmentFlow.voice.subtitle')}</Text>
+          <Text
+            style={[Type.bodyLg, { lineHeight: 19, color: palette.textMuted, textAlign: 'center' }]}
+          >
+            {t('assessmentFlow.voice.subtitle')}
+          </Text>
           <View style={{ marginTop: 32 }}>
             <VoiceCheckIn
               phrase={t('assessmentFlow.voice.phrase')}
@@ -472,7 +625,12 @@ export default function AssessmentScreen() {
                 pause: t('assessmentFlow.voice.pause'),
                 micDenied: t('common.allowMicAccess'),
                 saveFailed: t('common.couldNotSaveRecording'),
-                micOff: { title: t('common.micNeeded'), body: t('common.micInSettings'), openSettings: t('common.openSettings'), cancel: t('common.cancel') },
+                micOff: {
+                  title: t('common.micNeeded'),
+                  body: t('common.micInSettings'),
+                  openSettings: t('common.openSettings'),
+                  cancel: t('common.cancel'),
+                },
               }}
             />
           </View>
@@ -482,8 +640,24 @@ export default function AssessmentScreen() {
     case 'write':
     default:
       return (
-        <AssessmentShell {...shell} title={t('assessmentFlow.write.title')} titleWidth={308} titleGap={12}>
-          <Text style={[Type.bodyLg, { lineHeight: 19, color: palette.textMuted, textAlign: 'center', width: 308, alignSelf: 'center' }]}>
+        <AssessmentShell
+          {...shell}
+          title={t('assessmentFlow.write.title')}
+          titleWidth={308}
+          titleGap={12}
+        >
+          <Text
+            style={[
+              Type.bodyLg,
+              {
+                lineHeight: 19,
+                color: palette.textMuted,
+                textAlign: 'center',
+                width: 308,
+                alignSelf: 'center',
+              },
+            ]}
+          >
             {t('assessmentFlow.write.subtitle')}
           </Text>
           <View style={{ marginTop: 48 }}>
@@ -491,7 +665,11 @@ export default function AssessmentScreen() {
               value={a.reflectionText ?? ''}
               onChange={(reflectionText) => set({ reflectionText })}
               onUseVoice={() => toast.info(t('assessmentFlow.write.dictationHint'))}
-              labels={{ placeholder: t('assessmentFlow.write.placeholder'), a11y: t('assessmentFlow.write.a11y'), useVoice: t('assessmentFlow.write.useVoice') }}
+              labels={{
+                placeholder: t('assessmentFlow.write.placeholder'),
+                a11y: t('assessmentFlow.write.a11y'),
+                useVoice: t('assessmentFlow.write.useVoice'),
+              }}
             />
           </View>
         </AssessmentShell>
