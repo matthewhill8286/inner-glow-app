@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { AppState, StyleSheet, Text, View } from 'react-native';
+import { AppState, Pressable, StyleSheet, Text, View } from 'react-native';
+import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { palette } from '@/constants/theme';
@@ -9,12 +10,13 @@ import { AppButton } from '@/components/ui/AppButton';
 import { useUser } from '@/hooks/useUser';
 import { authenticate, biometricSupport, isAppLockEnabled, shouldLock } from '@/lib/app-lock';
 import type { BiometricKind } from '@/lib/profile-setup';
-import FaceIdGlyph from '@/assets/svg/illustrations/profile/face-id.svg';
+import { Icon } from '@/components/icons/Icon';
 
 /**
  * Covers the app when the lock from profile setup (P4) is on: at launch, and when the app comes back
- * after 30 seconds or more in the background. It asks for Face ID or the fingerprint straight away and
- * offers a button to try again. The lock screen itself is not designed; it reuses the P4 look.
+ * after 30 seconds or more in the background. It asks for Face ID or the fingerprint straight away.
+ * The screen follows Inner Glow is locked (`6832:8118`). The frame's in-app passcode pad (`6832:8264`)
+ * is not built: "Use passcode instead" opens the system prompt, which offers the device passcode.
  */
 export function AppLockGate() {
   const { t } = useTranslation();
@@ -67,22 +69,86 @@ export function AppLockGate() {
   if (!locked) return null;
   const method = kind ? t(`profileFlow.biometric.${kind}`) : t('profileFlow.biometric.faceId');
   return (
-    <View style={[StyleSheet.absoluteFill, { backgroundColor: palette.bg }]} accessibilityViewIsModal>
+    <View
+      style={[StyleSheet.absoluteFill, { backgroundColor: palette.bg }]}
+      accessibilityViewIsModal
+    >
       <GlowField
         glows={[
-          { color: palette.mustard, opacity: 0.28, x: 37.5, y: -10, width: 300, blur: 80 },
-          { color: palette.lavenderSoft, opacity: 0.25, x: 67.5, y: 240, width: 240, blur: 50 },
+          { color: palette.lavenderSoft, opacity: 0.45, x: 62.5, y: 175, width: 250, blur: 60 },
+          { color: palette.mustard, opacity: 0.35, x: 147.5, y: 240, width: 160, blur: 50 },
         ]}
       />
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 24, paddingHorizontal: 24 }}>
-        <FaceIdGlyph width={64} height={64} />
-        <Text accessibilityRole="header" style={[Type.titleLg, { color: palette.ink, textAlign: 'center' }]}>
-          {t('profileFlow.lock.title')}
+      <View
+        style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}
+      >
+        <Svg width={190} height={190}>
+          <Defs>
+            <RadialGradient id="lockLight" cx="50%" cy="50%" r="50%">
+              <Stop offset="0" stopColor={palette.mustard} stopOpacity={0.9} />
+              <Stop offset="1" stopColor={palette.mustard} stopOpacity={0} />
+            </RadialGradient>
+          </Defs>
+          <Circle cx={95} cy={95} r={94.5} stroke={palette.plum} strokeWidth={1} fill="none" />
+          <Circle cx={95} cy={95} r={74} stroke={palette.plum} strokeWidth={1.5} fill="none" />
+          <Circle cx={95} cy={95} r={30} fill="url(#lockLight)" />
+        </Svg>
+        <Text
+          accessibilityRole="header"
+          style={[
+            Type.titleLg,
+            { fontSize: 26, color: palette.ink, textAlign: 'center', marginTop: 56 },
+          ]}
+        >
+          {t('appLock.title')}
         </Text>
-        <Text style={[Type.bodySm, { color: palette.textMuted, textAlign: 'center' }]}>{t('profileFlow.lock.body')}</Text>
+        <Text
+          style={[
+            Type.bodySm,
+            {
+              fontWeight: '400',
+              lineHeight: 20,
+              color: palette.textMuted,
+              textAlign: 'center',
+              marginTop: 11,
+              maxWidth: 287,
+            },
+          ]}
+        >
+          {t('appLock.body')}
+        </Text>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 6,
+            marginTop: 28,
+            paddingLeft: 12,
+            paddingRight: 14,
+            paddingVertical: 6,
+            borderRadius: 999,
+            backgroundColor: palette.selected,
+          }}
+        >
+          <Icon name="line/shield" size={14} color={palette.plum} />
+          <Text style={[Type.caption, { fontWeight: '600', color: palette.plum }]}>
+            {t('appLock.on', { method })}
+          </Text>
+        </View>
       </View>
-      <View style={{ paddingHorizontal: 24, paddingBottom: insets.bottom + 48 }}>
+      <View style={{ paddingHorizontal: 24, paddingBottom: insets.bottom + 24, gap: 16 }}>
         <AppButton title={t('profileFlow.lock.unlock', { method })} onPress={unlock} />
+        {/* iOS offers the device passcode in the same system prompt; there is no separate in-app passcode. */}
+        <Pressable accessibilityRole="button" hitSlop={8} onPress={unlock}>
+          <Text
+            style={[
+              Type.body,
+              { fontSize: 14, fontWeight: '600', color: palette.lavender, textAlign: 'center' },
+            ]}
+          >
+            {t('appLock.passcode')}
+          </Text>
+        </Pressable>
       </View>
     </View>
   );

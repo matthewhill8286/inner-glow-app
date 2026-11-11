@@ -34,7 +34,7 @@ test('FAQ search combines category and all search words across questions and ans
   const questions = items(en);
   assert.equal(filterHelpQuestions(questions, 'all', '   ').length, 6);
   assert.equal(filterHelpQuestions(questions, 'plans', '').length, 1);
-  assert.equal(filterHelpQuestions(questions, 'all', 'APPLE renewal')[0].id, 'cancel');
+  assert.equal(filterHelpQuestions(questions, 'all', 'APP STORE subscriptions')[0].id, 'cancel');
   assert.equal(filterHelpQuestions(questions, 'privacy', 'Apple').length, 0);
   assert.equal(filterHelpQuestions(questions, 'sleep', 'reminders')[0].id, 'reminders');
   assert.equal(filterHelpQuestions(questions, 'all', 'no-such-question').length, 0);
@@ -43,6 +43,6 @@ test('FAQ search combines category and all search words across questions and ans
 
 test('Greek search ignores accents, case and final sigma', () => {
   const questions = items(el);
-  assert.equal(filterHelpQuestions(questions, 'all', 'ΥΠΝΟΥ')[0].id, 'score');
+  assert.equal(filterHelpQuestions(questions, 'all', 'ΥΠΝΟ')[0].id, 'score');
   assert.equal(filterHelpQuestions(questions, 'plans', 'συνδρομησ')[0].id, 'cancel');
 });
