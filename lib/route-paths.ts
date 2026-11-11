@@ -121,6 +121,8 @@ export const ROUTE_PATHS = [
   '/(tabs)/profile/assessment',
   '/(tabs)/freud-score/about',
   '/(utils)/sources',
+  '/(utils)/share',
+  '/(tabs)/profile/passcode',
   '/(utils)/legal',
   '/(utils)/maintenance',
   '/(utils)/not-allowed',

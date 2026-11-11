@@ -1,5 +1,6 @@
 import React from 'react';
-import { Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
+import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { palette } from '@/constants/theme';
 import { Type } from '@/constants/typography';
@@ -165,6 +166,16 @@ export default function Streak() {
           })}
         </View>
       </View>
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => router.push({ pathname: '/(utils)/share', params: { tab: 'streak' } })}
+        hitSlop={10}
+        style={{ alignSelf: 'center', marginTop: 20 }}
+      >
+        <Text style={[Type.label, { fontWeight: '700', color: palette.lavender }]}>
+          {t('shareCards.shareStreak')}
+        </Text>
+      </Pressable>
     </SettingsScreen>
   );
 }
