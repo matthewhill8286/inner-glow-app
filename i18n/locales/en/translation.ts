@@ -87,6 +87,7 @@ export default {
     cta: 'Verify and continue',
   },
   voiceMode: {
+    voice: 'Voice',
     open: 'Talk by voice',
     listening: 'Listening…',
     thinking: 'Thinking…',

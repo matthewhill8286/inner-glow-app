@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -38,7 +38,13 @@ export default function NewConversation() {
     from,
     initialMessage,
     persona: personaParam,
-  } = useLocalSearchParams<{ from?: string; initialMessage?: string; persona?: string }>();
+    voice: voiceParam,
+  } = useLocalSearchParams<{
+    from?: string;
+    initialMessage?: string;
+    persona?: string;
+    voice?: string;
+  }>();
   const { isLoading } = useChat();
   const { canStartTalk } = useGlowAiGate();
   const persona = getPersona(personaParam);
@@ -46,6 +52,22 @@ export default function NewConversation() {
 
   // The mic asks by voice; the spoken words start the talk like typed ones (`canStartTalk` runs there).
   const voice = useComposerVoice((spoken) => start(spoken));
+
+  // The Glow AI home's Voice button opens a new talk straight into voice mode (`6699:3875`).
+  const voiceStarted = useRef(false);
+  useEffect(() => {
+    if (voiceParam !== '1' || voiceStarted.current || isLoading || !canStartTalk()) return;
+    voiceStarted.current = true;
+    router.replace({
+      pathname: '/(tabs)/chat/[issueKey]',
+      params: {
+        issueKey: buildNewChatKey(persona.id),
+        from: from ?? '/(tabs)/chat',
+        persona: persona.id,
+        voice: '1',
+      },
+    });
+  }, [voiceParam, isLoading, canStartTalk, persona.id, from]);
 
   function start(message: string) {
     const first = message.trim();
