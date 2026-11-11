@@ -53,8 +53,12 @@ export default function SignUp() {
         setEmailTaken(true);
         return;
       }
-      const token = data.session?.access_token || '';
-      if (token) authTokenVar(token);
+      // With email confirmation on there's no session yet: verify the six-digit code first (`6809:6846`).
+      if (!data.session) {
+        router.replace({ pathname: '/(auth)/verify-email', params: { email } });
+        return;
+      }
+      authTokenVar(data.session.access_token);
       router.replace('/(onboarding)/assessment');
     } catch (err) {
       const kind = authErrorKind(err);
@@ -65,7 +69,8 @@ export default function SignUp() {
     }
   }
 
-  const legal = (policy: 'terms' | 'privacy') => router.push({ pathname: '/(utils)/legal', params: { policy } });
+  const legal = (policy: 'terms' | 'privacy') =>
+    router.push({ pathname: '/(utils)/legal', params: { policy } });
 
   return (
     <AuthShell
@@ -74,17 +79,40 @@ export default function SignUp() {
         <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 8 }}>
           {/* Legal/Note `6674:3014`, with Terms and Privacy as links. */}
           <Svg width={14} height={14} viewBox="0 0 14 14" style={{ marginTop: 1 }}>
-            <Circle cx={7} cy={7} r={5.54} stroke={palette.lavender} strokeWidth={1.05} fill="none" />
-            <Line x1={7} y1={6.42} x2={7} y2={9.92} stroke={palette.lavender} strokeWidth={1.05} strokeLinecap="round" />
+            <Circle
+              cx={7}
+              cy={7}
+              r={5.54}
+              stroke={palette.lavender}
+              strokeWidth={1.05}
+              fill="none"
+            />
+            <Line
+              x1={7}
+              y1={6.42}
+              x2={7}
+              y2={9.92}
+              stroke={palette.lavender}
+              strokeWidth={1.05}
+              strokeLinecap="round"
+            />
             <Circle cx={7} cy={4.43} r={0.7} fill={palette.lavender} />
           </Svg>
           <Text style={{ ...Type.legal, color: palette.textLegal, flex: 1 }}>
             {t('authNew.legalLead')}{' '}
-            <Text accessibilityRole="link" onPress={() => legal('terms')} style={{ textDecorationLine: 'underline' }}>
+            <Text
+              accessibilityRole="link"
+              onPress={() => legal('terms')}
+              style={{ textDecorationLine: 'underline' }}
+            >
               {t('onboarding.terms')}
             </Text>{' '}
             {t('authNew.and')}{' '}
-            <Text accessibilityRole="link" onPress={() => legal('privacy')} style={{ textDecorationLine: 'underline' }}>
+            <Text
+              accessibilityRole="link"
+              onPress={() => legal('privacy')}
+              style={{ textDecorationLine: 'underline' }}
+            >
               {t('onboarding.privacy')}
             </Text>
             {t('authNew.legalTail')}
@@ -135,10 +163,21 @@ export default function SignUp() {
           onSubmitEditing={onCreate}
           error={mismatch ? t('authNew.mismatch') : undefined}
         />
-        <AppButton title={t('authNew.signUp')} size="lg" icon="arrow/forward" busy={loading} disabled={loading} onPress={onCreate} />
+        <AppButton
+          title={t('authNew.signUp')}
+          size="lg"
+          icon="arrow/forward"
+          busy={loading}
+          disabled={loading}
+          onPress={onCreate}
+        />
       </View>
       <View style={{ marginTop: 40 }}>
-        <AuthLinkLine lead={t('onboarding.haveAccount')} link={t('onboarding.signIn')} onPress={() => router.replace('/(auth)/sign-in')} />
+        <AuthLinkLine
+          lead={t('onboarding.haveAccount')}
+          link={t('onboarding.signIn')}
+          onPress={() => router.replace('/(auth)/sign-in')}
+        />
       </View>
     </AuthShell>
   );

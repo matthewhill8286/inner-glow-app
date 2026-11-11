@@ -44,6 +44,9 @@ import { parseChatKey } from '@/lib/chatKeys';
 import { useComposerVoice } from '@/hooks/useVoiceAsk';
 import { CATEGORY_GLOW, practiceById } from '@/data/practices';
 import { openPractice } from '@/lib/practice-routes';
+import { ReplyFeedback } from '@/components/chat/ReplyFeedback';
+import { VoiceMode } from '@/components/chat/VoiceMode';
+import { useProfile } from '@/hooks/useProfile';
 
 /* ── Helpers ────────────────────────────────────────── */
 
@@ -105,6 +108,8 @@ export default function Chat() {
   /* ── Local messages — syncs from DB, then managed locally ── */
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isAiTyping, setIsAiTyping] = useState(false);
+  const [voiceOpen, setVoiceOpen] = useState(false);
+  const { profile: voiceProfile } = useProfile({ lazy: true });
   const [inputText, setInputText] = useState('');
   const [failedMessage, setFailedMessage] = useState<{
     text: string;
@@ -302,6 +307,7 @@ export default function Chat() {
       status={t('glowAi.chat.status')}
       backLabel={t('common.back')}
       onBack={() => goBack(from)}
+      voice={{ label: t('voiceMode.open'), onPress: () => setVoiceOpen(true) }}
       action={
         messages.some((m) => m.role === 'assistant') && !isAiTyping
           ? {
@@ -348,6 +354,8 @@ export default function Chat() {
     failedMessage && lastMessage?.role === 'user' && lastMessage.content === failedMessage.text
       ? lastMessage.id
       : null;
+  const lastReply =
+    lastMessage?.role === 'assistant' ? { id: lastMessage.id, text: lastMessage.content } : null;
   const quickReplies =
     !isTyping && !failedMessage && lastMessage?.role === 'assistant'
       ? (lastMessage.quickReplies ?? [])
@@ -452,9 +460,21 @@ export default function Chat() {
                 {t('glowAi.chat.typing')}
               </Text>
             </View>
-          ) : quickReplies.length ? (
-            <View style={{ marginTop: 12 }}>
-              <QuickReplies replies={quickReplies} onPick={(reply) => void sendMessage(reply)} />
+          ) : !failedMessage && lastMessage?.role === 'assistant' ? (
+            <View style={{ marginTop: 4 }}>
+              <ReplyFeedback
+                key={lastMessage.id}
+                conversationKey={issueKey}
+                messageId={lastMessage.id}
+              />
+              {quickReplies.length ? (
+                <View style={{ marginTop: 12 }}>
+                  <QuickReplies
+                    replies={quickReplies}
+                    onPick={(reply) => void sendMessage(reply)}
+                  />
+                </View>
+              ) : null}
             </View>
           ) : null
         }
@@ -480,6 +500,15 @@ export default function Chat() {
         {!keyboardVisible && <LegalNote text={t('glowAi.note')} />}
       </View>
       <CrisisSheet visible={crisisOpen} onClose={() => setCrisisOpen(false)} />
+      <VoiceMode
+        visible={voiceOpen}
+        onClose={() => setVoiceOpen(false)}
+        onSay={(text) => void sendMessage(text)}
+        thinking={isAiTyping}
+        reply={lastReply}
+        speakReplies={voiceProfile?.aiVoiceReplies ?? false}
+        language={i18n.language === 'el' ? 'el-GR' : 'en-GB'}
+      />
     </KeyboardAvoidingView>
   );
 }

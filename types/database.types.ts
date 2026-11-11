@@ -130,6 +130,12 @@ export type Database = {
           },
         ]
       }
+      app_config: {
+        Row: { key: string; updated_at: string; value: Json }
+        Insert: { key: string; updated_at?: string; value: Json }
+        Update: { key?: string; updated_at?: string; value?: Json }
+        Relationships: []
+      }
       assessments: {
         Row: {
           age: string | null
@@ -205,6 +211,39 @@ export type Database = {
           user_id?: string
           weight?: number | null
           weight_unit?: string | null
+        }
+        Relationships: []
+      }
+      chat_feedback: {
+        Row: {
+          conversation_key: string
+          created_at: string
+          helpful: boolean
+          id: string
+          message_id: string
+          note: string | null
+          reason: string | null
+          user_id: string
+        }
+        Insert: {
+          conversation_key: string
+          created_at?: string
+          helpful: boolean
+          id?: string
+          message_id: string
+          note?: string | null
+          reason?: string | null
+          user_id?: string
+        }
+        Update: {
+          conversation_key?: string
+          created_at?: string
+          helpful?: boolean
+          id?: string
+          message_id?: string
+          note?: string | null
+          reason?: string | null
+          user_id?: string
         }
         Relationships: []
       }

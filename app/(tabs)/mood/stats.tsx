@@ -13,6 +13,8 @@ import { inPeriod, moodBuckets, moodSummary, type MoodPeriod } from '@/lib/mood-
 import { backTo } from '@/lib/navigation';
 import type { MoodCheckIn } from '@/lib/types';
 import { SourcesLink } from '@/components/SourcesLink';
+import { useCalendarBusy } from '@/hooks/useCalendarBusy';
+import { moodByBusyness } from '@/lib/calendar-busy';
 
 const BAR_H = 110;
 const RECENT = 10;
@@ -56,6 +58,17 @@ function Stat({
 export default function MoodStats() {
   const { t, i18n } = useTranslation();
   const { moodCheckIns } = useMood();
+  const calendar = useCalendarBusy();
+  const busyness = useMemo(
+    () =>
+      calendar.connected
+        ? moodByBusyness(
+            moodCheckIns.map((m) => ({ createdAt: m.createdAt, score: moodScoreOf(m.mood) })),
+            calendar.perDay,
+          )
+        : null,
+    [calendar.connected, calendar.perDay, moodCheckIns],
+  );
   const [period, setPeriod] = useState<MoodPeriod>('week');
   const [open, setOpen] = useState<MoodCheckIn | null>(null);
 
@@ -281,6 +294,47 @@ export default function MoodStats() {
         </View>
       )}
       <DayDetailsSheet log={open} onClose={() => setOpen(null)} />
+      {busyness ? (
+        <View
+          style={{
+            marginTop: 16,
+            borderRadius: 24,
+            backgroundColor: palette.white,
+            padding: 16,
+            flexDirection: 'row',
+            gap: 12,
+          }}
+        >
+          <View
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              backgroundColor: palette.selected,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Icon name="line/calendar" size={18} color={palette.plum} />
+          </View>
+          <View style={{ flex: 1, gap: 4 }}>
+            <Text style={[Type.bodyMSemi, { color: palette.ink }]}>{t('moodBusy.title')}</Text>
+            <Text style={[Type.captionM, { color: palette.textMuted }]}>
+              {t(
+                busyness.busy < busyness.quiet
+                  ? 'moodBusy.lower'
+                  : busyness.busy > busyness.quiet
+                    ? 'moodBusy.higher'
+                    : 'moodBusy.same',
+                {
+                  busy: busyness.busy,
+                  quiet: busyness.quiet,
+                },
+              )}
+            </Text>
+          </View>
+        </View>
+      ) : null}
       <SourcesLink topic="mood" style={{ marginTop: 16 }} />
     </SettingsScreen>
   );

@@ -16,6 +16,7 @@ import {
   isAppLockEnabled,
   setAppLockEnabled,
 } from '@/lib/app-lock';
+import { clearPasscode, hasPasscode } from '@/lib/passcode';
 import { backTo } from '@/lib/navigation';
 import { loadDeliveryPrefs, setDeliveryPrefs } from '@/lib/notifications';
 import type { BiometricKind } from '@/lib/profile-setup';
@@ -43,6 +44,7 @@ export default function Security() {
     kind: null,
   });
   const [lockOn, setLockOn] = useState(false);
+  const [passcodeOn, setPasscodeOn] = useState(false);
   const [hidePreviews, setHidePreviews] = useState(false);
   const [twoStep, setTwoStep] = useState<boolean | null>(null);
   const [devices, setDevices] = useState<number | null>(null);
@@ -50,14 +52,18 @@ export default function Security() {
   useFocusEffect(
     useCallback(() => {
       let live = true;
-      void Promise.all([biometricSupport(), isAppLockEnabled(user?.id), loadDeliveryPrefs()]).then(
-        ([s, on, d]) => {
-          if (!live) return;
-          setSupport(s);
-          setLockOn(on);
-          setHidePreviews(d.hidePreviews);
-        },
-      );
+      void Promise.all([
+        biometricSupport(),
+        isAppLockEnabled(user?.id),
+        loadDeliveryPrefs(),
+        hasPasscode(user?.id),
+      ]).then(([s, on, d, pass]) => {
+        if (!live) return;
+        setSupport(s);
+        setLockOn(on);
+        setPasscodeOn(pass);
+        setHidePreviews(d.hidePreviews);
+      });
       void supabase.auth.mfa
         .listFactors()
         .then(({ data }) => live && setTwoStep(!!data?.totp?.some((f) => f.status === 'verified')));
@@ -133,6 +139,31 @@ export default function Security() {
             onToggle={(v) => void toggleLock(v)}
             knobColor={KNOB}
           />
+          <ListRow
+            icon="line/shield"
+            label={t(passcodeOn ? 'passcode.change' : 'passcode.set')}
+            supportingText={t('passcode.rowBody')}
+            onPress={() => router.push('/(tabs)/profile/passcode')}
+          />
+          {passcodeOn ? (
+            <ListRow
+              icon="line/trash"
+              label={t('passcode.turnOff')}
+              onPress={() => {
+                if (!user) return;
+                void (async () => {
+                  await clearPasscode(user.id);
+                  setPasscodeOn(false);
+                  // Without Face ID or Touch ID the lock has nothing left to unlock with.
+                  if (!support.available) {
+                    await setAppLockEnabled(user.id, false);
+                    setLockOn(false);
+                  }
+                  toast.success(t('passcode.removed'));
+                })();
+              }}
+            />
+          ) : null}
           <ListRow
             icon="line/eye"
             label={t('me.security.hidePreviews')}

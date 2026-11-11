@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
-import { Pressable, Share, Text, View, useWindowDimensions } from 'react-native';
+import { Pressable, Text, View, useWindowDimensions } from 'react-native';
+import { HelpingPrompt } from '@/components/HelpingPrompt';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { palette } from '@/constants/theme';
@@ -28,7 +29,13 @@ const num = (v: string | undefined, fallback = 0) => {
 export default function CompletedScreen() {
   const { t } = useTranslation();
   const { width } = useWindowDimensions();
-  const params = useLocalSearchParams<{ from?: string; to?: string; done?: string; total?: string; minutes?: string }>();
+  const params = useLocalSearchParams<{
+    from?: string;
+    to?: string;
+    done?: string;
+    total?: string;
+    minutes?: string;
+  }>();
   const { activityStats } = useFreudScore({ lazy: true });
   const { profile } = useProfile({ lazy: true });
   const to = num(params.to);
@@ -45,8 +52,7 @@ export default function CompletedScreen() {
   const next = useMemo(() => practiceById(evening ? 'quiet-mind' : 'soothing-melodies'), [evening]);
 
   const close = () => router.replace('/(tabs)/freud-score');
-  const share = () =>
-    Share.share({ message: t('glowScore.shareMessage', { from, to }) }).catch(() => {});
+  const share = () => router.push({ pathname: '/(utils)/share', params: { tab: 'score' } });
 
   return (
     <ScoreScreen
@@ -57,39 +63,118 @@ export default function CompletedScreen() {
       art={<AuraArt width={width} height={(476 * width) / 375} />}
       nav={
         <View style={{ height: 50, alignItems: 'flex-end', justifyContent: 'center' }}>
-          <IconButton size={40} variant="solid" icon="arrow/close" accessibilityLabel={t('common.close')} onPress={close} />
+          <IconButton
+            size={40}
+            variant="solid"
+            icon="arrow/close"
+            accessibilityLabel={t('common.close')}
+            onPress={close}
+          />
         </View>
       }
     >
       <View style={{ alignItems: 'center', marginTop: 13 }}>
         <ScoreRing size={184} thickness={3.7} value={from} gain={gain} knob animateGain>
-          <View accessible accessibilityLabel={t('glowScore.ringLabel', { score: to })} style={{ alignItems: 'center', gap: 6 }}>
-            <Text style={[Type.display, { fontSize: 64, lineHeight: 76, color: palette.plumDeep }]}>{to}</Text>
-            {gain > 0 && <DeltaPill solid withValue={false} delta={gain} label={t('glowScore.points', { count: gain })} />}
+          <View
+            accessible
+            accessibilityLabel={t('glowScore.ringLabel', { score: to })}
+            style={{ alignItems: 'center', gap: 6 }}
+          >
+            <Text style={[Type.display, { fontSize: 64, lineHeight: 76, color: palette.plumDeep }]}>
+              {to}
+            </Text>
+            {gain > 0 && (
+              <DeltaPill
+                solid
+                withValue={false}
+                delta={gain}
+                label={t('glowScore.points', { count: gain })}
+              />
+            )}
           </View>
         </ScoreRing>
       </View>
 
-      <Text accessibilityRole="header" style={[Type.titleXl, { color: palette.plumDeep, textAlign: 'center', marginTop: 86, letterSpacing: 0 }]}>
+      <Text
+        accessibilityRole="header"
+        style={[
+          Type.titleXl,
+          { color: palette.plumDeep, textAlign: 'center', marginTop: 86, letterSpacing: 0 },
+        ]}
+      >
         {name ? t('glowScore.didItName', { name }) : t('glowScore.didIt')}
       </Text>
-      <Text style={[Type.body, { fontWeight: '400', lineHeight: 21.75, color: palette.textMuted, textAlign: 'center', marginTop: 8, marginHorizontal: 16 }]}>
+      <Text
+        style={[
+          Type.body,
+          {
+            fontWeight: '400',
+            lineHeight: 21.75,
+            color: palette.textMuted,
+            textAlign: 'center',
+            marginTop: 8,
+            marginHorizontal: 16,
+          },
+        ]}
+      >
         {gain > 0 ? t('glowScore.wentFrom', { from, to }) : t('glowScore.tinySteps')}
       </Text>
 
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, marginTop: 24 }}>
-        <PillChip icon="line/check" label={t('glowScore.doneCount', { done, total })} height={36} textSize={13} />
-        {minutes > 0 && <PillChip icon="line/meditate" label={formatMinutes(minutes)} height={36} textSize={13} />}
-        {streak > 0 && <PillChip icon="line/flame" label={t('glowScore.streak', { count: streak })} height={36} textSize={13} />}
+      <View
+        style={{
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          justifyContent: 'center',
+          gap: 8,
+          marginTop: 24,
+        }}
+      >
+        <PillChip
+          icon="line/check"
+          label={t('glowScore.doneCount', { done, total })}
+          height={36}
+          textSize={13}
+        />
+        {minutes > 0 && (
+          <PillChip icon="line/meditate" label={formatMinutes(minutes)} height={36} textSize={13} />
+        )}
+        {streak > 0 && (
+          <PillChip
+            icon="line/flame"
+            label={t('glowScore.streak', { count: streak })}
+            height={36}
+            textSize={13}
+          />
+        )}
       </View>
 
       {next && (
         <Pressable
           accessibilityRole="button"
           onPress={() => openPractice(next)}
-          style={({ pressed }) => ({ marginTop: 30, minHeight: 76, borderRadius: 24, backgroundColor: palette.white, flexDirection: 'row', alignItems: 'center', gap: 14, paddingLeft: 16, paddingRight: 16, opacity: pressed ? 0.85 : 1 })}
+          style={({ pressed }) => ({
+            marginTop: 30,
+            minHeight: 76,
+            borderRadius: 24,
+            backgroundColor: palette.white,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 14,
+            paddingLeft: 16,
+            paddingRight: 16,
+            opacity: pressed ? 0.85 : 1,
+          })}
         >
-          <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(216,180,216,0.45)', alignItems: 'center', justifyContent: 'center' }}>
+          <View
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 22,
+              backgroundColor: 'rgba(216,180,216,0.45)',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
             <Icon name={next.kind === 'sleep' ? 'line/moon' : 'line/music'} size={22} />
           </View>
           <View style={{ flex: 1, gap: 2 }}>
@@ -110,9 +195,17 @@ export default function CompletedScreen() {
         onPress={() => router.replace('/(tabs)/freud-score/history')}
         style={{ marginTop: 26 }}
       />
-      <Pressable accessibilityRole="button" onPress={share} hitSlop={10} style={{ alignSelf: 'center', marginTop: 16 }}>
-        <Text style={[Type.label, { fontWeight: '700', color: palette.lavender }]}>{t('glowScore.share')}</Text>
+      <Pressable
+        accessibilityRole="button"
+        onPress={share}
+        hitSlop={10}
+        style={{ alignSelf: 'center', marginTop: 16 }}
+      >
+        <Text style={[Type.label, { fontWeight: '700', color: palette.lavender }]}>
+          {t('glowScore.share')}
+        </Text>
       </Pressable>
+      <HelpingPrompt />
     </ScoreScreen>
   );
 }

@@ -41,6 +41,7 @@ import {
   stopSoundscape,
   SOUNDSCAPE_VOLUME,
 } from '@/lib/soundscape';
+import { BreathingActivity } from '@/modules/live-activity';
 
 /** Calm players breathe slowly (4 s in, 6 s out) when the practice has no pattern of its own. */
 const CALM = { inhale: 4, hold: 0, exhale: 6, holdAfter: 0 };
@@ -110,6 +111,23 @@ function PracticePlayer() {
     void playSoundscape(params.sound ?? 'silence');
     return () => void stopSoundscape();
   }, [params.sound]);
+
+  // Box breathing Live Activity (`6852:8322`): the phase, the breath count and the time left, on the
+  // Lock Screen and in the Dynamic Island while a breathing practice runs.
+  const liveStarted = useRef(false);
+  useEffect(() => {
+    if (!isBreathing || !practice || done) return;
+    const endsAt = Date.now() + Math.max(0, total - elapsedRef.current) * 1000;
+    const label = running ? t(`practices.player.${phase}`) : t('practices.player.paused');
+    if (!liveStarted.current) {
+      liveStarted.current = true;
+      void BreathingActivity.start(text(practice).title, label, breath + 1, endsAt);
+    } else void BreathingActivity.update(label, breath + 1, endsAt);
+  }, [isBreathing, practice, done, running, phase, breath, total, t]);
+  useEffect(() => {
+    if (done) void BreathingActivity.end();
+  }, [done]);
+  useEffect(() => () => void BreathingActivity.end(), []);
 
   const finish = useCallback(
     async (completed: boolean) => {
