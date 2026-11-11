@@ -25,6 +25,8 @@ import { useMood } from '@/hooks/useMood';
 import { useProfile } from '@/hooks/useProfile';
 import { useSleep } from '@/hooks/useSleep';
 import { useSubscription } from '@/hooks/useSubscription';
+import { useProEnded } from '@/hooks/useProEnded';
+import { trialEndsIn } from '@/lib/trial';
 import { useGlowAiGate, useGlowAiUsage } from '@/hooks/useGlowAi';
 import { useVoiceAsk } from '@/hooks/useVoiceAsk';
 import { getPersona } from '@/lib/chat';
@@ -66,7 +68,9 @@ export default function HomeScreen() {
   );
 
   const { profile } = useProfile({ lazy: true });
-  const { hasFullAccess } = useSubscription();
+  const { hasFullAccess, isTrialActive, subscription } = useSubscription();
+  useProEnded();
+  const trialEnds = isTrialActive ? trialEndsIn(subscription?.expiryDate) : null;
   const { moodCheckIns, isLoading: moodLoading, updateMoodCheckIn, addMoodCheckIn } = useMood();
   const { sleepEntries } = useSleep();
   const { currentScore, scoreHistory, isLoadingHistory } = useFreudScore({
@@ -118,6 +122,7 @@ export default function HomeScreen() {
           }
         />
         <GlowAiInput />
+        {trialEnds ? <TrialEndsCard when={trialEnds} /> : null}
         <View
           style={{
             flexDirection: 'row',
@@ -745,6 +750,53 @@ function ForYouToday() {
 }
 
 /* ── Free plan ───────────────────────────────────── */
+
+/**
+ * Trial ends tomorrow (`6809:6897`): a white card with a mustard border under the Glow AI bar on the
+ * trial's last day. The app's own trial doesn't turn into a paid plan, so the line says Pro pauses
+ * instead of the frame's "Then €59.99/year".
+ */
+function TrialEndsCard({ when }: { when: 'today' | 'tomorrow' }) {
+  const { t } = useTranslation();
+  return (
+    <View
+      style={{
+        marginTop: 16,
+        borderRadius: 24,
+        borderWidth: 1.5,
+        borderColor: palette.mustard,
+        backgroundColor: palette.white,
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 16,
+        gap: 12,
+      }}
+    >
+      <View
+        style={{
+          width: 40,
+          height: 40,
+          borderRadius: 20,
+          backgroundColor: 'rgba(226,204,64,0.30)',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Icon name="line/crown" size={20} />
+      </View>
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text style={{ ...Type.bodyMSemi, color: palette.ink }}>{t(`homeGlow.trialEnds.${when}`)}</Text>
+        <Text style={{ ...Type.captionS, color: palette.textMuted }}>{t('homeGlow.trialEnds.body')}</Text>
+      </View>
+      <AppButton
+        title={t('homeGlow.trialEnds.manage')}
+        size="s"
+        variant="outline"
+        onPress={() => router.push('/(tabs)/profile/plan')}
+      />
+    </View>
+  );
+}
 
 function FreePlanCard() {
   const { t } = useTranslation();

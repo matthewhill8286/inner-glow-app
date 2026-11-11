@@ -10,6 +10,11 @@ import { Type } from '@/constants/typography';
 import { LegalLinks } from '@/components/LegalLinks';
 import { Paywall } from '@/components/paywall/Paywall';
 import { toast } from '@/components/Toast';
+import {
+  ConfirmingPurchase,
+  PurchaseResultSheet,
+  type PurchaseResult,
+} from '@/components/paywall/PurchaseSheets';
 import { applyPurchaseInfo, useSubscription } from '@/hooks/useSubscription';
 import { openSubscriptionManagement } from '@/lib/billing-management';
 import { functionError } from '@/lib/function-errors';
@@ -61,6 +66,9 @@ export default function TrialUpgrade() {
     planParam === 'monthly' ? 'monthly' : 'yearly',
   );
   const [loading, setLoading] = useState<PaywallPlan | 'restore' | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  const [result, setResult] = useState<PurchaseResult | null>(null);
+  const [failedPlan, setFailedPlan] = useState<PaywallPlan | null>(null);
   const [offering, setOffering] = useState<PurchasesOffering | null>(null);
   const [offeringLoading, setOfferingLoading] = useState(hasNativeStore());
   const [appleTrialEligible, setAppleTrialEligible] = useState(false);
@@ -174,7 +182,17 @@ export default function TrialUpgrade() {
 
       if (useNativeIAP) {
         await configureRevenueCat(session.user.id);
-        const info = await purchasePlan(plan);
+        setConfirming(true);
+        let info;
+        try {
+          info = await purchasePlan(plan);
+        } catch {
+          setConfirming(false);
+          setFailedPlan(plan);
+          setResult('failed');
+          return;
+        }
+        setConfirming(false);
         if (!info) return; // The user closed the Apple sheet.
         if (!hasPremiumEntitlement(info)) {
           toast.error(t('paywall.notUnlocked'));
@@ -202,6 +220,7 @@ export default function TrialUpgrade() {
     } catch (err) {
       toast.error((err as Error)?.message || t('paywall.checkoutError'));
     } finally {
+      setConfirming(false);
       setLoading(null);
     }
   }
@@ -218,15 +237,13 @@ export default function TrialUpgrade() {
       await configureRevenueCat(session.user.id);
       const info = await restorePurchases();
       if (!info || !hasPremiumEntitlement(info)) {
-        toast.error(t('paywall.nothingToRestore'));
+        setResult('nothingFound');
         return;
       }
       if (!(await applyPurchaseInfo(info, session.user.id)))
         throw new Error(t('paywall.accountChanged'));
       await refreshSubscription();
-      toast.success(t('paywall.restored'));
-      if (variant === 'plan') router.replace('/(onboarding)/profile-setup');
-      else router.replace('/(utils)/payment-success');
+      setResult('restored');
     } catch (err) {
       toast.error((err as Error)?.message || t('paywall.restoreError'));
     } finally {
@@ -237,68 +254,90 @@ export default function TrialUpgrade() {
   const missing = useNativeIAP && !offeringLoading && !packageFor(selected);
 
   return (
-    <Paywall
-      title={t(copy.title.key, copy.title.params)}
-      subtitle={t(copy.subtitle.key, copy.subtitle.params)}
-      features={[
-        t('paywall.features.chats'),
-        t('paywall.features.practices'),
-        t('paywall.features.insights'),
-      ]}
-      plans={{
-        yearly: {
-          name: t('paywall.yearly'),
-          sub: t(copy.yearlySub.key, copy.yearlySub.params),
-          price: t('paywall.perMonth', { price: prices.yearlyPerMonth }),
-          badge: prices.saving ? t('paywall.save', { percent: prices.saving }) : null,
-        },
-        monthly: {
-          name: t('paywall.monthly'),
-          sub: t(copy.monthlySub.key, copy.monthlySub.params),
-          price: t('paywall.perMonth', { price: prices.monthly }),
-        },
-      }}
-      selected={selected}
-      onSelect={setSelected}
-      cta={{
-        label: ctaLabel,
-        onPress: () => void buy(selected),
-        busy: loading === selected || offeringLoading || accessLoading,
-        disabled:
-          !!loading ||
-          accessLoading ||
-          (owns && subscription?.type === 'lifetime') ||
-          (!owns && missing),
-      }}
-      finePrint={t('paywall.finePrint')}
-      restoreLabel={useNativeIAP ? t('paywall.restore') : undefined}
-      onRestore={useNativeIAP ? () => void restore() : undefined}
-      onClose={leave}
-      closeLabel={t('common.close')}
-      notice={
-        missing ? (
-          <Text
-            style={[
-              Type.captionM,
-              { color: palette.textMuted, textAlign: 'center', marginBottom: 12 },
-            ]}
-          >
-            {t('paywall.unavailable')}{' '}
+    <>
+      <Paywall
+        title={t(copy.title.key, copy.title.params)}
+        subtitle={t(copy.subtitle.key, copy.subtitle.params)}
+        features={[
+          t('paywall.features.chats'),
+          t('paywall.features.practices'),
+          t('paywall.features.insights'),
+        ]}
+        plans={{
+          yearly: {
+            name: t('paywall.yearly'),
+            sub: t(copy.yearlySub.key, copy.yearlySub.params),
+            price: t('paywall.perMonth', { price: prices.yearlyPerMonth }),
+            badge: prices.saving ? t('paywall.save', { percent: prices.saving }) : null,
+          },
+          monthly: {
+            name: t('paywall.monthly'),
+            sub: t(copy.monthlySub.key, copy.monthlySub.params),
+            price: t('paywall.perMonth', { price: prices.monthly }),
+          },
+        }}
+        selected={selected}
+        onSelect={setSelected}
+        cta={{
+          label: ctaLabel,
+          onPress: () => void buy(selected),
+          busy: loading === selected || offeringLoading || accessLoading,
+          disabled:
+            !!loading ||
+            accessLoading ||
+            (owns && subscription?.type === 'lifetime') ||
+            (!owns && missing),
+        }}
+        finePrint={t('paywall.finePrint')}
+        restoreLabel={useNativeIAP ? t('paywall.restore') : undefined}
+        onRestore={useNativeIAP ? () => void restore() : undefined}
+        onClose={leave}
+        closeLabel={t('common.close')}
+        notice={
+          missing ? (
             <Text
-              accessibilityRole="button"
-              onPress={() => void loadOffering()}
-              style={{ color: palette.plum, fontWeight: '600' }}
+              style={[
+                Type.captionM,
+                { color: palette.textMuted, textAlign: 'center', marginBottom: 12 },
+              ]}
             >
-              {t('paywall.retry')}
+              {t('paywall.unavailable')}{' '}
+              <Text
+                accessibilityRole="button"
+                onPress={() => void loadOffering()}
+                style={{ color: palette.plum, fontWeight: '600' }}
+              >
+                {t('paywall.retry')}
+              </Text>
             </Text>
-          </Text>
-        ) : null
-      }
-      footer={
-        <View>
-          <LegalLinks color={palette.textSubtle} />
-        </View>
-      }
-    />
+          ) : null
+        }
+        footer={
+          <View>
+            <LegalLinks color={palette.textSubtle} />
+          </View>
+        }
+      />
+      <ConfirmingPurchase visible={confirming} />
+      <PurchaseResultSheet
+        result={result}
+        onClose={() => setResult(null)}
+        onPrimary={() => {
+          const shown = result;
+          setResult(null);
+          if (shown === 'failed' && failedPlan) void buy(failedPlan);
+          if (shown === 'restored') {
+            if (variant === 'plan') router.replace('/(onboarding)/profile-setup');
+            else router.replace('/(utils)/payment-success');
+          }
+        }}
+        onSecondary={() => {
+          const shown = result;
+          setResult(null);
+          if (shown === 'nothingFound')
+            router.push({ pathname: '/(utils)/support-message', params: { kind: 'message' } });
+        }}
+      />
+    </>
   );
 }
