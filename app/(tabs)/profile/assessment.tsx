@@ -19,6 +19,7 @@ import { screenBottomPadding } from '@/lib/screen-layout';
 import { readAssessmentAnswer } from '@/lib/assessment-answers';
 import { takingMedsList } from '@/lib/assessment-flow';
 import { moodStep } from '@/lib/mood-scale';
+import { feelingsFromWords } from '@/lib/feelings';
 
 const GOAL_KEYS = [
   'reduceStress',
@@ -45,7 +46,17 @@ function answerValues(row: Row | null, t: (key: string, opts?: Record<string, un
   const meds = takingMedsList(row.taking_meds as string | null);
   return {
     support: goals.length ? goals.join(', ') : none,
-    felt: moodScore >= 1 && moodScore <= 5 ? t(`moodScale.${moodStep(moodScore as 1).key}`) : none,
+    felt:
+      moodScore >= 1 && moodScore <= 5
+        ? [
+            t(`moodScale.${moodStep(moodScore as 1).key}`),
+            ...feelingsFromWords(
+              String(row.mood ?? '')
+                .split('\n')
+                .slice(1),
+            ).map((f) => t(`feelings.${f}`)),
+          ].join(', ')
+        : none,
     sleep: sleep >= 1 && sleep <= 5 ? t(`assessmentFlow.sleep.levels.${sleep}`) : none,
     stress: band >= 1 && band <= 5 ? t('yourAssessment.stressValue', { band }) : none,
     help:
@@ -164,7 +175,14 @@ export default function YourAssessment() {
         ) : null}
         <LegalNote text={t('yourAssessment.note')} style={{ marginTop: 20 }} />
       </ScrollView>
-      <View style={{ position: 'absolute', left: 24, right: 24, bottom: screenBottomPadding(insets.bottom) - 4 }}>
+      <View
+        style={{
+          position: 'absolute',
+          left: 24,
+          right: 24,
+          bottom: screenBottomPadding(insets.bottom) - 4,
+        }}
+      >
         <AppButton title={t('yourAssessment.retake')} onPress={open} />
       </View>
       <BottomSheet visible={confirm} onClose={() => setConfirm(false)} gap={12}>

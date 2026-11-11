@@ -12,6 +12,7 @@ import { ListGroup, ListRow } from '@/components/ui/ListRow';
 import { useJournal } from '@/hooks/useJournal';
 import { moodScoreOf, moodStep } from '@/lib/mood-scale';
 import type { MoodCheckIn } from '@/lib/types';
+import { feelingsFromWords } from '@/lib/feelings';
 
 /**
  * Mood · Day details (09 §3.14, `6787:9281`): a flat mood orb, the mood word and when it was
@@ -44,6 +45,7 @@ export function DayDetailsSheet({
   });
   const time = when.toLocaleTimeString(i18n.language, { hour: '2-digit', minute: '2-digit' });
   const factors = (log.factors ?? []).map((f) => t(`moodCheckIn2.factor.${f}`));
+  const feelings = feelingsFromWords(log.tags);
   const journal = journalEntries.find((e) => e.moodLogId === log.id);
 
   const talk = () => {
@@ -89,8 +91,11 @@ export function DayDetailsSheet({
         </Text>
       </View>
 
-      {factors.length > 0 && (
+      {factors.length + feelings.length > 0 && (
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8 }}>
+          {feelings.map((f) => (
+            <Tag key={f} label={t(`feelings.${f}`)} variant="brand" />
+          ))}
           {factors.map((f) => (
             <Tag key={f} label={f} />
           ))}

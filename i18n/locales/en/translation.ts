@@ -142,6 +142,19 @@ export default {
     error: 'Couldn’t send your feedback. Please try again.',
   },
   wakeFeeling: { heavy: 'Heavy', okay: 'Okay', bright: 'Bright' },
+  feelings: {
+    alsoFeeling: 'Anything else you’re feeling? Pick all that fit',
+    factorsLabel: 'What played a part',
+    calm: 'Calm',
+    happy: 'Happy',
+    hopeful: 'Hopeful',
+    grateful: 'Grateful',
+    tired: 'Tired',
+    anxious: 'Anxious',
+    sad: 'Sad',
+    overwhelmed: 'Overwhelmed',
+    angry: 'Angry',
+  },
   widgets: {
     nextPractice: 'Box breathing · 4 min',
     prompts: [
@@ -1813,6 +1826,7 @@ export default {
       soundscape: 'Soundscape',
       haptics: 'Haptic cues',
       voice: 'Voice guidance',
+      voiceNote: 'A calm AI-generated voice guides you to sleep.',
       fadeOut: 'Fade out at the end',
       start: 'Start practice',
       favourite: 'Save to favourites',

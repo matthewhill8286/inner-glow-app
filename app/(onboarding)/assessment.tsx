@@ -44,6 +44,8 @@ import { MedicationSearch } from '@/components/assessment/MedicationSearch';
 import { VoiceCheckIn } from '@/components/assessment/VoiceCheckIn';
 import AgeAura from '@/assets/svg/illustrations/assessment/age-aura.svg';
 import ThoughtsToCalm from '@/assets/svg/illustrations/assessment/thoughts-to-calm.svg';
+import { FeelingChips } from '@/components/FeelingChips';
+import { moodWithFeelings, type Feeling } from '@/lib/feelings';
 
 /**
  * Onboarding assessment (docs/design-handoff/02, re-extracted from Figma section `4002:14604`,
@@ -86,7 +88,7 @@ export default function AssessmentScreen() {
   const { data: user } = useUser();
   const { t } = useTranslation();
   const retake = useLocalSearchParams<{ retake?: string }>().retake === '1';
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const dy = useFrameOffset();
   const sx = width / 375;
 
@@ -173,6 +175,7 @@ export default function AssessmentScreen() {
     const medications = a.medications ?? [];
     const payload = {
       ...a,
+      mood: moodWithFeelings(a.mood, (a.feelings ?? []) as Feeling[]),
       medications: (steps.includes('medsSpecify') ? medications : []) as unknown,
       meds: steps.includes('medsSpecify') ? medicationsText(medications) : null,
       reflectionText: a.reflectionText?.trim() || null,
@@ -377,7 +380,7 @@ export default function AssessmentScreen() {
           title={t('assessmentFlow.mood.title')}
           titleWidth={290}
           titleGap={270}
-          scroll={false}
+          scroll={height < 800}
           background={
             <MoodOrb
               score={score}
@@ -399,6 +402,14 @@ export default function AssessmentScreen() {
             endLabel={t(`moodScale.${MOOD_SCALE[4].key}`)}
             accessibilityLabel={t('assessmentFlow.mood.a11y')}
             style={{ marginTop: 26, marginHorizontal: 20 }}
+          />
+          <Text style={[Type.chipSelected, { color: palette.ink, marginTop: 22 }]}>
+            {t('feelings.alsoFeeling')}
+          </Text>
+          <FeelingChips
+            value={(a.feelings ?? []) as Feeling[]}
+            onChange={(feelings) => set({ feelings })}
+            style={{ marginTop: 10 }}
           />
         </AssessmentShell>
       );

@@ -206,7 +206,7 @@ const CATALOGUE: Practice[] = [
     listMinutes: 20,
     durations: [10, 20, 45],
     defaultDuration: 20,
-    options: { sound: 'rain', fadeOut: true, voice: false },
+    options: { sound: 'rain', fadeOut: true, voice: true },
   },
   {
     id: 'quiet-mind',
@@ -215,7 +215,7 @@ const CATALOGUE: Practice[] = [
     listMinutes: 10,
     durations: [10, 20, 45],
     defaultDuration: 10,
-    options: { sound: 'rain', fadeOut: true, voice: false },
+    options: { sound: 'rain', fadeOut: true, voice: true },
   },
   {
     id: 'bedtime-breathing',
@@ -226,7 +226,7 @@ const CATALOGUE: Practice[] = [
     pattern: { inhale: 4, hold: 0, exhale: 6, holdAfter: 0 },
     durations: [10, 20, 45],
     defaultDuration: 10,
-    options: { sound: 'rain', fadeOut: true, voice: false },
+    options: { sound: 'rain', fadeOut: true, voice: true },
   },
   {
     id: 'deep-sleep',
@@ -235,7 +235,7 @@ const CATALOGUE: Practice[] = [
     listMinutes: 25,
     durations: [10, 20, 45],
     defaultDuration: 45,
-    options: { sound: 'ocean', fadeOut: true, voice: false },
+    options: { sound: 'ocean', fadeOut: true, voice: true },
   },
 ];
 

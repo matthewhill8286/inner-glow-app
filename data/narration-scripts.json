@@ -1,0 +1,81 @@
+{
+  "_about": "Sleep voice guidance (TestFlight reports 4 and 5). `at` is seconds from the start; \"end\" plays 30 s before the session ends. Bedtime breathing also has in/out phase cues for its first breaths. Recorded with OpenAI text-to-speech by scripts/generate-narration.cjs.",
+  "en": {
+    "sleep-sounds": [
+      { "at": 0, "text": "Welcome. Settle in, and let the sound around you do the work tonight." },
+      { "at": 20, "text": "Let your breathing slow down on its own. There's nowhere else you need to be." },
+      { "at": "end", "text": "I'll leave you with the sound now. Sleep well." }
+    ],
+    "quiet-mind": [
+      { "at": 0, "text": "Welcome to quiet mind. Lie back, get comfortable, and let your eyes close when you're ready." },
+      { "at": 25, "text": "Take a slow breath in through your nose… and let it out, a little longer than the breath in." },
+      { "at": 60, "text": "Notice the weight of your body resting on the bed. You don't have to do anything right now." },
+      { "at": 110, "text": "If thoughts come, that's okay. Picture each one as a cloud, drifting slowly across a night sky." },
+      { "at": 180, "text": "Let your jaw soften. Let your shoulders drop away from your ears." },
+      { "at": 260, "text": "Each breath out is a small permission to rest." },
+      { "at": 360, "text": "There's nothing left to solve tonight. Tomorrow can wait until morning." },
+      { "at": 450, "text": "Stay with the sound around you, and let it carry you toward sleep." },
+      { "at": "end", "text": "I'll leave you here now. Sleep well." }
+    ],
+    "bedtime-breathing": [
+      { "at": 0, "text": "Welcome. We'll breathe in for four, and out for six. Follow the light, and my voice for the first few breaths." },
+      { "at": 90, "text": "Keep going on your own now. Let each breath out be long and soft." },
+      { "at": 240, "text": "If your mind wanders, simply come back to the next breath." },
+      { "at": "end", "text": "Let your breathing return to its own rhythm. Sleep well." },
+      { "phase": "inhale", "text": "Breathe in…" },
+      { "phase": "exhale", "text": "and slowly out…" }
+    ],
+    "deep-sleep": [
+      { "at": 0, "text": "Welcome to deep sleep. Lie on your back or your side, whatever feels easiest, and let your eyes close." },
+      { "at": 25, "text": "Bring your attention to your feet. Let them feel heavy and warm." },
+      { "at": 60, "text": "Let that heaviness move up into your calves, and your knees." },
+      { "at": 95, "text": "Your thighs and hips can soften now, sinking into the bed." },
+      { "at": 135, "text": "Notice your belly rising and falling. Nothing to change. Just noticing." },
+      { "at": 175, "text": "Let your chest and your back relax with each breath out." },
+      { "at": 215, "text": "Your arms are heavy. Your hands are loose and still." },
+      { "at": 255, "text": "Let your shoulders and neck release. Let your face go smooth, and your jaw soft." },
+      { "at": 300, "text": "Your whole body is resting now, supported and safe." },
+      { "at": 360, "text": "If you're still awake, that's fine. Just keep resting in the quiet." },
+      { "at": "end", "text": "I'll leave you to sleep now. Goodnight." }
+    ]
+  },
+  "el": {
+    "sleep-sounds": [
+      { "at": 0, "text": "Καλώς ήρθες. Βολέψου, και άφησε τους ήχους γύρω σου να κάνουν τη δουλειά απόψε." },
+      { "at": 20, "text": "Άφησε την αναπνοή σου να επιβραδύνει μόνη της. Δεν χρειάζεται να είσαι πουθενά αλλού." },
+      { "at": "end", "text": "Σε αφήνω τώρα με τον ήχο. Καληνύχτα." }
+    ],
+    "quiet-mind": [
+      { "at": 0, "text": "Καλώς ήρθες στο ήσυχο μυαλό. Ξάπλωσε αναπαυτικά, και κλείσε τα μάτια όταν είσαι έτοιμος." },
+      { "at": 25, "text": "Πάρε μια αργή ανάσα από τη μύτη… και άφησέ την να φύγει, λίγο πιο αργά από την εισπνοή." },
+      { "at": 60, "text": "Νιώσε το βάρος του σώματός σου να ακουμπά στο κρεβάτι. Δεν χρειάζεται να κάνεις τίποτα τώρα." },
+      { "at": 110, "text": "Αν έρθουν σκέψεις, δεν πειράζει. Φαντάσου την καθεμία σαν ένα σύννεφο που περνά αργά στον νυχτερινό ουρανό." },
+      { "at": 180, "text": "Άφησε το σαγόνι σου να μαλακώσει. Άφησε τους ώμους να πέσουν μακριά από τα αυτιά." },
+      { "at": 260, "text": "Κάθε εκπνοή είναι μια μικρή άδεια να ξεκουραστείς." },
+      { "at": 360, "text": "Δεν υπάρχει τίποτα άλλο να λύσεις απόψε. Το αύριο μπορεί να περιμένει." },
+      { "at": 450, "text": "Μείνε με τον ήχο γύρω σου, και άφησέ τον να σε πάει προς τον ύπνο." },
+      { "at": "end", "text": "Σε αφήνω εδώ τώρα. Καληνύχτα." }
+    ],
+    "bedtime-breathing": [
+      { "at": 0, "text": "Καλώς ήρθες. Θα εισπνέουμε για τέσσερα και θα εκπνέουμε για έξι. Ακολούθησε το φως, και τη φωνή μου για τις πρώτες ανάσες." },
+      { "at": 90, "text": "Συνέχισε τώρα μόνος σου. Άφησε κάθε εκπνοή να είναι μακριά και απαλή." },
+      { "at": 240, "text": "Αν το μυαλό σου ταξιδέψει, απλώς γύρνα στην επόμενη ανάσα." },
+      { "at": "end", "text": "Άφησε την αναπνοή σου να βρει τον δικό της ρυθμό. Καληνύχτα." },
+      { "phase": "inhale", "text": "Πάρε μια ανάσα μέσα…" },
+      { "phase": "exhale", "text": "και αργά έξω…" }
+    ],
+    "deep-sleep": [
+      { "at": 0, "text": "Καλώς ήρθες στον βαθύ ύπνο. Ξάπλωσε ανάσκελα ή στο πλάι, όπως σε βολεύει, και κλείσε τα μάτια." },
+      { "at": 25, "text": "Φέρε την προσοχή σου στα πόδια σου. Άφησέ τα να νιώσουν βαριά και ζεστά." },
+      { "at": 60, "text": "Άφησε αυτό το βάρος να ανέβει στις γάμπες και στα γόνατα." },
+      { "at": 95, "text": "Οι μηροί και οι γοφοί μαλακώνουν τώρα, βουλιάζοντας στο κρεβάτι." },
+      { "at": 135, "text": "Παρατήρησε την κοιλιά σου να ανεβαίνει και να κατεβαίνει. Δεν αλλάζεις τίποτα. Απλώς παρατηρείς." },
+      { "at": 175, "text": "Άφησε το στήθος και την πλάτη να χαλαρώσουν με κάθε εκπνοή." },
+      { "at": 215, "text": "Τα χέρια σου είναι βαριά. Οι παλάμες χαλαρές και ακίνητες." },
+      { "at": 255, "text": "Άφησε τους ώμους και τον λαιμό να αφεθούν. Το πρόσωπό σου ήρεμο, το σαγόνι μαλακό." },
+      { "at": 300, "text": "Όλο σου το σώμα ξεκουράζεται τώρα, στηριγμένο και ασφαλές." },
+      { "at": 360, "text": "Αν είσαι ακόμα ξύπνιος, δεν πειράζει. Απλώς συνέχισε να ξεκουράζεσαι στην ησυχία." },
+      { "at": "end", "text": "Σε αφήνω να κοιμηθείς τώρα. Καληνύχτα." }
+    ]
+  }
+}

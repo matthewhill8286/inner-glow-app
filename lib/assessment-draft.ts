@@ -18,6 +18,8 @@ export type AssessmentAnswers = {
   /** English mood-scale word (Tense … Great), kept for the summary and AI context. */
   mood?: string | null;
   moodScore?: number | null;
+  /** Feelings picked alongside the mood (`lib/feelings.ts` keys). */
+  feelings?: string[];
   soughtHelpBefore?: 'Yes' | 'No' | null;
   physicalDistress?: 'Yes' | 'No' | null;
   sleepQuality?: number | null;
@@ -65,9 +67,13 @@ export function normaliseDraft(raw: unknown): AssessmentDraft | null {
         ? 'none'
         : null;
   const mood = str(a.mood);
-  const moodScore = inRange(a.moodScore, 1, 5) ?? (mood && MOOD_WORDS.includes(mood) ? MOOD_WORDS.indexOf(mood) + 1 : null);
+  const moodScore =
+    inRange(a.moodScore, 1, 5) ??
+    (mood && MOOD_WORDS.includes(mood) ? MOOD_WORDS.indexOf(mood) + 1 : null);
   const medications = Array.isArray(a.medications)
-    ? (a.medications as unknown[]).filter((m): m is PickedMedication => !!m && typeof (m as PickedMedication).name === 'string')
+    ? (a.medications as unknown[]).filter(
+        (m): m is PickedMedication => !!m && typeof (m as PickedMedication).name === 'string',
+      )
     : (str(a.meds) ?? '')
         .split(',')
         .map((name) => name.trim())
@@ -81,19 +87,25 @@ export function normaliseDraft(raw: unknown): AssessmentDraft | null {
     answers: {
       createdAt: a.createdAt,
       goal: str(a.goal),
-      gender: gender === 'Man' || gender === 'Woman' || gender === 'Prefer not to say' ? gender : null,
+      gender:
+        gender === 'Man' || gender === 'Woman' || gender === 'Prefer not to say' ? gender : null,
       age: str(a.age),
       weight: num(a.weight),
       weightUnit: unit === 'kg' || unit === 'lbs' ? unit : null,
       mood: moodScore ? MOOD_WORDS[moodScore - 1] : null,
       moodScore,
+      feelings: Array.isArray(a.feelings)
+        ? (a.feelings as unknown[]).filter((f): f is string => typeof f === 'string')
+        : [],
       soughtHelpBefore: help === 'Yes' || help === 'No' ? help : null,
       physicalDistress: physical === 'Yes' || physical === 'No' ? physical : null,
       sleepQuality: inRange(a.sleepQuality, 1, 5),
       takingMeds,
       medications,
       otherSymptoms: str(a.otherSymptoms),
-      stressBand: inRange(a.stressBand, 1, 5) ?? (num(a.stressLevel) != null ? stressBandFromLevel(num(a.stressLevel)!) : null),
+      stressBand:
+        inRange(a.stressBand, 1, 5) ??
+        (num(a.stressLevel) != null ? stressBandFromLevel(num(a.stressLevel)!) : null),
       soundCheck: sound && typeof sound.uri === 'string' ? sound : null,
       reflectionText: str(a.reflectionText)?.slice(0, 250) ?? null,
     },

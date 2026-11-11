@@ -23,7 +23,7 @@ test('a draft from the old screen carries over the answers that still mean the s
   assert.equal(out.step, 'stress');
   assert.deepEqual(plain(out.answers), {
     createdAt: '2026-10-31T10:00:00Z', goal: null, gender: 'Woman', age: null, weight: 70, weightUnit: 'kg',
-    mood: null, moodScore: null, soughtHelpBefore: null, physicalDistress: null, sleepQuality: 4,
+    mood: null, moodScore: null, feelings: [], soughtHelpBefore: null, physicalDistress: null, sleepQuality: 4,
     takingMeds: 'prescription', medications: [{ name: 'Aspirin', custom: true }, { name: 'Ibuprofen', custom: true }],
     otherSymptoms: null, stressBand: 4, soundCheck: null, reflectionText: null,
   });
