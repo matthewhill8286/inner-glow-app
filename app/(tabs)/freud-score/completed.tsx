@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Pressable, Text, View, useWindowDimensions } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { HelpingPrompt } from '@/components/HelpingPrompt';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -8,7 +8,13 @@ import { Type } from '@/constants/typography';
 import { AppButton } from '@/components/ui/AppButton';
 import { IconButton } from '@/components/ui/IconButton';
 import { Icon } from '@/components/icons/Icon';
-import { DeltaPill, PillChip, ScoreRing, ScoreScreen } from '@/components/score/ScoreParts';
+import {
+  DeltaPill,
+  PillChip,
+  RingAnchor,
+  ScoreRing,
+  ScoreScreen,
+} from '@/components/score/ScoreParts';
 import AuraArt from '@/assets/svg/illustrations/score/completed-aura.svg';
 import { useFreudScore } from '@/hooks/useFreudScore';
 import { useProfile } from '@/hooks/useProfile';
@@ -28,7 +34,6 @@ const num = (v: string | undefined, fallback = 0) => {
  */
 export default function CompletedScreen() {
   const { t } = useTranslation();
-  const { width } = useWindowDimensions();
   const params = useLocalSearchParams<{
     from?: string;
     to?: string;
@@ -60,7 +65,8 @@ export default function CompletedScreen() {
         { color: palette.sky, opacity: 0.22, x: -20, y: 16, width: 280, blur: 90 },
         { color: palette.mustard, opacity: 0.45, x: 60, y: 66, width: 300, blur: 80 },
       ]}
-      art={<AuraArt width={width} height={(476 * width) / 375} />}
+      art={<AuraArt width={375} height={476} />}
+      artCentre={{ x: 187.5, y: 206 }}
       nav={
         <View style={{ height: 50, alignItems: 'flex-end', justifyContent: 'center' }}>
           <IconButton
@@ -73,7 +79,7 @@ export default function CompletedScreen() {
         </View>
       }
     >
-      <View style={{ alignItems: 'center', marginTop: 13 }}>
+      <RingAnchor size={184} marginTop={13}>
         <ScoreRing size={184} thickness={3.7} value={from} gain={gain} knob animateGain>
           <View
             accessible
@@ -93,7 +99,7 @@ export default function CompletedScreen() {
             )}
           </View>
         </ScoreRing>
-      </View>
+      </RingAnchor>
 
       <Text
         accessibilityRole="header"

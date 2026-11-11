@@ -1,5 +1,14 @@
-import React, { useEffect, useState } from 'react';
-import { Pressable, ScrollView, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import {
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+  useWindowDimensions,
+  type LayoutChangeEvent,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
 import Animated, {
@@ -15,7 +24,14 @@ import { IconButton } from '@/components/ui/IconButton';
 import { Icon, type IconName } from '@/components/icons/Icon';
 import { screenBottomPadding } from '@/lib/screen-layout';
 import { useTranslation } from 'react-i18next';
-import { periodStart, ringPoint, signed, SCORE_PERIODS, type PlanCategory, type ScorePeriod } from '@/lib/glow-score';
+import {
+  periodStart,
+  ringPoint,
+  signed,
+  SCORE_PERIODS,
+  type PlanCategory,
+  type ScorePeriod,
+} from '@/lib/glow-score';
 import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
@@ -63,13 +79,24 @@ export function ScoreRing({
   }, [animateGain, base, extra, progress]);
 
   const gainLength = (c * extra) / 100;
-  const gainProps = useAnimatedProps(() => ({ strokeDashoffset: gainLength * (1 - progress.value) }));
+  const gainProps = useAnimatedProps(() => ({
+    strokeDashoffset: gainLength * (1 - progress.value),
+  }));
   const k = ringPoint(size, thickness, knobAt);
 
   return (
-    <View style={[{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }, style]}>
+    <View
+      style={[{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }, style]}
+    >
       <Svg width={size} height={size} style={{ position: 'absolute' }}>
-        <Circle cx={size / 2} cy={size / 2} r={r} stroke={trackColor} strokeWidth={thickness} fill="none" />
+        <Circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          stroke={trackColor}
+          strokeWidth={thickness}
+          fill="none"
+        />
         <Circle
           cx={size / 2}
           cy={size / 2}
@@ -93,7 +120,16 @@ export function ScoreRing({
             transform={`rotate(${base * 3.6 - 90} ${size / 2} ${size / 2})`}
           />
         )}
-        {knob && <Circle cx={k.x} cy={k.y} r={6} fill={palette.white} stroke={palette.mustard} strokeWidth={4} />}
+        {knob && (
+          <Circle
+            cx={k.x}
+            cy={k.y}
+            r={6}
+            fill={palette.white}
+            stroke={palette.mustard}
+            strokeWidth={4}
+          />
+        )}
       </Svg>
       {children}
     </View>
@@ -101,10 +137,31 @@ export function ScoreRing({
 }
 
 /** Small list ring (44 or 46) with the value in the middle (03 §2.2–2.3). */
-export function MiniRing({ value, color, size = 44 }: { value: number; color: string; size?: 44 | 46 }) {
+export function MiniRing({
+  value,
+  color,
+  size = 44,
+}: {
+  value: number;
+  color: string;
+  size?: 44 | 46;
+}) {
   return (
-    <ScoreRing size={size} thickness={size / 10} value={value} color={color} trackColor={palette.border}>
-      <Text style={[Type.caption, { fontWeight: '700', fontSize: size === 46 ? 14 : 13, color: palette.ink }]}>{value}</Text>
+    <ScoreRing
+      size={size}
+      thickness={size / 10}
+      value={value}
+      color={color}
+      trackColor={palette.border}
+    >
+      <Text
+        style={[
+          Type.caption,
+          { fontWeight: '700', fontSize: size === 46 ? 14 : 13, color: palette.ink },
+        ]}
+      >
+        {value}
+      </Text>
     </ScoreRing>
   );
 }
@@ -126,7 +183,11 @@ export function ScoreNav({
   return (
     <View style={{ height: 44, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
       <IconButton variant="nav" icon={backIcon} accessibilityLabel={backLabel} onPress={onBack} />
-      <Text accessibilityRole="header" numberOfLines={1} style={[Type.bodyMSemi, { flex: 1, textAlign: 'center', color: palette.plumDeep }]}>
+      <Text
+        accessibilityRole="header"
+        numberOfLines={1}
+        style={[Type.bodyMSemi, { flex: 1, textAlign: 'center', color: palette.plumDeep }]}
+      >
         {label}
       </Text>
       <View style={{ width: 44, alignItems: 'flex-end' }}>{trailing}</View>
@@ -138,9 +199,38 @@ export function ScoreNav({
  * Screen shell: glows (and optional art) behind a scroll view with the score nav, 24 side padding,
  * and an optional CTA at the end of the content. `tabBar` leaves room for the tab bar.
  */
+/** Lets a ring tell ScoreScreen where its centre is, so the aura art can sit around it. */
+const RingCentre = createContext<((y: number) => void) | null>(null);
+
+/**
+ * Wraps the ring that the aura art centres on. The art is drawn at its design size with its contour
+ * centre on the ring's centre, so the two line up on every phone width (TestFlight build 37 report:
+ * on a 440-wide iPhone the scaled art sat 36 points below the ring).
+ */
+export function RingAnchor({
+  size,
+  marginTop,
+  children,
+}: {
+  size: number;
+  marginTop?: number;
+  children: React.ReactNode;
+}) {
+  const report = useContext(RingCentre);
+  return (
+    <View
+      style={{ alignItems: 'center', marginTop }}
+      onLayout={(e: LayoutChangeEvent) => report?.(e.nativeEvent.layout.y + size / 2)}
+    >
+      {children}
+    </View>
+  );
+}
+
 export function ScoreScreen({
   glows,
   art,
+  artCentre,
   nav,
   children,
   tabBar = false,
@@ -148,26 +238,55 @@ export function ScoreScreen({
 }: {
   glows: GlowSpec[];
   art?: React.ReactNode;
+  /** The art's contour centre in its own coordinates; a RingAnchor in the children sets where it goes. */
+  artCentre?: { x: number; y: number };
   nav: React.ReactNode;
   children: React.ReactNode;
   tabBar?: boolean;
   contentStyle?: StyleProp<ViewStyle>;
 }) {
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const [ringY, setRingY] = useState<number | null>(null);
   return (
     <View style={{ flex: 1, backgroundColor: palette.bg }}>
       <GlowField glows={glows} />
-      <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE}
+      <ScrollView
+        keyboardDismissMode={KEYBOARD_DISMISS_MODE}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
-          { paddingTop: insets.top + 7, paddingHorizontal: 24, paddingBottom: screenBottomPadding(insets.bottom, tabBar) },
+          {
+            paddingTop: insets.top + 7,
+            paddingHorizontal: 24,
+            paddingBottom: screenBottomPadding(insets.bottom, tabBar),
+          },
           contentStyle,
         ]}
       >
-        {/* Art is placed in the 375 frame, whose status bar is 44 high. */}
-        {art ? <View pointerEvents="none" style={{ position: 'absolute', top: insets.top - 44, left: 0, right: 0 }}>{art}</View> : null}
-        {nav}
-        {children}
+        {art && artCentre && ringY !== null ? (
+          <View
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              top: ringY - artCentre.y,
+              left: width / 2 - artCentre.x,
+            }}
+          >
+            {art}
+          </View>
+        ) : art && !artCentre ? (
+          // Art is placed in the 375 frame, whose status bar is 44 high.
+          <View
+            pointerEvents="none"
+            style={{ position: 'absolute', top: insets.top - 44, left: 0, right: 0 }}
+          >
+            {art}
+          </View>
+        ) : null}
+        <RingCentre.Provider value={setRingY}>
+          {nav}
+          {children}
+        </RingCentre.Provider>
       </ScrollView>
     </View>
   );
@@ -207,7 +326,15 @@ export function PeriodPills({
               opacity: pressed ? 0.8 : 1,
             })}
           >
-            <Text style={[Type.bodySMedium, { fontWeight: active ? '700' : '500', color: active ? palette.white : palette.lavender }]}>
+            <Text
+              style={[
+                Type.bodySMedium,
+                {
+                  fontWeight: active ? '700' : '500',
+                  color: active ? palette.white : palette.lavender,
+                },
+              ]}
+            >
               {labels[p]}
             </Text>
           </Pressable>
@@ -218,7 +345,17 @@ export function PeriodPills({
 }
 
 /** Delta pill ("+6 vs September"): lavender 15% fill, arrow and Bold 12 lavender. */
-export function DeltaPill({ delta, label, solid = false, withValue = true }: { delta: number; label: string; solid?: boolean; withValue?: boolean }) {
+export function DeltaPill({
+  delta,
+  label,
+  solid = false,
+  withValue = true,
+}: {
+  delta: number;
+  label: string;
+  solid?: boolean;
+  withValue?: boolean;
+}) {
   const fg = solid ? palette.white : palette.lavender;
   return (
     <View
@@ -265,7 +402,18 @@ export function PillChip({
   const body = (
     <>
       <Icon name={icon} size={iconSize} color={iconColor ?? palette.plum} />
-      <Text style={[Type.caption, { fontSize: textSize, lineHeight: textSize + 4, color: outlined ? palette.plum : palette.ink }]}>{label}</Text>
+      <Text
+        style={[
+          Type.caption,
+          {
+            fontSize: textSize,
+            lineHeight: textSize + 4,
+            color: outlined ? palette.plum : palette.ink,
+          },
+        ]}
+      >
+        {label}
+      </Text>
     </>
   );
   const style: ViewStyle = {
@@ -282,14 +430,27 @@ export function PillChip({
   };
   if (!onPress) return <View style={style}>{body}</View>;
   return (
-    <Pressable accessibilityRole="button" onPress={onPress} hitSlop={height < 44 ? (44 - height) / 2 : undefined} style={({ pressed }) => [style, { opacity: pressed ? 0.75 : 1 }]}>
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      hitSlop={height < 44 ? (44 - height) / 2 : undefined}
+      style={({ pressed }) => [style, { opacity: pressed ? 0.75 : 1 }]}
+    >
       {body}
     </Pressable>
   );
 }
 
 /** Date tile: "OCT" over the day (03 §2.2 pill 46×46, §2.3 tile 46×54 r16). */
-export function DateTile({ date, locale, tall = false }: { date: Date; locale: string; tall?: boolean }) {
+export function DateTile({
+  date,
+  locale,
+  tall = false,
+}: {
+  date: Date;
+  locale: string;
+  tall?: boolean;
+}) {
   return (
     <View
       style={{
@@ -301,17 +462,44 @@ export function DateTile({ date, locale, tall = false }: { date: Date; locale: s
         justifyContent: 'center',
       }}
     >
-      <Text style={[Type.micro, { fontSize: 10, lineHeight: 12, fontWeight: tall ? '500' : '400', color: palette.textSubtle }]}>
+      <Text
+        style={[
+          Type.micro,
+          {
+            fontSize: 10,
+            lineHeight: 12,
+            fontWeight: tall ? '500' : '400',
+            color: palette.textSubtle,
+          },
+        ]}
+      >
         {date.toLocaleDateString(locale, { month: 'short' }).toUpperCase()}
       </Text>
-      <Text style={[Type.bodyStrong, { fontSize: tall ? 18 : 16, lineHeight: tall ? 22 : 20, color: '#44403B' }]}>{date.getDate()}</Text>
+      <Text
+        style={[
+          Type.bodyStrong,
+          { fontSize: tall ? 18 : 16, lineHeight: tall ? 22 : 20, color: '#44403B' },
+        ]}
+      >
+        {date.getDate()}
+      </Text>
     </View>
   );
 }
 
 /** White r28 card. */
-export function ScoreCard({ children, style }: { children: React.ReactNode; style?: StyleProp<ViewStyle> }) {
-  return <View style={[{ backgroundColor: palette.white, borderRadius: 28, padding: 20 }, style]}>{children}</View>;
+export function ScoreCard({
+  children,
+  style,
+}: {
+  children: React.ReactNode;
+  style?: StyleProp<ViewStyle>;
+}) {
+  return (
+    <View style={[{ backgroundColor: palette.white, borderRadius: 28, padding: 20 }, style]}>
+      {children}
+    </View>
+  );
 }
 
 /** Period title ("October") and comparison ("vs September") for the summary and trend cards. */

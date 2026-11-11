@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef } from 'react';
-import { ActivityIndicator, Pressable, Text, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useFocusEffect } from '@react-navigation/native';
@@ -13,6 +13,7 @@ import {
   DateTile,
   MiniRing,
   PillChip,
+  RingAnchor,
   ScoreNav,
   ScoreRing,
   ScoreScreen,
@@ -38,7 +39,6 @@ export default function GlowScoreScreen() {
   const { t, i18n } = useTranslation();
   const { from } = useLocalSearchParams<{ from?: string }>();
   const queryClient = useQueryClient();
-  const { width } = useWindowDimensions();
   const { currentScore, isDataLoading, isLoadingHistory, saveScore, suggestions } = useFreudScore();
   const { moodCheckIns, isLoading: moodLoading } = useMood();
   const { days } = useScoreDays();
@@ -113,7 +113,8 @@ export default function GlowScoreScreen() {
         { color: palette.mustard, opacity: 0.4, x: 37.5, y: 62, width: 300, blur: 80 },
         { color: palette.lavenderSoft, opacity: 0.3, x: 167.5, y: 142, width: 200, blur: 70 },
       ]}
-      art={<AuraArt width={width} height={(460 * width) / 375} />}
+      art={<AuraArt width={375} height={460} />}
+      artCentre={{ x: 187.5, y: 212 }}
       nav={
         <ScoreNav
           label={t('glowScore.title')}
@@ -133,7 +134,7 @@ export default function GlowScoreScreen() {
         />
       }
     >
-      <View style={{ alignItems: 'center', marginTop: 23 }}>
+      <RingAnchor size={176} marginTop={23}>
         <ScoreRing size={176} thickness={3} value={isDataLoading ? 0 : score} knob={!isDataLoading}>
           {isDataLoading ? (
             <ActivityIndicator
@@ -155,7 +156,7 @@ export default function GlowScoreScreen() {
             </View>
           )}
         </ScoreRing>
-      </View>
+      </RingAnchor>
 
       <Text
         accessibilityRole="header"

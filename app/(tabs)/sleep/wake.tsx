@@ -69,10 +69,15 @@ export default function WakeUpScreen() {
 
   const snooze = async () => {
     try {
-      await scheduleNotification(t('sleepFlow.wake.snoozeTitle'), t('sleepFlow.wake.snoozeBody'), { route: '/(tabs)/sleep/wake' }, {
-        type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-        seconds: SNOOZE_MINUTES * 60,
-      });
+      await scheduleNotification(
+        t('sleepFlow.wake.snoozeTitle'),
+        t('sleepFlow.wake.snoozeBody'),
+        { route: '/(tabs)/sleep/wake' },
+        {
+          type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+          seconds: SNOOZE_MINUTES * 60,
+        },
+      );
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('sleepFlow.saveError'));
       return;
@@ -90,9 +95,17 @@ export default function WakeUpScreen() {
           { color: palette.rose, opacity: 0.22, x: 117, y: 210, width: 140, blur: 50 },
         ]}
       />
-      <View pointerEvents="none" style={{ position: 'absolute', top: insets.top - 44, left: 0, right: 0 }}>
-        <AuraArt width={width} height={(560 * width) / 375} />
-        <Svg width={72} height={72} style={{ position: 'absolute', left: width / 2 - 36, top: 244 }}>
+      <View
+        pointerEvents="none"
+        style={{ position: 'absolute', top: insets.top - 44, left: 0, right: 0 }}
+      >
+        {/* Design size, centred, so the contours stay round the inner light on every width. */}
+        <AuraArt width={375} height={560} style={{ marginLeft: width / 2 - 187.5 }} />
+        <Svg
+          width={72}
+          height={72}
+          style={{ position: 'absolute', left: width / 2 - 36, top: 244 }}
+        >
           <Defs>
             <RadialGradient id="innerLight" cx="50%" cy="50%" r="50%">
               <Stop offset="0" stopColor={palette.cream} />
@@ -108,7 +121,18 @@ export default function WakeUpScreen() {
         <Text style={[Type.bodyLg, { color: palette.lavender }]}>
           {name ? t('sleepFlow.wake.goodMorningName', { name }) : t('sleepFlow.wake.goodMorning')}
         </Text>
-        <Text style={[Type.display, { fontSize: 64, lineHeight: 78, fontWeight: '400', color: palette.ink, fontVariant: ['tabular-nums'] }]}>
+        <Text
+          style={[
+            Type.display,
+            {
+              fontSize: 64,
+              lineHeight: 78,
+              fontWeight: '400',
+              color: palette.ink,
+              fontVariant: ['tabular-nums'],
+            },
+          ]}
+        >
           {clockFrom(now.getHours(), now.getMinutes())}
         </Text>
         {minutes != null && (
@@ -126,19 +150,33 @@ export default function WakeUpScreen() {
               borderColor: palette.borderLilac,
             }}
           >
-            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: palette.mustard }} />
+            <View
+              style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: palette.mustard }}
+            />
             <Text style={[Type.chip, { color: palette.plum }]}>{formatDuration(minutes)}</Text>
           </View>
         )}
-        <Text style={[Type.bodyS, { color: palette.textMuted, marginTop: 18, textAlign: 'center', paddingHorizontal: 24 }]}>
+        <Text
+          style={[
+            Type.bodyS,
+            { color: palette.textMuted, marginTop: 18, textAlign: 'center', paddingHorizontal: 24 },
+          ]}
+        >
           {t('sleepFlow.wake.breath')}
         </Text>
       </View>
 
       <View style={{ paddingHorizontal: 24, paddingBottom: insets.bottom + 18, gap: 10 }}>
         <AppButton title={t('sleepFlow.wake.up')} busy={saving} onPress={up} />
-        <Pressable accessibilityRole="button" onPress={snooze} hitSlop={6} style={{ minHeight: 40, alignItems: 'center', justifyContent: 'center' }}>
-          <Text style={[Type.bodyMSemi, { color: palette.lavender }]}>{t('sleepFlow.wake.snooze', { minutes: SNOOZE_MINUTES })}</Text>
+        <Pressable
+          accessibilityRole="button"
+          onPress={snooze}
+          hitSlop={6}
+          style={{ minHeight: 40, alignItems: 'center', justifyContent: 'center' }}
+        >
+          <Text style={[Type.bodyMSemi, { color: palette.lavender }]}>
+            {t('sleepFlow.wake.snooze', { minutes: SNOOZE_MINUTES })}
+          </Text>
         </Pressable>
       </View>
     </View>
