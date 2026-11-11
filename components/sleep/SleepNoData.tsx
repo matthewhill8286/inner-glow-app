@@ -22,6 +22,7 @@ export function SleepNoData() {
 
   const onConnect = async () => {
     const result = await health.connect();
+    if (result.status === 'dismissed') return;
     if (result.status === 'error') toast.error(t('connectedApps.syncError'));
     // Apple Health never reports a refused read, so an empty import is the only sign of it.
     else if (result.imported === 0) toast.info(t('connectedApps.denied'));
