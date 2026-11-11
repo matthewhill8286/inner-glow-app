@@ -14,6 +14,7 @@ import {
   HELP_QUESTIONS,
   type HelpCategory,
 } from '@/lib/help-center';
+import { SourcesLink } from '@/components/SourcesLink';
 
 export type HelpTab = 'faq' | 'contact';
 
@@ -251,6 +252,7 @@ export function HelpCentre({ initialTab = 'faq' }: { initialTab?: HelpTab }) {
           >
             <Text style={[Type.bodySm, { color: palette.plum }]}>{t('helpCenter.resources')}</Text>
           </Pressable>
+          <SourcesLink topic="score" />
         </>
       )}
     </SettingsScreen>

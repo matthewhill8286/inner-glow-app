@@ -16,6 +16,7 @@ import type { FreudBreakdown, FreudScoreResult } from '@/lib/freudScore';
 import { useFreudScore } from '@/hooks/useFreudScore';
 import MaterialIcons from '@/components/AppIcon';
 import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
+import { SourcesLink } from '@/components/SourcesLink';
 
 /* ── Design tokens ── */
 const BG = '#6f6660';
@@ -238,7 +239,8 @@ export default function AssessmentSummary() {
         </Text>
       </View>
 
-      <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE}
+      <ScrollView
+        keyboardDismissMode={KEYBOARD_DISMISS_MODE}
         style={{ paddingHorizontal: 24 }}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 40 }}
@@ -411,6 +413,7 @@ export default function AssessmentSummary() {
           </Text>
           <MaterialIcons name="arrow-forward" size={20} color="white" />
         </Pressable>
+        <SourcesLink topic="assessment" style={{ marginTop: 16 }} />
       </ScrollView>
     </View>
   );

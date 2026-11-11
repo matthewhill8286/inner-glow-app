@@ -12,6 +12,7 @@ import { useStress } from '@/hooks/useStress';
 import { PRACTICES } from '@/data/practices';
 import { backTo } from '@/lib/navigation';
 import { planFilled, stressEntryRoute } from '@/lib/stress-relief';
+import { SourcesLink } from '@/components/SourcesLink';
 
 const GLOWS = [
   { color: palette.rose, opacity: 0.25, x: -70, y: -30, width: 280, blur: 90 },
@@ -61,7 +62,10 @@ export default function StressHub() {
       glows={GLOWS}
     >
       <View style={{ gap: 8 }}>
-        <Text accessibilityRole="header" style={[Type.titleMd, { fontSize: 30, lineHeight: 38, color: palette.plumDeep }]}>
+        <Text
+          accessibilityRole="header"
+          style={[Type.titleMd, { fontSize: 30, lineHeight: 38, color: palette.plumDeep }]}
+        >
           {t('stressRelief.heading')}
         </Text>
         <Text style={[Type.bodySm, { color: palette.textMuted }]}>{t('stressRelief.body')}</Text>
@@ -71,7 +75,13 @@ export default function StressHub() {
         accessibilityRole="button"
         accessibilityHint={t(filled ? 'stressRelief.editPlan' : 'stressRelief.buildPlan')}
         onPress={() => router.push('/(tabs)/stress/plan')}
-        style={({ pressed }) => ({ backgroundColor: palette.surface, borderRadius: 28, padding: 22, gap: 12, opacity: pressed ? 0.9 : 1 })}
+        style={({ pressed }) => ({
+          backgroundColor: palette.surface,
+          borderRadius: 28,
+          padding: 22,
+          gap: 12,
+          opacity: pressed ? 0.9 : 1,
+        })}
       >
         <Text style={[Type.microBold, { fontSize: 12, lineHeight: 16, color: palette.lavender }]}>
           {t('stressRelief.phraseLabel').toUpperCase()}
@@ -87,10 +97,16 @@ export default function StressHub() {
           </View>
         )}
         <View style={{ height: 1, backgroundColor: palette.border, marginTop: 4 }} />
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Text style={[Type.captionM, { color: palette.textMuted }]}>{t('stressRelief.planFilled', { filled })}</Text>
+        <View
+          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+        >
+          <Text style={[Type.captionM, { color: palette.textMuted }]}>
+            {t('stressRelief.planFilled', { filled })}
+          </Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-            <Text style={[Type.label, { color: palette.plum }]}>{t(filled ? 'stressRelief.editPlan' : 'stressRelief.buildPlan')}</Text>
+            <Text style={[Type.label, { color: palette.plum }]}>
+              {t(filled ? 'stressRelief.editPlan' : 'stressRelief.buildPlan')}
+            </Text>
             <Icon name="arrow/forward" size={16} color={palette.plum} />
           </View>
         </View>
@@ -115,12 +131,25 @@ export default function StressHub() {
                 opacity: pressed ? 0.85 : 1,
               })}
             >
-              <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: tool.tint, alignItems: 'center', justifyContent: 'center' }}>
+              <View
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 22,
+                  backgroundColor: tool.tint,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
                 <Icon name={tool.icon} size={22} color={palette.plum} />
               </View>
               <View style={{ gap: 2, marginTop: 16 }}>
-                <Text style={[Type.bodyStrong, { color: palette.ink }]}>{t(`stressRelief.tools.${tool.key}.title`)}</Text>
-                <Text style={[Type.captionM, { color: palette.textMuted }]}>{t(`stressRelief.tools.${tool.key}.meta`)}</Text>
+                <Text style={[Type.bodyStrong, { color: palette.ink }]}>
+                  {t(`stressRelief.tools.${tool.key}.title`)}
+                </Text>
+                <Text style={[Type.captionM, { color: palette.textMuted }]}>
+                  {t(`stressRelief.tools.${tool.key}.meta`)}
+                </Text>
               </View>
             </Pressable>
           ))}
@@ -134,7 +163,10 @@ export default function StressHub() {
               icon="line/play"
               label={last.title}
               supportingText={t('stressRelief.lastDone', {
-                date: new Date(last.date).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' }),
+                date: new Date(last.date).toLocaleDateString(i18n.language, {
+                  day: 'numeric',
+                  month: 'short',
+                }),
               })}
               onPress={() => router.push(lastRoute as Href)}
             />
@@ -143,9 +175,18 @@ export default function StressHub() {
       )}
 
       <ListGroup>
-        <ListRow icon="line/meditate" label={t('stressRelief.allPractices')} onPress={() => router.push('/(tabs)/mindful')} />
-        <ListRow icon="line/bot" label={t('stressRelief.talk')} onPress={() => router.push('/(tabs)/chat')} />
+        <ListRow
+          icon="line/meditate"
+          label={t('stressRelief.allPractices')}
+          onPress={() => router.push('/(tabs)/mindful')}
+        />
+        <ListRow
+          icon="line/bot"
+          label={t('stressRelief.talk')}
+          onPress={() => router.push('/(tabs)/chat')}
+        />
       </ListGroup>
+      <SourcesLink topic="stress" style={{ marginTop: 16 }} />
     </SettingsScreen>
   );
 }

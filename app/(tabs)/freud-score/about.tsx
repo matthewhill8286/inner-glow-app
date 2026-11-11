@@ -12,6 +12,7 @@ import { AppButton } from '@/components/ui/AppButton';
 import { ScreenStatusBar } from '@/components/ui/ScreenStatusBar';
 import { backTo } from '@/lib/navigation';
 import { screenBottomPadding } from '@/lib/screen-layout';
+import { SourcesLink } from '@/components/SourcesLink';
 
 const INPUTS: { key: string; icon: IconName }[] = [
   { key: 'mood', icon: 'line/heart' },
@@ -121,8 +122,16 @@ export default function AboutGlowScore() {
           {t('aboutScore.goodToKnowBody')}
         </Text>
         <LegalNote text={t('aboutScore.disclaimer')} style={{ marginTop: 20 }} />
+        <SourcesLink topic="score" style={{ marginTop: 10 }} />
       </ScrollView>
-      <View style={{ position: 'absolute', left: 24, right: 24, bottom: screenBottomPadding(insets.bottom) - 4 }}>
+      <View
+        style={{
+          position: 'absolute',
+          left: 24,
+          right: 24,
+          bottom: screenBottomPadding(insets.bottom) - 4,
+        }}
+      >
         <AppButton title={t('aboutScore.gotIt')} onPress={close} />
       </View>
     </View>

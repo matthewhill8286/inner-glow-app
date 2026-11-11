@@ -114,6 +114,12 @@ function LegalHub() {
             supportingText={t('legalHub.aiBody')}
             onPress={() => router.push('/(utils)/ai-privacy')}
           />
+          <ListRow
+            icon="line/globe"
+            label={t('sources.title')}
+            supportingText={t('sources.rowBody')}
+            onPress={() => router.push('/(utils)/sources')}
+          />
         </ListGroup>
       </ScrollView>
     </View>

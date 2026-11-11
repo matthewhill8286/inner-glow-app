@@ -12,6 +12,7 @@ import { moodScoreOf, moodStep } from '@/lib/mood-scale';
 import { inPeriod, moodBuckets, moodSummary, type MoodPeriod } from '@/lib/mood-stats';
 import { backTo } from '@/lib/navigation';
 import type { MoodCheckIn } from '@/lib/types';
+import { SourcesLink } from '@/components/SourcesLink';
 
 const BAR_H = 110;
 const RECENT = 10;
@@ -280,6 +281,7 @@ export default function MoodStats() {
         </View>
       )}
       <DayDetailsSheet log={open} onClose={() => setOpen(null)} />
+      <SourcesLink topic="mood" style={{ marginTop: 16 }} />
     </SettingsScreen>
   );
 }
