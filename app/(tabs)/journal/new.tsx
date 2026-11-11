@@ -289,9 +289,14 @@ export default function WriteEntry() {
         </View>
 
         <View style={{ marginHorizontal: 24, marginTop: 24, gap: 12 }}>
-          <Text style={[Type.chipSelected, { color: palette.ink }]}>
-            {t('journalWrite.tagsLabel')}
-          </Text>
+          <View style={{ gap: 2 }}>
+            <Text style={[Type.chipSelected, { color: palette.ink }]}>
+              {t('journalWrite.tagsLabel')}
+            </Text>
+            <Text style={[Type.captionS, { color: palette.lavender }]}>
+              {t('journalWrite.tagsHint')}
+            </Text>
+          </View>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
             {tagOptions.map((tag) => (
               <Tag

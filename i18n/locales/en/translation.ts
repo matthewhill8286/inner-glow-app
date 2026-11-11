@@ -1152,6 +1152,9 @@ export default {
       snoozeBody: 'Your snooze is over. Take it slow.',
     },
     checkIn: {
+      woke: 'Times you woke up',
+      wokeFewer: 'Fewer times',
+      wokeMore: 'More times',
       header: 'Sleep check-in',
       title: 'How did you sleep?',
       subtitle: 'A quick note helps Glow AI spot patterns.',
@@ -3194,7 +3197,8 @@ export default {
       'What do you need right now?',
       'What went better than you expected?',
     ],
-    tagsLabel: 'Tags',
+    tagsLabel: 'What’s this entry about?',
+    tagsHint: 'Helps you spot what affects your mood',
     tags: {
       work: 'Work',
       breathing: 'Breathing',
