@@ -243,6 +243,12 @@ export default function VoiceEntry() {
   const [mood, setMood] = useState<MoodScore>(3);
   const [highlights, setHighlights] = useState<string[]>([]);
   const [noticed, setNoticed] = useState<{ word: string; score: number; on: boolean }[]>([]);
+  // TestFlight: the detected mood is a starting point; the whole scale stays visible to choose another.
+  const [picked, setPicked] = useState(false);
+  const detected = noticed.length
+    ? moodFromNoticed(noticed.filter((n) => n.on).map((n) => n.score))
+    : null;
+  const shownMood = picked || detected == null ? mood : detected;
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [crisisFor, setCrisisFor] = useState<string | null>(null);
@@ -340,11 +346,7 @@ export default function VoiceEntry() {
       const created = await createJournalEntry({
         title: titleFromTranscript(content) || t('journalVoice.title'),
         content,
-        mood: moodStep(
-          noticed.length
-            ? (moodFromNoticed(noticed.filter((n) => n.on).map((n) => n.score)) ?? mood)
-            : mood,
-        ).checkIn,
+        mood: moodStep(shownMood).checkIn,
         isVoiceEntry: true,
         recordingDurationMs: durationMs,
       });
@@ -434,33 +436,44 @@ export default function VoiceEntry() {
           <Text style={[Type.chipSelected, { color: palette.ink, marginTop: 24 }]}>
             {t(noticed.length ? 'journalVoice.noticedLabel' : 'journalVoice.moodLabel')}
           </Text>
+          {noticed.length ? (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
+              {noticed.map((n, i) => (
+                <MoodChip
+                  key={n.word}
+                  face={moodStep(n.score).face}
+                  label={n.word}
+                  selected={n.on}
+                  role="checkbox"
+                  onPress={() =>
+                    setNoticed((all) => all.map((x, j) => (j === i ? { ...x, on: !x.on } : x)))
+                  }
+                />
+              ))}
+            </View>
+          ) : null}
+          {noticed.length ? (
+            <Text style={[Type.chipSelected, { color: palette.ink, marginTop: 20 }]}>
+              {t('journalVoice.moodLabel')}
+            </Text>
+          ) : null}
           <View
-            accessibilityRole={noticed.length ? undefined : 'radiogroup'}
+            accessibilityRole="radiogroup"
             style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 }}
           >
-            {noticed.length
-              ? noticed.map((n, i) => (
-                  <MoodChip
-                    key={n.word}
-                    face={moodStep(n.score).face}
-                    label={n.word}
-                    selected={n.on}
-                    role="checkbox"
-                    onPress={() =>
-                      setNoticed((all) => all.map((x, j) => (j === i ? { ...x, on: !x.on } : x)))
-                    }
-                  />
-                ))
-              : MOOD_SCALE.map((m) => (
-                  <MoodChip
-                    key={m.key}
-                    face={m.face}
-                    label={t(`moodScale.${m.key}`)}
-                    selected={m.score === mood}
-                    role="radio"
-                    onPress={() => setMood(m.score)}
-                  />
-                ))}
+            {MOOD_SCALE.map((m) => (
+              <MoodChip
+                key={m.key}
+                face={m.face}
+                label={t(`moodScale.${m.key}`)}
+                selected={m.score === shownMood}
+                role="radio"
+                onPress={() => {
+                  setMood(m.score);
+                  setPicked(true);
+                }}
+              />
+            ))}
           </View>
           <View style={{ flex: 1, minHeight: 32 }} />
           <AppButton

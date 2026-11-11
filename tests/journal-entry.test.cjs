@@ -100,3 +100,11 @@ test('the year stats count months, words and moods', () => {
   assert.equal(s.moods['5'], 1);
   assert.equal(s.moods.none, 1);
 });
+
+test('the journal talk prompt drops a title that only repeats the text', () => {
+  const { journalTalkPrompt } = j;
+  assert.equal(journalTalkPrompt('Why do I bother…', 'Why do I bother interviewing when all I do is get declined?'), false);
+  assert.equal(journalTalkPrompt('Overwhelmed before work', 'Too many things at once today.'), true);
+  assert.equal(journalTalkPrompt('', 'Anything'), false);
+  assert.equal(journalTalkPrompt(null, 'Anything'), false);
+});

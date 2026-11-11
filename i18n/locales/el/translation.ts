@@ -3270,6 +3270,7 @@ export default {
     untitledEntry: 'Χωρίς Τίτλο',
     moreOptions: 'Περισσότερες επιλογές',
     talkItThrough: 'Συζήτησέ το με το Glow AI',
+    talkPromptBody: 'Έγραψα μια καταχώριση στο ημερολόγιο και θα ήθελα να τη συζητήσουμε.\n\n{{body}}',
     talkPrompt:
       'Έγραψα μια καταχώριση στο ημερολόγιο και θα ήθελα να τη συζητήσουμε.\n\n{{title}}\n\n{{body}}',
     options: {

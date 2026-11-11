@@ -3237,6 +3237,7 @@ export default {
     untitledEntry: 'Untitled Entry',
     moreOptions: 'More options',
     talkItThrough: 'Talk it through with Glow AI',
+    talkPromptBody: 'I wrote a journal entry and I would like to talk it through.\n\n{{body}}',
     talkPrompt:
       'I wrote a journal entry and I would like to talk it through.\n\n{{title}}\n\n{{body}}',
     options: {

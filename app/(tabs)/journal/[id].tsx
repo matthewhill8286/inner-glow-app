@@ -32,6 +32,7 @@ import { backTo } from '@/lib/navigation';
 import { showAlert } from '@/lib/state';
 import type { JournalEntry } from '@/lib/types';
 import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
+import { journalTalkPrompt } from '@/lib/journal-entry';
 
 function clock(iso: string, lang: string) {
   return new Date(iso).toLocaleTimeString(lang, {
@@ -95,7 +96,9 @@ export default function JournalDetail() {
     router.push({
       pathname: '/(tabs)/chat/new-conversation',
       params: {
-        initialMessage: t('journalDetail.talkPrompt', { title, body: entry.content ?? '' }),
+        initialMessage: journalTalkPrompt(entry.title, entry.content)
+          ? t('journalDetail.talkPrompt', { title: entry.title?.trim(), body: entry.content ?? '' })
+          : t('journalDetail.talkPromptBody', { body: entry.content?.trim() || title }),
         from: `/(tabs)/journal/${entry.id}`,
       },
     });
@@ -124,7 +127,8 @@ export default function JournalDetail() {
           }
         />
       </View>
-      <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE}
+      <ScrollView
+        keyboardDismissMode={KEYBOARD_DISMISS_MODE}
         contentContainerStyle={{
           paddingHorizontal: 24,
           paddingTop: 22,

@@ -11,6 +11,7 @@ import { BottomSheet } from '@/components/ui/BottomSheet';
 import { ListGroup, ListRow } from '@/components/ui/ListRow';
 import { CATEGORY_LOOK, SOUND_CHOICES, type Practice, type SoundKey } from '@/data/practices';
 import { useAccessibilityPrefs } from '@/lib/accessibility-prefs';
+import { playSoundscape, stopSoundscape } from '@/lib/soundscape';
 
 /** Title and "N min · Tag" for a practice, from `practices.items`. */
 export function usePracticeText() {
@@ -376,9 +377,27 @@ export function SoundSheet({
 }) {
   const { t } = useTranslation();
   const [chosen, setChosen] = React.useState<SoundKey>(value);
+  const previewing = React.useRef(false);
   useEffect(() => {
     if (visible) setChosen(value);
   }, [visible, value]);
+  // TestFlight: selecting a sound plays a preview; closing the sheet stops it.
+  useEffect(() => {
+    if (!visible && previewing.current) {
+      previewing.current = false;
+      void stopSoundscape();
+    }
+  }, [visible]);
+  const pick = (key: SoundKey) => {
+    setChosen(key);
+    if (key === 'silence') {
+      previewing.current = false;
+      void stopSoundscape();
+    } else {
+      previewing.current = true;
+      void playSoundscape(key);
+    }
+  };
   return (
     <BottomSheet
       visible={visible}
@@ -402,7 +421,7 @@ export function SoundSheet({
             supportingText={t(`practices.sounds.${s.key}.body`)}
             trailing="radio"
             selected={chosen === s.key}
-            onPress={() => setChosen(s.key)}
+            onPress={() => pick(s.key)}
           />
         ))}
       </ListGroup>
