@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, type Href } from 'expo-router';
@@ -49,6 +49,7 @@ export default function PracticesHub() {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
+  const [ringY, setRingY] = useState<number | null>(null);
   const { goal, today, yesterday } = useDailyGoal();
   const fraction = Math.min(1, today / goal);
   const end = -Math.PI / 2 + fraction * 2 * Math.PI;
@@ -62,12 +63,6 @@ export default function PracticesHub() {
           { color: palette.sky, opacity: 0.3, x: 170, y: 120, width: 240, blur: 90 },
         ]}
       />
-      <AuraContours
-        width={width}
-        height={(480 * width) / 375}
-        style={{ position: 'absolute', top: 0 }}
-        pointerEvents="none"
-      />
       <ScrollView
         keyboardDismissMode={KEYBOARD_DISMISS_MODE}
         contentContainerStyle={{
@@ -76,6 +71,15 @@ export default function PracticesHub() {
         }}
         showsVerticalScrollIndicator={false}
       >
+        {/* The contours sit round the goal ring at their design size on every phone width. */}
+        {ringY !== null && (
+          <AuraContours
+            width={375}
+            height={480}
+            style={{ position: 'absolute', top: ringY - 223, left: width / 2 - 188 }}
+            pointerEvents="none"
+          />
+        )}
         <View
           style={{
             flexDirection: 'row',
@@ -104,6 +108,7 @@ export default function PracticesHub() {
           accessibilityRole="button"
           accessibilityLabel={`${today} ${t('practices.hub.minutesToday')}, ${t('practices.hub.ofGoal', { goal })}. ${t('practices.hub.editGoal')}`}
           onPress={() => router.push('/(tabs)/mindful/goal')}
+          onLayout={(e) => setRingY(e.nativeEvent.layout.y + RING / 2)}
           style={{
             width: RING,
             height: RING,
