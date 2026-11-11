@@ -18,6 +18,7 @@ import { useFavouriteHeart } from '@/hooks/useFavouriteHeart';
 import { backTo } from '@/lib/navigation';
 import type { Pace } from '@/lib/practices';
 import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
+import { hasNarration } from '@/hooks/useNarration';
 
 const ACCENT = {
   breathing: palette.sky,
@@ -144,8 +145,8 @@ function Divider() {
 /**
  * Practice Set up (07 §2.6, restyled in 10 §3.4–3.5): Nav Bar with the favourite heart, the hero,
  * title, chips and description, the options card (pace, duration, sound, haptic cues or fade out)
- * and Start practice. The sound row opens Choose a sound. The design's voice guidance toggle is left
- * out because there are no narration recordings yet.
+ * and Start practice. The sound row opens Choose a sound. Sleep practices also have Voice guidance,
+ * which plays the recorded lines in data/narration.ts (TestFlight reports 4 and 5).
  */
 export default function PracticeScreen() {
   const { id, duration } = useLocalSearchParams<{ id: string; duration?: string }>();
@@ -161,7 +162,13 @@ export default function PracticeScreen() {
   );
 }
 
-function PracticeSetup({ practice, startDuration }: { practice: Practice; startDuration?: number }) {
+function PracticeSetup({
+  practice,
+  startDuration,
+}: {
+  practice: Practice;
+  startDuration?: number;
+}) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const text = usePracticeText();
@@ -171,6 +178,8 @@ function PracticeSetup({ practice, startDuration }: { practice: Practice; startD
   const [sound, setSound] = useState<SoundKey>(practice.options.sound ?? 'silence');
   const [haptics, setHaptics] = useState(practice.options.haptics ?? false);
   const [fadeOut, setFadeOut] = useState(practice.options.fadeOut ?? false);
+  const narrated = practice.kind === 'sleep' && hasNarration(practice.id);
+  const [voice, setVoice] = useState(practice.options.voice ?? true);
   const [soundOpen, setSoundOpen] = useState(false);
 
   const category = practice.category as 'breathing' | 'mindfulness' | 'sleep';
@@ -186,6 +195,7 @@ function PracticeSetup({ practice, startDuration }: { practice: Practice; startD
         sound,
         haptics: haptics ? '1' : '0',
         fadeOut: fadeOut ? '1' : '0',
+        voice: narrated && voice ? '1' : '0',
       },
     });
 
@@ -211,7 +221,8 @@ function PracticeSetup({ practice, startDuration }: { practice: Practice; startD
         trailing={heart.button}
         style={{ marginTop: insets.top + 10, marginHorizontal: 24 }}
       />
-      <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE}
+      <ScrollView
+        keyboardDismissMode={KEYBOARD_DISMISS_MODE}
         contentContainerStyle={{
           paddingHorizontal: 24,
           paddingTop: 16,
@@ -323,6 +334,26 @@ function PracticeSetup({ practice, startDuration }: { practice: Practice; startD
                   value={haptics}
                   onValueChange={setHaptics}
                   accessibilityLabel={t('practices.setup.haptics')}
+                />
+              </View>
+            </>
+          )}
+          {narrated && (
+            <>
+              <Divider />
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[Type.buttonS, { fontSize: 14, color: palette.ink }]}>
+                    {t('practices.setup.voice')}
+                  </Text>
+                  <Text style={[Type.captionS, { color: palette.textMuted, marginTop: 2 }]}>
+                    {t('practices.setup.voiceNote')}
+                  </Text>
+                </View>
+                <Toggle
+                  value={voice}
+                  onValueChange={setVoice}
+                  accessibilityLabel={t('practices.setup.voice')}
                 />
               </View>
             </>

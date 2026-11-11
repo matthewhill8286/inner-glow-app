@@ -152,6 +152,19 @@ export default {
     error: 'Δεν ήταν δυνατή η αποστολή. Δοκίμασε ξανά.',
   },
   wakeFeeling: { heavy: 'Βαριά', okay: 'Εντάξει', bright: 'Λαμπερά' },
+  feelings: {
+    alsoFeeling: 'Τι άλλο νιώθεις; Διάλεξε όσα ταιριάζουν',
+    factorsLabel: 'Τι έπαιξε ρόλο',
+    calm: 'Ήρεμα',
+    happy: 'Χαρούμενα',
+    hopeful: 'Με ελπίδα',
+    grateful: 'Ευγνωμοσύνη',
+    tired: 'Κούραση',
+    anxious: 'Άγχος',
+    sad: 'Λύπη',
+    overwhelmed: 'Πίεση',
+    angry: 'Θυμός',
+  },
   widgets: {
     nextPractice: 'Αναπνοή κουτιού · 4 λεπτά',
     prompts: [
@@ -1835,6 +1848,7 @@ export default {
       soundscape: 'Ηχοτοπίο',
       haptics: 'Απτικές ενδείξεις',
       voice: 'Φωνητική καθοδήγηση',
+      voiceNote: 'Μια ήρεμη φωνή, φτιαγμένη με τεχνητή νοημοσύνη, σε οδηγεί στον ύπνο.',
       fadeOut: 'Σβήσιμο στο τέλος',
       start: 'Έναρξη άσκησης',
       favourite: 'Αποθήκευση στα αγαπημένα',

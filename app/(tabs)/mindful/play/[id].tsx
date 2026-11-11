@@ -42,6 +42,8 @@ import {
   SOUNDSCAPE_VOLUME,
 } from '@/lib/soundscape';
 import { BreathingActivity } from '@/modules/live-activity';
+import { useNarration } from '@/hooks/useNarration';
+import { VOICE_DUCK } from '@/lib/narration';
 
 /** Calm players breathe slowly (4 s in, 6 s out) when the practice has no pattern of its own. */
 const CALM = { inhale: 4, hold: 0, exhale: 6, holdAfter: 0 };
@@ -74,6 +76,7 @@ function PracticePlayer() {
     sound?: string;
     haptics?: string;
     fadeOut?: string;
+    voice?: string;
   }>();
   const practice = practiceById(params.id);
   const text = usePracticeText();
@@ -95,6 +98,16 @@ function PracticePlayer() {
   const breaths = totalBreaths(pattern, isBreathing ? pace : 'normal', minutes);
   const haptics = params.haptics === '1' && a11yHaptics && practice?.kind !== 'sleep';
   const fadeOut = params.fadeOut === '1';
+  // Sleep voice guidance: timed lines, and breath cues for the opening breaths.
+  const {
+    tick: voiceTick,
+    onPhase: voicePhase,
+    speaking,
+    pause: voicePause,
+    seek: voiceSeek,
+    stop: voiceStop,
+  } = useNarration(practice?.id, params.voice === '1' && practice?.kind === 'sleep', total);
+  const volume = useRef(SOUNDSCAPE_VOLUME);
 
   const [running, setRunning] = useState(true);
   const [elapsed, setElapsed] = useState(0);
@@ -133,6 +146,7 @@ function PracticePlayer() {
     async (completed: boolean) => {
       const seconds = Math.round(Math.min(total, elapsedRef.current));
       void stopSoundscape();
+      voiceStop();
       if (!practice || (!completed && seconds < MIN_SAVE_SECONDS)) return;
       try {
         await addSession({
@@ -166,6 +180,7 @@ function PracticePlayer() {
       refreshNudge,
       today,
       goal,
+      voiceStop,
     ],
   );
 
@@ -182,18 +197,26 @@ function PracticePlayer() {
       lastTick.current = now;
       const e = elapsedRef.current;
       const at = breathAt(pattern, isBreathing ? pace : 'normal', e);
+      voiceTick(e);
       scale.setValue(orbScale(at.phase, at.progress));
       const key = `${at.breath}:${at.phase}`;
       if (key !== lastPhase.current) {
         lastPhase.current = key;
         setPhase(at.phase);
         setBreath(at.breath);
+        voicePhase(at.phase, e);
         if (haptics && Platform.OS !== 'web')
           void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
       }
       setElapsed((prev) => (Math.floor(prev) !== Math.floor(e) ? e : prev));
-      if (fadeOut && total - e < FADE_SECONDS)
-        setSoundscapeVolume(SOUNDSCAPE_VOLUME * Math.max(0, (total - e) / FADE_SECONDS));
+      // The soundscape fades out at the end and dips, easing, while the voice speaks.
+      const fade =
+        fadeOut && total - e < FADE_SECONDS ? Math.max(0, (total - e) / FADE_SECONDS) : 1;
+      const target = SOUNDSCAPE_VOLUME * fade * (speaking(e) ? VOICE_DUCK : 1);
+      if (Math.abs(target - volume.current) > 0.002) {
+        volume.current += Math.max(-0.02, Math.min(0.02, target - volume.current));
+        setSoundscapeVolume(volume.current);
+      }
       if (e >= total) {
         setDone(true);
         void finish(true);
@@ -203,10 +226,25 @@ function PracticePlayer() {
     };
     raf = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(raf);
-  }, [running, done, total, pattern, isBreathing, pace, scale, haptics, fadeOut, finish]);
+  }, [
+    running,
+    done,
+    total,
+    pattern,
+    isBreathing,
+    pace,
+    scale,
+    haptics,
+    fadeOut,
+    finish,
+    voiceTick,
+    voicePhase,
+    speaking,
+  ]);
 
   const pause = (on: boolean) => {
     setRunning(!on);
+    voicePause(on);
     if (on) pauseSoundscape();
     else resumeSoundscape();
   };
@@ -220,6 +258,7 @@ function PracticePlayer() {
       isBreathing ? cycleSeconds(pattern, breathPace) : undefined,
     );
     elapsedRef.current = next;
+    voiceSeek(next);
     setElapsed(next);
     const at = breathAt(pattern, breathPace, next);
     scale.setValue(orbScale(at.phase, at.progress));

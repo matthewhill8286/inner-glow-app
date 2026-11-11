@@ -19,6 +19,8 @@ import { moodScoreOf, moodStep, type MoodScore } from '@/lib/mood-scale';
 import { MOOD_FACTORS } from '@/lib/mood-logged';
 import type { MoodFactor } from '@/lib/types';
 import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
+import { FeelingChips } from '@/components/FeelingChips';
+import { feelingsFromWords, feelingWord, type Feeling } from '@/lib/feelings';
 
 /**
  * Mood check-in (04 §M2–M4). Step 1 picks the mood on the orb and slider; step 2 adds
@@ -45,6 +47,7 @@ export default function MoodCheckInScreen() {
   const [step, setStep] = useState<'mood' | 'details'>('mood');
   const [factors, setFactors] = useState<MoodFactor[]>([]);
   const [note, setNote] = useState('');
+  const [feelings, setFeelings] = useState<Feeling[]>([]);
   const prefilled = useRef(false);
   useEffect(() => {
     if (!editing || prefilled.current) return;
@@ -52,6 +55,7 @@ export default function MoodCheckInScreen() {
     setScore(moodScoreOf(editing.mood));
     setFactors(editing.factors ?? []);
     setNote(editing.note ?? '');
+    setFeelings(feelingsFromWords(editing.tags));
   }, [editing]);
   const [saving, setSaving] = useState(false);
   const saving$ = useRef(false);
@@ -71,6 +75,7 @@ export default function MoodCheckInScreen() {
           mood: mood.checkIn,
           factors,
           note: note.trim() || undefined,
+          tags: feelings.map(feelingWord),
         });
         toast.success(t('moodDay.edited'));
         router.back();
@@ -78,6 +83,7 @@ export default function MoodCheckInScreen() {
       }
       const entry = await addMoodCheckIn({
         mood: mood.checkIn,
+        tags: feelings.length ? feelings.map(feelingWord) : undefined,
         factors,
         note: note.trim() || undefined,
       });
@@ -215,7 +221,14 @@ export default function MoodCheckInScreen() {
           {t('moodCheckIn2.optional')}
         </Text>
 
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 18 }}>
+        <Text style={{ ...Type.label, fontSize: 13, color: palette.ink, marginTop: 22 }}>
+          {t('feelings.alsoFeeling')}
+        </Text>
+        <FeelingChips value={feelings} onChange={setFeelings} style={{ marginTop: 10 }} />
+        <Text style={{ ...Type.label, fontSize: 13, color: palette.ink, marginTop: 22 }}>
+          {t('feelings.factorsLabel')}
+        </Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
           {MOOD_FACTORS.map((f) => (
             <Chip
               key={f.key}

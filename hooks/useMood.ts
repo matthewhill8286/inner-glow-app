@@ -189,6 +189,7 @@ export const useMood = () => {
       mood: MoodCheckIn['mood'];
       factors: MoodFactor[];
       note?: string;
+      tags?: string[];
     }) => {
       const { error } = await supabase
         .from('mood_logs')
@@ -196,6 +197,7 @@ export const useMood = () => {
           mood_score: moodScoreOf(input.mood),
           factors: input.factors,
           note: input.note ?? null,
+          emotions: input.tags ?? [],
         })
         .eq('id', input.id);
       if (error) throw error;
