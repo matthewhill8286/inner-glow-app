@@ -47,6 +47,30 @@ export default {
       5: { tag: 'Step Five', title: 'Support When You Need It' },
     },
   },
+  appLock: {
+    title: 'Inner Glow is locked',
+    body: 'Your check-ins, journal and chats stay private until you unlock.',
+    on: '{{method}} is on',
+    passcode: 'Use passcode instead',
+  },
+  messageSent: {
+    title: 'Message sent',
+    body: 'We’ll reply by email within 2 working days. If you need support right now, please contact local emergency services.',
+    bodyWithEmail: 'We’ll reply to {{email}} within 2 working days. If you need support right now, please contact local emergency services.',
+    reference: 'Reference {{reference}}',
+    back: 'Back to Help Center',
+  },
+  legalHub: {
+    title: 'Legal',
+    notMedicalTitle: 'Inner Glow is not a medical service',
+    notMedicalBody: 'We support your wellbeing, but we don’t diagnose or treat. If you’re in danger, contact local emergency services.',
+    terms: 'Terms of use',
+    termsBody: 'The rules for using Inner Glow',
+    privacy: 'Privacy policy',
+    privacyBody: 'How we handle your data',
+    ai: 'AI use policy',
+    aiBody: 'What Glow AI can and can’t do with your data',
+  },
   offlineMode: {
     nav: 'Offline',
     title: 'You’re offline',
@@ -3665,32 +3689,32 @@ export default {
       therapist: {
         question: 'Is Glow AI a therapist?',
         answer:
-          'No. Glow AI is a supportive companion that helps you reflect and notice patterns. It cannot diagnose or treat, and it is not a replacement for a doctor, therapist or emergency help.',
+          'No. Glow AI is a supportive companion that helps you reflect and notice patterns. It can’t diagnose or treat, and it isn’t a replacement for a doctor, therapist or emergency help.',
       },
       score: {
         question: 'How is my Glow score calculated?',
         answer:
-          'Your Glow score combines your mood check-ins, sleep, stress, mindful practice, journaling and consistency. It uses the information you have recorded, so it can change as you add entries. It is a wellbeing indicator, not a diagnosis.',
+          'Your Glow score blends your recent mood check-ins, sleep, practice time, stress and journal reflections into one number from 0 to 100. It shows a trend over time, not a diagnosis.',
       },
       privacy: {
         question: 'Who can see my journal and chats?',
         answer:
-          'Your journal and chats are linked to your account. AI features require your permission to send relevant content through Supabase to OpenAI. You can review your AI data preferences in Settings. Avoid sharing your sign-in details with others.',
+          'Your journal and Glow AI chats are private to your account. AI features send relevant content to OpenAI only with your permission, which you can change in Settings › AI data permission. We never sell your data or use it for ads, and you can download or delete it any time in Settings.',
       },
       cancel: {
         question: 'How do I cancel Pro?',
         answer:
-          'Open Profile, then My plan, and choose Manage subscription. Apple subscriptions are managed through Apple, and web subscriptions through the billing portal. Cancel there to stop the next renewal. Access continues until the end of the paid period.',
+          'If you subscribed on iPhone, Pro is billed through the App Store: open Settings, tap your name, then Subscriptions, and choose Inner Glow. You can also go to Profile › My plan › Manage subscription. You keep Pro until the end of the period you’ve paid for.',
       },
       offline: {
         question: 'Can I use Inner Glow offline?',
         answer:
-          'Inner Glow needs an internet connection to sign in, load and save account data, use Glow AI and play YouTube videos. Some content already loaded on your device may remain available, but do not rely on entries being saved while offline. Reconnect before saving.',
+          'Partly. Breathing, grounding and the sleep sounds built into the app work offline. Check-ins, your journal, Glow AI and video practices need a connection, so reconnect before saving.',
       },
       reminders: {
         question: 'How do I change my reminders?',
         answer:
-          'Open Profile, then Settings, then Notifications to change your reminder preferences and times. Manage your wake-up alarm in Sleep. If reminders do not arrive, check that notifications are allowed for Inner Glow in your device settings.',
+          'Go to Profile › Settings › Notifications. You can turn each reminder on or off and change its time. If reminders don’t arrive, check that notifications are allowed for Inner Glow in your iPhone settings.',
       },
     },
   },

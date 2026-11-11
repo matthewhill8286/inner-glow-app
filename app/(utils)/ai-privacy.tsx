@@ -89,8 +89,20 @@ export default function GlowAiDataScreen() {
     >
       <View style={{ alignItems: 'center', gap: 12 }}>
         <View style={{ width: 120, height: 92, alignItems: 'center', justifyContent: 'center' }}>
-          <Glow color={palette.lavenderSoft} opacity={0.35} width={120} blur={36} style={{ position: 'absolute', left: 0, top: -12 }} />
-          <Glow color={palette.mustard} opacity={0.35} width={80} blur={24} style={{ position: 'absolute', left: 30, top: 8 }} />
+          <Glow
+            color={palette.lavenderSoft}
+            opacity={0.35}
+            width={120}
+            blur={36}
+            style={{ position: 'absolute', left: 0, top: -12 }}
+          />
+          <Glow
+            color={palette.mustard}
+            opacity={0.35}
+            width={80}
+            blur={24}
+            style={{ position: 'absolute', left: 30, top: 8 }}
+          />
           <Svg width={56} height={56}>
             <Defs>
               <RadialGradient id="aiOrb" cx="50%" cy="50%" r="50%">
@@ -104,10 +116,20 @@ export default function GlowAiDataScreen() {
             <Icon name="line/sparkle" size={22} color={palette.white} />
           </View>
         </View>
-        <Text accessibilityRole="header" style={[Type.titleMd, { color: palette.ink, textAlign: 'center', maxWidth: 295 }]}>
+        <Text
+          accessibilityRole="header"
+          style={[Type.titleMd, { color: palette.ink, textAlign: 'center', maxWidth: 295 }]}
+        >
           {t('aiData.heroTitle')}
         </Text>
-        <Text style={[Type.bodyS, { lineHeight: 20, color: palette.textMuted, textAlign: 'center', maxWidth: 295 }]}>{t('aiData.heroBody')}</Text>
+        <Text
+          style={[
+            Type.bodyS,
+            { lineHeight: 20, color: palette.textMuted, textAlign: 'center', maxWidth: 295 },
+          ]}
+        >
+          {t('aiData.heroBody')}
+        </Text>
       </View>
 
       <SettingsSection label={t('aiData.personalisation')}>
@@ -138,14 +160,22 @@ export default function GlowAiDataScreen() {
 
       <SettingsSection label={t('aiData.yourData')}>
         <ListGroup>
-          <ListRow icon="line/download" label={exporting ? t('aiData.exporting') : t('aiData.download')} onPress={exporting ? undefined : download} />
+          <ListRow
+            icon="line/download"
+            label={exporting ? t('aiData.exporting') : t('aiData.download')}
+            onPress={exporting ? undefined : download}
+          />
           <ListRow icon="line/chat" label={t('aiData.clear')} tone="danger" onPress={clear} />
         </ListGroup>
       </SettingsSection>
 
       <View style={{ gap: 12 }}>
         <LegalNote text={t('aiData.legal')} />
-        <Pressable accessibilityRole="link" onPress={() => router.push('/(utils)/legal')} hitSlop={6}>
+        <Pressable
+          accessibilityRole="link"
+          onPress={() => router.push({ pathname: '/(utils)/legal', params: { policy: 'privacy' } })}
+          hitSlop={6}
+        >
           <LegalNote text={t('aiData.privacyLink')} />
         </Pressable>
       </View>

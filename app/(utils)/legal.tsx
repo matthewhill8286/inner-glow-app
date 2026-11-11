@@ -1,9 +1,12 @@
-import { Typography } from '@/constants/typography';
+import { Type, Typography } from '@/constants/typography';
+import { useTranslation } from 'react-i18next';
+import { NavBar } from '@/components/ui/IconButton';
+import { ListGroup, ListRow } from '@/components/ui/ListRow';
 import { backTo } from '@/lib/navigation';
 import { View, Text, ScrollView, Pressable, Linking } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors } from '@/constants/theme';
+import { Colors, palette } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { KEYBOARD_DISMISS_MODE } from '@/lib/keyboard';
 
@@ -50,13 +53,86 @@ const policies = {
   ],
 };
 
+/**
+ * Legal hub (`6801:6742`): the "not a medical service" card, then Terms of use, Privacy policy and the
+ * AI use policy (Glow AI's data permission screen). The frame's cookie settings and open-source
+ * licences rows are left out: the app sets no cookies, and the licence list isn't written yet.
+ */
+function LegalHub() {
+  const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
+  const policy = (key: 'terms' | 'privacy') =>
+    router.push({ pathname: '/(utils)/legal', params: { policy: key } });
+  return (
+    <View style={{ flex: 1, backgroundColor: palette.bg }}>
+      <ScrollView
+        contentContainerStyle={{
+          paddingTop: insets.top + 10,
+          paddingHorizontal: 24,
+          paddingBottom: insets.bottom + 32,
+        }}
+      >
+        <NavBar
+          backLabel={t('common.back')}
+          onBack={() => backTo(undefined, '/(tabs)/profile/settings')}
+          title={t('legalHub.title')}
+        />
+        <View
+          style={{
+            marginTop: 16,
+            borderRadius: 24,
+            borderWidth: 1.5,
+            borderColor: palette.rose,
+            backgroundColor: palette.white,
+            padding: 20,
+            gap: 8,
+          }}
+        >
+          <Text style={[Type.bodyMSemi, { fontSize: 17, color: palette.ink }]}>
+            {t('legalHub.notMedicalTitle')}
+          </Text>
+          <Text style={[Type.captionM, { fontSize: 14, lineHeight: 19, color: palette.plumDeep }]}>
+            {t('legalHub.notMedicalBody')}
+          </Text>
+        </View>
+        <ListGroup style={{ marginTop: 20 }}>
+          <ListRow
+            icon="line/note"
+            label={t('legalHub.terms')}
+            supportingText={t('legalHub.termsBody')}
+            onPress={() => policy('terms')}
+          />
+          <ListRow
+            icon="line/lock"
+            label={t('legalHub.privacy')}
+            supportingText={t('legalHub.privacyBody')}
+            onPress={() => policy('privacy')}
+          />
+          <ListRow
+            icon="line/sparkle"
+            label={t('legalHub.ai')}
+            supportingText={t('legalHub.aiBody')}
+            onPress={() => router.push('/(utils)/ai-privacy')}
+          />
+        </ListGroup>
+      </ScrollView>
+    </View>
+  );
+}
+
 export default function LegalScreen() {
   const { policy } = useLocalSearchParams<{ policy?: string }>();
-  const key = policy === 'terms' ? policy : 'privacy';
+  if (policy !== 'terms' && policy !== 'privacy') return <LegalHub />;
+  return <PolicyScreen policy={policy} />;
+}
+
+function PolicyScreen({ policy }: { policy: 'terms' | 'privacy' }) {
+  const key = policy;
   const colors = Colors[useColorScheme() ?? 'light'];
   const insets = useSafeAreaInsets();
   return (
-    <ScrollView keyboardDismissMode={KEYBOARD_DISMISS_MODE}
+    <ScrollView
+      keyboardDismissMode={KEYBOARD_DISMISS_MODE}
       style={{ backgroundColor: colors.background }}
       contentContainerStyle={{
         padding: 24,
