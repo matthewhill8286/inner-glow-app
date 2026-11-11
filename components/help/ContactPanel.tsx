@@ -1,5 +1,5 @@
 import React from 'react';
-import { Linking, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
@@ -9,12 +9,10 @@ import { Glow } from '@/components/glow/Glow';
 import { ListGroup, ListRow } from '@/components/ui/ListRow';
 import { LegalNote } from '@/components/ui/controls';
 
-const SUPPORT_EMAIL = 'support@innerglow.app';
-
 /**
  * Contact us, the Help Centre's second tab (06 §P11, `6722:4837`): the aura hero, Message our team
- * and Report a problem (both open the support form, replies come by email), Email us, the
- * urgent-help card and the note. There is no in-app reply thread yet, so the subtitle says replies
+ * and Report a problem (both open the support form, replies come by email), the urgent-help card
+ * and the note. The design's Email us row is left out until the app has a mailbox that receives mail. There is no in-app reply thread yet, so the subtitle says replies
  * come by email.
  */
 export function ContactPanel() {
@@ -95,12 +93,6 @@ export function ContactPanel() {
           onPress={() =>
             router.push({ pathname: '/(utils)/support-message', params: { kind: 'message' } })
           }
-        />
-        <ListRow
-          icon="line/email"
-          label={t('contactUs.email')}
-          supportingText={SUPPORT_EMAIL}
-          onPress={() => void Linking.openURL(`mailto:${SUPPORT_EMAIL}`)}
         />
         <ListRow
           icon="line/activity"
