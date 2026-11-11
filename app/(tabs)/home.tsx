@@ -738,7 +738,7 @@ function ForYouToday() {
           paddingHorizontal: 8,
         }}
       >
-        <Text style={{ ...Type.bodyStrong, lineHeight: 20, color: palette.ink }}>
+        <Text style={{ ...Type.bodyLg, lineHeight: 20, color: palette.ink }}>
           {t('homeGlow.forYouToday')}
         </Text>
         <Pressable

@@ -76,8 +76,15 @@ export function VideoPlayer({ practice }: { practice: Practice }) {
   // landscape. The app is portrait-only, so the card is rotated rather than the device, and the
   // player is never remounted, so playback carries on.
   const [fullScreen, setFullScreen] = useState(false);
-  const cardW = fullScreen ? height : width - 32;
-  const cardH = fullScreen ? width : 212;
+  // Full screen fills the measured screen area (not the window, which can be taller) turned on its
+  // side, and the video keeps 16:9 inside it so it never spills past the edges.
+  const [root, setRoot] = useState<{ w: number; h: number } | null>(null);
+  const areaW = root?.w ?? width;
+  const areaH = root?.h ?? height;
+  const cardW = fullScreen ? areaH : width - 32;
+  const cardH = fullScreen ? areaW : 212;
+  const videoW = fullScreen ? Math.min(cardW, (cardH * 16) / 9) : cardW;
+  const videoH = fullScreen ? (videoW * 9) / 16 : cardH;
 
   // TestFlight report 45: the pause button covered the video the whole time it played.
   const [controlsShown, setControlsShown] = useState(true);
@@ -172,7 +179,10 @@ export function VideoPlayer({ practice }: { practice: Practice }) {
       : t('practices.video.watchedMinutes', { elapsed: mmss(elapsed), total });
 
   return (
-    <View style={{ flex: 1, backgroundColor: palette.bg }}>
+    <View
+      style={{ flex: 1, backgroundColor: palette.bg }}
+      onLayout={(e) => setRoot({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}
+    >
       <GlowField
         glows={[{ color: palette.rose, opacity: 0.22, x: 180, y: 110, width: 230, blur: 90 }]}
       />
@@ -215,8 +225,10 @@ export function VideoPlayer({ practice }: { practice: Practice }) {
                 zIndex: 10,
                 width: cardW,
                 height: cardH,
-                left: (width - cardW) / 2,
-                top: (height - cardH) / 2,
+                left: (areaW - cardW) / 2,
+                top: (areaH - cardH) / 2,
+                alignItems: 'center',
+                justifyContent: 'center',
                 transform: [{ rotate: '90deg' }],
                 overflow: 'hidden',
                 backgroundColor: '#000',
@@ -238,8 +250,8 @@ export function VideoPlayer({ practice }: { practice: Practice }) {
           <View pointerEvents={started ? 'none' : 'auto'} style={{ zIndex: 0 }}>
             <YoutubePlayer
               ref={ref}
-              height={cardH}
-              width={cardW}
+              height={videoH}
+              width={videoW}
               videoId={practice.video!.youtubeId}
               play={playing}
               initialPlayerParams={{

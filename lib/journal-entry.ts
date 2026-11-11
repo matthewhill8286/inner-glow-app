@@ -174,3 +174,19 @@ export function journalYearStats(
   }
   return { total, monthly, avgWords: total ? Math.round(words / total) : 0, moods };
 }
+
+/**
+ * Whether the talk prompt should include the title. Voice entries get a title cut from the start of
+ * the text ("Why do I bother…"), which would repeat the body, and untitled entries have none.
+ */
+export function journalTalkPrompt(
+  title: string | null | undefined,
+  body: string | null | undefined,
+): boolean {
+  const t = (title ?? '')
+    .trim()
+    .replace(/(…|\.\.\.)$/, '')
+    .trim();
+  if (!t) return false;
+  return !(body ?? '').trim().toLowerCase().startsWith(t.toLowerCase());
+}

@@ -18,7 +18,16 @@ import { clockFrom } from '@/lib/sleep-home';
 import { hourMinute, minuteOfDay, windowMinutes } from '@/lib/sleep-flow';
 
 /** Keys allowed by the `sleep.factors` check constraint (06 §6 item 5), in the design's order. */
-const FACTORS = ['caffeine', 'screen_time', 'stress', 'exercise', 'late_meal', 'noise', 'wind_down', 'nap'];
+const FACTORS = [
+  'caffeine',
+  'screen_time',
+  'stress',
+  'exercise',
+  'late_meal',
+  'noise',
+  'wind_down',
+  'nap',
+];
 
 /**
  * Sleep check-in (06 §S6): the moon scale, the quality word with a short line, what played a part,
@@ -29,7 +38,10 @@ export default function SleepCheckInScreen() {
   const { t } = useTranslation();
   const { id, from } = useLocalSearchParams<{ id?: string; from?: string }>();
   const { sleepEntries, schedule, addSleepEntry, updateSleepEntry } = useSleep();
-  const entry = useMemo(() => (id ? sleepEntries.find((e) => e.id === id) : undefined), [id, sleepEntries]);
+  const entry = useMemo(
+    () => (id ? sleepEntries.find((e) => e.id === id) : undefined),
+    [id, sleepEntries],
+  );
   const [quality, setQuality] = useState<number | null>(entry?.quality ?? null);
   const [factors, setFactors] = useState<string[]>(entry?.factors ?? []);
   const [note, setNote] = useState(entry?.notes ?? '');
@@ -52,9 +64,15 @@ export default function SleepCheckInScreen() {
   const openPicker = (which: 'bed' | 'wake') => {
     const m = which === 'bed' ? bed : wake;
     const value = new Date(2000, 0, 1, hourMinute(m).hour, hourMinute(m).minute);
-    const set = (d: Date) => (which === 'bed' ? setBed : setWake)(minuteOfDay(d.getHours(), d.getMinutes()));
+    const set = (d: Date) =>
+      (which === 'bed' ? setBed : setWake)(minuteOfDay(d.getHours(), d.getMinutes()));
     if (Platform.OS === 'android') {
-      DateTimePickerAndroid.open({ value, mode: 'time', is24Hour: true, onChange: (e, d) => e.type === 'set' && d && set(d) });
+      DateTimePickerAndroid.open({
+        value,
+        mode: 'time',
+        is24Hour: true,
+        onChange: (e, d) => e.type === 'set' && d && set(d),
+      });
     } else setPicking(which);
   };
 
@@ -66,7 +84,12 @@ export default function SleepCheckInScreen() {
     setSaving(true);
     try {
       if (id) {
-        await updateSleepEntry({ id, quality: quality as 1 | 2 | 3 | 4 | 5, factors, notes: note.trim() || undefined });
+        await updateSleepEntry({
+          id,
+          quality: quality as 1 | 2 | 3 | 4 | 5,
+          factors,
+          notes: note.trim() || undefined,
+        });
         router.replace({ pathname: '/(tabs)/sleep/[id]', params: { id } });
         return;
       }
@@ -96,7 +119,15 @@ export default function SleepCheckInScreen() {
     <Pressable
       accessibilityRole="button"
       onPress={() => openPicker(which)}
-      style={({ pressed }) => ({ flex: 1, minHeight: 76, borderRadius: 24, backgroundColor: palette.white, padding: 16, gap: 4, opacity: pressed ? 0.85 : 1 })}
+      style={({ pressed }) => ({
+        flex: 1,
+        minHeight: 76,
+        borderRadius: 24,
+        backgroundColor: palette.white,
+        padding: 16,
+        gap: 4,
+        opacity: pressed ? 0.85 : 1,
+      })}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
         <Icon name={which === 'bed' ? 'line/moon' : 'line/star'} size={16} />
@@ -104,7 +135,9 @@ export default function SleepCheckInScreen() {
           {t(which === 'bed' ? 'sleepFlow.schedule.bedtime' : 'sleepFlow.schedule.wakeUp')}
         </Text>
       </View>
-      <Text style={[Type.titleMd, { lineHeight: 30, color: palette.ink }]}>{clock(which === 'bed' ? bed : wake)}</Text>
+      <Text style={[Type.titleMd, { lineHeight: 30, color: palette.ink }]}>
+        {clock(which === 'bed' ? bed : wake)}
+      </Text>
     </Pressable>
   );
 
@@ -119,13 +152,26 @@ export default function SleepCheckInScreen() {
         { color: palette.mustard, opacity: 0.22, x: 97.5, y: 180, width: 180, blur: 60 },
       ]}
       contentStyle={{ gap: 12 }}
-      cta={<AppButton title={t('sleepFlow.checkIn.save')} icon="line/check" iconPosition="left" busy={saving} onPress={save} />}
+      cta={
+        <AppButton
+          title={t('sleepFlow.checkIn.save')}
+          icon="line/check"
+          iconPosition="left"
+          busy={saving}
+          onPress={save}
+        />
+      }
     >
       <ScreenStatusBar style="dark" />
-      <Text accessibilityRole="header" style={[Type.titleLg, { fontSize: 28, lineHeight: 34, color: palette.ink }]}>
+      <Text
+        accessibilityRole="header"
+        style={[Type.titleLg, { fontSize: 28, lineHeight: 34, color: palette.ink }]}
+      >
         {t('sleepFlow.checkIn.title')}
       </Text>
-      <Text style={[Type.bodyS, { color: palette.textMuted, marginTop: -6 }]}>{t('sleepFlow.checkIn.subtitle')}</Text>
+      <Text style={[Type.bodyS, { color: palette.textMuted, marginTop: -6 }]}>
+        {t('sleepFlow.checkIn.subtitle')}
+      </Text>
 
       {!id && (
         <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
@@ -138,15 +184,23 @@ export default function SleepCheckInScreen() {
       <View style={{ alignItems: 'center', gap: 6, minHeight: 56 }}>
         {quality ? (
           <>
-            <Text style={[Type.titleLg, { fontSize: 24, lineHeight: 29, color: palette.plum }]}>{qualityWords[quality - 1]}</Text>
-            <Text style={[Type.captionM, { color: palette.textMuted, textAlign: 'center' }]}>{t(`sleepFlow.checkIn.lines.${quality}`)}</Text>
+            <Text style={[Type.titleLg, { fontSize: 24, lineHeight: 29, color: palette.plum }]}>
+              {qualityWords[quality - 1]}
+            </Text>
+            <Text style={[Type.captionM, { color: palette.textMuted, textAlign: 'center' }]}>
+              {t(`sleepFlow.checkIn.lines.${quality}`)}
+            </Text>
           </>
         ) : (
-          <Text style={[Type.captionM, { color: palette.textMuted }]}>{t('sleepFlow.checkIn.tapMoon')}</Text>
+          <Text style={[Type.captionM, { color: palette.textMuted }]}>
+            {t('sleepFlow.checkIn.tapMoon')}
+          </Text>
         )}
       </View>
 
-      <Text style={[Type.labelM, { color: palette.lavender, marginTop: 8 }]}>{t('sleepFlow.checkIn.factors')}</Text>
+      <Text style={[Type.labelM, { color: palette.lavender, marginTop: 8 }]}>
+        {t('sleepFlow.checkIn.factors')}
+      </Text>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
         {FACTORS.map((f) => {
           const on = factors.includes(f);
@@ -166,7 +220,12 @@ export default function SleepCheckInScreen() {
                 borderColor: on ? palette.plum : palette.borderLilac,
               }}
             >
-              <Text style={[Type.chip, { fontWeight: on ? '600' : '500', color: on ? palette.plum : palette.plumDeep }]}>
+              <Text
+                style={[
+                  Type.chip,
+                  { fontWeight: on ? '600' : '500', color: on ? palette.plum : palette.plumDeep },
+                ]}
+              >
                 {t(`sleepPeriods.factors.${f}`)}
               </Text>
             </Pressable>
@@ -201,16 +260,38 @@ export default function SleepCheckInScreen() {
 
       {Platform.OS === 'ios' && (
         <BottomSheet visible={picking !== null} onClose={() => setPicking(null)}>
-          {picking && (
-            <DateTimePicker
-              value={new Date(2000, 0, 1, hourMinute(picking === 'bed' ? bed : wake).hour, hourMinute(picking === 'bed' ? bed : wake).minute)}
-              mode="time"
-              display="spinner"
-              minuteInterval={5}
-              onChange={(_, d) => d && (picking === 'bed' ? setBed : setWake)(minuteOfDay(d.getHours(), d.getMinutes()))}
-            />
-          )}
-          <AppButton title={t('sleepFlow.done')} onPress={() => setPicking(null)} style={{ alignSelf: 'stretch' }} />
+          {/* A fixed-height box gives the sheet its full height before the native picker lays out,
+              so it doesn't slide in short and end up below the screen (TestFlight). */}
+          <View style={{ alignSelf: 'stretch', height: 216 }}>
+            {picking && (
+              <DateTimePicker
+                value={
+                  new Date(
+                    2000,
+                    0,
+                    1,
+                    hourMinute(picking === 'bed' ? bed : wake).hour,
+                    hourMinute(picking === 'bed' ? bed : wake).minute,
+                  )
+                }
+                mode="time"
+                display="spinner"
+                themeVariant="light"
+                textColor={palette.ink}
+                style={{ flex: 1 }}
+                minuteInterval={5}
+                onChange={(_, d) =>
+                  d &&
+                  (picking === 'bed' ? setBed : setWake)(minuteOfDay(d.getHours(), d.getMinutes()))
+                }
+              />
+            )}
+          </View>
+          <AppButton
+            title={t('sleepFlow.done')}
+            onPress={() => setPicking(null)}
+            style={{ alignSelf: 'stretch' }}
+          />
         </BottomSheet>
       )}
     </SettingsScreen>
