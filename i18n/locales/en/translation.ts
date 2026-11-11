@@ -47,6 +47,41 @@ export default {
       5: { tag: 'Step Five', title: 'Support When You Need It' },
     },
   },
+  purchaseStates: {
+    confirmingTitle: 'Confirming with the App Store',
+    confirmingBody: 'This takes a few seconds. Please keep the app open.',
+    failed: {
+      title: 'Payment didn’t go through',
+      body: 'You haven’t been charged. Check your payment method in App Store settings and try again.',
+      primary: 'Try again',
+      secondary: 'Not now',
+    },
+    restored: {
+      title: 'Your Pro plan is back',
+      body: 'We found your subscription. Everything is unlocked again on this device.',
+      primary: 'Continue',
+      secondary: '',
+    },
+    nothingFound: {
+      title: 'No purchases found',
+      body: 'We couldn’t find a subscription for this Apple ID. If you subscribed with another account, sign in with it and try again.',
+      primary: 'OK',
+      secondary: 'Contact support',
+    },
+  },
+  proEnded: {
+    title: 'Your Pro has ended',
+    body: 'Everything you saved is still here. A few things are now limited on the free plan.',
+    rows: {
+      glowAi: { label: 'Glow AI', value: '{{count}} talks a week' },
+      reflections: { label: 'Journal reflections', value: 'Paused' },
+      suggestions: { label: 'Personal suggestions', value: 'Paused' },
+      voice: { label: 'Voice notes to text', value: 'Pro only' },
+    },
+    renew: 'Renew Pro',
+    renewWithPrice: 'Renew Pro · {{price}}/year',
+    continueFree: 'Continue with free',
+  },
   authErrors: {
     wrongPassword: 'Email or password doesn’t match. Try again or reset your password.',
     emailInUse: 'There’s already an account with this email. Sign in instead?',
@@ -3007,6 +3042,12 @@ export default {
   },
   moodScale: { tense: 'Tense', low: 'Low', okay: 'Okay', good: 'Good', great: 'Great' },
   homeGlow: {
+    trialEnds: {
+      today: 'Your free trial ends today',
+      tomorrow: 'Your free trial ends tomorrow',
+      body: 'After that, Pro features pause unless you choose a plan.',
+      manage: 'Manage',
+    },
     search: 'Search',
     notifications: 'Notifications',
     howAreYou: 'How are you feeling?',
