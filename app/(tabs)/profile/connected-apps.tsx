@@ -29,6 +29,7 @@ export default function ConnectedAppsScreen() {
 
   const onConnect = async () => {
     const result = await health.connect();
+    if (result.status === 'dismissed') return;
     if (result.status === 'unavailable') toast.info(t(ios ? 'connectedApps.unavailableApple' : 'connectedApps.unavailableAndroid'));
     else if (result.status === 'denied') toast.info(t('connectedApps.denied'));
     else if (result.status === 'error') toast.error(t('connectedApps.syncError'));

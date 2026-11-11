@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { AppState } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import { create } from 'zustand';
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { supabase } from '@/supabase/supabase';
@@ -16,10 +16,16 @@ import {
   saveHealthConnection,
   type HealthConnection,
 } from '@/lib/health-sleep';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { askPrimer } from '@/lib/permission-primer';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-export type ConnectResult = { status: 'ok' | 'unavailable' | 'denied' | 'error'; imported: number };
+export type ConnectResult = {
+  status: 'ok' | 'unavailable' | 'denied' | 'error' | 'dismissed';
+  imported: number;
+};
+const HEALTH_PRIMER_KEY = 'primer:health:v1';
 /** Foreground syncs closer together than this are skipped. */
 const MIN_SYNC_GAP_MS = 15 * 60 * 1000;
 
@@ -43,9 +49,11 @@ const useHealthSleepStore = create<HealthSleepState>(() => ({
 
 let loading: Promise<void> | null = null;
 function ensureLoaded() {
-  loading ??= Promise.all([loadHealthConnection(), isHealthAvailable()]).then(([connection, available]) => {
-    useHealthSleepStore.setState({ ...connection, available, loaded: true });
-  });
+  loading ??= Promise.all([loadHealthConnection(), isHealthAvailable()]).then(
+    ([connection, available]) => {
+      useHealthSleepStore.setState({ ...connection, available, loaded: true });
+    },
+  );
   return loading;
 }
 
@@ -100,7 +108,13 @@ async function syncSleep(userId: string, queryClient: QueryClient): Promise<numb
       const stageRows = toSave.flatMap((e) => {
         const sleepId = idByStart.get(Date.parse(e.startISO));
         return sleepId
-          ? e.stages.map((st) => ({ sleep_id: sleepId, user_id: userId, stage: st.stage, start_at: st.startISO, end_at: st.endISO }))
+          ? e.stages.map((st) => ({
+              sleep_id: sleepId,
+              user_id: userId,
+              stage: st.stage,
+              start_at: st.startISO,
+              end_at: st.endISO,
+            }))
           : [];
       });
       if (stageRows.length) {
@@ -139,6 +153,14 @@ export function useHealthSleep() {
   const connect = async (): Promise<ConnectResult> => {
     await ensureLoaded();
     if (!useHealthSleepStore.getState().available) return { status: 'unavailable', imported: 0 };
+    // Bring in your sleep (`6801:6587`) explains Apple Health before its one-time prompt.
+    if (
+      Platform.OS === 'ios' &&
+      !(await AsyncStorage.getItem(HEALTH_PRIMER_KEY).catch(() => null))
+    ) {
+      if (!(await askPrimer('health'))) return { status: 'dismissed', imported: 0 };
+      await AsyncStorage.setItem(HEALTH_PRIMER_KEY, '1').catch(() => undefined);
+    }
     try {
       if (!(await requestSleepAccess())) return { status: 'denied', imported: 0 };
     } catch (e) {

@@ -3,7 +3,7 @@ import { runOptionalStartup } from '@/lib/startup';
 import { isAppRoute } from '@/lib/navigation';
 import { Stack, router, useRootNavigationState } from 'expo-router';
 import { AlertModal } from '@/components/AlertModal';
-import { MicPrimer } from '@/components/MicPrimer';
+import { PermissionPrimer } from '@/components/PermissionPrimer';
 import { ToastContainer } from '@/components/Toast';
 import { AppLockGate } from '@/components/AppLockGate';
 import { KeyboardSwipeDismiss } from '@/components/KeyboardSwipeDismiss';
@@ -240,7 +240,7 @@ export default function RootLayout() {
             {Platform.OS !== 'web' && <NativeNotificationResponses />}
             {Platform.OS !== 'web' && <AppLockGate />}
             <AlertModal />
-            <MicPrimer />
+            <PermissionPrimer />
             <ToastContainer />
           </QueryClientProvider>
         </AppErrorBoundary>
