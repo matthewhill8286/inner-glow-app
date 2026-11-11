@@ -27,6 +27,7 @@ import { useSleep } from '@/hooks/useSleep';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useProEnded } from '@/hooks/useProEnded';
 import { trialEndsIn } from '@/lib/trial';
+import { HomeSkeleton } from '@/components/ScreenSkeletons';
 import { useGlowAiGate, useGlowAiUsage } from '@/hooks/useGlowAi';
 import { useVoiceAsk } from '@/hooks/useVoiceAsk';
 import { getPersona } from '@/lib/chat';
@@ -111,63 +112,74 @@ export default function HomeScreen() {
         }}
         showsVerticalScrollIndicator={false}
       >
-        <Header greeting={greeting} name={firstName} isPro={hasFullAccess} />
-        <MoodCard
-          checkIns={moodCheckIns}
-          locale={i18n.language}
-          onSave={(id, score) =>
-            id
-              ? updateMoodCheckIn({ id, mood: moodStep(score).checkIn })
-              : addMoodCheckIn({ mood: moodStep(score).checkIn })
-          }
-        />
-        <GlowAiInput />
-        {trialEnds ? <TrialEndsCard when={trialEnds} /> : null}
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginTop: 28,
-            marginBottom: 5,
-            paddingHorizontal: 6,
-          }}
-        >
-          <Text style={{ ...Type.bodyLg, lineHeight: 20, color: palette.ink }}>
-            {t('homeGlow.innerGlowToday')}
-          </Text>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t('homeGlow.scoreOptions')}
-            hitSlop={10}
-            onPress={() => router.push('/(tabs)/freud-score')}
-            style={{
-              width: 24,
-              height: 24,
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 3.8,
-            }}
-          >
-            {[0, 1, 2].map((i) => (
-              <View
-                key={i}
-                style={{ width: 3.2, height: 3.2, borderRadius: 1.6, backgroundColor: palette.ink }}
-              />
-            ))}
-          </Pressable>
-        </View>
-        <InnerGlowCard
-          score={Math.round(currentScore.score)}
-          scoreLabel={t(`freudScore.${labelKey(currentScore.label)}`, {
-            defaultValue: currentScore.label,
-          })}
-          scoreTrend={trend(currentScore.score, previousDayScore(scoreHistory))}
-          checkIns={moodCheckIns}
-          sleepEntries={sleepEntries}
-        />
-        <ForYouToday />
-        {!hasFullAccess && <FreePlanCard />}
+        {loading && moodCheckIns.length === 0 && scoreHistory.length === 0 ? (
+          <HomeSkeleton />
+        ) : (
+          <>
+            <Header greeting={greeting} name={firstName} isPro={hasFullAccess} />
+            <MoodCard
+              checkIns={moodCheckIns}
+              locale={i18n.language}
+              onSave={(id, score) =>
+                id
+                  ? updateMoodCheckIn({ id, mood: moodStep(score).checkIn })
+                  : addMoodCheckIn({ mood: moodStep(score).checkIn })
+              }
+            />
+            <GlowAiInput />
+            {trialEnds ? <TrialEndsCard when={trialEnds} /> : null}
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginTop: 28,
+                marginBottom: 5,
+                paddingHorizontal: 6,
+              }}
+            >
+              <Text style={{ ...Type.bodyLg, lineHeight: 20, color: palette.ink }}>
+                {t('homeGlow.innerGlowToday')}
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t('homeGlow.scoreOptions')}
+                hitSlop={10}
+                onPress={() => router.push('/(tabs)/freud-score')}
+                style={{
+                  width: 24,
+                  height: 24,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 3.8,
+                }}
+              >
+                {[0, 1, 2].map((i) => (
+                  <View
+                    key={i}
+                    style={{
+                      width: 3.2,
+                      height: 3.2,
+                      borderRadius: 1.6,
+                      backgroundColor: palette.ink,
+                    }}
+                  />
+                ))}
+              </Pressable>
+            </View>
+            <InnerGlowCard
+              score={Math.round(currentScore.score)}
+              scoreLabel={t(`freudScore.${labelKey(currentScore.label)}`, {
+                defaultValue: currentScore.label,
+              })}
+              scoreTrend={trend(currentScore.score, previousDayScore(scoreHistory))}
+              checkIns={moodCheckIns}
+              sleepEntries={sleepEntries}
+            />
+            <ForYouToday />
+            {!hasFullAccess && <FreePlanCard />}
+          </>
+        )}
       </ScrollView>
       <StatusBackdrop height={insets.top} />
     </View>
@@ -785,8 +797,12 @@ function TrialEndsCard({ when }: { when: 'today' | 'tomorrow' }) {
         <Icon name="line/crown" size={20} />
       </View>
       <View style={{ flex: 1, gap: 2 }}>
-        <Text style={{ ...Type.bodyMSemi, color: palette.ink }}>{t(`homeGlow.trialEnds.${when}`)}</Text>
-        <Text style={{ ...Type.captionS, color: palette.textMuted }}>{t('homeGlow.trialEnds.body')}</Text>
+        <Text style={{ ...Type.bodyMSemi, color: palette.ink }}>
+          {t(`homeGlow.trialEnds.${when}`)}
+        </Text>
+        <Text style={{ ...Type.captionS, color: palette.textMuted }}>
+          {t('homeGlow.trialEnds.body')}
+        </Text>
       </View>
       <AppButton
         title={t('homeGlow.trialEnds.manage')}

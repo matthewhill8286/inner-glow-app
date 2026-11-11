@@ -182,6 +182,12 @@ export default function GlowScoreScreen() {
       >
         <PillChip icon={range.face} label={t(`glowScore.range.${range.key}`)} />
         <PillChip icon="line/sparkle" label={t('glowScore.askWhy')} outlined onPress={askWhy} />
+        <PillChip
+          icon="line/note"
+          label={t('aboutScore.link')}
+          outlined
+          onPress={() => router.push('/(tabs)/freud-score/about')}
+        />
       </View>
 
       <View

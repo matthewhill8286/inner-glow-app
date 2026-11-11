@@ -164,7 +164,9 @@ export function ListRow({
         ) : null}
       </View>
       {(trailing === 'value' || trailing === 'chevron') && value ? (
-        <Text style={[Type.captionM, { color: palette.textMuted }]}>{value}</Text>
+        <Text numberOfLines={1} style={[Type.captionM, { color: palette.textMuted, maxWidth: '55%' }]}>
+          {value}
+        </Text>
       ) : null}
       {trailing === 'chevron' && <Icon name="arrow/chevron-right" size={18} />}
       {/* Unless the row opens something else, it handles the press and the switch is display-only. */}
