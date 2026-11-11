@@ -15,6 +15,7 @@ for (const name of [
   'community-publish',
   'contact-support',
   'client-diagnostics',
+  'weekly-reflection',
 ]) {
   // Authenticated functions validate the user's JWT in code. The public support
   // function validates input/rate limits; the webhook validates its shared token.
