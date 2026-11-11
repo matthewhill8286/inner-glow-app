@@ -44,6 +44,7 @@ import {
   type ScorePeriod,
 } from '@/lib/glow-score';
 import { backTo } from '@/lib/navigation';
+import { SourcesLink } from '@/components/SourcesLink';
 
 /** Icons for the Insights factors (03 §2.4). */
 const FACTOR_ICON: Record<string, IconName> = {
@@ -250,6 +251,7 @@ export default function InsightsScreen() {
           </ScoreCard>
 
           <LegalNote text={t('glowScore.insightsLegal')} style={{ marginTop: 19 }} />
+          <SourcesLink topic="score" style={{ marginTop: 10 }} />
           <AppButton
             title={t('glowScore.getSuggestions')}
             icon="line/sparkle"

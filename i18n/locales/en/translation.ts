@@ -47,6 +47,23 @@ export default {
       5: { tag: 'Step Five', title: 'Support When You Need It' },
     },
   },
+  sources: {
+    link: 'Sources for this information',
+    title: 'Sources and citations',
+    rowBody: 'Where our scores and advice come from',
+    intro: 'Inner Glow’s scores, insights, suggestions and assessment are based on public guidance from these health organisations. Tap a source to read it.',
+    topics: {
+      score: 'Glow score and insights',
+      assessment: 'Assessment',
+      mood: 'Mood and emotions',
+      sleep: 'Sleep',
+      stress: 'Stress and breathing',
+      practices: 'Practices and suggestions',
+      journal: 'Journaling and reflection',
+      ai: 'Glow AI conversations',
+    },
+    disclaimer: 'Inner Glow offers wellbeing support, not medical advice, diagnosis or treatment. If you’re worried about your health, talk to a doctor or a qualified professional.',
+  },
   appLock: {
     title: 'Inner Glow is locked',
     body: 'Your check-ins, journal and chats stay private until you unlock.',

@@ -27,6 +27,7 @@ import { moodScoreOf, moodStep } from '@/lib/mood-scale';
 import { backTo } from '@/lib/navigation';
 import { queryKeys } from '@/lib/queryKeys';
 import type { AISuggestion } from '@/lib/freudScore';
+import { SourcesLink } from '@/components/SourcesLink';
 
 /**
  * Glow score (03 §2.2): the 176 ring over the aura art, the score's label, the range chip and
@@ -226,6 +227,7 @@ export default function GlowScoreScreen() {
       </View>
 
       <LegalNote text={t('glowScore.legal')} style={{ marginTop: 20 }} />
+      <SourcesLink topic="score" style={{ marginTop: 10 }} />
     </ScoreScreen>
   );
 }

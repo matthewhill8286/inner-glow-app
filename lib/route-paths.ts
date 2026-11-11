@@ -120,6 +120,7 @@ export const ROUTE_PATHS = [
   '/(utils)/message-sent',
   '/(tabs)/profile/assessment',
   '/(tabs)/freud-score/about',
+  '/(utils)/sources',
   '/(utils)/legal',
   '/(utils)/maintenance',
   '/(utils)/not-allowed',

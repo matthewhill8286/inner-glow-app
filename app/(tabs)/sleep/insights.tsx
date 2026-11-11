@@ -30,6 +30,7 @@ import {
   startOfPeriod,
   type Period,
 } from '@/lib/sleep-periods';
+import { SourcesLink } from '@/components/SourcesLink';
 
 const CHART_H = 150;
 const GOAL_Y = chartY(8);
@@ -413,6 +414,7 @@ export default function SleepInsights() {
         </Text>
       </Pressable>
       <LegalNote text={t('sleepPeriods.legal')} />
+      <SourcesLink topic="sleep" style={{ marginTop: 10 }} />
     </SettingsScreen>
   );
 }
