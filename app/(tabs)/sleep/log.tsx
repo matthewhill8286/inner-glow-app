@@ -45,6 +45,7 @@ export default function SleepCheckInScreen() {
   const [quality, setQuality] = useState<number | null>(entry?.quality ?? null);
   const [factors, setFactors] = useState<string[]>(entry?.factors ?? []);
   const [note, setNote] = useState(entry?.notes ?? '');
+  const [woke, setWoke] = useState(entry?.awakenings ?? 0);
   const [bed, setBed] = useState(minuteOfDay(schedule.sleepHour, schedule.sleepMin));
   const [wake, setWake] = useState(minuteOfDay(schedule.wakeHour, schedule.wakeMin));
   const [picking, setPicking] = useState<null | 'bed' | 'wake'>(null);
@@ -56,6 +57,7 @@ export default function SleepCheckInScreen() {
     setQuality(entry.quality ?? null);
     setFactors(entry.factors ?? []);
     setNote(entry.notes ?? '');
+    setWoke(entry.awakenings ?? 0);
   }, [entry]);
 
   const qualityWords = [1, 2, 3, 4, 5].map((q) => t(`sleepNight.quality.${q}`));
@@ -89,6 +91,7 @@ export default function SleepCheckInScreen() {
           quality: quality as 1 | 2 | 3 | 4 | 5,
           factors,
           notes: note.trim() || undefined,
+          awakenings: woke,
         });
         router.replace({ pathname: '/(tabs)/sleep/[id]', params: { id } });
         return;
@@ -105,6 +108,7 @@ export default function SleepCheckInScreen() {
         quality: quality as 1 | 2 | 3 | 4 | 5,
         factors,
         notes: note.trim() || undefined,
+        awakenings: woke,
         source: 'manual',
       });
       router.replace({ pathname: '/(tabs)/sleep/[id]', params: { id: saved.id } });
@@ -196,6 +200,51 @@ export default function SleepCheckInScreen() {
             {t('sleepFlow.checkIn.tapMoon')}
           </Text>
         )}
+      </View>
+
+      {/* Times you woke up (`6716:4345`). */}
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          borderRadius: 20,
+          backgroundColor: palette.white,
+          paddingHorizontal: 16,
+          height: 52,
+        }}
+      >
+        <Text style={[Type.bodyMMedium, { color: palette.ink }]}>
+          {t('sleepFlow.checkIn.woke')}
+        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('sleepFlow.checkIn.wokeFewer')}
+            disabled={woke === 0}
+            onPress={() => setWoke((n) => Math.max(0, n - 1))}
+            hitSlop={8}
+          >
+            <Text style={[Type.titleSm, { color: woke === 0 ? palette.textSubtle : palette.plum }]}>
+              −
+            </Text>
+          </Pressable>
+          <Text
+            accessibilityLiveRegion="polite"
+            style={[Type.bodyStrong, { color: palette.ink, minWidth: 18, textAlign: 'center' }]}
+          >
+            {woke}
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('sleepFlow.checkIn.wokeMore')}
+            disabled={woke >= 20}
+            onPress={() => setWoke((n) => Math.min(20, n + 1))}
+            hitSlop={8}
+          >
+            <Text style={[Type.titleSm, { color: palette.plum }]}>+</Text>
+          </Pressable>
+        </View>
       </View>
 
       <Text style={[Type.labelM, { color: palette.lavender, marginTop: 8 }]}>

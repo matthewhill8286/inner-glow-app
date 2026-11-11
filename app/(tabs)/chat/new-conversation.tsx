@@ -98,6 +98,21 @@ export default function NewConversation() {
         status={t('glowAi.chat.status')}
         backLabel={t('common.back')}
         onBack={() => returnFromChat(from)}
+        voice={{
+          label: t('voiceMode.open'),
+          onPress: () => {
+            if (isLoading || !canStartTalk()) return;
+            router.replace({
+              pathname: '/(tabs)/chat/[issueKey]',
+              params: {
+                issueKey: buildNewChatKey(persona.id),
+                from: from ?? '/(tabs)/chat',
+                persona: persona.id,
+                voice: '1',
+              },
+            });
+          },
+        }}
         style={{ marginTop: insets.top + 10, marginHorizontal: 24 }}
       />
       <ScrollView
